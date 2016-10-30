@@ -1,2 +1,4 @@
 *.swp
 .stack-work
+*.sqlite*
+
