@@ -10,19 +10,19 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
-executable create-database
-  hs-source-dirs:      sources/executables
-  main-is:             create-database.hs
+library
+  hs-source-dirs:      sources/library
   build-depends:       base
-                     , directory >= 1.2 && < 1.3
-                     , sqlite-simple >= 0.4.9 && < 0.5
+                     , aeson
+                     , lens
+  exposed-modules:     HabitOfFate.Data
   default-language:    Haskell2010
 
-executable create-god
+executable test
   hs-source-dirs:      sources/executables
-  main-is:             create-god.hs
-  build-depends:       base
-                     , sqlite-simple >= 0.4.9 && < 0.5
-                     , random >= 1.1 && < 1.2
-                     , uuid >= 1.3.12 && < 1.4
+  main-is:             test.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , bytestring
+                     , yaml
   default-language:    Haskell2010
