@@ -1,5 +1,5 @@
+*.swo
 *.swp
 .stack-work
 *.sqlite*
-
 tags
