@@ -17,8 +17,10 @@ library
                      , ansi-terminal
                      , containers
                      , lens
+                     , string-qq
                      , transformers
   exposed-modules:     HabitOfFate.Data
+                     , HabitOfFate.Quests.Forest
                      , HabitOfFate.Utils.Text
   default-language:    Haskell2010
 

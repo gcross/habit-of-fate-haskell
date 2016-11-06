@@ -7,7 +7,7 @@ import Control.Lens (Lens',(%=),(.=),use)
 import Control.Lens.TH (makeLenses)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.State.Strict (StateT(),evalStateT)
-import Data.Char (isLower, toUpper)
+import Data.Char (isLower, toLower, toUpper)
 import Data.List (span)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -40,12 +40,12 @@ parseColorSpec [hue] = ColorSpec intensity color
     intensity = if isLower hue then Dull else Vivid
 parseColorSpec x = error $ "Bad color spec: " ++ x
 
-interpolate :: Map String String → String → String
-interpolate interpolations = go
+substituteAll :: (String → String) → String → String
+substituteAll substituteFor = go
   where
     go ('{':rest) =
         let (key,remainder) = break (== '}') rest
-        in go (fromJust $ Map.lookup key interpolations) ++ (tail remainder)
+        in (substituteFor key) ++ go (tail remainder)
     go (x:rest) = x:go rest
     go [] = []
 
@@ -70,8 +70,8 @@ data PrintTextState = PrintTextState
     }
 makeLenses ''PrintTextState
 
-printText :: Map String String → String → IO ()
-printText interpolations =
+printText :: (String → String) → String → IO ()
+printText substituteFor =
     flip evalStateT (
         PrintTextState
             0
@@ -84,7 +84,7 @@ printText interpolations =
     .
     words
     .
-    interpolate interpolations
+    substituteAll substituteFor
   where
     setColor layer intensity color = setSGR [SetColor layer intensity color]
     setSGR' = liftIO . setSGR . (:[])
@@ -98,7 +98,7 @@ printText interpolations =
             0 → return word_length
             _ | new_number_of_columns > 80 → do
                 liftIO $ putStrLn ""
-                return new_number_of_columns
+                return word_length
             _ | otherwise → return new_number_of_columns
          ) >>= (current_columns .=)
         printChars word
@@ -134,3 +134,40 @@ printText interpolations =
     printChars (x:xs) = do
         liftIO $ putChar x
         printChars xs
+
+data Gender = Male | Female | Neuter
+
+makeSubstitutionTable :: [(String,String,Gender)] → Map String String
+makeSubstitutionTable = Map.fromList . go mempty
+  where
+    go :: [(String,String)] → [(String,String,Gender)] → [(String,String)]
+    go table [] = table
+    go table ((key,value,gender):rest) =
+        go ((key,value):article_entries ++ gender_entries ++ table) rest
+      where
+        article_entries =
+            [("a "++key,article_value)
+            ,("an "++key,article_value)
+            ,("the "++key,"the " ++ value)
+            ]
+          where
+            article
+              | elem (toLower . head $ value) ['a','e','i','o','u'] = "an"
+              | otherwise = "a"
+            article_value = article ++ " " ++ value
+
+        gender_entries = case gender of
+            Male → pronouns "he" "him" "man"
+            Female → pronouns "she" "her" "woman"
+            Neuter → pronouns "it" "it" "thing"
+          where
+            pronouns subject object category =
+                [("he|"++key,subject)
+                ,("she|"++key,subject)
+                ,("it|"++key,subject)
+                ,("him|"++key,object)
+                ,("her|"++key,object)
+                ,("man|"++key,category)
+                ,("woman|"++key,category)
+                ,("thing|"++key,category)
+                ]
