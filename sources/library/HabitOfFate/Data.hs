@@ -7,8 +7,10 @@ module HabitOfFate.Data where
 import Control.Lens (makeLenses)
 import Data.Aeson.TH (Options(fieldLabelModifier), defaultOptions, deriveJSON)
 
+import Data.Set
+
 data Data = Data
-    {   _number_of_kills :: Int
+    {   _x :: Set Int
     } deriving (Read, Show)
 
 $(deriveJSON

@@ -99,12 +99,14 @@ printText substituteFor =
             _ | new_number_of_columns > 80 → do
                 liftIO $ putStrLn ""
                 return word_length
-            _ | otherwise → return new_number_of_columns
+            _ | otherwise → do
+                liftIO $ putChar ' '
+                return new_number_of_columns
          ) >>= (current_columns .=)
         printChars word
 
     printChars :: String → StateT PrintTextState IO ()
-    printChars [] = liftIO $ putChar ' '
+    printChars [] = return ()
     printChars ('*':xs) = do
         is_bold ← use currently_bold
         if is_bold
