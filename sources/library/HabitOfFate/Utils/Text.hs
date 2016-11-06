@@ -5,6 +5,7 @@ module HabitOfFate.Utils.Text where
 
 import Control.Lens (Lens',(%=),(.=),use)
 import Control.Lens.TH (makeLenses)
+import Control.Monad (forM_,replicateM)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.State.Strict (StateT(),evalStateT)
 import Data.Char (isLower, toLower, toUpper)
@@ -72,6 +73,32 @@ makeLenses ''PrintTextState
 
 printText :: (String → String) → String → IO ()
 printText substituteFor =
+    printParagraphs
+    .
+    map (concat . map words)
+    .
+    splitParagraphs
+    .
+    lines
+    .
+    substituteAll substituteFor
+
+splitParagraphs :: [String] → [[String]]
+splitParagraphs [] = []
+splitParagraphs ("":rest) = splitParagraphs rest
+splitParagraphs rest = paragraph:splitParagraphs remainder
+    where (paragraph,remainder) = break (== "") rest
+
+printParagraphs :: [[String]] → IO ()
+printParagraphs [] = return ()
+printParagraphs (first:rest) = do
+    printParagraph first
+    forM_ rest $ \paragraph → do
+        replicateM 2 (putStrLn "")
+        printParagraph paragraph
+
+printParagraph :: [String] → IO ()
+printParagraph =
     flip evalStateT (
         PrintTextState
             0
@@ -81,10 +108,6 @@ printText substituteFor =
     )
     .
     mapM_ printWord
-    .
-    words
-    .
-    substituteAll substituteFor
   where
     setColor layer intensity color = setSGR [SetColor layer intensity color]
     setSGR' = liftIO . setSGR . (:[])
