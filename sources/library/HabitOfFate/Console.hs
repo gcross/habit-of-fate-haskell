@@ -1,18 +1,20 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Utils.Text where
+module HabitOfFate.Console where
 
-import Control.Lens (Lens',(%=),(.=),use)
+import Control.Lens ((%=),(.=),use)
 import Control.Lens.TH (makeLenses)
-import Control.Monad (forM_,replicateM)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.State.Strict (StateT(),evalStateT)
-import Data.Char (isLower, toLower, toUpper)
+import Control.Monad (forM_,replicateM_)
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Random (MonadRandom(), RandT(), evalRandT)
+import Control.Monad.Trans.State.Strict (StateT(), evalStateT)
+import Data.Char (isLower, toUpper)
 import Data.List (span)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Maybe (fromJust)
 import System.Console.ANSI
     (Color(..)
     ,ColorIntensity(Dull,Vivid)
@@ -22,6 +24,27 @@ import System.Console.ANSI
     ,Underlining(SingleUnderline,NoUnderline)
     ,setSGR
     )
+import System.Random (StdGen, newStdGen)
+
+import HabitOfFate.MonadGame
+import HabitOfFate.Unicode
+
+newtype Game α = Game { unwrapGame :: RandT StdGen IO α }
+  deriving (Applicative
+           ,Functor
+           ,Monad
+           ,MonadIO
+           ,MonadRandom
+           )
+
+runGame :: Game α → IO α
+runGame game = do
+  g ← liftIO newStdGen
+  flip evalRandT g
+    .
+    unwrapGame
+    $
+    game
 
 data ColorSpec = ColorSpec ColorIntensity Color
 
@@ -41,15 +64,6 @@ parseColorSpec [hue] = ColorSpec intensity color
     intensity = if isLower hue then Dull else Vivid
 parseColorSpec x = error $ "Bad color spec: " ++ x
 
-substituteAll :: (String → String) → String → String
-substituteAll substituteFor = go
-  where
-    go ('{':rest) =
-        let (key,remainder) = break (== '}') rest
-        in (substituteFor key) ++ go (tail remainder)
-    go (x:rest) = x:go rest
-    go [] = []
-
 countVisibleCharsIn :: String → Int
 countVisibleCharsIn = go 0
   where
@@ -59,7 +73,7 @@ countVisibleCharsIn = go 0
         go2 (_:ys) = go2 ys
         go2 [] = error "No closing ]"
     go accum (x:xs)
-      | elem x ['*','_',']'] = go accum xs
+      | x ∈ ['*','_',']'] = go accum xs
       | otherwise = go (accum+1) xs
     go accum [] = accum
 
@@ -71,8 +85,10 @@ data PrintTextState = PrintTextState
     }
 makeLenses ''PrintTextState
 
-printText :: (String → String) → String → IO ()
-printText substituteFor =
+printText :: MonadIO m ⇒ String → m ()
+printText =
+    liftIO
+    .
     printParagraphs
     .
     map (concat . map words)
@@ -80,8 +96,9 @@ printText substituteFor =
     splitParagraphs
     .
     lines
-    .
-    substituteAll substituteFor
+
+instance MonadGame Game where
+  renderText = printText
 
 splitParagraphs :: [String] → [[String]]
 splitParagraphs [] = []
@@ -94,7 +111,7 @@ printParagraphs [] = return ()
 printParagraphs (first:rest) = do
     printParagraph first
     forM_ rest $ \paragraph → do
-        replicateM 2 (putStrLn "")
+        replicateM_ 2 (putStrLn "")
         printParagraph paragraph
 
 printParagraph :: [String] → IO ()
@@ -110,7 +127,7 @@ printParagraph =
     mapM_ printWord
   where
     setColor layer intensity color = setSGR [SetColor layer intensity color]
-    setSGR' = liftIO . setSGR . (:[])
+    setSGR' = liftIO ∘ setSGR ∘ (:[])
 
     printWord :: String → StateT PrintTextState IO ()
     printWord word = do
@@ -160,39 +177,3 @@ printParagraph =
         liftIO $ putChar x
         printChars xs
 
-data Gender = Male | Female | Neuter
-
-makeSubstitutionTable :: [(String,String,Gender)] → Map String String
-makeSubstitutionTable = Map.fromList . go mempty
-  where
-    go :: [(String,String)] → [(String,String,Gender)] → [(String,String)]
-    go table [] = table
-    go table ((key,value,gender):rest) =
-        go ((key,value):article_entries ++ gender_entries ++ table) rest
-      where
-        article_entries =
-            [("a "++key,article_value)
-            ,("an "++key,article_value)
-            ,("the "++key,"the " ++ value)
-            ]
-          where
-            article
-              | elem (toLower . head $ value) ['a','e','i','o','u'] = "an"
-              | otherwise = "a"
-            article_value = article ++ " " ++ value
-
-        gender_entries = case gender of
-            Male → pronouns "he" "him" "man"
-            Female → pronouns "she" "her" "woman"
-            Neuter → pronouns "it" "it" "thing"
-          where
-            pronouns subject object category =
-                [("he|"++key,subject)
-                ,("she|"++key,subject)
-                ,("it|"++key,subject)
-                ,("him|"++key,object)
-                ,("her|"++key,object)
-                ,("man|"++key,category)
-                ,("woman|"++key,category)
-                ,("thing|"++key,category)
-                ]

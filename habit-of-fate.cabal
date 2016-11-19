@@ -17,19 +17,16 @@ library
                      , ansi-terminal
                      , containers
                      , lens
+                     , MonadRandom
+                     , mtl
+                     , random
                      , string-qq
                      , transformers
-  exposed-modules:     HabitOfFate.Data
+  exposed-modules:     HabitOfFate.Console
+                     , HabitOfFate.MonadGame
+                     , HabitOfFate.Quest
+                     , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
-                     , HabitOfFate.Utils.Text
-  default-language:    Haskell2010
-
-executable test
-  hs-source-dirs:      sources/executables
-  main-is:             test.hs
-  build-depends:       habit-of-fate
-                     , base
-                     , bytestring
-                     , containers
-                     , yaml
+                     , HabitOfFate.Substitution
+                     , HabitOfFate.Unicode
   default-language:    Haskell2010
