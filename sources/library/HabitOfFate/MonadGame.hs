@@ -16,9 +16,12 @@ import qualified Control.Monad.Random as Random
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (StateT())
 
+import HabitOfFate.TH
+
 data GameState = GameState
   { _belief ∷ Int
-  }
+  } deriving (Read, Show)
+deriveJSON ''GameState
 makeLenses ''GameState
 
 class MonadRandom m ⇒ MonadGame m where
@@ -41,3 +44,6 @@ uniform = Random.uniform
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = join . uniform
+
+newGame :: GameState
+newGame = GameState 0

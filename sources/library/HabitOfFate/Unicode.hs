@@ -9,12 +9,12 @@ infixr 6 ⊕
 (⊕) = mappend
 {-# INLINE (⊕) #-}
 
-infixr 6 ∘
+infixr 9 ∘
 (∘) ∷ (β → δ) → (α → β) → (α → δ)
 (∘) = (.)
 {-# INLINE (∘) #-}
 
-infixr 6 ⊞
+infixr 5 ⊞
 (⊞) ∷ [α] → [α] → [α]
 (⊞) = (++)
 {-# INLINE (⊞) #-}
@@ -22,4 +22,12 @@ infixr 6 ⊞
 infixr 6 ∈
 (∈) ∷ Eq α ⇒ α → [α] → Bool
 (∈) = elem
-{-# INLINE (∈) #-}
+{-# INLINE (∈)  #-}
+
+infix  4 ≤
+(≤) ∷ Ord α ⇒ α → α → Bool
+(≤) = (<=)
+
+infix  4 ≥
+(≥) ∷ Ord α ⇒ α → α → Bool
+(≥) = (>=)

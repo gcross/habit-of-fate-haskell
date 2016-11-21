@@ -16,21 +16,23 @@ import Data.String.QQ
 import HabitOfFate.MonadGame
 import HabitOfFate.Quest
 import HabitOfFate.Substitution
+import HabitOfFate.TH
 import HabitOfFate.Unicode
 
 data State = State
-  { _healer ∷ Entity
-  , _patient ∷ Entity
-  , _herb ∷ Entity
+  { _healer ∷ Character
+  , _patient ∷ Character
+  , _herb ∷ String
   , _found ∷ Bool
-  }
+  } deriving (Read, Show)
+deriveJSON ''State
 makeLenses ''State
 
 defaultSubstitutionTable ∷ State → Substitutions
 defaultSubstitutionTable forest_state = makeSubstitutionTable
   [("Susie",forest_state ^. healer)
   ,("Tommy",forest_state ^. patient)
-  ,("Illsbane",forest_state ^. herb)
+  ,("Illsbane",Character (forest_state ^. herb) Neuter)
   ]
 
 renderTextWithDefaultSubtitutionsPlus ∷ State → [(String,String)] → String → GameAction ()
@@ -48,9 +50,9 @@ renderTextWithDefaultSubtitutions = flip renderTextWithDefaultSubtitutionsPlus [
 new :: GameAction State
 new = do
   let state = State
-        (Entity "Susie" Female)
-        (Entity "Tommy" Male)
-        (Entity "Illsbane" Neuter)
+        (Character "Susie" Female)
+        (Character "Tommy" Male)
+        "Illsbane"
         False
   introText state
   return state
