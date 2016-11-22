@@ -20,14 +20,14 @@ makePrisms ''State
 data Quest = ∀ α. Quest
   (Prism' State α)
   (Game α)
-  (GameInput → α → Game (Maybe α))
+  (Action → α → Game (Maybe α))
 
 quests :: [Quest]
 quests =
   [Quest _Forest Forest.new Forest.act
   ]
 
-act :: GameInput → Maybe State → Game (Maybe State)
+act :: Action → Maybe State → Game (Maybe State)
 act input Nothing =
   uniform quests
   >>=

@@ -9,8 +9,8 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Game
-  ( Game
-  , GameInput(..)
+  ( Action(..)
+  , Game
   , GameResult(..)
   , GameState(..)
     , belief
@@ -36,7 +36,7 @@ import System.Random
 
 import HabitOfFate.TH
 
-data GameInput =
+data Action =
     Good
   | Bad
 

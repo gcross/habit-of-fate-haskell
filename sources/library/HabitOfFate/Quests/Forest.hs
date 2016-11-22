@@ -56,7 +56,7 @@ new = do
   introText state
   return state
 
-act :: GameInput → State → Game (Maybe State)
+act :: Action → State → Game (Maybe State)
 act Good state = weightedAction
   [(20, if state ^. found
     then do

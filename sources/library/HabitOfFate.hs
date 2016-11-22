@@ -25,12 +25,12 @@ data Data = Data
 deriveJSON ''Data
 makeLenses ''Data
 
-act ∷ GameInput → Data → IO (Data, [[String]])
+act ∷ Action → Data → IO (Data, [[String]])
 act input (Data old_game_state old_quest) = do
   GameResult{..} ← runGame old_game_state $ Quests.act input old_quest
   return $ (Data new_game_state returned_value, paragraphs)
 
-actWithFile ∷ GameInput → FilePath → IO [[String]]
+actWithFile ∷ Action → FilePath → IO [[String]]
 actWithFile input filepath = do
   exists ← doesFileExist filepath
   game_data ← if exists
