@@ -22,12 +22,12 @@ data Quest = ∀ α. Quest
   (Game α)
   (Action → α → Game (Maybe α))
 
-quests :: [Quest]
+quests ∷ [Quest]
 quests =
   [Quest _Forest Forest.new Forest.act
   ]
 
-act :: Action → Maybe State → Game (Maybe State)
+act ∷ Action → Maybe State → Game (Maybe State)
 act input Nothing =
   uniform quests
   >>=
@@ -36,7 +36,7 @@ act input Nothing =
   act input
 act input (Just state) = go quests
   where
-    go :: [Quest] → Game (Maybe State)
+    go ∷ [Quest] → Game (Maybe State)
     go [] = error "Unrecognized quest type"
     go (Quest prism _ act:rest) =
       case state ^? prism of

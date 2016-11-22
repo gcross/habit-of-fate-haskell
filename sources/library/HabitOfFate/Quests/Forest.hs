@@ -46,7 +46,7 @@ textWithDefaultSubtitutionsPlus forest_state additional_subsitutions =
 textWithDefaultSubtitutions ∷ State → String → Game ()
 textWithDefaultSubtitutions = flip textWithDefaultSubtitutionsPlus []
 
-new :: Game State
+new ∷ Game State
 new = do
   let state = State
         (Character "Susie" Female)
@@ -56,7 +56,7 @@ new = do
   introText state
   return state
 
-act :: Action → State → Game (Maybe State)
+act ∷ Action → State → Game (Maybe State)
 act Good state = weightedAction
   [(20, if state ^. found
     then do

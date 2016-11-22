@@ -31,7 +31,7 @@ import HabitOfFate.Unicode
 
 data ColorSpec = ColorSpec ColorIntensity Color
 
-parseColorSpec :: String → ColorSpec
+parseColorSpec ∷ String → ColorSpec
 parseColorSpec [hue] = ColorSpec intensity color
   where
     color = case toUpper hue of
@@ -47,7 +47,7 @@ parseColorSpec [hue] = ColorSpec intensity color
     intensity = if isLower hue then Dull else Vivid
 parseColorSpec x = error $ "Bad color spec: " ++ x
 
-countVisibleCharsIn :: String → Int
+countVisibleCharsIn ∷ String → Int
 countVisibleCharsIn = go 0
   where
     go accum ('[':xs) = go2 xs
@@ -61,14 +61,14 @@ countVisibleCharsIn = go 0
     go accum [] = accum
 
 data PrintTextState = PrintTextState
-    { _current_columns :: Int
-    , _currently_bold :: Bool
-    , _currently_underlined :: Bool
-    , _color_restorers :: [IO ()]
+    { _current_columns ∷ Int
+    , _currently_bold ∷ Bool
+    , _currently_underlined ∷ Bool
+    , _color_restorers ∷ [IO ()]
     }
 makeLenses ''PrintTextState
 
-printParagraphs :: [[String]] → IO ()
+printParagraphs ∷ [[String]] → IO ()
 printParagraphs [] = return ()
 printParagraphs (first:rest) = do
     printParagraph first
@@ -76,7 +76,7 @@ printParagraphs (first:rest) = do
         replicateM_ 2 (putStrLn "")
         printParagraph paragraph
 
-printParagraph :: [String] → IO ()
+printParagraph ∷ [String] → IO ()
 printParagraph =
     flip evalStateT (
         PrintTextState
@@ -91,7 +91,7 @@ printParagraph =
     setColor layer intensity color = setSGR [SetColor layer intensity color]
     setSGR' = liftIO ∘ setSGR ∘ (:[])
 
-    printWord :: String → StateT PrintTextState IO ()
+    printWord ∷ String → StateT PrintTextState IO ()
     printWord word = do
         let word_length = countVisibleCharsIn word
         number_of_columns ← use current_columns
@@ -107,7 +107,7 @@ printParagraph =
          ) >>= (current_columns .=)
         printChars word
 
-    printChars :: String → StateT PrintTextState IO ()
+    printChars ∷ String → StateT PrintTextState IO ()
     printChars [] = return ()
     printChars ('*':xs) = do
         is_bold ← use currently_bold

@@ -47,7 +47,7 @@ deriveJSON ''GameState
 makeLenses ''GameState
 
 newtype Game α =
-    Game { unwrapGame :: StateT GameState (WriterT [[String]] (Rand StdGen)) α }
+    Game { unwrapGame ∷ StateT GameState (WriterT [[String]] (Rand StdGen)) α }
   deriving
     (Applicative
     ,Functor
@@ -58,15 +58,15 @@ newtype Game α =
     )
 
 data GameResult α = GameResult
-  { new_game_state :: GameState
-  , paragraphs :: [[String]]
-  , returned_value :: α
+  { new_game_state ∷ GameState
+  , paragraphs ∷ [[String]]
+  , returned_value ∷ α
   } deriving (Eq,Ord,Read,Show)
 
-newGame :: GameState
+newGame ∷ GameState
 newGame = GameState 0
 
-runGame :: GameState → Game α → IO (GameResult α)
+runGame ∷ GameState → Game α → IO (GameResult α)
 runGame state game = do
   g ← newStdGen
   let ((returned_value, new_game_result), paragraphs) =
@@ -81,10 +81,10 @@ runGame state game = do
         game
   return $ GameResult new_game_result paragraphs returned_value
 
-text :: String → Game ()
+text ∷ String → Game ()
 text = tell . map (concatMap words) . splitParagraphs . lines
   where
-    splitParagraphs :: [String] → [[String]]
+    splitParagraphs ∷ [String] → [[String]]
     splitParagraphs [] = []
     splitParagraphs ("":rest) = splitParagraphs rest
     splitParagraphs rest = paragraph:splitParagraphs remainder

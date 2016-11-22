@@ -20,7 +20,7 @@ deriveJSON ''Character
 
 type Substitutions = Map String String
 
-makeSubstitutionTable :: [(String,Character)] → Substitutions
+makeSubstitutionTable ∷ [(String,Character)] → Substitutions
 makeSubstitutionTable [] = Map.empty
 makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
     Map.fromList
@@ -101,7 +101,7 @@ makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
                 Female → "woman"
                 Neuter → "thing"
 
-substitute :: Substitutions → String → String
+substitute ∷ Substitutions → String → String
 substitute table = go
   where
     go ('{':rest) =
