@@ -37,9 +37,9 @@ library
                      , HabitOfFate.Unicode
   default-language:    Haskell2010
 
-executable good
+executable act
   hs-source-dirs:      sources/executables
-  main-is:             good.hs
+  main-is:             act.hs
   build-depends:       habit-of-fate
                      , base
                      , yaml
