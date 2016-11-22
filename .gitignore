@@ -3,3 +3,5 @@
 .stack-work
 tags
 \#*
+*.hof
+*~
