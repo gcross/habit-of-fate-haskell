@@ -8,12 +8,11 @@ import System.Environment
 
 import HabitOfFate
 import HabitOfFate.Console
-import HabitOfFate.Quest
+import HabitOfFate.Game
 
 main = do
   [filename] ← getArgs
-  decodeFile filename
-    >>=
-    runGame . act Good . fromJust
-    >>=
-    encodeFile filename
+  (new_data, paragraphs) ← decodeFile filename >>= act Good . fromJust
+  encodeFile filename new_data
+  printParagraphs paragraphs
+  putStrLn ""

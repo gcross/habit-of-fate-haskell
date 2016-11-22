@@ -13,8 +13,7 @@ import Control.Lens ((&), (^.), (+=), (.~), makeLenses)
 import Data.Map (fromList)
 import Data.String.QQ
 
-import HabitOfFate.MonadGame
-import HabitOfFate.Quest
+import HabitOfFate.Game
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Unicode
@@ -24,7 +23,7 @@ data State = State
   , _patient ∷ Character
   , _herb ∷ String
   , _found ∷ Bool
-  } deriving (Read, Show)
+  } deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makeLenses ''State
 
@@ -35,19 +34,19 @@ defaultSubstitutionTable forest_state = makeSubstitutionTable
   ,("Illsbane",Character (forest_state ^. herb) Neuter)
   ]
 
-renderTextWithDefaultSubtitutionsPlus ∷ State → [(String,String)] → String → GameAction ()
-renderTextWithDefaultSubtitutionsPlus forest_state additional_subsitutions text =
-    renderText $ substitute substitutions text
+textWithDefaultSubtitutionsPlus ∷ State → [(String,String)] → String → Game ()
+textWithDefaultSubtitutionsPlus forest_state additional_subsitutions =
+    text . substitute substitutions
   where
     substitutions =
       defaultSubstitutionTable forest_state
       ⊕
       fromList additional_subsitutions
 
-renderTextWithDefaultSubtitutions ∷ State → String → GameAction ()
-renderTextWithDefaultSubtitutions = flip renderTextWithDefaultSubtitutionsPlus []
+textWithDefaultSubtitutions ∷ State → String → Game ()
+textWithDefaultSubtitutions = flip textWithDefaultSubtitutionsPlus []
 
-new :: GameAction State
+new :: Game State
 new = do
   let state = State
         (Character "Susie" Female)
@@ -57,7 +56,7 @@ new = do
   introText state
   return state
 
-act :: GoodBad → State → GameAction (Maybe State)
+act :: GameInput → State → Game (Maybe State)
 act Good state = weightedAction
   [(20, if state ^. found
     then do
@@ -84,11 +83,11 @@ act Bad state = weightedAction
     )
   ]
 
-fallText state = renderTextWithDefaultSubtitutions state [s|
+fallText state = textWithDefaultSubtitutions state [s|
   {She} trips and falls, but gets up after minute.
 |]
 
-foundText state = renderTextWithDefaultSubtitutions state [s|
+foundText state = textWithDefaultSubtitutions state [s|
   After wandering for what feels like hours, {Susie} nearly steps on {an
   Illsbane} plant. {Her} heart leaps and {she} gives a short prayer of thanks.
   {She} reaches down carefully to pick it.
@@ -97,7 +96,7 @@ foundText state = renderTextWithDefaultSubtitutions state [s|
   -- you have guided {her} this far, after all!
 |]
 
-introText state = renderTextWithDefaultSubtitutions state [s|
+introText state = textWithDefaultSubtitutions state [s|
   The last thing in the world that {Susie} wanted to do was to wander around
   alone in the forest this night, but {Tommy} was sick and would not live
   through the night unless {Susie} could find {an Illsbane} plant to brew
@@ -105,15 +104,15 @@ introText state = renderTextWithDefaultSubtitutions state [s|
 
   She begins her search.|]
 
-loseText state = renderTextWithDefaultSubtitutions state [s|
+loseText state = textWithDefaultSubtitutions state [s|
   {She} takes too long, and {Tommy} dies}.
 |]
 
-stumbleText state = renderTextWithDefaultSubtitutions state [s|
+stumbleText state = textWithDefaultSubtitutions state [s|
   {She} stumbles around in the dark.
 |]
 
-winText state = renderTextWithDefaultSubtitutions state [s|
+winText state = textWithDefaultSubtitutions state [s|
   {Susie} is starting to feel like {she} will never make it back when she
   notices that things are starting to get brighter -- {she} must be getting
   close to the vilage! {She} gives you thanks for guiding {her} home.

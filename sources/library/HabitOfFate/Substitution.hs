@@ -12,13 +12,10 @@ import qualified Data.Map as Map
 import HabitOfFate.TH
 import HabitOfFate.Unicode
 
-data Gender = Male | Female | Neuter deriving (Read, Show)
+data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
 deriveJSON ''Gender
 
-data Character = Character String Gender deriving (Read, Show)
--- { _name :: String
---  , _gender :: Gender
---  } deriving (Read, Show)
+data Character = Character String Gender deriving (Eq,Ord,Read,Show)
 deriveJSON ''Character
 
 type Substitutions = Map String String

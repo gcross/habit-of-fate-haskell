@@ -26,25 +26,8 @@ import System.Console.ANSI
     )
 import System.Random (StdGen, newStdGen)
 
-import HabitOfFate.MonadGame
+import HabitOfFate.Game
 import HabitOfFate.Unicode
-
-newtype Game α = Game { unwrapGame :: RandT StdGen IO α }
-  deriving (Applicative
-           ,Functor
-           ,Monad
-           ,MonadIO
-           ,MonadRandom
-           )
-
-runGame :: Game α → IO α
-runGame game = do
-  g ← liftIO newStdGen
-  flip evalRandT g
-    .
-    unwrapGame
-    $
-    game
 
 data ColorSpec = ColorSpec ColorIntensity Color
 
@@ -84,27 +67,6 @@ data PrintTextState = PrintTextState
     , _color_restorers :: [IO ()]
     }
 makeLenses ''PrintTextState
-
-printText :: MonadIO m ⇒ String → m ()
-printText =
-    liftIO
-    .
-    printParagraphs
-    .
-    map (concat . map words)
-    .
-    splitParagraphs
-    .
-    lines
-
-instance MonadGame Game where
-  renderText = printText
-
-splitParagraphs :: [String] → [[String]]
-splitParagraphs [] = []
-splitParagraphs ("":rest) = splitParagraphs rest
-splitParagraphs rest = paragraph:splitParagraphs remainder
-    where (paragraph,remainder) = break (== "") rest
 
 printParagraphs :: [[String]] → IO ()
 printParagraphs [] = return ()

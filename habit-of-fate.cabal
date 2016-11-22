@@ -19,13 +19,13 @@ library
                      , MonadRandom
                      , lens
                      , mtl
+                     , operational
                      , random
                      , string-qq
                      , transformers
   exposed-modules:     HabitOfFate
                      , HabitOfFate.Console
-                     , HabitOfFate.MonadGame
-                     , HabitOfFate.Quest
+                     , HabitOfFate.Game
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Substitution

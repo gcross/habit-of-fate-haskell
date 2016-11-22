@@ -7,39 +7,38 @@ module HabitOfFate.Quests where
 
 import Control.Lens (Prism', (^.), (^?), makePrisms, re)
 
-import HabitOfFate.MonadGame
-import HabitOfFate.Quest
+import HabitOfFate.Game
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.TH
 
 data State =
     Forest Forest.State
-  deriving (Read, Show)
+  deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makePrisms ''State
 
 data Quest = ∀ α. Quest
   (Prism' State α)
-  (GameAction α)
-  (GoodBad → α → GameAction (Maybe α))
+  (Game α)
+  (GameInput → α → Game (Maybe α))
 
 quests :: [Quest]
 quests =
   [Quest _Forest Forest.new Forest.act
   ]
 
-act :: GoodBad → Maybe State → GameAction (Maybe State)
-act goodbad Nothing =
+act :: GameInput → Maybe State → Game (Maybe State)
+act input Nothing =
   uniform quests
   >>=
   (\(Quest prism new _) → (Just . (^.re prism)) <$> new)
   >>=
-  act goodbad
-act goodbad (Just state) = go quests
+  act input
+act input (Just state) = go quests
   where
-    go :: [Quest] → GameAction (Maybe State)
+    go :: [Quest] → Game (Maybe State)
     go [] = error "Unrecognized quest type"
     go (Quest prism _ act:rest) =
       case state ^? prism of
         Nothing → go rest
-        Just x → fmap (^.re prism) <$> act goodbad x
+        Just x → fmap (^.re prism) <$> act input x
