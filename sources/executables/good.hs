@@ -11,8 +11,6 @@ import HabitOfFate.Console
 import HabitOfFate.Game
 
 main = do
-  [filename] ← getArgs
-  (new_data, paragraphs) ← decodeFile filename >>= act Good . fromJust
-  encodeFile filename new_data
-  printParagraphs paragraphs
+  [filepath] ← getArgs
+  actWithFile Good filepath >>= printParagraphs
   putStrLn ""
