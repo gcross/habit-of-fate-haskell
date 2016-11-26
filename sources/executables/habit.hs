@@ -3,20 +3,18 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Main where
 
 import Control.Lens
-import Control.Monad
-import Control.Monad.IO.Class
+import Control.Monad.Cont
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Trans.Reader (ReaderT(..))
 import qualified Data.ByteString as BS
 import Data.Char
-import Data.Functor
 import Data.IORef
 import Data.List
 import Data.Maybe
@@ -26,19 +24,20 @@ import System.Environment
 import System.FilePath
 import System.IO
 import Text.Printf
-import Text.Read
+import Text.Read (readMaybe)
 
 import HabitOfFate.Behaviors
 import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Data
 import HabitOfFate.Unicode
 
-newtype ActionMonad α =
-  ActionMonad { unwrapActionMonad ∷ ReaderT (IORef Data) IO α }
-  deriving (Applicative, Functor, Monad, MonadIO, MonadReader (IORef Data))
+newtype ActionMonad α = ActionMonad
+  { unwrapActionMonad ∷ ReaderT (IORef Data, () → ContT () IO ()) (ContT () IO) α
+  } deriving (Applicative, Functor, Monad, MonadIO)
+
 instance MonadState Data ActionMonad where
-  get = ask >>= liftIO . readIORef
-  put x = ask >>= liftIO . flip writeIORef x
+  get = ActionMonad $ asks fst >>= liftIO . readIORef
+  put x = ActionMonad $ asks fst >>= liftIO . flip writeIORef x
 
 data Action = Action
   { _description ∷ String
@@ -89,6 +88,9 @@ promptForCommand p = liftIO $ go
       putStrLn ""
       return command
 
+quit :: ActionMonad ()
+quit = ActionMonad $ asks snd >>= lift ∘ ($ ())
+
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
   | not (isAlpha command) = return ()
@@ -103,9 +105,13 @@ loop labels commands = go
       >>=
       \command →
         fromMaybe (unrecognizedCommand command >> go)
-        .
+        ∘
         lookup command
         $
+        (chr 4, quit)
+        :
+        (chr 27, quit)
+        :
         ('q',return ())
         :
         ('?',help commands >> go)
@@ -142,7 +148,7 @@ main = do
     True → BS.readFile filepath >>= either error return . decodeEither
     False → return newData
   new_data_ref ← newIORef old_data
-  runReaderT (unwrapActionMonad mainLoop) new_data_ref
+  flip runContT return . callCC $ runReaderT (unwrapActionMonad mainLoop) . (new_data_ref,)
   new_data ← readIORef new_data_ref
   when (new_data /= old_data) $
     let go =
