@@ -11,14 +11,14 @@ import HabitOfFate.Game
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.TH
 
-data State =
+data QuestState =
     Forest Forest.State
   deriving (Eq,Ord,Read,Show)
-deriveJSON ''State
-makePrisms ''State
+deriveJSON ''QuestState
+makePrisms ''QuestState
 
 data Quest = ∀ α. Quest
-  (Prism' State α)
+  (Prism' QuestState α)
   (Game α)
   (Action → α → Game (Maybe α))
 
@@ -27,7 +27,7 @@ quests =
   [Quest _Forest Forest.new Forest.act
   ]
 
-act ∷ Action → Maybe State → Game (Maybe State)
+act ∷ Action → Maybe QuestState → Game (Maybe QuestState)
 act input Nothing =
   uniform quests
   >>=
@@ -36,7 +36,7 @@ act input Nothing =
   act input
 act input (Just state) = go quests
   where
-    go ∷ [Quest] → Game (Maybe State)
+    go ∷ [Quest] → Game (Maybe QuestState)
     go [] = error "Unrecognized quest type"
     go (Quest prism _ act:rest) =
       case state ^? prism of

@@ -14,6 +14,8 @@ module HabitOfFate.Game
   , GameResult(..)
   , GameState(..)
     , belief
+    , success_credits
+    , failure_credits
   , newGame
   , runGame
   , text
@@ -42,6 +44,8 @@ data Action =
 
 data GameState = GameState
   { _belief ∷ Int
+  , _success_credits ∷ Int
+  , _failure_credits ∷ Int
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''GameState
 makeLenses ''GameState
@@ -64,7 +68,7 @@ data GameResult α = GameResult
   } deriving (Eq,Ord,Read,Show)
 
 newGame ∷ GameState
-newGame = GameState 0
+newGame = GameState 0 0 0
 
 runGame ∷ GameState → Game α → IO (GameResult α)
 runGame state game = do

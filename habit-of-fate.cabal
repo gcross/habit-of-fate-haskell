@@ -25,22 +25,33 @@ library
                      , operational
                      , random
                      , string-qq
+                     , time
                      , transformers
                      , yaml
-  exposed-modules:     HabitOfFate
+  exposed-modules:     HabitOfFate.Behaviors
+                     , HabitOfFate.Behaviors.Habit
                      , HabitOfFate.Console
+                     , HabitOfFate.Data
                      , HabitOfFate.Game
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Substitution
+                     , HabitOfFate.Trial
                      , HabitOfFate.TH
                      , HabitOfFate.Unicode
   default-language:    Haskell2010
 
-executable act
+executable habit
   hs-source-dirs:      sources/executables
-  main-is:             act.hs
+  main-is:             habit.hs
   build-depends:       habit-of-fate
                      , base
+                     , bytestring
+                     , containers
+                     , directory
+                     , filepath
+                     , lens
+                     , mtl
+                     , transformers
                      , yaml
   default-language:    Haskell2010
