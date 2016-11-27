@@ -144,6 +144,22 @@ mainLoop = loop ["HabitOfFate"] $
         either
           (const . liftIO $ putStrLn "")
           ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
+      ,('l',) ∘ Action "List habits." $
+        use (behaviors . habits)
+        >>=
+        mapM_ (
+          liftIO
+          ∘
+          (\(n,habit) →
+            printf "%i. %s [+%f/-%f]\n"
+              (n :: Int)
+              (habit ^. name)
+              (fromIntegral (habit ^. success_credits) / 100 :: Float)
+              (fromIntegral (habit ^. failure_credits) / 100 :: Float)
+          )
+        )
+        ∘
+        zip [1..]
       ]
     ]
   ]
