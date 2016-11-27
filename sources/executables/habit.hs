@@ -134,12 +134,22 @@ mainLoop = loop ["HabitOfFate"] $
           [('a', Action "Add a habit." addHabit)]
           where
             addHabit =
-              Habit
-                <$> prompt "What is the name of the habit?"
-                <*> promptForCredits 100 "How many credits is a success worth?"
-                <*> promptForCredits 0 "How many credits is a failure worth?"
+              liftIO (
+                tryJust
+                  (\case
+                    UserInterrupt → Just ()
+                    _ → Nothing
+                  )
+                  (Habit
+                    <$> prompt "What is the name of the habit?"
+                    <*> promptForCredits 100 "How many credits is a success worth?"
+                    <*> promptForCredits 0 "How many credits is a failure worth?"
+                  )
+              )
               >>=
-              (behaviors . habits %=) ∘ flip (⊞) ∘ (:[])
+              either
+                (const . liftIO $ putStrLn "")
+                ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
 
 main :: IO ()
 main = do
