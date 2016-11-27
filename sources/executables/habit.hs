@@ -125,9 +125,9 @@ loop labels commands = go
 
 mainLoop :: ActionMonad ()
 mainLoop = loop ["HabitOfFate"] $
-  [('e', Action "Edit behaviors." ∘ loop ["HabitOfFate","Edit"] $
-    [('h', Action "Edit habits." ∘ loop ["HabitOfFate","Edit","Habits"] $
-      [('a', Action "Add a habit." $
+  [('e',) ∘ Action "Edit behaviors." ∘ loop ["HabitOfFate","Edit"] $
+    [('h',) ∘ Action "Edit habits." ∘ loop ["HabitOfFate","Edit","Habits"] $
+      [('a',) ∘ Action "Add a habit." $
         liftIO (
           tryJust
             (\case
@@ -144,11 +144,8 @@ mainLoop = loop ["HabitOfFate"] $
         either
           (const . liftIO $ putStrLn "")
           ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
-        )
       ]
-      )
     ]
-   )
   ]
 
 main :: IO ()
