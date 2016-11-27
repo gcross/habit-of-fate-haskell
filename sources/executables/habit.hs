@@ -21,7 +21,7 @@ import Data.Char
 import Data.IORef
 import Data.List
 import Data.Maybe
-import Data.Yaml
+import Data.Yaml hiding ((.=))
 import System.Directory
 import System.Environment
 import System.FilePath
@@ -52,6 +52,9 @@ type ActionMap = [(Char,Action)]
 
 data PromptError = PromptError
 
+formatCredits ∷ Int → String
+formatCredits credits = printf "%.2f" (fromIntegral credits / 100 ∷ Double)
+
 help ∷ MonadIO m ⇒ ActionMap → m ()
 help commands = liftIO $ do
   putStrLn "Commands:"
@@ -65,7 +68,6 @@ prompt ∷ (MonadError PromptError m, MonadIO m) ⇒ String → m String
 prompt p =
   (liftIO $ do
     putStr p
-    putStr " > "
     hFlush stdout
     tryJust
       (\case
@@ -77,20 +79,29 @@ prompt p =
   >>=
   either throwError return
 
-promptForCredits :: (MonadError PromptError m, MonadIO m) ⇒ Int → String → m Int
-promptForCredits def p = go
-  where
-    go = do
-      input ← prompt $ printf "%s [%f]" p (fromIntegral def / 100 :: Float)
-      case (readMaybe input :: Maybe Float) of
-        Nothing
-          | null input → return def
-          | otherwise → liftIO (printf "Invalid number: %s\n" input) >> go
-        Just n →
-          let (number_of_credits, fraction) = properFraction $ n * 100
-          in if fraction == 0
-             then return number_of_credits
-             else liftIO (putStrLn "Number must not have more than two decimals.") >> go
+promptIndex ∷ (MonadError PromptError m, MonadIO m) ⇒ Int → String → m Int
+promptIndex top p = do
+  let repeat = promptIndex top p
+  input ← prompt $ printf "%s [1-%i]" p top
+  case (readMaybe input ∷ Maybe Int) of
+    Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
+    Just n
+      | 1 ≤ n && n ≤ top → return n
+      | otherwise → liftIO (putStrLn "Out of range.") >> repeat
+
+promptForCredits ∷ (MonadError PromptError m, MonadIO m) ⇒ Int → String → m Int
+promptForCredits def p = do
+  let repeat = promptForCredits def p
+  input ← promptWithDefault (formatCredits def) p
+  case (readMaybe input ∷ Maybe Float) of
+    Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
+    Just n
+      | n > 100 → liftIO (putStrLn "Number must not be larger than 100.") >> repeat
+      | otherwise →
+        let (number_of_credits, fraction) = properFraction $ n * 100
+        in if fraction == 0
+            then return number_of_credits
+            else liftIO (putStrLn "Number must not have more than two decimals.") >> repeat
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =
@@ -106,20 +117,29 @@ promptForCommand p =
   putStrLn ""
   return command
 
-quit :: ActionMonad ()
+promptWithDefault ∷ (MonadError PromptError m, MonadIO m) ⇒ String → String → m String
+promptWithDefault def p =
+  prompt (printf "%s [%s]" p def)
+  <&>
+  (\input → if null input then def else input)
+
+quit ∷ ActionMonad ()
 quit = ActionMonad $ asks snd >>= lift ∘ ($ ())
 
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
   | not (isAlpha command) = return ()
   | otherwise = liftIO $
-      printf "Unrecognized command '%c'.  Press ? for help." command
+      printf "Unrecognized command '%c'.  Press ? for help.\n" command
 
 loop ∷ [String] → ActionMap → ActionMonad ()
 loop labels commands = go
   where
     go =
-      promptForCommand (printf "%s [%sq?] > " (intercalate " | " labels ) (map fst commands))
+      (promptForCommand $ printf "%s[%sq?]>"
+        (intercalate "|" ("HoF":labels))
+        (map fst commands)
+      )
       >>=
       \command →
         fromMaybe (unrecognizedCommand command >> go)
@@ -136,42 +156,58 @@ loop labels commands = go
         :
         map (_2 %~ (>> go) ∘ view code) commands
 
-mainLoop :: ActionMonad ()
-mainLoop = loop ["HabitOfFate"] $
-  [('e',) ∘ Action "Edit behaviors." ∘ loop ["HabitOfFate","Edit"] $
-    [('h',) ∘ Action "Edit habits." ∘ loop ["HabitOfFate","Edit","Habits"] $
-      [('a',) ∘ Action "Add a habit." $
-        runExceptT (
-            Habit
-              <$> prompt "What is the name of the habit?"
-              <*> promptForCredits 100 "How many credits is a success worth?"
-              <*> promptForCredits 0 "How many credits is a failure worth?"
-        )
-        >>=
-        either
-          (const . liftIO $ putStrLn "")
-          ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
-      ,('l',) ∘ Action "List habits." $
-        use (behaviors . habits)
-        >>=
-        mapM_ (
-          liftIO
-          ∘
-          (\(n,habit) →
-            printf "%i. %s [+%f/-%f]\n"
-              (n :: Int)
-              (habit ^. name)
-              (fromIntegral (habit ^. success_credits) / 100 :: Float)
-              (fromIntegral (habit ^. failure_credits) / 100 :: Float)
-          )
-        )
+printHabit = printf "%s [+%s/-%s]\n"
+  <$> (^. name)
+  <*> formatCredits ∘ (^. success_credits)
+  <*> formatCredits ∘ (^. failure_credits)
+
+mainLoop ∷ ActionMonad ()
+mainLoop = loop [] $
+  [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
+    [('a',) ∘ Action "Add a habit." $
+      runExceptT (
+          Habit
+            <$> prompt "What is the name of the habit?"
+            <*> promptForCredits 100 "How many credits is a success worth?"
+            <*> promptForCredits 0 "How many credits is a failure worth?"
+      )
+      >>=
+      either
+        (const ∘ liftIO $ putStrLn "")
+        ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
+    ,('e',) ∘ Action "Edit a habit." $
+      runExceptT (do
+        number_of_habits ← length <$> use (behaviors . habits)
+        index ← subtract 1 <$> promptIndex number_of_habits "Which habit?"
+        old_habit ← (!! index) <$> use (behaviors . habits)
+        new_habit ←
+          Habit
+            <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
+            <*> promptForCredits (old_habit ^. success_credits) "How many credits is a success worth?"
+            <*> promptForCredits (old_habit ^. failure_credits) "How many credits is a failure worth?"
+        behaviors . habits . ix index .= new_habit
+      )
+      >>=
+      either
+        (const ∘ liftIO $ putStrLn "")
+        return
+    ,('p',) ∘ Action "Print habits." $
+      use (behaviors . habits)
+      >>=
+      mapM_ (
+        liftIO
         ∘
-        zip [1..]
-      ]
+        (\(n,habit) → do
+          printf "%i. " (n ∷ Int)
+          printHabit habit
+        )
+      )
+      ∘
+      zip [1..]
     ]
   ]
 
-main :: IO ()
+main ∷ IO ()
 main = do
   filepath ← getArgs >>= \case
     [] → getHomeDirectory <&> (</> ".habit")
