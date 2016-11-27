@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -12,6 +13,7 @@ module Main where
 import Control.Exception
 import Control.Lens
 import Control.Monad.Cont
+import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import qualified Data.ByteString as BS
@@ -48,6 +50,8 @@ makeLenses ''Action
 
 type ActionMap = [(Char,Action)]
 
+data PromptError = PromptError
+
 help ∷ MonadIO m ⇒ ActionMap → m ()
 help commands = liftIO $ do
   putStrLn "Commands:"
@@ -57,27 +61,36 @@ help commands = liftIO $ do
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
 
-prompt ∷ MonadIO m ⇒ String → m String
-prompt p = liftIO $ do
-  putStr p
-  putStr " > "
-  hFlush stdout
-  getLine
+prompt ∷ (MonadError PromptError m, MonadIO m) ⇒ String → m String
+prompt p =
+  (liftIO $ do
+    putStr p
+    putStr " > "
+    hFlush stdout
+    tryJust
+      (\case
+        UserInterrupt → Just PromptError
+        _ → Nothing
+      )
+      getLine
+  )
+  >>=
+  either throwError return
 
-promptForCredits :: MonadIO m ⇒ Int → String → m Int
-promptForCredits def p = liftIO $ go
+promptForCredits :: (MonadError PromptError m, MonadIO m) ⇒ Int → String → m Int
+promptForCredits def p = go
   where
     go = do
       input ← prompt $ printf "%s [%f]" p (fromIntegral def / 100 :: Float)
       case (readMaybe input :: Maybe Float) of
         Nothing
           | null input → return def
-          | otherwise → printf "Invalid number: %s\n" input >> go
+          | otherwise → liftIO (printf "Invalid number: %s\n" input) >> go
         Just n →
           let (number_of_credits, fraction) = properFraction $ n * 100
           in if fraction == 0
              then return number_of_credits
-             else putStrLn "Number must not have more than two decimals." >> go
+             else liftIO (putStrLn "Number must not have more than two decimals.") >> go
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =
@@ -128,17 +141,11 @@ mainLoop = loop ["HabitOfFate"] $
   [('e',) ∘ Action "Edit behaviors." ∘ loop ["HabitOfFate","Edit"] $
     [('h',) ∘ Action "Edit habits." ∘ loop ["HabitOfFate","Edit","Habits"] $
       [('a',) ∘ Action "Add a habit." $
-        liftIO (
-          tryJust
-            (\case
-              UserInterrupt → Just ()
-              _ → Nothing
-            )
-            (Habit
+        runExceptT (
+            Habit
               <$> prompt "What is the name of the habit?"
               <*> promptForCredits 100 "How many credits is a success worth?"
               <*> promptForCredits 0 "How many credits is a failure worth?"
-            )
         )
         >>=
         either
