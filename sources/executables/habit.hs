@@ -131,9 +131,7 @@ mainLoop = loop ["HabitOfFate"] $
       [('h', Action "Edit habits." habitLoop)]
       where
         habitLoop = loop ["HabitOfFate","Edit","Habits"] $
-          [('a', Action "Add a habit." addHabit)]
-          where
-            addHabit =
+          [('a', Action "Add a habit." $
               liftIO (
                 tryJust
                   (\case
@@ -150,6 +148,8 @@ mainLoop = loop ["HabitOfFate"] $
               either
                 (const . liftIO $ putStrLn "")
                 ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
+           )
+          ]
 
 main :: IO ()
 main = do
