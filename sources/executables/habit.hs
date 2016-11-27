@@ -125,31 +125,31 @@ loop labels commands = go
 
 mainLoop :: ActionMonad ()
 mainLoop = loop ["HabitOfFate"] $
-  [('e', Action "Edit behaviors." editLoop)]
-  where
-    editLoop = loop ["HabitOfFate","Edit"] $
-      [('h', Action "Edit habits." habitLoop)]
-      where
-        habitLoop = loop ["HabitOfFate","Edit","Habits"] $
-          [('a', Action "Add a habit." $
-              liftIO (
-                tryJust
-                  (\case
-                    UserInterrupt → Just ()
-                    _ → Nothing
-                  )
-                  (Habit
-                    <$> prompt "What is the name of the habit?"
-                    <*> promptForCredits 100 "How many credits is a success worth?"
-                    <*> promptForCredits 0 "How many credits is a failure worth?"
-                  )
-              )
-              >>=
-              either
-                (const . liftIO $ putStrLn "")
-                ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
-           )
-          ]
+  [('e', Action "Edit behaviors." ∘ loop ["HabitOfFate","Edit"] $
+    [('h', Action "Edit habits." ∘ loop ["HabitOfFate","Edit","Habits"] $
+      [('a', Action "Add a habit." $
+        liftIO (
+          tryJust
+            (\case
+              UserInterrupt → Just ()
+              _ → Nothing
+            )
+            (Habit
+              <$> prompt "What is the name of the habit?"
+              <*> promptForCredits 100 "How many credits is a success worth?"
+              <*> promptForCredits 0 "How many credits is a failure worth?"
+            )
+        )
+        >>=
+        either
+          (const . liftIO $ putStrLn "")
+          ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
+        )
+      ]
+      )
+    ]
+   )
+  ]
 
 main :: IO ()
 main = do
