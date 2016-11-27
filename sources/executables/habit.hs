@@ -110,7 +110,7 @@ loop labels commands = go
         $
         (chr 4, quit)
         :
-        (chr 27, quit)
+        (chr 27, return ())
         :
         ('q',return ())
         :
@@ -135,7 +135,6 @@ mainLoop = loop ["HabitOfFate"] $
                 <*> promptForCredits 0 "How many credits is a failure worth?"
               >>=
               (behaviors . habits %=) ∘ flip (⊞) ∘ (:[])
-
 
 main :: IO ()
 main = do
