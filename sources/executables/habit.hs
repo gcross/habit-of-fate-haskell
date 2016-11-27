@@ -9,6 +9,7 @@
 
 module Main where
 
+import Control.Exception
 import Control.Lens
 import Control.Monad.Cont
 import Control.Monad.Reader
@@ -79,14 +80,18 @@ promptForCredits def p = liftIO $ go
              else putStrLn "Number must not have more than two decimals." >> go
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
-promptForCommand p = liftIO $ go
-  where
-    go = do
-      putStr p
-      hFlush stdout
-      command ← getChar
-      putStrLn ""
-      return command
+promptForCommand p =
+  liftIO
+  .
+  bracket_
+    (hSetBuffering stdin NoBuffering)
+    (hSetBuffering stdin LineBuffering)
+  $ do
+  putStr p
+  hFlush stdout
+  command ← getChar
+  putStrLn ""
+  return command
 
 quit :: ActionMonad ()
 quit = ActionMonad $ asks snd >>= lift ∘ ($ ())
@@ -138,7 +143,6 @@ mainLoop = loop ["HabitOfFate"] $
 
 main :: IO ()
 main = do
-  hSetBuffering stdin NoBuffering
   filepath ← getArgs >>= \case
     [] → getHomeDirectory <&> (</> ".habit")
     [filepath] → return filepath
