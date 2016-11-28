@@ -64,12 +64,12 @@ help commands = liftIO $ do
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
 
-type Continuation = () → ActionMonad ()
+type CtrlC = () → ActionMonad ()
 
-callContinuation ∷ Continuation → ActionMonad α
-callContinuation ctrl_c = liftIO (putStrLn "") >> ctrl_c () >> undefined
+callCtrlC ∷ CtrlC → ActionMonad α
+callCtrlC ctrl_c = liftIO (putStrLn "") >> ctrl_c () >> undefined
 
-prompt ∷ Continuation → String → ActionMonad String
+prompt ∷ CtrlC → String → ActionMonad String
 prompt ctrl_c p =
   (liftIO $ do
     putStr p
@@ -83,7 +83,7 @@ prompt ctrl_c p =
       (Just <$> getLine)
   )
   >>=
-  maybe (callContinuation ctrl_c) return
+  maybe (callCtrlC ctrl_c) return
 
 parseNumberOrRepeat ∷ ActionMonad Int → Int → String → ActionMonad Int
 parseNumberOrRepeat repeat top input =
@@ -93,13 +93,13 @@ parseNumberOrRepeat repeat top input =
       | 1 ≤ n && n ≤ top → return n
       | otherwise → liftIO (putStrLn "Out of range.") >> repeat
 
-promptForIndex ∷ Continuation → Int → String → ActionMonad Int
+promptForIndex ∷ CtrlC → Int → String → ActionMonad Int
 promptForIndex ctrl_c top p =
   prompt ctrl_c (printf "%s [1-%i]" p top)
   >>=
   parseNumberOrRepeat (promptForIndex ctrl_c top p) top
 
-promptForCredits ∷ Continuation → Int → String → ActionMonad Int
+promptForCredits ∷ CtrlC → Int → String → ActionMonad Int
 promptForCredits ctrl_c def p = do
   let repeat = promptForCredits ctrl_c def p
   input ← promptWithDefault ctrl_c (formatCredits def) p
@@ -127,7 +127,7 @@ promptForCommand p =
   putStrLn ""
   return command
 
-promptWithDefault ∷ Continuation → String → String → ActionMonad String
+promptWithDefault ∷ CtrlC → String → String → ActionMonad String
 promptWithDefault ctrl_c def p =
   prompt ctrl_c (printf "%s [%s]" p def)
   <&>
