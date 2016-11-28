@@ -103,6 +103,25 @@ promptForIndex ctrl_c top p =
   >>=
   maybe (promptForIndex ctrl_c top p) return
 
+promptForIndices ∷ CtrlC → Int → String → ActionMonad [Int]
+promptForIndices ctrl_c top p =
+  callCC (\quit →
+    prompt ctrl_c (printf "%s [1-%i]" p top)
+    >>=
+    (Just <$>) ∘ mapM (parseNumberOrRepeat (quit Nothing) top) ∘ splitEntries
+  )
+  >>=
+  maybe (promptForIndices ctrl_c top p) return
+  where
+    isSeparator ' ' = True
+    isSeparator ',' = True
+    isSeparator _ = False
+
+    splitEntries [] = []
+    splitEntries entries = entry:splitEntries (dropWhile isSeparator rest)
+      where
+        (entry,rest) = break isSeparator entries
+
 promptForCredits ∷ CtrlC → Int → String → ActionMonad Int
 promptForCredits ctrl_c def p = do
   let repeat = promptForCredits ctrl_c def p
