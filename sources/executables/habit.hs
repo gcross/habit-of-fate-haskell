@@ -95,9 +95,13 @@ parseNumberOrRepeat repeat top input =
 
 promptForIndex ∷ CtrlC → Int → String → ActionMonad Int
 promptForIndex ctrl_c top p =
-  prompt ctrl_c (printf "%s [1-%i]" p top)
+  callCC (\quit →
+    prompt ctrl_c (printf "%s [1-%i]" p top)
+    >>=
+    (Just <$>) ∘ parseNumberOrRepeat (quit Nothing) top
+  )
   >>=
-  parseNumberOrRepeat (promptForIndex ctrl_c top p) top
+  maybe (promptForIndex ctrl_c top p) return
 
 promptForCredits ∷ CtrlC → Int → String → ActionMonad Int
 promptForCredits ctrl_c def p = do
