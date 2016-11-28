@@ -31,3 +31,6 @@ infix  4 ≤
 infix  4 ≥
 (≥) ∷ Ord α ⇒ α → α → Bool
 (≥) = (>=)
+
+(⊥) ∷ α
+(⊥) = undefined

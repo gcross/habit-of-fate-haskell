@@ -3,6 +3,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -62,22 +64,26 @@ help commands = liftIO $ do
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
 
-data PromptError = PromptError
+type CtrlC = () → ActionMonad ()
 
-prompt ∷ (MonadError PromptError m, MonadIO m) ⇒ String → m String
-prompt p =
+callCtrlC ∷ CtrlC → ActionMonad b
+callCtrlC ctrl_c = liftIO (putStrLn "") >> ctrl_c () >> undefined
+
+prompt ∷ CtrlC → String → ActionMonad String
+prompt ctrl_c p =
   (liftIO $ do
     putStr p
     hFlush stdout
-    tryJust
+    handleJust
       (\case
-        UserInterrupt → Just PromptError
+        UserInterrupt → Just ()
         _ → Nothing
       )
-      getLine
+      (const $ return Nothing)
+      (Just <$> getLine)
   )
   >>=
-  either throwError return
+  maybe (callCtrlC ctrl_c) return
 
 parseNumberAndQuitLoop quitLoop top input =
   case (readMaybe input ∷ Maybe Int) of
@@ -86,15 +92,16 @@ parseNumberAndQuitLoop quitLoop top input =
       | 1 ≤ n && n ≤ top → quitLoop n
       | otherwise → liftIO (putStrLn "Out of range.")
 
-promptForIndex top p = callCC $ \quitLoop → forever $
-  prompt (printf "%s [1-%i]" p top)
+promptForIndex ∷ CtrlC → Int → String → ActionMonad Int
+promptForIndex ctrl_c top p = callCC $ \quitLoop → forever $
+  prompt ctrl_c (printf "%s [1-%i]" p top)
   >>=
   parseNumberAndQuitLoop quitLoop top
 
-promptForCredits ∷ (MonadError PromptError m, MonadIO m) ⇒ Int → String → m Int
-promptForCredits def p = do
-  let repeat = promptForCredits def p
-  input ← promptWithDefault (formatCredits def) p
+promptForCredits ∷ CtrlC → Int → String → ActionMonad Int
+promptForCredits ctrl_c def p = do
+  let repeat = promptForCredits ctrl_c def p
+  input ← promptWithDefault ctrl_c (formatCredits def) p
   case (readMaybe input ∷ Maybe Float) of
     Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
     Just n
@@ -119,14 +126,14 @@ promptForCommand p =
   putStrLn ""
   return command
 
-promptWithDefault ∷ (MonadError PromptError m, MonadIO m) ⇒ String → String → m String
-promptWithDefault def p =
-  prompt (printf "%s [%s]" p def)
+promptWithDefault ∷ CtrlC → String → String → ActionMonad String
+promptWithDefault ctrl_c def p =
+  prompt ctrl_c (printf "%s [%s]" p def)
   <&>
   (\input → if null input then def else input)
 
 quit ∷ ActionMonad ()
-quit = ActionMonad $ lift (asks snd) >>= lift ∘ lift ∘ ($ ())
+quit = ActionMonad $ asks snd >>= lift ∘ ($ ())
 
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
@@ -167,32 +174,26 @@ mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
   [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
     [('a',) ∘ Action "Add a habit." $
-      runExceptT (
-          Habit
-            <$> prompt "What is the name of the habit?"
-            <*> promptForCredits 100 "How many credits is a success worth?"
-            <*> promptForCredits 0 "How many credits is a failure worth?"
-      )
-      >>=
-      either
-        (const ∘ liftIO $ putStrLn "")
+      (callCC $ \ctrl_c →
+        Habit
+          <$> prompt ctrl_c "What is the name of the habit?"
+          <*> promptForCredits ctrl_c 100 "How many credits is a success worth?"
+          <*> promptForCredits ctrl_c 0 "How many credits is a failure worth?"
+        >>=
         ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
+      )
     ,('e',) ∘ Action "Edit a habit." $
-      runExceptT (do
+      (callCC $ \ctrl_c → do
         number_of_habits ← length <$> use (behaviors . habits)
-        index ← subtract 1 <$> promptForIndex number_of_habits "Which habit?"
+        index ← subtract 1 <$> promptForIndex ctrl_c number_of_habits "Which habit?"
         old_habit ← (!! index) <$> use (behaviors . habits)
         new_habit ←
           Habit
-            <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
-            <*> promptForCredits (old_habit ^. success_credits) "How many credits is a success worth?"
-            <*> promptForCredits (old_habit ^. failure_credits) "How many credits is a failure worth?"
+            <$> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
+            <*> promptForCredits ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
+            <*> promptForCredits ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
         behaviors . habits . ix index .= new_habit
       )
-      >>=
-      either
-        (const ∘ liftIO $ putStrLn "")
-        return
     ,('p',) ∘ Action "Print habits." $
       use (behaviors . habits)
       >>=
@@ -219,18 +220,11 @@ main = do
     True → BS.readFile filepath >>= either error return . decodeEither
     False → return newData
   new_data_ref ← newIORef old_data
-  result_or_error ←
-    flip runContT return
+  flip runContT return
     ∘
     callCC
-    ∘
-    runReaderT (
-      runExceptT
-      ∘
-      unwrapActionMonad 
-      $
-      mainLoop
-    )
+    $
+    runReaderT (unwrapActionMonad mainLoop)
     ∘
     (new_data_ref,)
   new_data ← readIORef new_data_ref
