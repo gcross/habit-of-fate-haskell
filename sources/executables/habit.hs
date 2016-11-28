@@ -85,18 +85,19 @@ prompt ctrl_c p =
   >>=
   maybe (callCtrlC ctrl_c) return
 
-parseNumberAndQuitLoop quitLoop top input =
+parseNumberOrRepeat ∷ ActionMonad Int → Int → String → ActionMonad Int
+parseNumberOrRepeat repeat top input =
   case (readMaybe input ∷ Maybe Int) of
-    Nothing → liftIO (printf "Invalid number: %s\n" input)
+    Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
     Just n
-      | 1 ≤ n && n ≤ top → quitLoop n
-      | otherwise → liftIO (putStrLn "Out of range.")
+      | 1 ≤ n && n ≤ top → return n
+      | otherwise → liftIO (putStrLn "Out of range.") >> repeat
 
 promptForIndex ∷ CtrlC → Int → String → ActionMonad Int
-promptForIndex ctrl_c top p = callCC $ \quitLoop → forever $
+promptForIndex ctrl_c top p =
   prompt ctrl_c (printf "%s [1-%i]" p top)
   >>=
-  parseNumberAndQuitLoop quitLoop top
+  parseNumberOrRepeat (promptForIndex ctrl_c top p) top
 
 promptForCredits ∷ CtrlC → Int → String → ActionMonad Int
 promptForCredits ctrl_c def p = do
