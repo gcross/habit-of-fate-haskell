@@ -36,7 +36,7 @@ import HabitOfFate.Unicode
 
 newtype ActionMonad α = ActionMonad
   { unwrapActionMonad ∷ ReaderT (IORef Data, () → ContT () IO ()) (ContT () IO) α
-  } deriving (Applicative, Functor, Monad, MonadIO)
+  } deriving (Applicative, Functor, Monad, MonadCont, MonadIO)
 
 instance MonadState Data ActionMonad where
   get = ActionMonad $ asks fst >>= liftIO . readIORef
@@ -50,8 +50,6 @@ makeLenses ''Action
 
 type ActionMap = [(Char,Action)]
 
-data PromptError = PromptError
-
 formatCredits ∷ Int → String
 formatCredits credits = printf "%.2f" (fromIntegral credits / 100 ∷ Double)
 
@@ -63,6 +61,8 @@ help commands = liftIO $ do
   putStrLn "  --"
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
+
+data PromptError = PromptError
 
 prompt ∷ (MonadError PromptError m, MonadIO m) ⇒ String → m String
 prompt p =
@@ -79,15 +79,17 @@ prompt p =
   >>=
   either throwError return
 
-promptIndex ∷ (MonadError PromptError m, MonadIO m) ⇒ Int → String → m Int
-promptIndex top p = do
-  let repeat = promptIndex top p
-  input ← prompt $ printf "%s [1-%i]" p top
+parseNumberAndQuitLoop quitLoop top input =
   case (readMaybe input ∷ Maybe Int) of
-    Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
+    Nothing → liftIO (printf "Invalid number: %s\n" input)
     Just n
-      | 1 ≤ n && n ≤ top → return n
-      | otherwise → liftIO (putStrLn "Out of range.") >> repeat
+      | 1 ≤ n && n ≤ top → quitLoop n
+      | otherwise → liftIO (putStrLn "Out of range.")
+
+promptIndex top p = callCC $ \quitLoop → forever $
+  prompt (printf "%s [1-%i]" p top)
+  >>=
+  parseNumberAndQuitLoop quitLoop top
 
 promptForCredits ∷ (MonadError PromptError m, MonadIO m) ⇒ Int → String → m Int
 promptForCredits def p = do
@@ -124,7 +126,7 @@ promptWithDefault def p =
   (\input → if null input then def else input)
 
 quit ∷ ActionMonad ()
-quit = ActionMonad $ asks snd >>= lift ∘ ($ ())
+quit = ActionMonad $ lift (asks snd) >>= lift ∘ lift ∘ ($ ())
 
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
@@ -217,7 +219,20 @@ main = do
     True → BS.readFile filepath >>= either error return . decodeEither
     False → return newData
   new_data_ref ← newIORef old_data
-  flip runContT return . callCC $ runReaderT (unwrapActionMonad mainLoop) . (new_data_ref,)
+  result_or_error ←
+    flip runContT return
+    ∘
+    callCC
+    ∘
+    runReaderT (
+      runExceptT
+      ∘
+      unwrapActionMonad 
+      $
+      mainLoop
+    )
+    ∘
+    (new_data_ref,)
   new_data ← readIORef new_data_ref
   when (new_data /= old_data) $
     let go =
