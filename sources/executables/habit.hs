@@ -66,7 +66,7 @@ help commands = liftIO $ do
 
 type CtrlC = () → ActionMonad ()
 
-callCtrlC ∷ CtrlC → ActionMonad b
+callCtrlC ∷ CtrlC → ActionMonad α
 callCtrlC ctrl_c = liftIO (putStrLn "") >> ctrl_c () >> undefined
 
 prompt ∷ CtrlC → String → ActionMonad String
