@@ -194,6 +194,9 @@ printHabit = printf "%s [+%s/-%s]\n"
   <*> formatCredits ∘ (^. success_credits)
   <*> formatCredits ∘ (^. failure_credits)
 
+getNumberOfHabits ∷ ActionMonad Int
+getNumberOfHabits = length <$> use (behaviors . habits)
+
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
   [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
@@ -208,7 +211,7 @@ mainLoop = loop [] $
       )
     ,('e',) ∘ Action "Edit a habit." $
       (callCC $ \ctrl_c → do
-        number_of_habits ← length <$> use (behaviors . habits)
+        number_of_habits ← getNumberOfHabits
         index ← subtract 1 <$> promptForIndex ctrl_c number_of_habits "Which habit?"
         old_habit ← (!! index) <$> use (behaviors . habits)
         new_habit ←
