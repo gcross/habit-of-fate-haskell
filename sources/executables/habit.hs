@@ -86,7 +86,7 @@ parseNumberAndQuitLoop quitLoop top input =
       | 1 ≤ n && n ≤ top → quitLoop n
       | otherwise → liftIO (putStrLn "Out of range.")
 
-promptIndex top p = callCC $ \quitLoop → forever $
+promptForIndex top p = callCC $ \quitLoop → forever $
   prompt (printf "%s [1-%i]" p top)
   >>=
   parseNumberAndQuitLoop quitLoop top
@@ -180,7 +180,7 @@ mainLoop = loop [] $
     ,('e',) ∘ Action "Edit a habit." $
       runExceptT (do
         number_of_habits ← length <$> use (behaviors . habits)
-        index ← subtract 1 <$> promptIndex number_of_habits "Which habit?"
+        index ← subtract 1 <$> promptForIndex number_of_habits "Which habit?"
         old_habit ← (!! index) <$> use (behaviors . habits)
         new_habit ←
           Habit
