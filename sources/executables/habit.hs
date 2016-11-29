@@ -73,6 +73,7 @@ prompt ∷ CtrlC → String → ActionMonad String
 prompt ctrl_c p =
   (liftIO $ do
     putStr p
+    putChar ' '
     hFlush stdout
     handleJust
       (\case
@@ -145,6 +146,7 @@ promptForCommand p =
     (hSetBuffering stdin LineBuffering)
   $ do
   putStr p
+  putChar ' '
   hFlush stdout
   command ← getChar
   putStrLn ""
@@ -233,6 +235,21 @@ mainLoop = loop [] $
             printf "%i. " (n ∷ Int)
             printHabit habit
           )
+    ,('s',) ∘ Action "Mark habits as successful." $
+      (callCC $ \ctrl_c → do
+        number_of_habits ← getNumberOfHabits
+        abortIfNoHabits ctrl_c number_of_habits
+        indices ← promptForIndices ctrl_c number_of_habits "Which habits?"
+        forM_ indices $ \index → do
+          credits ← preuse (behaviors . habits . ix index)
+        old_habit ← (!! index) <$> use (behaviors . habits)
+        new_habit ←
+          Habit
+            <$> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
+            <*> promptForCredits ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
+            <*> promptForCredits ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
+        behaviors . habits . ix index .= new_habit
+      )
     ]
   ]
   where
@@ -261,7 +278,7 @@ main = do
   new_data ← readIORef new_data_ref
   when (new_data /= old_data) $
     let go =
-          promptForCommand "Save changes? [yn] > "
+          promptForCommand "Save changes? [yn]"
           >>=
           \case
             'y' → encodeFile filepath new_data
