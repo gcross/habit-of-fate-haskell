@@ -33,7 +33,10 @@ import Text.Read (readMaybe)
 
 import HabitOfFate.Behaviors
 import HabitOfFate.Behaviors.Habit
+import qualified HabitOfFate.Behaviors.Habit as Habit
 import HabitOfFate.Data
+import HabitOfFate.Game (GameState)
+import qualified HabitOfFate.Game as Game
 import HabitOfFate.Unicode
 
 newtype ActionMonad α = ActionMonad
@@ -224,6 +227,8 @@ mainLoop = loop [] $
             <*> promptForCredits ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
         behaviors . habits . ix index .= new_habit
       )
+    ,('f',) ∘ Action "Mark habits as failed." $
+       markHabits "Failure" Habit.failure_credits Game.failure_credits
     ,('p',) ∘ Action "Print habits." $ do
       habits' ← use (behaviors . habits)
       if null habits'
@@ -236,20 +241,7 @@ mainLoop = loop [] $
             printHabit habit
           )
     ,('s',) ∘ Action "Mark habits as successful." $
-      (callCC $ \ctrl_c → do
-        number_of_habits ← getNumberOfHabits
-        abortIfNoHabits ctrl_c number_of_habits
-        indices ← promptForIndices ctrl_c number_of_habits "Which habits?"
-        forM_ indices $ \index → do
-          credits ← preuse (behaviors . habits . ix index)
-        old_habit ← (!! index) <$> use (behaviors . habits)
-        new_habit ←
-          Habit
-            <$> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
-            <*> promptForCredits ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
-            <*> promptForCredits ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
-        behaviors . habits . ix index .= new_habit
-      )
+       markHabits "Success" Habit.success_credits Game.success_credits
     ]
   ]
   where
@@ -257,6 +249,32 @@ mainLoop = loop [] $
       when (number_of_habits == 0) $ do
         liftIO $ putStrLn "There are no habits."
         ctrl_c ()
+
+    markHabits ∷ String → Lens' Habit Int → Lens' GameState Int → ActionMonad ()
+    markHabits name habit_credits game_credits =
+      (callCC $ \ctrl_c → do
+        number_of_habits ← getNumberOfHabits
+        abortIfNoHabits ctrl_c number_of_habits
+        indices ← promptForIndices ctrl_c number_of_habits "Which habits?"
+        old_success_credits ← getGameCreditsAsFloat game_credits
+        forM_ indices $ \index →
+          preuse (behaviors . habits . ix index . habit_credits)
+          >>=
+          (game . game_credits +=) ∘ fromJust
+        new_success_credits ← getGameCreditsAsFloat game_credits
+        liftIO $
+          printf "%s credits went from %f to %f\n"
+            name
+            old_success_credits
+            new_success_credits
+      )
+      where
+        getGameCreditsAsFloat =
+          ((/ (100 ∷ Float)) ∘ fromIntegral <$>)
+          ∘
+          use
+          ∘
+          (game .)
 
 main ∷ IO ()
 main = do
