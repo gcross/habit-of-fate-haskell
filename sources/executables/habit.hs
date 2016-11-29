@@ -212,6 +212,9 @@ mainLoop = loop [] $
     ,('e',) ∘ Action "Edit a habit." $
       (callCC $ \ctrl_c → do
         number_of_habits ← getNumberOfHabits
+        when (number_of_habits == 0) $ do
+          liftIO $ putStrLn "There are no habits."
+          ctrl_c ()
         index ← subtract 1 <$> promptForIndex ctrl_c number_of_habits "Which habit?"
         old_habit ← (!! index) <$> use (behaviors . habits)
         new_habit ←
@@ -221,19 +224,17 @@ mainLoop = loop [] $
             <*> promptForCredits ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
         behaviors . habits . ix index .= new_habit
       )
-    ,('p',) ∘ Action "Print habits." $
-      use (behaviors . habits)
-      >>=
-      mapM_ (
-        liftIO
-        ∘
-        (\(n,habit) → do
-          printf "%i. " (n ∷ Int)
-          printHabit habit
-        )
-      )
-      ∘
-      zip [1..]
+    ,('p',) ∘ Action "Print habits." $ do
+      habits' ← use (behaviors . habits)
+      if null habits'
+        then liftIO $ putStrLn "There are no habits."
+        else forM_ (zip [1..] habits') $
+          liftIO
+          ∘
+          (\(n,habit) → do
+            printf "%i. " (n ∷ Int)
+            printHabit habit
+          )
     ]
   ]
 
