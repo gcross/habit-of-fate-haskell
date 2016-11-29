@@ -90,7 +90,7 @@ parseNumberOrRepeat repeat top input =
   case (readMaybe input ∷ Maybe Int) of
     Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
     Just n
-      | 1 ≤ n && n ≤ top → return n
+      | 1 ≤ n && n ≤ top → return (n-1)
       | otherwise → liftIO (putStrLn "Out of range.") >> repeat
 
 promptForIndex ∷ CtrlC → Int → String → ActionMonad Int
@@ -215,7 +215,7 @@ mainLoop = loop [] $
         when (number_of_habits == 0) $ do
           liftIO $ putStrLn "There are no habits."
           ctrl_c ()
-        index ← subtract 1 <$> promptForIndex ctrl_c number_of_habits "Which habit?"
+        index ← promptForIndex ctrl_c number_of_habits "Which habit?"
         old_habit ← (!! index) <$> use (behaviors . habits)
         new_habit ←
           Habit
