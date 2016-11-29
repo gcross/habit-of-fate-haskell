@@ -216,7 +216,7 @@ mainLoop = loop [] $
           liftIO $ putStrLn "There are no habits."
           ctrl_c ()
         index ← promptForIndex ctrl_c number_of_habits "Which habit?"
-        old_habit ← (!! index) <$> use (behaviors . habits)
+        old_habit ←  fromJust <$> preuse (behaviors . habits . ix index)
         new_habit ←
           Habit
             <$> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
