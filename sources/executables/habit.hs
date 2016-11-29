@@ -35,7 +35,7 @@ import HabitOfFate.Behaviors
 import HabitOfFate.Behaviors.Habit
 import qualified HabitOfFate.Behaviors.Habit as Habit
 import HabitOfFate.Data
-import HabitOfFate.Game (GameState)
+import HabitOfFate.Game (GameState, belief)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Unicode
 
@@ -229,7 +229,37 @@ mainLoop = loop [] $
       )
     ,('f',) ∘ Action "Mark habits as failed." $
        markHabits "Failure" Habit.failure_credits Game.failure_credits
-    ,('p',) ∘ Action "Print habits." $ do
+    ,('p',) ∘ Action "Print habits." $ printHabits
+    ,('s',) ∘ Action "Mark habits as successful." $
+       markHabits "Success" Habit.success_credits Game.success_credits
+    ]
+  ,('p',) ∘ Action "Print data." $ do
+      liftIO $ putStrLn "Habits:"
+      printHabits
+      liftIO $ putStrLn ""
+      liftIO $ putStrLn "Game:"
+      let printCredits name =
+            getGameCreditsAsFloat
+            >=>
+            liftIO ∘ printf "    %s credits: %f\n" name
+      printCredits "Success" Game.success_credits
+      printCredits "Failure" Game.failure_credits
+      use (game . belief) >>= liftIO . printf "    Belief: %i\n"
+  ]
+  where
+    abortIfNoHabits ctrl_c number_of_habits =
+      when (number_of_habits == 0) $ do
+        liftIO $ putStrLn "There are no habits."
+        ctrl_c ()
+
+    getGameCreditsAsFloat =
+      ((/ (100 ∷ Float)) ∘ fromIntegral <$>)
+      ∘
+      use
+      ∘
+      (game .)
+
+    printHabits = do
       habits' ← use (behaviors . habits)
       if null habits'
         then liftIO $ putStrLn "There are no habits."
@@ -240,15 +270,6 @@ mainLoop = loop [] $
             printf "%i. " (n ∷ Int)
             printHabit habit
           )
-    ,('s',) ∘ Action "Mark habits as successful." $
-       markHabits "Success" Habit.success_credits Game.success_credits
-    ]
-  ]
-  where
-    abortIfNoHabits ctrl_c number_of_habits =
-      when (number_of_habits == 0) $ do
-        liftIO $ putStrLn "There are no habits."
-        ctrl_c ()
 
     markHabits ∷ String → Lens' Habit Int → Lens' GameState Int → ActionMonad ()
     markHabits name habit_credits game_credits =
@@ -268,13 +289,6 @@ mainLoop = loop [] $
             old_success_credits
             new_success_credits
       )
-      where
-        getGameCreditsAsFloat =
-          ((/ (100 ∷ Float)) ∘ fromIntegral <$>)
-          ∘
-          use
-          ∘
-          (game .)
 
 main ∷ IO ()
 main = do
