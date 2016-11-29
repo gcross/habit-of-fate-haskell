@@ -212,9 +212,7 @@ mainLoop = loop [] $
     ,('e',) ∘ Action "Edit a habit." $
       (callCC $ \ctrl_c → do
         number_of_habits ← getNumberOfHabits
-        when (number_of_habits == 0) $ do
-          liftIO $ putStrLn "There are no habits."
-          ctrl_c ()
+        abortIfNoHabits ctrl_c number_of_habits
         index ← promptForIndex ctrl_c number_of_habits "Which habit?"
         old_habit ←  fromJust <$> preuse (behaviors . habits . ix index)
         new_habit ←
@@ -237,6 +235,11 @@ mainLoop = loop [] $
           )
     ]
   ]
+  where
+    abortIfNoHabits ctrl_c number_of_habits =
+      when (number_of_habits == 0) $ do
+        liftIO $ putStrLn "There are no habits."
+        ctrl_c ()
 
 main ∷ IO ()
 main = do
