@@ -10,6 +10,7 @@ import Control.Lens (Prism', (^.), (^?), makePrisms, re)
 import HabitOfFate.Game
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.TH
+import HabitOfFate.Unicode
 
 data QuestState =
     Forest Forest.State
@@ -20,25 +21,25 @@ makePrisms ''QuestState
 data Quest = ∀ α. Quest
   (Prism' QuestState α)
   (Game α)
-  (Action → α → Game (Maybe α))
+  (α → Game (Maybe α))
 
 quests ∷ [Quest]
 quests =
-  [Quest _Forest Forest.new Forest.act
+  [Quest _Forest Forest.new Forest.run
   ]
 
-act ∷ Action → Maybe QuestState → Game (Maybe QuestState)
-act input Nothing =
+runQuest ∷ Maybe QuestState → Game (Maybe QuestState)
+runQuest Nothing =
   uniform quests
   >>=
   (\(Quest prism new _) → (Just . (^.re prism)) <$> new)
   >>=
-  act input
-act input (Just state) = go quests
+  runQuest
+runQuest (Just state) = go quests
   where
     go ∷ [Quest] → Game (Maybe QuestState)
     go [] = error "Unrecognized quest type"
-    go (Quest prism _ act:rest) =
+    go (Quest prism _ run:rest) =
       case state ^? prism of
         Nothing → go rest
-        Just x → fmap (^.re prism) <$> act input x
+        Just x → fmap (^.re prism) <$> run x

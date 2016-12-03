@@ -29,11 +29,12 @@ import System.Environment
 import System.FilePath
 import System.IO
 import Text.Printf
-import Text.Read (readMaybe)
+import Text.Read (readEither, readMaybe)
 
 import HabitOfFate.Behaviors
 import HabitOfFate.Behaviors.Habit
 import qualified HabitOfFate.Behaviors.Habit as Habit
+import HabitOfFate.Console
 import HabitOfFate.Data
 import HabitOfFate.Game (GameState, belief)
 import qualified HabitOfFate.Game as Game
@@ -54,9 +55,6 @@ data Action = Action
 makeLenses ''Action
 
 type ActionMap = [(Char,Action)]
-
-formatCredits ∷ Int → String
-formatCredits credits = printf "%.2f" (fromIntegral credits / 100 ∷ Double)
 
 help ∷ MonadIO m ⇒ ActionMap → m ()
 help commands = liftIO $ do
@@ -126,20 +124,6 @@ promptForIndices ctrl_c top p =
       where
         (entry,rest) = break isSeparator entries
 
-promptForCredits ∷ CtrlC → Int → String → ActionMonad Int
-promptForCredits ctrl_c def p = do
-  let repeat = promptForCredits ctrl_c def p
-  input ← promptWithDefault ctrl_c (formatCredits def) p
-  case (readMaybe input ∷ Maybe Float) of
-    Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
-    Just n
-      | n > 100 → liftIO (putStrLn "Number must not be larger than 100.") >> repeat
-      | otherwise →
-        let (number_of_credits, fraction) = properFraction $ n * 100
-        in if fraction == 0
-            then return number_of_credits
-            else liftIO (putStrLn "Number must not have more than two decimals.") >> repeat
-
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =
   liftIO
@@ -160,6 +144,16 @@ promptWithDefault ctrl_c def p =
   prompt ctrl_c (printf "%s [%s]" p def)
   <&>
   (\input → if null input then def else input)
+
+promptWithDefault' ∷ (Read α, Show α) ⇒ CtrlC → α → String → ActionMonad α
+promptWithDefault' ctrl_c def p = doPrompt
+  where
+    doPrompt =
+      promptWithDefault ctrl_c (show def) p
+      >>=
+      handleParseResult . readEither
+    handleParseResult (Left e) = liftIO (putStrLn e) >> doPrompt
+    handleParseResult (Right x) = return x
 
 quit ∷ ActionMonad ()
 quit = ActionMonad $ asks snd >>= lift ∘ ($ ())
@@ -194,10 +188,10 @@ loop labels commands = go
         :
         map (_2 %~ (>> go) ∘ view code) commands
 
-printHabit = printf "%s [+%s/-%s]\n"
+printHabit = printf "%s [+%f/-%f]\n"
   <$> (^. name)
-  <*> formatCredits ∘ (^. success_credits)
-  <*> formatCredits ∘ (^. failure_credits)
+  <*> (^. success_credits)
+  <*> (^. failure_credits)
 
 getNumberOfHabits ∷ ActionMonad Int
 getNumberOfHabits = length <$> use (behaviors . habits)
@@ -209,8 +203,8 @@ mainLoop = loop [] $
       (callCC $ \ctrl_c →
         Habit
           <$> prompt ctrl_c "What is the name of the habit?"
-          <*> promptForCredits ctrl_c 100 "How many credits is a success worth?"
-          <*> promptForCredits ctrl_c 0 "How many credits is a failure worth?"
+          <*> promptWithDefault' ctrl_c 1.0 "How many credits is a success worth?"
+          <*> promptWithDefault' ctrl_c 0.0 "How many credits is a failure worth?"
         >>=
         ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
       )
@@ -223,8 +217,8 @@ mainLoop = loop [] $
         new_habit ←
           Habit
             <$> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
-            <*> promptForCredits ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
-            <*> promptForCredits ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
+            <*> promptWithDefault' ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
+            <*> promptWithDefault' ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
         behaviors . habits . ix index .= new_habit
       )
     ,('f',) ∘ Action "Mark habits as failed." $
@@ -239,12 +233,17 @@ mainLoop = loop [] $
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
       let printCredits name =
-            getGameCreditsAsFloat
+            use . (game .)
             >=>
             liftIO ∘ printf "    %s credits: %f\n" name
       printCredits "Success" Game.success_credits
       printCredits "Failure" Game.failure_credits
       use (game . belief) >>= liftIO . printf "    Belief: %i\n"
+  ,('r',) ∘ Action "Run game." $ do
+      d ← get
+      (paragraphs, new_d) ← liftIO $ runData d
+      put new_d
+      liftIO . printParagraphs $ paragraphs
   ]
   where
     abortIfNoHabits ctrl_c number_of_habits =
@@ -271,18 +270,18 @@ mainLoop = loop [] $
             printHabit habit
           )
 
-    markHabits ∷ String → Lens' Habit Int → Lens' GameState Int → ActionMonad ()
+    markHabits ∷ String → Lens' Habit Double → Lens' GameState Double → ActionMonad ()
     markHabits name habit_credits game_credits =
       (callCC $ \ctrl_c → do
         number_of_habits ← getNumberOfHabits
         abortIfNoHabits ctrl_c number_of_habits
         indices ← promptForIndices ctrl_c number_of_habits "Which habits?"
-        old_success_credits ← getGameCreditsAsFloat game_credits
+        old_success_credits ← use $ game . game_credits
         forM_ indices $ \index →
           preuse (behaviors . habits . ix index . habit_credits)
           >>=
           (game . game_credits +=) ∘ fromJust
-        new_success_credits ← getGameCreditsAsFloat game_credits
+        new_success_credits ← use $ game . game_credits
         liftIO $
           printf "%s credits went from %f to %f\n"
             name

@@ -34,3 +34,5 @@ infix  4 ≥
 
 (⊥) ∷ α
 (⊥) = undefined
+
+type 𝔹 = Bool

@@ -20,3 +20,13 @@ makeLenses ''Data
 
 newData ∷ Data
 newData = Data newBehaviors newGame Nothing
+
+runData ∷ Data → IO ([[String]], Data)
+runData d =
+  runGame (d ^. game) (runQuest (d ^. quest))
+  <&>
+  \result →
+    (result ^. paragraphs
+    ,d & game .~ result ^. new_game
+       & quest .~ result ^. returned_value
+    )

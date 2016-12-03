@@ -9,8 +9,8 @@ import HabitOfFate.TH
 
 data Habit = Habit
   { _name ∷ String
-  , _success_credits ∷ Int
-  , _failure_credits ∷ Int
+  , _success_credits ∷ Double
+  , _failure_credits ∷ Double
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 makeLenses ''Habit

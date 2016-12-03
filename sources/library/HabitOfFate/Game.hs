@@ -8,22 +8,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Game
-  ( Action(..)
-  , Game
-  , GameResult(..)
-  , GameState(..)
-    , belief
-    , success_credits
-    , failure_credits
-  , newGame
-  , runGame
-  , text
-  , uniform
-  , uniformAction
-  , weighted
-  , weightedAction
-  ) where
+module HabitOfFate.Game where
 
 import Control.Lens (makeLenses)
 import Control.Monad (join)
@@ -38,14 +23,10 @@ import System.Random
 
 import HabitOfFate.TH
 
-data Action =
-    Good
-  | Bad
-
 data GameState = GameState
   { _belief ∷ Int
-  , _success_credits ∷ Int
-  , _failure_credits ∷ Int
+  , _success_credits ∷ Double
+  , _failure_credits ∷ Double
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''GameState
 makeLenses ''GameState
@@ -62,10 +43,11 @@ newtype Game α =
     )
 
 data GameResult α = GameResult
-  { new_game_state ∷ GameState
-  , paragraphs ∷ [[String]]
-  , returned_value ∷ α
+  { _new_game ∷ GameState
+  , _paragraphs ∷ [[String]]
+  , _returned_value ∷ α
   } deriving (Eq,Ord,Read,Show)
+makeLenses ''GameResult
 
 newGame ∷ GameState
 newGame = GameState 0 0 0

@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -9,13 +10,14 @@
 
 module HabitOfFate.Quests.Forest where
 
-import Control.Lens ((&), (^.), (+=), (.~), makeLenses)
+import Control.Lens ((&), (^.), (+=), (-=), (.~), makeLenses)
 import Data.Map (fromList)
 import Data.String.QQ
 
 import HabitOfFate.Game
 import HabitOfFate.Substitution
 import HabitOfFate.TH
+import HabitOfFate.Trial
 import HabitOfFate.Unicode
 
 data State = State
@@ -56,32 +58,49 @@ new = do
   introText state
   return state
 
-act ∷ Action → State → Game (Maybe State)
-act Good state = weightedAction
-  [(20, if state ^. found
-    then do
+run ∷ State → Game (Maybe State)
+run state =
+  performTrials 0.2 0.5
+  >>=
+  ($ state)
+  .
+  \case
+    Result SomethingHappened SomethingHappened → bothHappened
+    Result SomethingHappened _ → successHappened
+    Result _ SomethingHappened → failureHappened
+    Result _ NothingHappened → failureAverted
+    _ → nothingHappened
+
+bothHappened ∷ State → Game (Maybe State)
+bothHappened state = cancelText state >> return (Just state)
+
+successHappened ∷ State → Game (Maybe State)
+successHappened state
+  | state ^. found = do
       winText state
       belief += 1
       return Nothing
-    else do
+  | otherwise = do
       foundText state
       return . Just $ state & found .~ True
-    )
-  ,(80, do
-      stumbleText state
-      return $ Just state
-    )
-  ]
-act Bad state = weightedAction
-  [(50, do
-    fallText state
-    return $ Just state
-    )
-  ,(50, do
-    loseText state
-    return Nothing
-    )
-  ]
+
+failureHappened ∷ State → Game (Maybe State)
+failureHappened state = do
+  loseText state
+  belief -= 1
+  return Nothing
+
+failureAverted ∷ State → Game (Maybe State)
+failureAverted state = stumbleText state >> return (Just state)
+
+nothingHappened ∷ State → Game (Maybe State)
+nothingHappened state = wanderText state >> return (Just state)
+
+cancelText = flip textWithDefaultSubtitutions [s|
+  {She} trips and starts to curse you, but then sees that {she} feel just short
+  of entering a circle of mushrooms. {She} praises your name, gets up, and
+  continues.
+|]
 
 fallText state = textWithDefaultSubtitutions state [s|
   {She} trips and falls, but gets up after minute.
@@ -105,11 +124,15 @@ introText state = textWithDefaultSubtitutions state [s|
   She begins her search.|]
 
 loseText state = textWithDefaultSubtitutions state [s|
-  {She} takes too long, and {Tommy} dies}.
+  {She} takes too long, and {Tommy} dies}.  She prays to you asking what she did wrong for you to abandon her in her time of need.  She still believes in you, but a little less than before.
 |]
 
 stumbleText state = textWithDefaultSubtitutions state [s|
   {She} stumbles around in the dark.
+|]
+
+wanderText = flip textWithDefaultSubtitutions [s|
+  {She} wander through the forest.
 |]
 
 winText state = textWithDefaultSubtitutions state [s|
