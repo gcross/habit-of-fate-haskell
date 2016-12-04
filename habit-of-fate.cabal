@@ -33,6 +33,7 @@ library
                      , HabitOfFate.Console
                      , HabitOfFate.Data
                      , HabitOfFate.Game
+                     , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Substitution

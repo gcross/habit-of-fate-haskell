@@ -13,7 +13,7 @@ import HabitOfFate.TH
 data Data = Data
   {   _behaviors ∷ Behaviors
   ,   _game ∷ GameState
-  ,   _quest ∷ Maybe QuestState
+  ,   _quest ∷ Maybe CurrentQuestState
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Data
 makeLenses ''Data
@@ -23,7 +23,7 @@ newData = Data newBehaviors newGame Nothing
 
 runData ∷ Data → IO ([[String]], Data)
 runData d =
-  runGame (d ^. game) (runQuest (d ^. quest))
+  runGame (d ^. game) (runCurrentQuest (d ^. quest))
   <&>
   \result →
     (result ^. paragraphs

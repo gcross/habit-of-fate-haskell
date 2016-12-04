@@ -239,11 +239,22 @@ mainLoop = loop [] $
       printCredits "Success" Game.success_credits
       printCredits "Failure" Game.failure_credits
       use (game . belief) >>= liftIO . printf "    Belief: %i\n"
+      liftIO $ putStrLn ""
+      use quest >>= liftIO . putStrLn . show
   ,('r',) ∘ Action "Run game." $ do
-      d ← get
-      (paragraphs, new_d) ← liftIO $ runData d
-      put new_d
-      liftIO . printParagraphs $ paragraphs
+      liftIO . putStrLn $ replicate 80 '='
+      callCC $ \quit → forever $ do
+        d ← get
+        (paragraphs, new_d) ← liftIO $ runData d
+        put new_d
+        liftIO $ do
+          printParagraphs paragraphs
+          putStrLn ""
+        liftIO . putStrLn $ replicate 80 '='
+        (&&)
+          <$> ((== 0) <$> use (game . Game.success_credits))
+          <*> ((== 0) <$> use (game . Game.failure_credits))
+          >>= flip when (quit ())
   ]
   where
     abortIfNoHabits ctrl_c number_of_habits =
@@ -298,21 +309,24 @@ main = do
   old_data ← doesFileExist filepath >>= \case
     True → BS.readFile filepath >>= either error return . decodeEither
     False → return newData
-  new_data_ref ← newIORef old_data
-  flip runContT return
-    ∘
-    callCC
-    $
-    runReaderT (unwrapActionMonad mainLoop)
-    ∘
-    (new_data_ref,)
-  new_data ← readIORef new_data_ref
-  when (new_data /= old_data) $
-    let go =
-          promptForCommand "Save changes? [yn]"
-          >>=
-          \case
-            'y' → encodeFile filepath new_data
-            'n' → return ()
-            _ → putStrLn "Please type either 'y' or 'n'." >> go
-    in go
+  let run current_data = do
+        new_data_ref ← newIORef current_data
+        flip runContT return
+          ∘
+          callCC
+          $
+          runReaderT (unwrapActionMonad mainLoop)
+          ∘
+          (new_data_ref,)
+        new_data ← readIORef new_data_ref
+        when (new_data /= old_data) $
+          let go =
+                promptForCommand "Save changes? [yna]"
+                >>=
+                \case
+                  'y' → encodeFile filepath new_data
+                  'n' → return ()
+                  'a' → run new_data
+                  _ → putStrLn "Please type either 'y', 'n', or 'a''." >> go
+          in go
+  run old_data

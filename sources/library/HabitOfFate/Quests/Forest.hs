@@ -10,103 +10,110 @@
 
 module HabitOfFate.Quests.Forest where
 
-import Control.Lens ((&), (^.), (+=), (-=), (.~), makeLenses)
+import Control.Lens
+import Control.Monad.State hiding (State)
 import Data.Map (fromList)
 import Data.String.QQ
 
 import HabitOfFate.Game
+import HabitOfFate.Quest
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
 import HabitOfFate.Unicode
+import Debug.Trace
 
 data State = State
   { _healer ∷ Character
   , _patient ∷ Character
   , _herb ∷ String
   , _found ∷ Bool
+  , _credits_until_success ∷ Double
+  , _credits_until_failure ∷ Double
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makeLenses ''State
 
+type ForestAction = QuestAction State
+
 defaultSubstitutionTable ∷ State → Substitutions
-defaultSubstitutionTable forest_state = makeSubstitutionTable
-  [("Susie",forest_state ^. healer)
-  ,("Tommy",forest_state ^. patient)
-  ,("Illsbane",Character (forest_state ^. herb) Neuter)
+defaultSubstitutionTable forest = makeSubstitutionTable
+  [("Susie",forest ^. healer)
+  ,("Tommy",forest ^. patient)
+  ,("Illsbane",Character (forest ^. herb) Neuter)
   ]
 
-textWithDefaultSubtitutionsPlus ∷ State → [(String,String)] → String → Game ()
-textWithDefaultSubtitutionsPlus forest_state additional_subsitutions =
-    text . substitute substitutions
-  where
-    substitutions =
-      defaultSubstitutionTable forest_state
-      ⊕
-      fromList additional_subsitutions
+textWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(String,String)] → String → m ()
+textWithDefaultSubstitutionsPlus forest additional_substitutions template =
+  text
+  ∘
+  flip substitute template
+  ∘
+  (⊕ fromList additional_substitutions)
+  ∘
+  defaultSubstitutionTable
+  $
+  forest
 
-textWithDefaultSubtitutions ∷ State → String → Game ()
-textWithDefaultSubtitutions = flip textWithDefaultSubtitutionsPlus []
+textWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → String → m ()
+textWithDefaultSubstitutionsForLens lens template =
+  use lens
+  >>=
+  \forest → textWithDefaultSubstitutionsPlus forest [] template
+
+textWithDefaultSubstitutionsIntro = textWithDefaultSubstitutionsForLens id
+textWithDefaultSubstitutions =      textWithDefaultSubstitutionsForLens quest
 
 new ∷ Game State
-new = do
-  let state = State
-        (Character "Susie" Female)
-        (Character "Tommy" Male)
-        "Illsbane"
-        False
-  introText state
-  return state
-
-run ∷ State → Game (Maybe State)
-run state =
-  performTrials 0.2 0.5
+new =
+  (
+    State
+      (Character "Susie" Female)
+      (Character "Tommy" Male)
+      "Illsbane"
+      False
+    <$> numberUntilEvent 0.2
+    <*> numberUntilEvent 0.5
+  )
   >>=
-  ($ state)
-  .
-  \case
-    Result SomethingHappened SomethingHappened → bothHappened
-    Result SomethingHappened _ → successHappened
-    Result _ SomethingHappened → failureHappened
-    Result _ NothingHappened → failureAverted
-    _ → nothingHappened
+  execStateT introText
 
-bothHappened ∷ State → Game (Maybe State)
-bothHappened state = cancelText state >> return (Just state)
+run ∷ ForestAction ()
+run = do
+  spendCredits
+    (quest . credits_until_failure)
+    (game . failure_credits)
+    >>=
+    \case
+      SomethingHappened → do
+        loseText
+        game . belief -= 1
+        questHasEnded
+      NothingHappened → avertedText
+      NoCredits → return ()
+  spendCredits
+    (quest . credits_until_success)
+    (game . success_credits)
+    >>=
+    \case
+      SomethingHappened → do
+        herb_found ← use $ quest . found
+        if herb_found
+          then do
+            winText
+            game . belief += 1
+            questHasEnded
+          else do
+            foundText
+            quest . found .= True
+      NothingHappened → wanderText
+      NoCredits → return ()
 
-successHappened ∷ State → Game (Maybe State)
-successHappened state
-  | state ^. found = do
-      winText state
-      belief += 1
-      return Nothing
-  | otherwise = do
-      foundText state
-      return . Just $ state & found .~ True
-
-failureHappened ∷ State → Game (Maybe State)
-failureHappened state = do
-  loseText state
-  belief -= 1
-  return Nothing
-
-failureAverted ∷ State → Game (Maybe State)
-failureAverted state = stumbleText state >> return (Just state)
-
-nothingHappened ∷ State → Game (Maybe State)
-nothingHappened state = wanderText state >> return (Just state)
-
-cancelText = flip textWithDefaultSubtitutions [s|
-  {She} trips and starts to curse you, but then sees that {she} feel just short
-  of entering a circle of mushrooms. {She} praises your name, gets up, and
-  continues.
-|]
-
-fallText state = textWithDefaultSubtitutions state [s|
+avertedText = textWithDefaultSubstitutions [s|
   {She} trips and falls, but gets up after minute.
 |]
 
-foundText state = textWithDefaultSubtitutions state [s|
+foundText = textWithDefaultSubstitutions [s|
   After wandering for what feels like hours, {Susie} nearly steps on {an
   Illsbane} plant. {Her} heart leaps and {she} gives a short prayer of thanks.
   {She} reaches down carefully to pick it.
@@ -115,7 +122,7 @@ foundText state = textWithDefaultSubtitutions state [s|
   -- you have guided {her} this far, after all!
 |]
 
-introText state = textWithDefaultSubtitutions state [s|
+introText = textWithDefaultSubstitutionsIntro [s|
   The last thing in the world that {Susie} wanted to do was to wander around
   alone in the forest this night, but {Tommy} was sick and would not live
   through the night unless {Susie} could find {an Illsbane} plant to brew
@@ -123,19 +130,19 @@ introText state = textWithDefaultSubtitutions state [s|
 
   She begins her search.|]
 
-loseText state = textWithDefaultSubtitutions state [s|
+loseText = textWithDefaultSubstitutions [s|
   {She} takes too long, and {Tommy} dies}.  She prays to you asking what she did wrong for you to abandon her in her time of need.  She still believes in you, but a little less than before.
 |]
 
-stumbleText state = textWithDefaultSubtitutions state [s|
+stumbleText = textWithDefaultSubstitutions [s|
   {She} stumbles around in the dark.
 |]
 
-wanderText = flip textWithDefaultSubtitutions [s|
+wanderText = textWithDefaultSubstitutions [s|
   {She} wander through the forest.
 |]
 
-winText state = textWithDefaultSubtitutions state [s|
+winText = textWithDefaultSubstitutions [s|
   {Susie} is starting to feel like {she} will never make it back when she
   notices that things are starting to get brighter -- {she} must be getting
   close to the vilage! {She} gives you thanks for guiding {her} home.

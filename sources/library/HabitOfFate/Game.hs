@@ -12,13 +12,10 @@ module HabitOfFate.Game where
 
 import Control.Lens (makeLenses)
 import Control.Monad (join)
-import Control.Monad.Random (MonadRandom(..), Rand(), evalRand, fromList)
-import Control.Monad.State (MonadState(..))
-import Control.Monad.Writer (MonadWriter, tell)
+import Control.Monad.Random hiding (uniform)
+import Control.Monad.State
+import Control.Monad.Writer
 import qualified Control.Monad.Random as Random
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.State.Strict (StateT(), runStateT)
-import Control.Monad.Trans.Writer.Strict (WriterT(), runWriterT)
 import System.Random
 
 import HabitOfFate.TH
@@ -49,6 +46,15 @@ data GameResult α = GameResult
   } deriving (Eq,Ord,Read,Show)
 makeLenses ''GameResult
 
+class MonadRandom m ⇒ MonadGame m where
+  text ∷ String → m ()
+
+instance MonadGame Game where
+  text = gameText
+
+instance MonadGame m ⇒ MonadGame (StateT s m) where
+  text = lift . text
+
 newGame ∷ GameState
 newGame = GameState 0 0 0
 
@@ -67,8 +73,8 @@ runGame state game = do
         game
   return $ GameResult new_game_result paragraphs returned_value
 
-text ∷ String → Game ()
-text = tell . map (concatMap words) . splitParagraphs . lines
+gameText ∷ String → Game ()
+gameText = tell . map (concatMap words) . splitParagraphs . lines
   where
     splitParagraphs ∷ [String] → [[String]]
     splitParagraphs [] = []
