@@ -7,11 +7,8 @@ import Control.Lens
 import Control.Monad.Random (MonadRandom(getRandomR))
 import Control.Monad.State
 
-import HabitOfFate.Game
-import HabitOfFate.Unicode
-
 numberUntilEvent ∷ MonadRandom m ⇒ Double → m Double
-numberUntilEvent p = logBase p ∘ (1-) <$> getRandomR (0,1)
+numberUntilEvent median = getRandomR (0,1) <&> (\rnd → logBase 2 (1-rnd) * (-median))
 
 data Outcome = NoCredits | NothingHappened | SomethingHappened
   deriving (Eq, Ord, Read, Show)

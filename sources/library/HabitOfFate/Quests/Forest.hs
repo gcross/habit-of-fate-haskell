@@ -72,8 +72,8 @@ new =
       (Character "Tommy" Male)
       "Illsbane"
       False
-    <$> numberUntilEvent 0.2
-    <*> numberUntilEvent 0.5
+    <$> numberUntilEvent 5
+    <*> numberUntilEvent 1
   )
   >>=
   execStateT introText
@@ -106,6 +106,7 @@ run = do
           else do
             foundText
             quest . found .= True
+            numberUntilEvent 5 >>= (quest . credits_until_success .=)
       NothingHappened → wanderText
       NoCredits → return ()
 
