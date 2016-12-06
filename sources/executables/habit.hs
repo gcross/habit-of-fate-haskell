@@ -18,6 +18,7 @@ import Control.Monad.Cont
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Bool
 import qualified Data.ByteString as BS
 import Data.Char
 import Data.IORef
@@ -250,8 +251,9 @@ mainLoop = loop [] $
   ,('r',) ∘ Action "Run game." $ do
       gameStillHasCredits
       >>=
-      \case
-        True → do
+      bool
+        (liftIO $ putStrLn "No credits.")
+        (do
           liftIO $ putStrLn ""
           callCC $ \quit → forever $ do
             d ← get
@@ -275,7 +277,7 @@ mainLoop = loop [] $
               clearLine
               putStrLn $ replicate 80 '='
               putStrLn ""
-        False → liftIO $ putStrLn "No credits."
+        )
   ]
   where
     abortIfNoHabits ctrl_c number_of_habits =
@@ -327,9 +329,11 @@ main = do
     [] → getHomeDirectory <&> (</> ".habit")
     [filepath] → return filepath
     _ → error "Only one argument may be provided."
-  old_data ← doesFileExist filepath >>= \case
-    True → BS.readFile filepath >>= either error return . decodeEither
-    False → return newData
+  old_data ←
+    doesFileExist filepath
+    >>=
+    bool (return newData)
+         (BS.readFile filepath >>= either error return . decodeEither)
   let run current_data = do
         new_data_ref ← newIORef current_data
         flip runContT return
