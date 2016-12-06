@@ -35,8 +35,6 @@ runCurrentQuest Nothing =
   uniform quests
   >>=
   (\(Quest prism new _) → (Just . (^.re prism)) <$> new)
-  >>=
-  runCurrentQuest
 runCurrentQuest (Just state) = go quests
   where
     go ∷ [Quest] → Game (Maybe CurrentQuestState)
