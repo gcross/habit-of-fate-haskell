@@ -46,6 +46,7 @@ executable habit
   hs-source-dirs:      sources/executables
   main-is:             habit.hs
   build-depends:       habit-of-fate
+                     , ansi-terminal
                      , base
                      , bytestring
                      , containers

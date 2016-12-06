@@ -7,23 +7,17 @@
 
 module HabitOfFate.Console where
 
+import Control.Exception
 import Control.Lens ((%=),(.=),use)
 import Control.Lens.TH (makeLenses)
-import Control.Monad (forM_,replicateM_)
+import Control.Monad (forM_,replicateM_,void)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Random (MonadRandom(), RandT(), evalRandT)
 import Control.Monad.Trans.State.Strict (StateT(), evalStateT)
 import Data.Char (isLower, toUpper)
 import Data.List (span)
 import System.Console.ANSI
-    (Color(..)
-    ,ColorIntensity(Dull,Vivid)
-    ,ConsoleIntensity(BoldIntensity,NormalIntensity)
-    ,ConsoleLayer(Foreground)
-    ,SGR(SetConsoleIntensity,SetUnderlining,SetColor)
-    ,Underlining(SingleUnderline,NoUnderline)
-    ,setSGR
-    )
+import System.IO
 import System.Random (StdGen, newStdGen)
 
 import HabitOfFate.Game
@@ -71,10 +65,27 @@ makeLenses ''PrintTextState
 printParagraphs ∷ [[String]] → IO ()
 printParagraphs [] = return ()
 printParagraphs (first:rest) = do
+  bracket_
+    (do hSetBuffering stdin NoBuffering
+        hSetEcho stdin False
+    )
+    (do hSetBuffering stdin LineBuffering
+        hSetEcho stdin True
+    )
+  $
+  do
     printParagraph first
+    putStrLn ""
     forM_ rest $ \paragraph → do
-        replicateM_ 2 (putStrLn "")
-        printParagraph paragraph
+      putStrLn ""
+      putStrLn "[Press any key to continue.]"
+      hFlush stdout
+      void getChar
+      cursorUpLine 1
+      clearLine
+      printParagraph paragraph
+      putStrLn ""
+    hFlush stdout
 
 printParagraph ∷ [String] → IO ()
 printParagraph =

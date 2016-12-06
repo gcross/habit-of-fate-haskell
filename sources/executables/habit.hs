@@ -24,6 +24,7 @@ import Data.IORef
 import Data.List
 import Data.Maybe
 import Data.Yaml hiding ((.=))
+import System.Console.ANSI
 import System.Directory
 import System.Environment
 import System.FilePath
@@ -251,16 +252,29 @@ mainLoop = loop [] $
       >>=
       \case
         True → do
-          liftIO . putStrLn $ replicate 80 '='
+          liftIO $ putStrLn ""
           callCC $ \quit → forever $ do
             d ← get
             (paragraphs, new_d) ← liftIO $ runData d
             put new_d
             liftIO $ do
               printParagraphs paragraphs
-              putStrLn ""
-            liftIO . putStrLn $ replicate 80 '='
             gameStillHasCredits >>= flip unless (quit ())
+            liftIO $ do
+              putStrLn ""
+              putStrLn "[Press any key to continue.]"
+              bracket_
+                (do hSetBuffering stdin NoBuffering
+                    hSetEcho stdin False
+                )
+                (do hSetBuffering stdin LineBuffering
+                    hSetEcho stdin True
+                )
+                (void getChar)
+              cursorUpLine 1
+              clearLine
+              putStrLn $ replicate 80 '='
+              putStrLn ""
         False → liftIO $ putStrLn "No credits."
   ]
   where
