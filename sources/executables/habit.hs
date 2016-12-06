@@ -196,6 +196,11 @@ printHabit = printf "%s [+%f/-%f]\n"
 getNumberOfHabits ∷ ActionMonad Int
 getNumberOfHabits = length <$> use (behaviors . habits)
 
+gameStillHasCredits =
+  (||)
+    <$> ((/= 0) <$> use (game . Game.success_credits))
+    <*> ((/= 0) <$> use (game . Game.failure_credits))
+
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
   [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
@@ -242,19 +247,21 @@ mainLoop = loop [] $
       liftIO $ putStrLn ""
       use quest >>= liftIO . putStrLn . show
   ,('r',) ∘ Action "Run game." $ do
-      liftIO . putStrLn $ replicate 80 '='
-      callCC $ \quit → forever $ do
-        d ← get
-        (paragraphs, new_d) ← liftIO $ runData d
-        put new_d
-        liftIO $ do
-          printParagraphs paragraphs
-          putStrLn ""
-        liftIO . putStrLn $ replicate 80 '='
-        (&&)
-          <$> ((== 0) <$> use (game . Game.success_credits))
-          <*> ((== 0) <$> use (game . Game.failure_credits))
-          >>= flip when (quit ())
+      gameStillHasCredits
+      >>=
+      \case
+        True → do
+          liftIO . putStrLn $ replicate 80 '='
+          callCC $ \quit → forever $ do
+            d ← get
+            (paragraphs, new_d) ← liftIO $ runData d
+            put new_d
+            liftIO $ do
+              printParagraphs paragraphs
+              putStrLn ""
+            liftIO . putStrLn $ replicate 80 '='
+            gameStillHasCredits >>= flip unless (quit ())
+        False → liftIO $ putStrLn "No credits."
   ]
   where
     abortIfNoHabits ctrl_c number_of_habits =
