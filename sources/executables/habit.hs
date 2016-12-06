@@ -248,7 +248,7 @@ mainLoop = loop [] $
       use (game . belief) >>= liftIO . printf "    Belief: %i\n"
       liftIO $ putStrLn ""
       use quest >>= liftIO . putStrLn . show
-  ,('r',) ∘ Action "Run game." $ do
+  ,('r',) ∘ Action "Run game." $
       gameStillHasCredits
       >>=
       bool
@@ -257,26 +257,38 @@ mainLoop = loop [] $
           liftIO $ putStrLn ""
           callCC $ \quit → forever $ do
             d ← get
-            (paragraphs, new_d) ← liftIO $ runData d
+            (paragraphs, completed, new_d) ← liftIO $ runData d
             put new_d
             liftIO $ do
               printParagraphs paragraphs
-            gameStillHasCredits >>= flip unless (quit ())
-            liftIO $ do
-              putStrLn ""
-              putStrLn "[Press any key to continue.]"
-              bracket_
-                (do hSetBuffering stdin NoBuffering
-                    hSetEcho stdin False
+            gameStillHasCredits
+              >>=
+              bool
+                (quit ())
+                (do
+                  liftIO $ do
+                    putStrLn ""
+                    putStrLn "[Press any key to continue.]"
+                    bracket_
+                      (do hSetBuffering stdin NoBuffering
+                          hSetEcho stdin False
+                      )
+                      (do hSetBuffering stdin LineBuffering
+                          hSetEcho stdin True
+                      )
+                      (void getChar)
+                    cursorUpLine 1
+                    clearLine
+                    if completed
+                      then do
+                        putStrLn $ replicate 80 '='
+                        putStrLn "A new quest begins..."
+                        putStrLn $ replicate 80 '='
+                      else do
+                        putStrLn $ replicate 80 '-'
+                    putStrLn ""
                 )
-                (do hSetBuffering stdin LineBuffering
-                    hSetEcho stdin True
-                )
-                (void getChar)
-              cursorUpLine 1
-              clearLine
-              putStrLn $ replicate 80 '='
-              putStrLn ""
+          liftIO $ putStrLn ""
         )
   ]
   where
