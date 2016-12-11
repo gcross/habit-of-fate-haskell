@@ -24,6 +24,7 @@ library
                      , mtl
                      , operational
                      , random
+                     , split
                      , string-qq
                      , time
                      , transformers

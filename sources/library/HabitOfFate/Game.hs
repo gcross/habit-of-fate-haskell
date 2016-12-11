@@ -16,6 +16,7 @@ import Control.Monad.Random hiding (uniform)
 import Control.Monad.State
 import Control.Monad.Writer
 import qualified Control.Monad.Random as Random
+import Data.List.Split
 import System.Random
 
 import HabitOfFate.TH
@@ -74,13 +75,7 @@ runGame state game = do
   return $ GameResult new_game_result paragraphs returned_value
 
 gameText ∷ String → Game ()
-gameText = tell . map (concatMap words) . splitParagraphs . lines
-  where
-    splitParagraphs ∷ [String] → [[String]]
-    splitParagraphs [] = []
-    splitParagraphs ("":rest) = splitParagraphs rest
-    splitParagraphs rest = paragraph:splitParagraphs remainder
-      where (paragraph,remainder) = break (== "") rest
+gameText = tell . map (concatMap words) . splitWhen null . lines
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform
