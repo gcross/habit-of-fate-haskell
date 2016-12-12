@@ -239,7 +239,71 @@ a little less than before.
 wander ∷ ForestAction ()
 wander = forestTexts [s|
 ================================================================================
-{She} wanders through the forest.
+Nothing happens as {Susie} wanders through the forest.
+================================================================================
+As {Susie} continues to search she hears wolves howling in the distance, which
+makes her shiver. Thank goodness they seem to be in the distance.
+================================================================================
+{Susie} is paying so much attention to looking for {Illsbane} that she almost
+misses the ominous circle of mushrooms. {She} says a prayer of thanks that {she}
+noticed it before stepping inside.
+================================================================================
+{Susie} starts to notice that it is growing brighter. She looks around and sees
+an unnaturally glowing clearing in the distance. She feels drawn to it, but she
+knows that no good could possibly come to her there, so she summons her will and
+turns away from it.
+================================================================================
+{Susie}'s candle goes out; the resulting darkness is oppressive. Fortunately,
+she prepared for this. She reached into her pack and drew out flintstone, which
+she used to re-light the candle.
+================================================================================
+{Susie} can feel that something is amiss, but she can't figure out what. She
+pauses for a moment and looks around. After a moment, she realizes that her
+shadow didn't stop walking when she did. She backs away slowly as her shadow
+gets further and further away from her. She decide to start searching in a
+different direction.
+================================================================================
+{Susie} trips on a branch and nearly falls. “Odd,” she says to herself, “I've
+been staring at the ground; how could I have missed it?” Examining the ground
+more closely, she sees the root she tripped on lower itself back into the earth.
+She then catches another one rising right next to her. She tries backing away
+slowly, but then nearly trips on a root behind her. She breaks into a run,
+leaping with each step so that her feet cannot be caught. She hears the rustling
+of leaves in the wind and it sounds like laughter.
+================================================================================
+{Susie} hears rustling in the leaves and turns to face it. She sees a mouse
+emerge, looking around for signs of danger. {Susie} lets out the breath that she
+had just realized she was holding.
+
+“Human, what are you doing in the forest?” she hears it ask.
+
+{Susie} jumps. She starts to answer, but then she sees a blur dive towards the
+mouse, grab it, and then head back towards the sky; after a moment of staring
+she realizes that it is an owl. The screams of the mouse for help die away as
+the owl flies off.
+
+She resumes her search, shaken by what had just happened.
+================================================================================
+{Susie} looks up at the Moon. For reasons that nobody understands, the Moon is
+always full in the Wicked Forest. The good news is that this makes it easier to
+search for {Illsbane}, but the bad news is that she has to worry about
+werewolves...
+================================================================================
+“Hello, human. It isn't often that I get to see one of your kind here.”
+
+{Susie} jumped and looked around for the source of the voice. She heard it
+laugh. “You are just as stupid as the rest of your kind. Look, I am over here.”
+
+{Susie} finally realized that the voice was coming from the tree right next to
+her.
+
+“Why are you here?” it asked. {Susie} replied, “I am looking for an {Illsbane}
+plant. I down't suppose you have seen one?” It laughed. “Do I look like I have
+legs?” {Susie} replied, “Umm, no, I guess not; I guess I'll just be going on my
+way then...”
+
+{Susie} resumed searching, the laugher of the tree receding as she left it
+behind.
 ================================================================================
 |]
 
