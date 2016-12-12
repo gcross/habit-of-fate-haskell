@@ -79,6 +79,9 @@ textWithDefaultSubstitutionsForLens lens template =
 forestText ∷ String → ForestAction ()
 forestText = textWithDefaultSubstitutionsForLens quest ∘ stripEquals
 
+forestTexts ∷ String → ForestAction ()
+forestTexts = uniformAction ∘ map forestText ∘ splitTexts
+
 startsWithEquals ∷ String → Bool
 startsWithEquals = (== Just '=') ∘ (^? _head)
 
@@ -154,11 +157,11 @@ the way.
 
 found ∷ ForestAction ()
 found = do
-  uniformAction ∘ map forestText $ found_texts
+  forestTexts found_texts
   quest . herb_found .= True
   numberUntilEvent 5 >>= (quest . credits_until_success .=)
   where
-    found_texts = splitTexts [s|
+    found_texts = [s|
 ================================================================================
 
 After searching for what feels like hours, {Susie} nearly steps on {an Illsbane}
