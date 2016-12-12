@@ -268,17 +268,7 @@ mainLoop = loop [] $
                 (do
                   liftIO $ do
                     putStrLn ""
-                    putStrLn "[Press any key to continue.]"
-                    bracket_
-                      (do hSetBuffering stdin NoBuffering
-                          hSetEcho stdin False
-                      )
-                      (do hSetBuffering stdin LineBuffering
-                          hSetEcho stdin True
-                      )
-                      (void getChar)
-                    cursorUpLine 1
-                    clearLine
+                    pressAnyKeyToContinue
                     if completed
                       then do
                         putStrLn $ replicate 80 '='
@@ -287,6 +277,7 @@ mainLoop = loop [] $
                       else do
                         putStrLn $ replicate 80 '-'
                     putStrLn ""
+                    pressAnyKeyToContinue
                 )
           liftIO $ putStrLn ""
         )
@@ -303,6 +294,19 @@ mainLoop = loop [] $
       use
       ∘
       (game .)
+
+    pressAnyKeyToContinue = do
+      putStrLn "[Press any key to continue.]"
+      bracket_
+        (do hSetBuffering stdin NoBuffering
+            hSetEcho stdin False
+        )
+        (do hSetBuffering stdin LineBuffering
+            hSetEcho stdin True
+        )
+        (void getChar)
+      cursorUpLine 1
+      clearLine
 
     printHabits = do
       habits' ← use (behaviors . habits)
