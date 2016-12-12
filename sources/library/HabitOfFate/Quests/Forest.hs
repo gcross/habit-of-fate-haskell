@@ -141,13 +141,13 @@ new =
   >>=
   execStateT (introText [s|
 ================================================================================
-The last thing in the world that {Susie} wanted to do was to wander around alone
-in the forest this night, but {Tommy} was sick and would not live through the
-night unless {Susie} could find {an Illsbane} plant to brew medicine for
-{him|Tommy}. It is a nearly hopeless task, but she has no other choice.
+The last thing in the world that {Susie} wanted to do was to wander alone in the
+Wicked Forest at night, but {Tommy} was sick and would not live through the
+night unless {Susie} could find {an Illsbane} plant. It is a hopeless task, but
+she has no other choice.
 
-She prays for a micale, and then begins her search, carrying a candle to light
-the way.
+She prays to you for a miracle, and then begins her search, carrying a candle to
+light the way.
 ================================================================================
 |])
 
