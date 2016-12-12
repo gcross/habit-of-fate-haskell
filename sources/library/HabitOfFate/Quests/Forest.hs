@@ -17,6 +17,8 @@ module HabitOfFate.Quests.Forest where
 import Control.Lens
 import Control.Monad.State hiding (State)
 import Data.Bool
+import Data.List.Lens
+import Data.List.Split
 import Data.Map (fromList)
 import Data.String.QQ
 
@@ -74,7 +76,24 @@ textWithDefaultSubstitutionsForLens lens template =
   >>=
   \forest → textWithDefaultSubstitutionsPlus forest [] template
 
-forestText = textWithDefaultSubstitutionsForLens quest
+forestText ∷ String → ForestAction ()
+forestText = textWithDefaultSubstitutionsForLens quest ∘ stripEquals
+
+startsWithEquals ∷ String → Bool
+startsWithEquals = (== Just '=') ∘ (^? _head)
+
+splitTexts ∷ String → [String]
+splitTexts =
+  filter (not ∘ null)
+  ∘
+  map unlines
+  ∘
+  split (condense ∘ dropDelims ∘ whenElt $ startsWithEquals)
+  ∘
+  lines
+
+stripEquals ∷ String → String
+stripEquals = unlines ∘ filter (not ∘ startsWithEquals) ∘ lines
 
 --------------------------------------------------------------------------------
 ------------------------------------ Logic -------------------------------------
@@ -103,7 +122,7 @@ run = do
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-introText = textWithDefaultSubstitutionsForLens id
+introText = textWithDefaultSubstitutionsForLens id ∘ stripEquals
 
 new ∷ Game State
 new =
@@ -118,15 +137,16 @@ new =
   )
   >>=
   execStateT (introText [s|
-    The last thing in the world that {Susie} wanted to do was to wander around
-    alone in the forest this night, but {Tommy} was sick and would not live
-    through the night unless {Susie} could find {an Illsbane} plant to brew
-    medicine for {him|Tommy}. It is a nearly hopeless task, but she has no other
-    choice.
+================================================================================
+The last thing in the world that {Susie} wanted to do was to wander around alone
+in the forest this night, but {Tommy} was sick and would not live through the
+night unless {Susie} could find {an Illsbane} plant to brew medicine for
+{him|Tommy}. It is a nearly hopeless task, but she has no other choice.
 
-    She prays for a micale, and then begins her search, carrying a candle to
-    light the way.
-  |])
+She prays for a micale, and then begins her search, carrying a candle to light
+the way.
+================================================================================
+|])
 
 --------------------------------------------------------------------------------
 ------------------------------------ Found -------------------------------------
@@ -138,13 +158,15 @@ found = do
   quest . herb_found .= True
   numberUntilEvent 5 >>= (quest . credits_until_success .=)
   where
-    found_texts =
-      [[s|
+    found_texts = splitTexts [s|
+================================================================================
+
 After searching for what feels like hours, {Susie} nearly steps on {an Illsbane}
 plant. {Her} heart leaps and {she} gives a short prayer of thanks. {She} reaches
 down carefully to pick it up, and then starts heading back to her home.
-       |]
-      ,[s|
+
+================================================================================
+
 {Susie} starts to hear a sound and she can't tell whether it is a buzzing or the
 most beautiful music she has ever heard. As it gets louder she notices the area
 around her starting to get brighter. She looks around and sees a fairy, glowing
@@ -158,8 +180,9 @@ looks up, the fairy is gone.
 
 {She} falls to her knees and thanks you for guiding her to the plan. {She} then
 gets up and starts heading back to her home.
-      |]
-      ]
+
+================================================================================
+|]
 
 --------------------------------------------------------------------------------
 ------------------------------------- Won --------------------------------------
@@ -171,8 +194,8 @@ won = do
   game . belief += 1
   questHasEnded
   where
-    won_text =
-      [s|
+    won_text = [s|
+================================================================================
 {Susie} is starting to feel like {she} will never make it back when she notices
 that things are starting to get brighter -- {she} must be getting close to the
 vilage! {She} gives you thanks for guiding {her} home.
@@ -185,7 +208,8 @@ catches up to her and {she} falls asleep on the floor.
 
 {She} sleeps peacefully, with a smile on her face. The next day, she builds an
 alter to you out of gratitude.
-      |]
+================================================================================
+|]
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -197,19 +221,24 @@ lost = do
   game . belief -= 1
   questHasEnded
   where
-    lost_text =
-      [s|
+    lost_text = [s|
+================================================================================
 {She} takes too long, and {Tommy} dies}. She prays to you asking what she did
 wrong for you to abandon her in her time of need. She still believes in you, but
 a little less than before.
-      |]
+================================================================================
+|]
 
 --------------------------------------------------------------------------------
 ------------------------------------ Wander ------------------------------------
 --------------------------------------------------------------------------------
 
 wander ∷ ForestAction ()
-wander = forestText [s|{She} wanders through the forest.|]
+wander = forestText [s|
+================================================================================
+{She} wanders through the forest.
+================================================================================
+|]
 
 --------------------------------------------------------------------------------
 ----------------------------------- Averted ------------------------------------

@@ -12,14 +12,15 @@ module HabitOfFate.Game where
 
 import Control.Lens (makeLenses)
 import Control.Monad (join)
-import Control.Monad.Random hiding (uniform)
+import Control.Monad.Random hiding (split, uniform)
 import Control.Monad.State
 import Control.Monad.Writer
 import qualified Control.Monad.Random as Random
 import Data.List.Split
-import System.Random
+import System.Random hiding (split)
 
 import HabitOfFate.TH
+import HabitOfFate.Unicode
 
 data GameState = GameState
   { _belief ∷ Int
@@ -75,7 +76,16 @@ runGame state game = do
   return $ GameResult new_game_result paragraphs returned_value
 
 gameText ∷ String → Game ()
-gameText = tell . map (concatMap words) . splitWhen null . lines
+gameText =
+  tell
+  ∘
+  map (concatMap words)
+  ∘
+  filter (not ∘ null)
+  ∘
+  splitWhen null
+  ∘
+  lines
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform
