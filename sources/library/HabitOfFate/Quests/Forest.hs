@@ -99,29 +99,6 @@ stripEquals ∷ String → String
 stripEquals = unlines ∘ filter (not ∘ startsWithEquals) ∘ lines
 
 --------------------------------------------------------------------------------
------------------------------------- Logic -------------------------------------
---------------------------------------------------------------------------------
-
-run ∷ ForestAction ()
-run = do
-  spendCredits
-    (quest . credits_until_failure)
-    (game . failure_credits)
-    >>=
-    \case
-      SomethingHappened → lost
-      NothingHappened → averted
-      NoCredits → return ()
-  spendCredits
-    (quest . credits_until_success)
-    (game . success_credits)
-    >>=
-    \case
-      SomethingHappened → (use $ quest . herb_found) >>= bool found won
-      NothingHappened → wander
-      NoCredits → return ()
-
---------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
@@ -218,19 +195,63 @@ alter to you out of gratitude.
 ------------------------------------- Lost -------------------------------------
 --------------------------------------------------------------------------------
 
+data FailureResult = FailureAverted | FailureHappened
+
+data FailureStory = FailureStory
+  { _common_failure_story ∷ String
+  , _failure_averted_story ∷ String
+  , _failure_happened_story ∷ String
+  }
+makeLenses ''FailureStory
+
 lost ∷ ForestAction ()
 lost = do
-  forestText lost_text
+  uniform failure_stories >>= runFailureStory FailureHappened
   game . belief -= 1
   questHasEnded
+
+averted ∷ ForestAction ()
+averted = uniform failure_stories >>= runFailureStory FailureAverted
+
+runFailureStory ∷ FailureResult → FailureStory → ForestAction ()
+runFailureStory failure_result story = do
+  forestText $ story ^. common_failure_story
+  forestText ∘ (story ^.) $
+    case failure_result of
+      FailureAverted → failure_averted_story
+      FailureHappened → failure_happened_story
+
+makeFailureStory story = FailureStory common averted happened
   where
-    lost_text = [s|
+    [common,averted,happened] = splitTexts story
+
+failure_stories ∷ [FailureStory]
+failure_stories = map makeFailureStory
+------------------------------ Gingerbread House -------------------------------
+  [[s|
 ================================================================================
-{She} takes too long, and {Tommy} dies}. She prays to you asking what she did
-wrong for you to abandon her in her time of need. She still believes in you, but
-a little less than before.
+{Susie} sees a house made out of... gingerbread?
+
+She feels a strange compulsion to approach it.
 ================================================================================
-|]
+She fights the compulsion, and continues on her search.
+================================================================================
+As she gets closer, the door opens and an old woman beckons her in. “You've
+arrived just in time!” she says. “Dinner has just finished cooking. Come on in!”
+
+Not knowing why she was doing this, {Susie} entered the... cottage? The woman
+leads her to an oven. “Here, look inside.”
+
+{Susie} looks inside the oven and sees... little {Tommy}? She screams, and
+faints.
+
+Daylight awakens her. She looks around, but the gingerbread house is nowhere to
+be found.
+
+She sobs -- there is no way that she will be able to make it home in time now.
+================================================================================
+     |]
+  ]
 
 --------------------------------------------------------------------------------
 ------------------------------------ Wander ------------------------------------
@@ -305,11 +326,36 @@ way then...”
 {Susie} resumed searching, the laugher of the tree receding as she left it
 behind.
 ================================================================================
+{Susie} finally sees an {Illsbane} plant.  She offers you a prayer of thanks,
+and then reaches down to pick it.
+
+Suddenly, it changes into the shape of a creature with a head, three arms, and
+three legs. It makes a noise that mixes shrieking with laughter, and then runs
+off.
+
+{Susie} bows her head in shock and disappointment, and resumes searching.
 |]
 
+
 --------------------------------------------------------------------------------
------------------------------------ Averted ------------------------------------
+------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
-averted ∷ ForestAction ()
-averted = forestText [s|{She} trips and falls, but gets up after minute.|]
+run ∷ ForestAction ()
+run = do
+  spendCredits
+    (quest . credits_until_failure)
+    (game . failure_credits)
+    >>=
+    \case
+      SomethingHappened → lost
+      NothingHappened → averted
+      NoCredits → return ()
+  spendCredits
+    (quest . credits_until_success)
+    (game . success_credits)
+    >>=
+    \case
+      SomethingHappened → (use $ quest . herb_found) >>= bool found won
+      NothingHappened → wander
+      NoCredits → return ()
