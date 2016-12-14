@@ -35,7 +35,7 @@ import Debug.Trace
 --------------------------------------------------------------------------------
 
 data State = State
-  { _healer ∷ Character
+  { _parent ∷ Character
   , _patient ∷ Character
   , _herb ∷ String
   , _herb_found ∷ Bool
@@ -53,7 +53,7 @@ type ForestAction = QuestAction State
 
 defaultSubstitutionTable ∷ State → Substitutions
 defaultSubstitutionTable forest = makeSubstitutionTable
-  [("Susie",forest ^. healer)
+  [("Susie",forest ^. parent)
   ,("Tommy",forest ^. patient)
   ,("Illsbane",Character (forest ^. herb) Neuter)
   ]
@@ -142,9 +142,9 @@ new =
   execStateT (introText [s|
 ================================================================================
 The last thing in the world that {Susie} wanted to do was to wander alone in the
-Wicked Forest at night, but {Tommy} was sick and would not live through the
-night unless {Susie} could find {an Illsbane} plant. It is a hopeless task, but
-she has no other choice.
+Wicked Forest at night, but her son, little {Tommy} was sick and would not live
+through the night unless {Susie} could find {an Illsbane} plant. It is a
+hopeless task, but she has no other choice.
 
 She prays to you for a miracle, and then begins her search, carrying a candle to
 light the way.
