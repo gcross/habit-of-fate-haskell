@@ -24,11 +24,14 @@ library
                      , mtl
                      , operational
                      , random
+                     , servant-server
                      , split
                      , string-qq
+                     , text
                      , time
                      , transformers
                      , yaml
+                     , warp
   exposed-modules:     HabitOfFate.Behaviors
                      , HabitOfFate.Behaviors.Habit
                      , HabitOfFate.Console
@@ -37,6 +40,7 @@ library
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
+                     , HabitOfFate.Server
                      , HabitOfFate.Substitution
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
@@ -57,4 +61,11 @@ executable habit
                      , mtl
                      , transformers
                      , yaml
+  default-language:    Haskell2010
+
+executable habit-server
+  hs-source-dirs:      sources/executables
+  main-is:             habit-server.hs
+  build-depends:       habit-of-fate
+                     , base
   default-language:    Haskell2010
