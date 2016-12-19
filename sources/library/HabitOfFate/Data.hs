@@ -1,10 +1,17 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Data where
 
 import Control.Lens
+import Control.Monad
+import qualified Data.ByteString as BS
 import Data.Maybe
+import Data.Yaml hiding ((.=))
+import System.Directory
+import System.Environment
+import System.FilePath
 
 import HabitOfFate.Behaviors
 import HabitOfFate.Game
@@ -32,3 +39,16 @@ runData d =
     ,d & game .~ result ^. new_game
        & quest .~ result ^. returned_value
     )
+
+readData ∷ FilePath → IO Data
+readData = BS.readFile >=> either error return . decodeEither
+
+writeData ∷ FilePath → Data → IO ()
+writeData = encodeFile
+
+getDataFilePath ∷ IO FilePath
+getDataFilePath =
+  getArgs >>= \case
+    [] → getHomeDirectory <&> (</> ".habit")
+    [filepath] → return filepath
+    _ → error "Only one argument may be provided."

@@ -19,16 +19,12 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Bool
-import qualified Data.ByteString as BS
 import Data.Char
 import Data.IORef
 import Data.List
 import Data.Maybe
-import Data.Yaml hiding ((.=))
 import System.Console.ANSI
 import System.Directory
-import System.Environment
-import System.FilePath
 import System.IO
 import Text.Printf
 import Text.Read (readEither, readMaybe)
@@ -341,15 +337,12 @@ mainLoop = loop [] $
 
 main ∷ IO ()
 main = do
-  filepath ← getArgs >>= \case
-    [] → getHomeDirectory <&> (</> ".habit")
-    [filepath] → return filepath
-    _ → error "Only one argument may be provided."
+  filepath ← getDataFilePath
   old_data ←
     doesFileExist filepath
     >>=
     bool (return newData)
-         (BS.readFile filepath >>= either error return . decodeEither)
+         (readData filepath)
   let run current_data = do
         new_data_ref ← newIORef current_data
         flip runContT return
@@ -365,7 +358,7 @@ main = do
                 promptForCommand "Save changes? [yna]"
                 >>=
                 \case
-                  'y' → encodeFile filepath new_data
+                  'y' → writeData filepath new_data
                   'n' → return ()
                   'a' → run new_data
                   _ → putStrLn "Please type either 'y', 'n', or 'a''." >> go
