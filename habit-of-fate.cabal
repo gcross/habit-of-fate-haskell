@@ -19,6 +19,7 @@ library
                      , containers
                      , directory
                      , filepath
+                     , hslogger
                      , MonadRandom
                      , lens
                      , mtl
