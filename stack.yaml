@@ -3,5 +3,5 @@ extra-package-dbs: []
 packages:
 - '.'
 extra-deps:
-- pipes-sqlite-simple-0.2
+- uuid-aeson-0.1.0.0
 resolver: lts-7.6

@@ -12,7 +12,7 @@ import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Bool
 import Data.String
-import Data.Text
+import Data.Text hiding (map)
 import Network.Wai.Handler.Warp
 import Servant
 import System.Directory
@@ -24,16 +24,23 @@ import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Data
 import HabitOfFate.Unicode
 
-type API = "habits" :> Get '[JSON] Value
+type HabitsHandler = "habits" :> Get '[JSON] Value
+type HabitHandler = "habit" :> Capture "habitid" :> Get '[JSON] Value
+type API = HabitsHandler -- :<|> HabitHandler
 
 api ∷ Proxy API
 api = Proxy
 
 server ∷ MVar Data → Server API
-server mvar =
-  createSuccessResponse "https://localhost/" ∘ (^. behaviors . habits)
-  <$>
+server mvar = habitsHandler mvar
+
+habitsHandler mvar =
   liftIO (readMVar mvar)
+  <&>
+  \d → object
+    [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
+    , "data" .= map habitToJSON (d ^. behaviors . habits)
+    ]
 
 app ∷ MVar Data → Application
 app mvar = serve api (server mvar)

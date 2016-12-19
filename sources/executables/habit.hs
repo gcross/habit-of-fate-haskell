@@ -12,6 +12,8 @@
 
 module Main where
 
+import Prelude hiding (id)
+
 import Control.Exception
 import Control.Lens
 import Control.Monad.Cont
@@ -23,9 +25,11 @@ import Data.Char
 import Data.IORef
 import Data.List
 import Data.Maybe
+import Data.UUID ()
 import System.Console.ANSI
 import System.Directory
 import System.IO
+import System.Random
 import Text.Printf
 import Text.Read (readEither, readMaybe)
 
@@ -205,7 +209,8 @@ mainLoop = loop [] $
     [('a',) ∘ Action "Add a habit." $
       (callCC $ \ctrl_c →
         Habit
-          <$> prompt ctrl_c "What is the name of the habit?"
+          <$> liftIO randomIO
+          <*> prompt ctrl_c "What is the name of the habit?"
           <*> promptWithDefault' ctrl_c 1.0 "How many credits is a success worth?"
           <*> promptWithDefault' ctrl_c 0.0 "How many credits is a failure worth?"
         >>=
@@ -219,7 +224,8 @@ mainLoop = loop [] $
         old_habit ←  fromJust <$> preuse (behaviors . habits . ix index)
         new_habit ←
           Habit
-            <$> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
+            <$> (return $ old_habit ^. id)
+            <*> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
             <*> promptWithDefault' ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
             <*> promptWithDefault' ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
         behaviors . habits . ix index .= new_habit
