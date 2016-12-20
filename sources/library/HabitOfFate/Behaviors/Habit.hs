@@ -8,9 +8,11 @@ module HabitOfFate.Behaviors.Habit where
 
 import Control.Lens hiding ((.=))
 import Data.Aeson
+import qualified Data.HashMap.Strict as HashMap
+import Data.Maybe
 import Data.Text (Text)
 import Data.UUID
-import Data.UUID.Aeson
+import Data.UUID.Aeson ()
 
 import HabitOfFate.TH
 
@@ -23,20 +25,12 @@ data Habit = Habit
 deriveJSON ''Habit
 makeLenses ''Habit
 
-data Attr α = ∀ β. Show β ⇒ Attr Text (Getter α β)
-
-toDoc ∷ Text → Getter α UUID → [Attr α] → α → Value
-toDoc typ uuid attrs x = object
+toDoc ∷ ToJSON α ⇒ Text → α → Value
+toDoc typ x = object
   [
     "type" .= String typ
-  , "id" .= toText (x ^. uuid)
-  , "attributes" .= object
-      [ name .= show (x ^. getter) | Attr name getter ← attrs ]
+  , "id" .= fromJust (HashMap.lookup "uuid" fields)
+  , "attributes" .= Object (HashMap.delete "uuid" fields)
   ]
-
-habitToDoc ∷ Habit → Value
-habitToDoc = toDoc "habit" uuid
-  [ Attr "name" name
-  , Attr "success" success_credits
-  , Attr "failure" failure_credits
-  ]
+  where
+    Object fields = toJSON x
