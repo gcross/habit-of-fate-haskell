@@ -9,14 +9,16 @@ module HabitOfFate.Server where
 import Prelude hiding (id)
 
 import Control.Lens hiding ((.=))
+import qualified Control.Lens as Lens
 import Control.Concurrent.MVar
 import Control.Monad.Except
 import Control.Monad.IO.Class
 import Data.Aeson hiding (json)
+import Data.Aeson.Types
 import Data.Bool
 import Data.List
 import Data.String
-import Data.Text (Text)
+import Data.Text.Lazy (Text, pack)
 import Data.UUID
 import Network.HTTP.Types.Status
 import System.Directory
@@ -56,7 +58,7 @@ habitMain = do
       user_habits ← (^. behaviors . habits) <$> liftIO (readMVar mvar)
       jsonObject
         [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
-        , "data" .= map (toDoc "habit") user_habits
+        , "data" .= map habitToDoc user_habits
         ]
     get "/habits/:id" $ do
       habit_id ← param "id"
@@ -68,6 +70,33 @@ habitMain = do
           (status notFound404)
           (\habit → jsonObject
             [ "links" .= object ["self" .= String ("http://localhost:8081/habit/" ⊕ habit_id)]
-            , "data" .= toDoc "habit" habit
+            , "data" .= habitToDoc habit
             ]
           )
+    put "/habits/:id" $ do
+      habit_id ← param "id"
+      habit ←
+        body <&> eitherDecode'
+        >>=
+        either
+          (\error_message → do
+            status badRequest400
+            text ∘ pack $ "Error when parsing the document: " ⊕ error_message
+            finish
+          )
+          (return ∘ parseEither ((.: "data") >=> habitFromDoc))
+        >>=
+        either
+          (\error_message → do
+            status badRequest400
+            text ∘ pack $ "Error when parsing the Habit: " ⊕ error_message
+            finish
+          )
+          return
+      found ← liftIO ∘ modifyMVar mvar $ \d →
+          case findIndex ((== habit_id) ∘ toText ∘ (^. uuid)) $ d ^. behaviors . habits of
+            Nothing → return (d, False)
+            Just index → return (d & (behaviors . habits . ix index) .~ habit, True)
+      unless found $ do
+        status notFound404
+        finish

@@ -7,14 +7,18 @@
 module HabitOfFate.Behaviors.Habit where
 
 import Control.Lens hiding ((.=))
+import Control.Monad
 import Data.Aeson
+import Data.Aeson.Types
 import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Data.UUID
 import Data.UUID.Aeson ()
+import Text.Printf
 
 import HabitOfFate.TH
+import HabitOfFate.Unicode
 
 data Habit = Habit
   { _uuid ∷ UUID
@@ -25,6 +29,9 @@ data Habit = Habit
 deriveJSON ''Habit
 makeLenses ''Habit
 
+habitToDoc ∷ Habit → Value
+habitToDoc = toDoc "habit"
+
 toDoc ∷ ToJSON α ⇒ Text → α → Value
 toDoc typ x = object
   [
@@ -34,3 +41,19 @@ toDoc typ x = object
   ]
   where
     Object fields = toJSON x
+
+habitFromDoc ∷ Value → Parser Habit
+habitFromDoc = fromDoc "habit"
+
+fromDoc ∷ FromJSON α ⇒ Text → Value → Parser α
+fromDoc typ value =
+  flip (withObject $ "Invalid doc of type " ⊕ unpack typ) value $ \fields → do
+    doc_type ← fields .: "type"
+    unless (doc_type == typ) ∘ fail $
+      printf
+        "Expected type %s does not match given type %s"
+        typ
+        doc_type
+    attributes ← fields .: "attributes" >>= withObject "Attributes was not an object" return
+    fields .: "id" >>=
+      parseJSON ∘ Object ∘ flip (HashMap.insert "uuid") attributes ∘ String
