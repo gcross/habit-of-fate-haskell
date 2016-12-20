@@ -56,7 +56,7 @@ habitMain = do
       user_habits ← (^. behaviors . habits) <$> liftIO (readMVar mvar)
       jsonObject
         [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
-        , "data" .= map habitToJSON user_habits
+        , "data" .= map habitToDoc user_habits
         ]
     get "/habits/:id" $ do
       habit_id ← param "id"
@@ -68,6 +68,6 @@ habitMain = do
           (status notFound404)
           (\habit → jsonObject
             [ "links" .= object ["self" .= String ("http://localhost:8081/habit/" ⊕ habit_id)]
-            , "data" .= habitToJSON habit
+            , "data" .= habitToDoc habit
             ]
           )

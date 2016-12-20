@@ -1,4 +1,6 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -6,9 +8,9 @@ module HabitOfFate.Behaviors.Habit where
 
 import Prelude hiding (id)
 
-import Control.Lens ((^.), makeLenses)
+import Control.Lens hiding ((.=))
 import Data.Aeson
-import Data.Text ()
+import Data.Text (Text)
 import Data.UUID
 import Data.UUID.Aeson
 
@@ -23,14 +25,20 @@ data Habit = Habit
 deriveJSON ''Habit
 makeLenses ''Habit
 
-habitToJSON ∷ Habit → Value
-habitToJSON habit = object
+data Attr α = ∀ β. Show β ⇒ Attr Text (Getter α β)
+
+toDoc ∷ Text → Getter α UUID → [Attr α] → α → Value
+toDoc typ id attrs x = object
   [
-    "type" .= String "habit"
-  , "id" .= toText (habit ^. id)
+    "type" .= String typ
+  , "id" .= toText (x ^. id)
   , "attributes" .= object
-      [ "name" .= (habit ^. name)
-      , "success" .= (habit ^. success_credits)
-      , "failure" .= (habit ^. failure_credits)
-      ]
+      [ name .= show (x ^. getter) | Attr name getter ← attrs ]
+  ]
+
+habitToDoc ∷ Habit → Value
+habitToDoc = toDoc "habit" id
+  [ Attr "name" name
+  , Attr "success" success_credits
+  , Attr "failure" failure_credits
   ]
