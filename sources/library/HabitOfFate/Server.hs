@@ -10,12 +10,12 @@ import Prelude hiding (id)
 
 import Control.Lens hiding ((.=))
 import qualified Control.Lens as Lens
-import Control.Concurrent.MVar
-import Control.Monad.Except
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Aeson hiding (json)
 import Data.Aeson.Types
 import Data.Bool
+import Data.IORef
 import Data.List
 import Data.String
 import Data.Text.Lazy (Text, pack)
@@ -41,7 +41,7 @@ port = 8081
 habitMain = do
   filepath ← getDataFilePath
   info $ "Data file is located at " ++ filepath
-  mvar ←
+  data_ref ←
     doesFileExist filepath
     >>=
     bool (do info "Creating new data file"
@@ -51,18 +51,18 @@ habitMain = do
              readData filepath
          )
     >>=
-    newMVar
+    newIORef
   notice $ "Starting server at " ++ show port
   scotty port $ do
     get "/habits" $ do
-      user_habits ← (^. behaviors . habits) <$> liftIO (readMVar mvar)
+      user_habits ← (^. behaviors . habits) <$> liftIO (readIORef data_ref)
       jsonObject
         [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
         , "data" .= map habitToDoc user_habits
         ]
     get "/habits/:id" $ do
       habit_id ← param "id"
-      liftIO (readMVar mvar)
+      liftIO (readIORef data_ref)
         <&>
         find ((== habit_id) ∘ toText ∘ (^. uuid)) ∘ (^. behaviors . habits)
         >>=
@@ -93,10 +93,10 @@ habitMain = do
             finish
           )
           return
-      found ← liftIO ∘ modifyMVar mvar $ \d →
-          case findIndex ((== habit_id) ∘ toText ∘ (^. uuid)) $ d ^. behaviors . habits of
-            Nothing → return (d, False)
-            Just index → return (d & (behaviors . habits . ix index) .~ habit, True)
-      unless found $ do
-        status notFound404
-        finish
+      old_data ← liftIO $ readIORef data_ref
+      case findIndex ((== habit_id) ∘ toText ∘ (^. uuid)) (old_data ^. behaviors . habits) of
+          Nothing → status notFound404
+          Just index → liftIO $ do
+            let new_data = old_data & behaviors . habits . ix index .~ habit
+            writeIORef data_ref new_data
+            writeData filepath new_data
