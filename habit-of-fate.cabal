@@ -20,12 +20,13 @@ library
                      , directory
                      , filepath
                      , hslogger
+                     , http-types
                      , MonadRandom
                      , lens
                      , mtl
                      , operational
                      , random
-                     , servant-server
+                     , scotty
                      , split
                      , string-qq
                      , text
