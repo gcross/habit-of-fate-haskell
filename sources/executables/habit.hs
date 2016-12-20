@@ -12,8 +12,6 @@
 
 module Main where
 
-import Prelude hiding (id)
-
 import Control.Exception
 import Control.Lens
 import Control.Monad.Cont
@@ -224,7 +222,7 @@ mainLoop = loop [] $
         old_habit ←  fromJust <$> preuse (behaviors . habits . ix index)
         new_habit ←
           Habit
-            <$> (return $ old_habit ^. id)
+            <$> (return $ old_habit ^. uuid)
             <*> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
             <*> promptWithDefault' ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
             <*> promptWithDefault' ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"

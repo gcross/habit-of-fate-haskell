@@ -62,7 +62,7 @@ habitMain = do
       habit_id ← param "id"
       liftIO (readMVar mvar)
         <&>
-        find ((== habit_id) ∘ toText ∘ (^. id)) ∘ (^. behaviors . habits)
+        find ((== habit_id) ∘ toText ∘ (^. uuid)) ∘ (^. behaviors . habits)
         >>=
         maybe
           (status notFound404)
