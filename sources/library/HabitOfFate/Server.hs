@@ -83,8 +83,16 @@ habitMain = do
             , "data" .= habitToDoc habit
             ]
           )
+    let withIndexAndData uuid_lens collection f = do
+          old_data ← liftIO $ readIORef data_ref
+          id ← param "id"
+          case Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection) of
+              Nothing → status notFound404
+              Just index → liftIO $ do
+                let new_data = f index old_data
+                writeIORef data_ref new_data
+                writeData filepath new_data
     put "/habits/:id" $ do
-      habit_id ← param "id"
       habit ←
         body <&> eitherDecode'
         >>=
@@ -103,30 +111,10 @@ habitMain = do
             finish
           )
           return
-      old_data ← liftIO $ readIORef data_ref
-      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. habits) of
-          Nothing → status notFound404
-          Just index → liftIO $ do
-            let new_data = old_data & habits . ix index .~ habit
-            writeIORef data_ref new_data
-            writeData filepath new_data
+      withIndexAndData uuid habits $ \index → habits . ix index .~ habit
     delete "/habits/:id" $ do
-      habit_id ← param "id"
-      old_data ← liftIO (readIORef data_ref)
-      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. habits) of
-          Nothing → status notFound404
-          Just index → liftIO $ do
-            let new_data = old_data & habits %~ deleteAt index
-            writeIORef data_ref new_data
-            writeData filepath new_data
+      withIndexAndData uuid habits $ \index → habits %~ deleteAt index
     get "/move/habit/:id/:index" $ do
-      habit_id ← param "id"
       new_index ← param "index"
-      old_data ← liftIO (readIORef data_ref)
-      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. habits) of
-          Nothing → status notFound404
-          Just index → liftIO $ do
-            let new_data = old_data & habits %~ (
-                    \h → insertAt new_index (Seq.index h index) (deleteAt index h))
-            writeIORef data_ref new_data
-            writeData filepath new_data
+      withIndexAndData uuid habits $ \index → habits %~
+        (\h → insertAt new_index (Seq.index h index) (deleteAt index h))
