@@ -84,15 +84,17 @@ habitMain = do
             , "data" .= habitToDoc habit
             ]
           )
-    let withIndexAndData uuid_lens collection f = do
+    let writeDataToFile = liftIO $ readIORef data_ref >>= writeData filepath
+        modifyAndWriteData f = liftIO $ do
+          modifyIORef data_ref f
+          writeDataToFile
+        withIndexAndData uuid_lens collection f = do
           old_data ← liftIO $ readIORef data_ref
           id ← param "id"
-          case Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection) of
-              Nothing → status notFound404
-              Just index → liftIO $ do
-                let new_data = f index old_data
-                writeIORef data_ref new_data
-                writeData filepath new_data
+          maybe
+            (status notFound404)
+            (modifyAndWriteData ∘ f)
+            (Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection))
         readHabit maybe_uuid =
           body <&> eitherDecode'
           >>=
@@ -122,8 +124,4 @@ habitMain = do
         (\h → insertAt new_index (Seq.index h index) (deleteAt index h))
     put "/habits" $ do
       habit ← liftIO randomIO >>= readHabit ∘ Just
-      liftIO $ do
-        old_data ← readIORef data_ref
-        let new_data = old_data & habits %~ (|> habit)
-        writeIORef data_ref new_data
-        writeData filepath new_data
+      modifyAndWriteData $ habits %~ (|> habit)
