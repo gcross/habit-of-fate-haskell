@@ -65,6 +65,43 @@ habitMain = do
          )
     >>=
     newIORef
+  let writeDataToFile = liftIO $ readIORef data_ref >>= writeData filepath
+      modifyAndWriteData f = liftIO $ do
+        modifyIORef data_ref f
+        writeDataToFile
+      withIndexAndData uuid_lens collection f = do
+        old_data ← liftIO $ readIORef data_ref
+        id ← param "id"
+        maybe
+          (status notFound404)
+          (modifyAndWriteData ∘ f)
+          (Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection))
+      readHabit maybe_uuid =
+        body <&> eitherDecode'
+        >>=
+        either
+          (\error_message → do
+            status badRequest400
+            text ∘ pack $ "Error when parsing the document: " ⊕ error_message
+            finish
+          )
+          (return ∘ parseEither ((.: "data") >=> habitFromDoc maybe_uuid))
+        >>=
+        either
+          (\error_message → do
+            status badRequest400
+            text ∘ pack $ "Error when parsing the Habit: " ⊕ error_message
+            finish
+          )
+          return
+      lookupHabit habit_id = do
+        d ← liftIO $ readIORef data_ref
+        case find (hasId uuid habit_id) (d ^. habits) of
+          Nothing → do
+            status badRequest400
+            text ∘ pack $ "No habit with id " ⊕ show habit_id
+            finish
+          Just habit → return habit
   notice $ "Starting server at " ++ show port
   let writeDataToFile = liftIO $ readIORef data_ref >>= writeData filepath
       modifyAndWriteData f = liftIO $ do
