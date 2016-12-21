@@ -9,6 +9,10 @@ infixr 6 ⊕
 (⊕) = mappend
 {-# INLINE (⊕) #-}
 
+(⊘) ∷ Monoid m ⇒ m
+(⊘) = mempty
+{-# INLINE (⊘) #-}
+
 infixr 9 ∘
 (∘) ∷ (β → δ) → (α → β) → (α → δ)
 (∘) = (.)
