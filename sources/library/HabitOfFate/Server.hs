@@ -166,31 +166,35 @@ habitMain = do
     put "/habits" $ do
       habit ← liftIO randomIO >>= readHabit ∘ Just
       modifyAndWriteData $ habits %~ (|> habit)
-    post "/mark/successful/habits" $
-      body <&> eitherDecode'
-      >>=
-      either
-        (\error_message → do
-          status badRequest400
-          text ∘ pack $ "Error when parsing the document: " ⊕ error_message
-          finish
-        )
-        (return ∘ parseEither parseJSON)
-      >>=
-      either
-        (\error_message → do
-          status badRequest400
-          text ∘ pack $ "Error when parsing the list of ids: " ⊕ error_message
-          finish
-        )
-        return
-      >>=
-      mapM lookupHabit
-      >>=
-      modifyAndWriteData
-        ∘
-        (game . Game.success_credits +~)
-        ∘
-        sum
-        ∘
-        map (^. success_credits)
+    let markHabits habit_credits game_credits =
+          body <&> eitherDecode'
+          >>=
+          either
+            (\error_message → do
+              status badRequest400
+              text ∘ pack $ "Error when parsing the document: " ⊕ error_message
+              finish
+            )
+            (return ∘ parseEither parseJSON)
+          >>=
+          either
+            (\error_message → do
+              status badRequest400
+              text ∘ pack $ "Error when parsing the list of ids: " ⊕ error_message
+              finish
+            )
+            return
+          >>=
+          mapM lookupHabit
+          >>=
+          modifyAndWriteData
+            ∘
+            (game . game_credits +~)
+            ∘
+            sum
+            ∘
+            map (^. habit_credits)
+    post "/mark/success/habits" $
+      markHabits success_credits Game.success_credits
+    post "/mark/failure/habits" $
+      markHabits failure_credits Game.failure_credits
