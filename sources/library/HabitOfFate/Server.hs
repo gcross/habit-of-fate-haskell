@@ -27,6 +27,7 @@ import Network.HTTP.Types.Status
 import System.Directory
 import System.Log.Logger
 import System.IO
+import System.Random
 import Web.Scotty
 
 import HabitOfFate.Behaviors.Habit
@@ -92,25 +93,26 @@ habitMain = do
                 let new_data = f index old_data
                 writeIORef data_ref new_data
                 writeData filepath new_data
+        readHabit maybe_uuid =
+          body <&> eitherDecode'
+          >>=
+          either
+            (\error_message → do
+              status badRequest400
+              text ∘ pack $ "Error when parsing the document: " ⊕ error_message
+              finish
+            )
+            (return ∘ parseEither ((.: "data") >=> habitFromDoc maybe_uuid))
+          >>=
+          either
+            (\error_message → do
+              status badRequest400
+              text ∘ pack $ "Error when parsing the Habit: " ⊕ error_message
+              finish
+            )
+            return
     put "/habits/:id" $ do
-      habit ←
-        body <&> eitherDecode'
-        >>=
-        either
-          (\error_message → do
-            status badRequest400
-            text ∘ pack $ "Error when parsing the document: " ⊕ error_message
-            finish
-          )
-          (return ∘ parseEither ((.: "data") >=> habitFromDoc))
-        >>=
-        either
-          (\error_message → do
-            status badRequest400
-            text ∘ pack $ "Error when parsing the Habit: " ⊕ error_message
-            finish
-          )
-          return
+      habit ← readHabit Nothing
       withIndexAndData uuid habits $ \index → habits . ix index .~ habit
     delete "/habits/:id" $ do
       withIndexAndData uuid habits $ \index → habits %~ deleteAt index
@@ -118,3 +120,10 @@ habitMain = do
       new_index ← param "index"
       withIndexAndData uuid habits $ \index → habits %~
         (\h → insertAt new_index (Seq.index h index) (deleteAt index h))
+    put "/habits" $ do
+      habit ← liftIO randomIO >>= readHabit ∘ Just
+      liftIO $ do
+        old_data ← readIORef data_ref
+        let new_data = old_data & habits %~ (|> habit)
+        writeIORef data_ref new_data
+        writeData filepath new_data

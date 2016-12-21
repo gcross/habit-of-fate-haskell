@@ -42,11 +42,11 @@ toDoc typ x = object
   where
     Object fields = toJSON x
 
-habitFromDoc ∷ Value → Parser Habit
+habitFromDoc ∷ Maybe UUID → Value → Parser Habit
 habitFromDoc = fromDoc "habit"
 
-fromDoc ∷ FromJSON α ⇒ Text → Value → Parser α
-fromDoc typ value =
+fromDoc ∷ FromJSON α ⇒ Text → Maybe UUID → Value → Parser α
+fromDoc typ maybe_uuid value =
   flip (withObject $ "Invalid doc of type " ⊕ unpack typ) value $ \fields → do
     doc_type ← fields .: "type"
     unless (doc_type == typ) ∘ fail $
@@ -55,5 +55,6 @@ fromDoc typ value =
         typ
         doc_type
     attributes ← fields .: "attributes" >>= withObject "Attributes was not an object" return
-    fields .: "id" >>=
+    maybe (fields .: "id") (return ∘ toText) maybe_uuid
+      >>=
       parseJSON ∘ Object ∘ flip (HashMap.insert "uuid") attributes ∘ String
