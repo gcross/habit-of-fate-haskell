@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -32,6 +33,7 @@ import Web.Scotty
 
 import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Data
+import qualified HabitOfFate.Game as Game
 import HabitOfFate.Unicode
 
 deleteAt ∷ Int → Seq α → Seq α
@@ -113,6 +115,14 @@ habitMain = do
               finish
             )
             return
+        lookupHabit habit_id = do
+          d ← liftIO $ readIORef data_ref
+          case find (hasId uuid habit_id) (d ^. habits) of
+            Nothing → do
+              status badRequest400
+              text ∘ pack $ "No habit with id " ⊕ show habit_id
+              finish
+            Just habit → return habit
     put "/habits/:id" $ do
       habit ← readHabit Nothing
       withIndexAndData uuid habits $ \index → habits . ix index .~ habit
@@ -125,3 +135,31 @@ habitMain = do
     put "/habits" $ do
       habit ← liftIO randomIO >>= readHabit ∘ Just
       modifyAndWriteData $ habits %~ (|> habit)
+    post "/mark/successful/habits" $
+      body <&> eitherDecode'
+      >>=
+      either
+        (\error_message → do
+          status badRequest400
+          text ∘ pack $ "Error when parsing the document: " ⊕ error_message
+          finish
+        )
+        (return ∘ parseEither parseJSON)
+      >>=
+      either
+        (\error_message → do
+          status badRequest400
+          text ∘ pack $ "Error when parsing the list of ids: " ⊕ error_message
+          finish
+        )
+        return
+      >>=
+      mapM lookupHabit
+      >>=
+      modifyAndWriteData
+        ∘
+        (game . Game.success_credits +~)
+        ∘
+        sum
+        ∘
+        map (^. success_credits)
