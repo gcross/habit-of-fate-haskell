@@ -17,6 +17,7 @@ import Data.Aeson.Types
 import Data.Bool
 import Data.IORef
 import Data.List
+import qualified Data.Sequence as Seq
 import Data.String
 import Data.Text.Lazy (Text, pack)
 import Data.UUID
@@ -58,7 +59,7 @@ habitMain = do
       user_habits ← (^. behaviors . habits) <$> liftIO (readIORef data_ref)
       jsonObject
         [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
-        , "data" .= map habitToDoc user_habits
+        , "data" .= fmap habitToDoc user_habits
         ]
     get "/habits/:id" $ do
       habit_id ← param "id"
@@ -94,7 +95,7 @@ habitMain = do
           )
           return
       old_data ← liftIO $ readIORef data_ref
-      case findIndex ((== habit_id) ∘ toText ∘ (^. uuid)) (old_data ^. behaviors . habits) of
+      case Seq.findIndexL ((== habit_id) ∘ toText ∘ (^. uuid)) (old_data ^. behaviors . habits) of
           Nothing → status notFound404
           Just index → liftIO $ do
             let new_data = old_data & behaviors . habits . ix index .~ habit

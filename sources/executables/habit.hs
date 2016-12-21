@@ -21,8 +21,10 @@ import Control.Monad.State
 import Data.Bool
 import Data.Char
 import Data.IORef
+import Data.Foldable
 import Data.List
 import Data.Maybe
+import qualified Data.Sequence as Seq
 import Data.UUID ()
 import System.Console.ANSI
 import System.Directory
@@ -212,7 +214,7 @@ mainLoop = loop [] $
           <*> promptWithDefault' ctrl_c 1.0 "How many credits is a success worth?"
           <*> promptWithDefault' ctrl_c 0.0 "How many credits is a failure worth?"
         >>=
-        ((behaviors . habits %=) ∘ flip (⊞) ∘ (:[]))
+        (behaviors . habits %=) ∘ flip (|>)
       )
     ,('e',) ∘ Action "Edit a habit." $
       (callCC $ \ctrl_c → do
@@ -310,9 +312,9 @@ mainLoop = loop [] $
 
     printHabits = do
       habits' ← use (behaviors . habits)
-      if null habits'
+      if Seq.null habits'
         then liftIO $ putStrLn "There are no habits."
-        else forM_ (zip [1..] habits') $
+        else forM_ (zip [1..] (toList habits')) $
           liftIO
           ∘
           (\(n,habit) → do
