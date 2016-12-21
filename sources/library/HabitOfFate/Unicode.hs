@@ -5,7 +5,7 @@ module HabitOfFate.Unicode where
 import Data.Monoid (mappend)
 
 infixr 6 ⊕
-(⊕) :: Monoid m ⇒ m → m → m
+(⊕) ∷ Monoid m ⇒ m → m → m
 (⊕) = mappend
 {-# INLINE (⊕) #-}
 
