@@ -17,7 +17,8 @@ import Data.Aeson hiding (json)
 import Data.Aeson.Types
 import Data.Bool
 import Data.IORef
-import Data.List
+import Data.List hiding (delete)
+import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.String
 import Data.Text.Lazy (Text, pack)
@@ -31,6 +32,12 @@ import Web.Scotty
 import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Data
 import HabitOfFate.Unicode
+
+deleteAt ∷ Int → Seq α → Seq α
+deleteAt i s = Seq.take i s ⊕ Seq.drop (i+1) s
+
+insertAt ∷ Int → α → Seq α → Seq α
+insertAt i x s = (Seq.take i s |> x) ⊕ Seq.drop i s
 
 info = infoM "HabitOfFate.Server"
 notice = noticeM "HabitOfFate.Server"
@@ -101,5 +108,14 @@ habitMain = do
           Nothing → status notFound404
           Just index → liftIO $ do
             let new_data = old_data & habits . ix index .~ habit
+            writeIORef data_ref new_data
+            writeData filepath new_data
+    delete "/habits/:id" $ do
+      habit_id ← param "id"
+      old_data ← liftIO (readIORef data_ref)
+      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. habits) of
+          Nothing → status notFound404
+          Just index → liftIO $ do
+            let new_data = old_data & habits %~ deleteAt index
             writeIORef data_ref new_data
             writeData filepath new_data
