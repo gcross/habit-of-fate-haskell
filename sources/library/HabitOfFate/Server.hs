@@ -119,3 +119,14 @@ habitMain = do
             let new_data = old_data & habits %~ deleteAt index
             writeIORef data_ref new_data
             writeData filepath new_data
+    get "/move/habit/:id/:index" $ do
+      habit_id ← param "id"
+      new_index ← param "index"
+      old_data ← liftIO (readIORef data_ref)
+      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. habits) of
+          Nothing → status notFound404
+          Just index → liftIO $ do
+            let new_data = old_data & habits %~ (
+                    \h → insertAt new_index (Seq.index h index) (deleteAt index h))
+            writeIORef data_ref new_data
+            writeData filepath new_data
