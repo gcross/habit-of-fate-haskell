@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -39,6 +40,8 @@ jsonObject = json ∘ object
 
 port = 8081
 
+hasId uuid_lens uuid = (== uuid) ∘ toText ∘ (^. uuid_lens)
+
 habitMain = do
   filepath ← getDataFilePath
   info $ "Data file is located at " ++ filepath
@@ -65,7 +68,7 @@ habitMain = do
       habit_id ← param "id"
       liftIO (readIORef data_ref)
         <&>
-        find ((== habit_id) ∘ toText ∘ (^. uuid)) ∘ (^. behaviors . habits)
+        find (hasId uuid habit_id) ∘ (^. behaviors . habits)
         >>=
         maybe
           (status notFound404)
@@ -95,7 +98,7 @@ habitMain = do
           )
           return
       old_data ← liftIO $ readIORef data_ref
-      case Seq.findIndexL ((== habit_id) ∘ toText ∘ (^. uuid)) (old_data ^. behaviors . habits) of
+      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. behaviors . habits) of
           Nothing → status notFound404
           Just index → liftIO $ do
             let new_data = old_data & behaviors . habits . ix index .~ habit
