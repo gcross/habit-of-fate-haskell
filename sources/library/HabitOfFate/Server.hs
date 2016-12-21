@@ -28,7 +28,6 @@ import System.Log.Logger
 import System.IO
 import Web.Scotty
 
-import HabitOfFate.Behaviors
 import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Data
 import HabitOfFate.Unicode
@@ -59,7 +58,7 @@ habitMain = do
   notice $ "Starting server at " ++ show port
   scotty port $ do
     get "/habits" $ do
-      user_habits ← (^. behaviors . habits) <$> liftIO (readIORef data_ref)
+      user_habits ← (^. habits) <$> liftIO (readIORef data_ref)
       jsonObject
         [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
         , "data" .= fmap habitToDoc user_habits
@@ -68,7 +67,7 @@ habitMain = do
       habit_id ← param "id"
       liftIO (readIORef data_ref)
         <&>
-        find (hasId uuid habit_id) ∘ (^. behaviors . habits)
+        find (hasId uuid habit_id) ∘ (^. habits)
         >>=
         maybe
           (status notFound404)
@@ -98,9 +97,9 @@ habitMain = do
           )
           return
       old_data ← liftIO $ readIORef data_ref
-      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. behaviors . habits) of
+      case Seq.findIndexL (hasId uuid habit_id) (old_data ^. habits) of
           Nothing → status notFound404
           Just index → liftIO $ do
-            let new_data = old_data & behaviors . habits . ix index .~ habit
+            let new_data = old_data & habits . ix index .~ habit
             writeIORef data_ref new_data
             writeData filepath new_data

@@ -33,7 +33,6 @@ import System.Random
 import Text.Printf
 import Text.Read (readEither, readMaybe)
 
-import HabitOfFate.Behaviors
 import HabitOfFate.Behaviors.Habit
 import qualified HabitOfFate.Behaviors.Habit as Habit
 import HabitOfFate.Console
@@ -196,7 +195,7 @@ printHabit = printf "%s [+%f/-%f]\n"
   <*> (^. failure_credits)
 
 getNumberOfHabits ∷ ActionMonad Int
-getNumberOfHabits = length <$> use (behaviors . habits)
+getNumberOfHabits = length <$> use habits
 
 gameStillHasCredits =
   (||)
@@ -214,21 +213,21 @@ mainLoop = loop [] $
           <*> promptWithDefault' ctrl_c 1.0 "How many credits is a success worth?"
           <*> promptWithDefault' ctrl_c 0.0 "How many credits is a failure worth?"
         >>=
-        (behaviors . habits %=) ∘ flip (|>)
+        (habits %=) ∘ flip (|>)
       )
     ,('e',) ∘ Action "Edit a habit." $
       (callCC $ \ctrl_c → do
         number_of_habits ← getNumberOfHabits
         abortIfNoHabits ctrl_c number_of_habits
         index ← promptForIndex ctrl_c number_of_habits "Which habit?"
-        old_habit ←  fromJust <$> preuse (behaviors . habits . ix index)
+        old_habit ←  fromJust <$> preuse (habits . ix index)
         new_habit ←
           Habit
             <$> (return $ old_habit ^. uuid)
             <*> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
             <*> promptWithDefault' ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
             <*> promptWithDefault' ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
-        behaviors . habits . ix index .= new_habit
+        habits . ix index .= new_habit
       )
     ,('f',) ∘ Action "Mark habits as failed." $
        markHabits "Failure" Habit.failure_credits Game.failure_credits
@@ -311,7 +310,7 @@ mainLoop = loop [] $
       clearLine
 
     printHabits = do
-      habits' ← use (behaviors . habits)
+      habits' ← use habits
       if Seq.null habits'
         then liftIO $ putStrLn "There are no habits."
         else forM_ (zip [1..] (toList habits')) $
@@ -330,7 +329,7 @@ mainLoop = loop [] $
         indices ← promptForIndices ctrl_c number_of_habits "Which habits?"
         old_success_credits ← use $ game . game_credits
         forM_ indices $ \index →
-          preuse (behaviors . habits . ix index . habit_credits)
+          preuse (habits . ix index . habit_credits)
           >>=
           (game . game_credits +=) ∘ fromJust
         new_success_credits ← use $ game . game_credits

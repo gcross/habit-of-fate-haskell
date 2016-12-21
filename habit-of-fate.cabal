@@ -37,8 +37,7 @@ library
                      , uuid-aeson
                      , yaml
                      , warp
-  exposed-modules:     HabitOfFate.Behaviors
-                     , HabitOfFate.Behaviors.Habit
+  exposed-modules:     HabitOfFate.Behaviors.Habit
                      , HabitOfFate.Console
                      , HabitOfFate.Data
                      , HabitOfFate.Game

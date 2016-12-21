@@ -8,18 +8,20 @@ import Control.Lens
 import Control.Monad
 import qualified Data.ByteString as BS
 import Data.Maybe
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
 import Data.Yaml hiding ((.=))
 import System.Directory
 import System.Environment
 import System.FilePath
 
-import HabitOfFate.Behaviors
+import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Game
 import HabitOfFate.Quests
 import HabitOfFate.TH
 
 data Data = Data
-  {   _behaviors ∷ Behaviors
+  {   _habits ∷ Seq Habit
   ,   _game ∷ GameState
   ,   _quest ∷ Maybe CurrentQuestState
   } deriving (Eq,Ord,Read,Show)
@@ -27,7 +29,7 @@ deriveJSON ''Data
 makeLenses ''Data
 
 newData ∷ Data
-newData = Data newBehaviors newGame Nothing
+newData = Data Seq.empty newGame Nothing
 
 runData ∷ Data → IO ([[String]], Bool, Data)
 runData d =
