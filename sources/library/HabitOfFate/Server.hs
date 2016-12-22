@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -15,6 +16,7 @@ import Control.Lens hiding ((.=))
 import qualified Control.Lens as Lens
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Writer
 import Data.Aeson hiding (json)
 import Data.Aeson.Types
 import Data.Bool
@@ -24,6 +26,8 @@ import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.String
 import Data.Text.Lazy (Text, pack, toStrict)
+import qualified Data.Text.Lazy as Text
+import qualified Data.Text.Lazy.Builder as Builder
 import Data.UUID
 import Network.HTTP.Types.Status
 import System.Directory
@@ -68,6 +72,61 @@ notice = noticeM "HabitOfFate.Server"
 jsonObject = json ∘ object
 
 port = 8081
+
+tellChar ∷ MonadWriter Builder.Builder m ⇒ Char → m ()
+tellChar = tell ∘ Builder.singleton
+
+tellNewline ∷ MonadWriter Builder.Builder m ⇒ m ()
+tellNewline = tellChar '\n'
+
+tellString ∷ MonadWriter Builder.Builder m ⇒ String → m ()
+tellString = tell ∘ Builder.fromString
+
+tellText ∷ MonadWriter Builder.Builder m ⇒ Text → m ()
+tellText = tell ∘ Builder.fromLazyText
+
+tellLine ∷ MonadWriter Builder.Builder m ⇒ Text → m ()
+tellLine t = do
+  tellText t
+  tellNewline
+
+tellSeparator ∷ MonadWriter Builder.Builder m ⇒ Text → m ()
+tellSeparator sep = do
+  tellText $ Text.replicate 80 sep
+  tellNewline
+
+tellQuestSeparator ∷ MonadWriter Builder.Builder m ⇒ m ()
+tellQuestSeparator = tellSeparator "="
+
+tellEventSeparator ∷ MonadWriter Builder.Builder m ⇒ m ()
+tellEventSeparator = tellSeparator "-"
+
+tellParagraph ∷ MonadWriter Builder.Builder m ⇒ [String] → m ()
+tellParagraph = go 0
+  where
+    go _ [] = tellChar '\n'
+    go cols words@(word:rest)
+      | cols == 0 = do
+          tellString word
+          go (length word) rest
+      | cols + 1 + length word > 80 = do
+          tellChar '\n'
+          go 0 words
+      | otherwise = do
+          tellChar ' '
+          tellString word
+          go (cols + 1 + length word) rest
+
+tellParagraphs ∷ MonadWriter Builder.Builder m ⇒ [[String]] → m ()
+tellParagraphs (paragraph:rest) = do
+    tellParagraph paragraph
+    go rest
+  where
+    go [] = return ()
+    go (paragraph:rest) = do
+      tellChar '\n'
+      tellParagraph paragraph
+      go rest
 
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
@@ -128,13 +187,13 @@ habitMain = do
       modifyAndWriteData f = liftIO $ do
         modifyIORef data_ref f
         writeDataToFile
+      withIndexAndData ∷ Getter α UUID → Lens' Data (Seq α) → (Int → Seq α → Seq α) → ActionM ()
       withIndexAndData uuid_lens collection f = do
         old_data ← liftIO $ readIORef data_ref
         id ← param "id"
-        maybe
-          (status notFound404)
-          (modifyAndWriteData ∘ f)
-          (Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection))
+        case (Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection)) of
+          Nothing → status notFound404
+          Just index → modifyAndWriteData $ collection %~ f index
       readHabit maybe_uuid =
         body <&> eitherDecode'
         >>=
@@ -203,3 +262,26 @@ habitMain = do
               map (^. habit_credits)
       markHabits (marked_habits . success) success_credits Game.success_credits
       markHabits (marked_habits . failure) failure_credits Game.failure_credits
+    post "/run" $ do
+      liftIO (readIORef data_ref) >>= flip unless finish ∘ stillHasCredits
+      let go d = do
+            (paragraphs, completed, new_d) ← liftIO $ runData d
+            tellParagraphs paragraphs
+            if stillHasCredits new_d
+              then do
+                tellNewline
+                if completed
+                  then do
+                    tellQuestSeparator
+                    tellLine "A new quest begins..."
+                    tellQuestSeparator
+                    tellNewline
+                  else do
+                    tellEventSeparator
+                    tellNewline
+                go new_d
+              else return new_d
+      ((), b) ← runWriterT $
+        liftIO (readIORef data_ref) >>= go >>= liftIO ∘ writeIORef data_ref
+      text ∘ Builder.toLazyText $ b
+      liftIO writeDataToFile

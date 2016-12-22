@@ -17,6 +17,7 @@ import System.FilePath
 
 import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Game
+import qualified HabitOfFate.Game as Game
 import HabitOfFate.Quests
 import HabitOfFate.TH
 
@@ -54,3 +55,8 @@ getDataFilePath =
     [] → getHomeDirectory <&> (</> ".habit")
     [filepath] → return filepath
     _ → error "Only one argument may be provided."
+
+stillHasCredits ∷ Data → Bool
+stillHasCredits d = (||)
+  (d ^. game . Game.success_credits /= 0)
+  (d ^. game . Game.failure_credits /= 0)

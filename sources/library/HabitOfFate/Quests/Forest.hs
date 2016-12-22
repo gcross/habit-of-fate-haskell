@@ -87,7 +87,7 @@ startsWithEquals = (== Just '=') ∘ (^? _head)
 
 splitTexts ∷ String → [String]
 splitTexts =
-  filter (not ∘ null)
+  filter (not ∘ all (∈ " \n"))
   ∘
   map unlines
   ∘
