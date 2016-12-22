@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -22,7 +23,7 @@ import Data.List hiding (delete)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.String
-import Data.Text.Lazy (Text, pack)
+import Data.Text.Lazy (Text, pack, toStrict)
 import Data.UUID
 import Network.HTTP.Types.Status
 import System.Directory
@@ -32,9 +33,28 @@ import System.Random
 import Web.Scotty
 
 import HabitOfFate.Behaviors.Habit
-import HabitOfFate.Data
+import HabitOfFate.Data hiding (_habits)
 import qualified HabitOfFate.Game as Game
+import HabitOfFate.TH
 import HabitOfFate.Unicode
+
+data SuccessesAndFailures = SuccessesAndFailures
+  { _success ∷ [UUID]
+  , _failure ∷ [UUID]
+  }
+deriveJSON ''SuccessesAndFailures
+makeLenses ''SuccessesAndFailures
+
+data Marks = Marks
+  { _habits ∷ SuccessesAndFailures
+  }
+deriveJSON ''Marks
+
+marked_habits ∷ Lens' Marks SuccessesAndFailures
+marked_habits = lens _habits (\m h → m { _habits = h})
+
+instance Parsable UUID where
+  parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ toStrict
 
 deleteAt ∷ Int → Seq α → Seq α
 deleteAt i s = Seq.take i s ⊕ Seq.drop (i+1) s
@@ -49,7 +69,8 @@ jsonObject = json ∘ object
 
 port = 8081
 
-hasId uuid_lens uuid = (== uuid) ∘ toText ∘ (^. uuid_lens)
+hasId ∷ Getter α UUID → UUID → α → Bool
+hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 
 habitMain = do
   filepath ← getDataFilePath
@@ -69,13 +90,13 @@ habitMain = do
       modifyAndWriteData f = liftIO $ do
         modifyIORef data_ref f
         writeDataToFile
+      withIndexAndData ∷ Lens' Habit UUID → Lens' Data (Seq Habit) → (Int → Seq Habit → Seq Habit) → ActionM ()
       withIndexAndData uuid_lens collection f = do
         old_data ← liftIO $ readIORef data_ref
         id ← param "id"
-        maybe
-          (status notFound404)
-          (modifyAndWriteData ∘ f)
-          (Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection))
+        case Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection) of
+          Nothing → status notFound404
+          Just index → modifyAndWriteData (habits %~ f index)
       readHabit maybe_uuid =
         body <&> eitherDecode'
         >>=
@@ -151,50 +172,34 @@ habitMain = do
       habit_id ← param "id"
       habit ← lookupHabit habit_id
       jsonObject
-        [ "links" .= object ["self" .= String ("http://localhost:8081/habit/" ⊕ habit_id)]
+        [ "links" .= object
+            ["self" .= String ("http://localhost:8081/habit/" ⊕ toText habit_id)
+            ]
         , "data" .= habitToDoc habit
         ]
     put "/habits/:id" $ do
       habit ← readHabit Nothing
-      withIndexAndData uuid habits $ \index → habits . ix index .~ habit
+      withIndexAndData uuid habits $ (.~ habit) ∘ ix
     delete "/habits/:id" $ do
-      withIndexAndData uuid habits $ \index → habits %~ deleteAt index
+      withIndexAndData uuid habits $ deleteAt
     get "/move/habit/:id/:index" $ do
       new_index ← param "index"
-      withIndexAndData uuid habits $ \index → habits %~
-        (\h → insertAt new_index (Seq.index h index) (deleteAt index h))
+      withIndexAndData uuid habits $ \index habits →
+        insertAt new_index (Seq.index habits index) (deleteAt index habits)
     put "/habits" $ do
       habit ← liftIO randomIO >>= readHabit ∘ Just
       modifyAndWriteData $ habits %~ (|> habit)
-    let markHabits habit_credits game_credits =
-          body <&> eitherDecode'
-          >>=
-          either
-            (\error_message → do
-              status badRequest400
-              text ∘ pack $ "Error when parsing the document: " ⊕ error_message
-              finish
-            )
-            (return ∘ parseEither parseJSON)
-          >>=
-          either
-            (\error_message → do
-              status badRequest400
-              text ∘ pack $ "Error when parsing the list of ids: " ⊕ error_message
-              finish
-            )
-            return
-          >>=
-          mapM lookupHabit
-          >>=
-          modifyAndWriteData
-            ∘
-            (game . game_credits +~)
-            ∘
-            sum
-            ∘
-            map (^. habit_credits)
-    post "/mark/success/habits" $
-      markHabits success_credits Game.success_credits
-    post "/mark/failure/habits" $
-      markHabits failure_credits Game.failure_credits
+    post "/mark" $ do
+      marks ← jsonData
+      let markHabits uuids_lens habit_credits game_credits =
+            mapM lookupHabit (marks ^. uuids_lens)
+            >>=
+            modifyAndWriteData
+              ∘
+              (game . game_credits +~)
+              ∘
+              sum
+              ∘
+              map (^. habit_credits)
+      markHabits (marked_habits . success) success_credits Game.success_credits
+      markHabits (marked_habits . failure) failure_credits Game.failure_credits
