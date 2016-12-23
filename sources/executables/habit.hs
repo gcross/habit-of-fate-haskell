@@ -197,6 +197,7 @@ printHabit = printf "%s [+%f/-%f]\n"
 getNumberOfHabits ∷ ActionMonad Int
 getNumberOfHabits = length <$> use habits
 
+gameStillHasCredits ∷ ActionMonad Bool
 gameStillHasCredits =
   (||)
     <$> ((/= 0) <$> use (game . Game.success_credits))
@@ -257,11 +258,9 @@ mainLoop = loop [] $
         (do
           liftIO $ putStrLn ""
           callCC $ \quit → forever $ do
-            d ← get
-            (paragraphs, completed, new_d) ← liftIO $ runData d
-            put new_d
-            liftIO $ do
-              printParagraphs paragraphs
+            r ← get <&> runData
+            put $ r ^. new_data
+            liftIO ∘ printParagraphs $ r ^. paragraphs
             gameStillHasCredits
               >>=
               bool
@@ -270,7 +269,7 @@ mainLoop = loop [] $
                   liftIO $ do
                     putStrLn ""
                     pressAnyKeyToContinue
-                    if completed
+                    if r ^. quest_completed
                       then do
                         putStrLn $ replicate 80 '='
                         putStrLn "A new quest begins..."
@@ -346,7 +345,7 @@ main = do
   old_data ←
     doesFileExist filepath
     >>=
-    bool (return newData)
+    bool newData
          (readData filepath)
   let run current_data = do
         new_data_ref ← newIORef current_data

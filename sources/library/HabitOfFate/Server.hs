@@ -140,7 +140,7 @@ habitMain = do
     doesFileExist filepath
     >>=
     bool (do info "Creating new data file"
-             return newData
+             newData
          )
          (do info "Reading existing data file"
              readData filepath
@@ -270,12 +270,12 @@ habitMain = do
     post "/run" $ do
       liftIO (readIORef data_ref) >>= flip unless finish ∘ stillHasCredits
       let go d = do
-            (paragraphs, completed, new_d) ← liftIO $ runData d
-            tellParagraphs paragraphs
-            if stillHasCredits new_d
+            let r = runData d
+            tellParagraphs (r ^. paragraphs)
+            if stillHasCredits (r ^. new_data)
               then do
                 tellNewline
-                if completed
+                if r ^. quest_completed
                   then do
                     tellQuestSeparator
                     tellLine "A new quest begins..."
@@ -284,8 +284,8 @@ habitMain = do
                   else do
                     tellEventSeparator
                     tellNewline
-                go new_d
-              else return new_d
+                go (r ^. new_data)
+              else return (r ^. new_data)
       ((), b) ← runWriterT $
         liftIO (readIORef data_ref) >>= go >>= liftIO ∘ writeIORef data_ref
       text ∘ Builder.toLazyText $ b

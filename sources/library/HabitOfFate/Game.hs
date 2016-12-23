@@ -41,12 +41,12 @@ newtype Game α =
     ,MonadWriter [[String]]
     )
 
-data GameResult α = GameResult
-  { _new_game ∷ GameState
-  , _paragraphs ∷ [[String]]
-  , _returned_value ∷ α
+data RunGameResult α = RunGameResult
+  { _returned_value ∷ α
+  , _new_game ∷ GameState
+  , _game_paragraphs ∷ [[String]]
   } deriving (Eq,Ord,Read,Show)
-makeLenses ''GameResult
+makeLenses ''RunGameResult
 
 class MonadRandom m ⇒ MonadGame m where
   text ∷ String → m ()
@@ -60,20 +60,15 @@ instance MonadGame m ⇒ MonadGame (StateT s m) where
 newGame ∷ GameState
 newGame = GameState 0 0 0
 
-runGame ∷ GameState → Game α → IO (GameResult α)
-runGame state game = do
-  g ← newStdGen
-  let ((returned_value, new_game_result), paragraphs) =
-        flip evalRand g
-        .
-        runWriterT
-        .
-        flip runStateT state
-        .
-        unwrapGame
-        $
-        game
-  return $ GameResult new_game_result paragraphs returned_value
+runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
+runGame state =
+  fmap (uncurry ∘ uncurry $ RunGameResult)
+  ∘
+  runWriterT
+  ∘
+  flip runStateT state
+  ∘
+  unwrapGame
 
 gameText ∷ String → Game ()
 gameText =
