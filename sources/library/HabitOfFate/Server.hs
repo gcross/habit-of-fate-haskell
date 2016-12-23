@@ -12,6 +12,8 @@ module HabitOfFate.Server where
 
 import Prelude hiding (id)
 
+import Control.Concurrent
+import Control.Concurrent.MVar
 import Control.Lens hiding ((.=))
 import qualified Control.Lens as Lens
 import Control.Monad
@@ -145,7 +147,10 @@ habitMain = do
          )
     >>=
     newIORef
-  let writeDataToFile = liftIO $ readIORef data_ref >>= writeData filepath
+  write_request ← newEmptyMVar
+  file_writer ← liftIO ∘ forkIO ∘ forever $
+    withMVar write_request ∘ const $ readIORef data_ref >>= writeData filepath
+  let writeDataToFile = liftIO ∘ void $ tryPutMVar write_request ()
       modifyAndWriteData f = liftIO $ do
         modifyIORef data_ref f
         writeDataToFile
