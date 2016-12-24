@@ -15,6 +15,7 @@ module Main where
 import Control.Exception
 import Control.Lens
 import Control.Monad.Cont
+import Control.Monad.Error.Lens
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -41,7 +42,8 @@ import HabitOfFate.Game (GameState, belief)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Unicode
 
-data Quit = Quit
+data Quit = CtrlC | CtrlD
+makePrisms ''Quit
 
 newtype ActionMonad α = ActionMonad
   { unwrapActionMonad ∷ ReaderT (IORef Data) (ExceptT Quit (ContT () IO)) α
@@ -68,13 +70,11 @@ help commands = liftIO $ do
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
 
-type CtrlC = () → ActionMonad ()
+ctrlC ∷ ActionMonad α
+ctrlC = throwError CtrlC
 
-callCtrlC ∷ CtrlC → ActionMonad α
-callCtrlC ctrl_c = liftIO (putStrLn "") >> ctrl_c () >> undefined
-
-prompt ∷ CtrlC → String → ActionMonad String
-prompt ctrl_c p =
+prompt ∷  String → ActionMonad String
+prompt p =
   (liftIO $ do
     putStr p
     putChar ' '
@@ -88,7 +88,7 @@ prompt ctrl_c p =
       (Just <$> getLine)
   )
   >>=
-  maybe (callCtrlC ctrl_c) return
+  maybe ctrlC return
 
 parseNumberOrRepeat ∷ ActionMonad Int → Int → String → ActionMonad Int
 parseNumberOrRepeat repeat top input =
@@ -98,25 +98,25 @@ parseNumberOrRepeat repeat top input =
       | 1 ≤ n && n ≤ top → return (n-1)
       | otherwise → liftIO (putStrLn "Out of range.") >> repeat
 
-promptForIndex ∷ CtrlC → Int → String → ActionMonad Int
-promptForIndex ctrl_c top p =
+promptForIndex ∷  Int → String → ActionMonad Int
+promptForIndex top p =
   callCC (\quit →
-    prompt ctrl_c (printf "%s [1-%i]" p top)
+    prompt (printf "%s [1-%i]" p top)
     >>=
     (Just <$>) ∘ parseNumberOrRepeat (quit Nothing) top
   )
   >>=
-  maybe (promptForIndex ctrl_c top p) return
+  maybe (promptForIndex top p) return
 
-promptForIndices ∷ CtrlC → Int → String → ActionMonad [Int]
-promptForIndices ctrl_c top p =
+promptForIndices ∷  Int → String → ActionMonad [Int]
+promptForIndices top p =
   callCC (\quit →
-    prompt ctrl_c (printf "%s [1-%i]" p top)
+    prompt (printf "%s [1-%i]" p top)
     >>=
     (Just <$>) ∘ mapM (parseNumberOrRepeat (quit Nothing) top) ∘ splitEntries
   )
   >>=
-  maybe (promptForIndices ctrl_c top p) return
+  maybe (promptForIndices top p) return
   where
     isSeparator ' ' = True
     isSeparator ',' = True
@@ -142,17 +142,17 @@ promptForCommand p =
   putStrLn ""
   return command
 
-promptWithDefault ∷ CtrlC → String → String → ActionMonad String
-promptWithDefault ctrl_c def p =
-  prompt ctrl_c (printf "%s [%s]" p def)
+promptWithDefault ∷  String → String → ActionMonad String
+promptWithDefault def p =
+  prompt (printf "%s [%s]" p def)
   <&>
   (\input → if null input then def else input)
 
-promptWithDefault' ∷ (Read α, Show α) ⇒ CtrlC → α → String → ActionMonad α
-promptWithDefault' ctrl_c def p = doPrompt
+promptWithDefault' ∷ (Read α, Show α) ⇒  α → String → ActionMonad α
+promptWithDefault' def p = doPrompt
   where
     doPrompt =
-      promptWithDefault ctrl_c (show def) p
+      promptWithDefault (show def) p
       >>=
       handleParseResult . readEither
     handleParseResult (Left e) = liftIO (putStrLn e) >> doPrompt
@@ -178,7 +178,7 @@ loop labels commands = go
         ∘
         lookup command
         $
-        (chr 4, throwError Quit)
+        (chr 4, throwError CtrlD)
         :
         (chr 27, return ())
         :
@@ -202,33 +202,32 @@ gameStillHasCredits =
     <$> ((/= 0) <$> use (game . Game.success_credits))
     <*> ((/= 0) <$> use (game . Game.failure_credits))
 
+catchCtrlC ∷ ActionMonad () → ActionMonad ()
+catchCtrlC = handling_ _CtrlC (liftIO $ putStrLn "")
+
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
   [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
-    [('a',) ∘ Action "Add a habit." $
-      (callCC $ \ctrl_c →
+    [('a',) ∘ Action "Add a habit." ∘ catchCtrlC $
+      Habit
+        <$> liftIO randomIO
+        <*> prompt "What is the name of the habit?"
+        <*> promptWithDefault' 1.0 "How many credits is a success worth?"
+        <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
+      >>=
+      (habits %=) ∘ flip (|>)
+    ,('e',) ∘ Action "Edit a habit." ∘ catchCtrlC $ do
+      number_of_habits ← getNumberOfHabits
+      abortIfNoHabits number_of_habits
+      index ← promptForIndex number_of_habits "Which habit?"
+      old_habit ←  fromJust <$> preuse (habits . ix index)
+      new_habit ←
         Habit
-          <$> liftIO randomIO
-          <*> prompt ctrl_c "What is the name of the habit?"
-          <*> promptWithDefault' ctrl_c 1.0 "How many credits is a success worth?"
-          <*> promptWithDefault' ctrl_c 0.0 "How many credits is a failure worth?"
-        >>=
-        (habits %=) ∘ flip (|>)
-      )
-    ,('e',) ∘ Action "Edit a habit." $
-      (callCC $ \ctrl_c → do
-        number_of_habits ← getNumberOfHabits
-        abortIfNoHabits ctrl_c number_of_habits
-        index ← promptForIndex ctrl_c number_of_habits "Which habit?"
-        old_habit ←  fromJust <$> preuse (habits . ix index)
-        new_habit ←
-          Habit
-            <$> (return $ old_habit ^. uuid)
-            <*> promptWithDefault ctrl_c (old_habit ^. name) "What is the name of the habit?"
-            <*> promptWithDefault' ctrl_c (old_habit ^. success_credits) "How many credits is a success worth?"
-            <*> promptWithDefault' ctrl_c (old_habit ^. failure_credits) "How many credits is a failure worth?"
-        habits . ix index .= new_habit
-      )
+          <$> (return $ old_habit ^. uuid)
+          <*> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
+          <*> promptWithDefault' (old_habit ^. success_credits) "How many credits is a success worth?"
+          <*> promptWithDefault' (old_habit ^. failure_credits) "How many credits is a failure worth?"
+      habits . ix index .= new_habit
     ,('f',) ∘ Action "Mark habits as failed." $
        markHabits "Failure" Habit.failure_credits Game.failure_credits
     ,('p',) ∘ Action "Print habits." $ printHabits
@@ -282,10 +281,10 @@ mainLoop = loop [] $
         )
   ]
   where
-    abortIfNoHabits ctrl_c number_of_habits =
+    abortIfNoHabits number_of_habits =
       when (number_of_habits == 0) $ do
         liftIO $ putStrLn "There are no habits."
-        ctrl_c ()
+        ctrlC
 
     getGameCreditsAsFloat =
       ((/ (100 ∷ Float)) ∘ fromIntegral <$>)
@@ -320,23 +319,21 @@ mainLoop = loop [] $
           )
 
     markHabits ∷ String → Lens' Habit Double → Lens' GameState Double → ActionMonad ()
-    markHabits name habit_credits game_credits =
-      (callCC $ \ctrl_c → do
-        number_of_habits ← getNumberOfHabits
-        abortIfNoHabits ctrl_c number_of_habits
-        indices ← promptForIndices ctrl_c number_of_habits "Which habits?"
-        old_success_credits ← use $ game . game_credits
-        forM_ indices $ \index →
-          preuse (habits . ix index . habit_credits)
-          >>=
-          (game . game_credits +=) ∘ fromJust
-        new_success_credits ← use $ game . game_credits
-        liftIO $
-          printf "%s credits went from %f to %f\n"
-            name
-            old_success_credits
-            new_success_credits
-      )
+    markHabits name habit_credits game_credits = catchCtrlC $ do
+      number_of_habits ← getNumberOfHabits
+      abortIfNoHabits number_of_habits
+      indices ← promptForIndices number_of_habits "Which habits?"
+      old_success_credits ← use $ game . game_credits
+      forM_ indices $ \index →
+        preuse (habits . ix index . habit_credits)
+        >>=
+        (game . game_credits +=) ∘ fromJust
+      new_success_credits ← use $ game . game_credits
+      liftIO $
+        printf "%s credits went from %f to %f\n"
+          name
+          old_success_credits
+          new_success_credits
 
 main ∷ IO ()
 main = do
