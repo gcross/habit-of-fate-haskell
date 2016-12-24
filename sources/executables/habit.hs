@@ -14,7 +14,6 @@ module Main where
 
 import Control.Exception
 import Control.Lens
-import Control.Monad.Cont
 import Control.Monad.Error.Lens
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -46,8 +45,8 @@ data Quit = BadInput | CtrlC | CtrlD
 makePrisms ''Quit
 
 newtype ActionMonad α = ActionMonad
-  { unwrapActionMonad ∷ ReaderT (IORef Data) (ExceptT Quit (ContT () IO)) α
-  } deriving (Applicative, Functor, Monad, MonadCont, MonadError Quit, MonadIO)
+  { unwrapActionMonad ∷ ReaderT (IORef Data) (ExceptT Quit IO) α
+  } deriving (Applicative, Functor, Monad, MonadError Quit, MonadIO)
 
 instance MonadState Data ActionMonad where
   get = ActionMonad $ ask >>= liftIO . readIORef
@@ -251,28 +250,30 @@ mainLoop = loop [] $
         (liftIO $ putStrLn "No credits.")
         (do
           liftIO $ putStrLn ""
-          callCC $ \quit → forever $ do
-            r ← get <&> runData
-            put $ r ^. new_data
-            liftIO ∘ printParagraphs $ r ^. paragraphs
-            gameStillHasCredits
-              >>=
-              bool
-                (quit ())
-                (do
-                  liftIO $ do
-                    putStrLn ""
-                    pressAnyKeyToContinue
-                    if r ^. quest_completed
-                      then do
-                        putStrLn $ replicate 80 '='
-                        putStrLn "A new quest begins..."
-                        putStrLn $ replicate 80 '='
-                      else do
-                        putStrLn $ replicate 80 '-'
-                    putStrLn ""
-                    pressAnyKeyToContinue
-                )
+          let go = do
+                r ← get <&> runData
+                put $ r ^. new_data
+                liftIO ∘ printParagraphs $ r ^. paragraphs
+                gameStillHasCredits
+                  >>=
+                  bool
+                    (return ())
+                    (do
+                      liftIO $ do
+                        putStrLn ""
+                        pressAnyKeyToContinue
+                        if r ^. quest_completed
+                          then do
+                            putStrLn $ replicate 80 '='
+                            putStrLn "A new quest begins..."
+                            putStrLn $ replicate 80 '='
+                          else do
+                            putStrLn $ replicate 80 '-'
+                        putStrLn ""
+                        pressAnyKeyToContinue
+                      go
+                    )
+          go
           liftIO $ putStrLn ""
         )
   ]
@@ -342,10 +343,6 @@ main = do
   let run current_data = do
         new_data_ref ← newIORef current_data
         void
-          ∘
-          flip runContT return
-          ∘
-          void
           ∘
           runExceptT
           ∘
