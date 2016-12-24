@@ -41,13 +41,15 @@ import HabitOfFate.Game (GameState, belief)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Unicode
 
+data Quit = Quit
+
 newtype ActionMonad α = ActionMonad
-  { unwrapActionMonad ∷ ReaderT (IORef Data, () → ContT () IO ()) (ContT () IO) α
-  } deriving (Applicative, Functor, Monad, MonadCont, MonadIO)
+  { unwrapActionMonad ∷ ReaderT (IORef Data) (ExceptT Quit (ContT () IO)) α
+  } deriving (Applicative, Functor, Monad, MonadCont, MonadError Quit, MonadIO)
 
 instance MonadState Data ActionMonad where
-  get = ActionMonad $ asks fst >>= liftIO . readIORef
-  put x = ActionMonad $ asks fst >>= liftIO . flip writeIORef x
+  get = ActionMonad $ ask >>= liftIO . readIORef
+  put x = ActionMonad $ ask >>= liftIO . flip writeIORef x
 
 data Action = Action
   { _description ∷ String
@@ -156,9 +158,6 @@ promptWithDefault' ctrl_c def p = doPrompt
     handleParseResult (Left e) = liftIO (putStrLn e) >> doPrompt
     handleParseResult (Right x) = return x
 
-quit ∷ ActionMonad ()
-quit = ActionMonad $ asks snd >>= lift ∘ ($ ())
-
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
   | not (isAlpha command) = return ()
@@ -179,7 +178,7 @@ loop labels commands = go
         ∘
         lookup command
         $
-        (chr 4, quit)
+        (chr 4, throwError Quit)
         :
         (chr 27, return ())
         :
@@ -349,13 +348,19 @@ main = do
          (readData filepath)
   let run current_data = do
         new_data_ref ← newIORef current_data
-        flip runContT return
+        void
           ∘
-          callCC
+          flip runContT return
+          ∘
+          void
+          ∘
+          runExceptT
+          ∘
+          flip runReaderT new_data_ref
+          ∘
+          unwrapActionMonad
           $
-          runReaderT (unwrapActionMonad mainLoop)
-          ∘
-          (new_data_ref,)
+          mainLoop
         new_data ← readIORef new_data_ref
         when (new_data /= old_data) $
           let go =
