@@ -10,13 +10,12 @@
 
 module HabitOfFate.Server where
 
-import Prelude hiding (id)
-
 import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Lens hiding ((.=))
 import qualified Control.Lens as Lens
 import Control.Monad
+import Control.Monad.Except
 import Control.Monad.IO.Class
 import Control.Monad.Writer
 import Data.Aeson hiding (json)
@@ -130,6 +129,20 @@ tellParagraphs (paragraph:rest) = do
       tellParagraph paragraph
       go rest
 
+data ActionError = ActionError Status Text
+  deriving (Eq,Ord,Show)
+
+act ∷ ExceptT ActionError IO (ActionM ()) → ActionM ()
+act =
+  liftIO ∘ runExceptT
+  >=>
+  either
+    (\(ActionError code message) → do
+      status code
+      text message
+    )
+    id
+
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 
@@ -225,6 +238,11 @@ habitMain = do
             text ∘ pack $ "No habit with id " ⊕ show habit_id
             finish
           Just habit → return habit
+      lookupHabit' habit_id = do
+        d ← liftIO $ readIORef data_ref
+        case find (hasId uuid habit_id) (d ^. habits) of
+          Nothing → throwError ∘ ActionError badRequest400 ∘ pack ∘ show $ habit_id
+          Just habit → return habit
   scotty port $ do
     get "/habits" $ do
       user_habits ← (^. habits) <$> liftIO (readIORef data_ref)
@@ -234,13 +252,14 @@ habitMain = do
         ]
     get "/habits/:id" $ do
       habit_id ← param "id"
-      habit ← lookupHabit habit_id
-      jsonObject
-        [ "links" .= object
-            ["self" .= String ("http://localhost:8081/habit/" ⊕ toText habit_id)
-            ]
-        , "data" .= habitToDoc habit
-        ]
+      act $ do
+        habit ← lookupHabit' habit_id
+        return ∘ jsonObject $
+          [ "links" .= object
+              ["self" .= String ("http://localhost:8081/habit/" ⊕ toText habit_id)
+              ]
+          , "data" .= habitToDoc habit
+          ]
     put "/habits/:id" $ do
       habit ← readHabit Nothing
       withIndexAndData uuid habits $ (.~ habit) ∘ ix
