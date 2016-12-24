@@ -42,7 +42,7 @@ import HabitOfFate.Game (GameState, belief)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Unicode
 
-data Quit = CtrlC | CtrlD
+data Quit = BadInput | CtrlC | CtrlD
 makePrisms ''Quit
 
 newtype ActionMonad α = ActionMonad
@@ -90,33 +90,29 @@ prompt p =
   >>=
   maybe ctrlC return
 
-parseNumberOrRepeat ∷ ActionMonad Int → Int → String → ActionMonad Int
-parseNumberOrRepeat repeat top input =
+parseNumberOrRepeat ∷ Int → String → ActionMonad Int
+parseNumberOrRepeat top input =
   case (readMaybe input ∷ Maybe Int) of
-    Nothing → liftIO (printf "Invalid number: %s\n" input) >> repeat
+    Nothing → liftIO (printf "Invalid number: %s\n" input) >> throwError BadInput
     Just n
       | 1 ≤ n && n ≤ top → return (n-1)
-      | otherwise → liftIO (putStrLn "Out of range.") >> repeat
+      | otherwise → liftIO (putStrLn "Out of range.") >> throwError BadInput
 
 promptForIndex ∷  Int → String → ActionMonad Int
 promptForIndex top p =
-  callCC (\quit →
-    prompt (printf "%s [1-%i]" p top)
-    >>=
-    (Just <$>) ∘ parseNumberOrRepeat (quit Nothing) top
-  )
+  handling_ _BadInput (promptForIndex top p)
+  $
+  prompt (printf "%s [1-%i]" p top)
   >>=
-  maybe (promptForIndex top p) return
+  parseNumberOrRepeat top
 
 promptForIndices ∷  Int → String → ActionMonad [Int]
 promptForIndices top p =
-  callCC (\quit →
-    prompt (printf "%s [1-%i]" p top)
-    >>=
-    (Just <$>) ∘ mapM (parseNumberOrRepeat (quit Nothing) top) ∘ splitEntries
-  )
+  handling_ _BadInput (promptForIndices top p)
+  $
+  prompt (printf "%s [1-%i]" p top)
   >>=
-  maybe (promptForIndices top p) return
+  mapM (parseNumberOrRepeat top) ∘ splitEntries
   where
     isSeparator ' ' = True
     isSeparator ',' = True
