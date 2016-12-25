@@ -129,7 +129,7 @@ tellParagraphs (paragraph:rest) = do
       tellParagraph paragraph
       go rest
 
-data ActionError = ActionError Status Text
+data ActionError = ActionError Status (Maybe Text)
   deriving (Eq,Ord,Show)
 
 act ∷ ExceptT ActionError IO (ActionM ()) → ActionM ()
@@ -137,11 +137,17 @@ act =
   liftIO ∘ runExceptT
   >=>
   either
-    (\(ActionError code message) → do
+    (\(ActionError code maybe_message) → do
       status code
-      text message
+      maybe (return ()) text maybe_message
     )
     id
+
+act' ∷ ExceptT ActionError IO () → ActionM ()
+act' run = act (run >> return (return ()))
+
+throwActionError code = throwError $ ActionError code Nothing
+throwActionErrorWithMessage code message = throwError $ ActionError code (Just message)
 
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
@@ -168,43 +174,38 @@ habitMain = do
       modifyAndWriteData f = liftIO $ do
         modifyIORef data_ref f
         writeDataToFile
-      withIndexAndData ∷ Getter α UUID → Lens' Data (Seq α) → (Int → Seq α → Seq α) → ActionM ()
-      withIndexAndData uuid_lens collection f = do
+      withIndexAndData ∷ Getter α UUID → UUID → Lens' Data (Seq α) → (Int → Seq α → Seq α) → ExceptT ActionError IO ()
+      withIndexAndData uuid_lens item_id collection f = do
         old_data ← liftIO $ readIORef data_ref
-        id ← param "id"
-        case (Seq.findIndexL (hasId uuid_lens id) (old_data ^. collection)) of
-          Nothing → status notFound404
+        case Seq.findIndexL (hasId uuid_lens item_id) (old_data ^. collection) of
+          Nothing → throwActionError notFound404
           Just index → modifyAndWriteData $ collection %~ f index
       readHabit maybe_uuid =
-        body <&> eitherDecode'
-        >>=
+        return ∘ eitherDecode'
+        >=>
         either
-          (\error_message → do
-            status badRequest400
-            text ∘ pack $ "Error when parsing the document: " ⊕ error_message
-            finish
+          (
+            throwActionErrorWithMessage badRequest400
+            ∘
+            pack
+            ∘
+            ("Error when parsing the document: " ⊕)
           )
           (return ∘ parseEither ((.: "data") >=> habitFromDoc maybe_uuid))
-        >>=
+        >=>
         either
-          (\error_message → do
-            status badRequest400
-            text ∘ pack $ "Error when parsing the Habit: " ⊕ error_message
-            finish
+          (
+            throwActionErrorWithMessage badRequest400
+            ∘
+            pack
+            ∘
+            ("Error when parsing the habit: " ⊕)
           )
           return
       lookupHabit habit_id = do
         d ← liftIO $ readIORef data_ref
         case find (hasId uuid habit_id) (d ^. habits) of
-          Nothing → do
-            status badRequest400
-            text ∘ pack $ "No habit with id " ⊕ show habit_id
-            finish
-          Just habit → return habit
-      lookupHabit' habit_id = do
-        d ← liftIO $ readIORef data_ref
-        case find (hasId uuid habit_id) (d ^. habits) of
-          Nothing → throwError ∘ ActionError badRequest400 ∘ pack ∘ show $ habit_id
+          Nothing → throwActionErrorWithMessage badRequest400 ∘ pack ∘ show $ habit_id
           Just habit → return habit
   scotty port $ do
     get "/habits" $ do
@@ -216,7 +217,7 @@ habitMain = do
     get "/habits/:id" $ do
       habit_id ← param "id"
       act $ do
-        habit ← lookupHabit' habit_id
+        habit ← lookupHabit habit_id
         return ∘ jsonObject $
           [ "links" .= object
               ["self" .= String ("http://localhost:8081/habit/" ⊕ toText habit_id)
@@ -224,31 +225,40 @@ habitMain = do
           , "data" .= habitToDoc habit
           ]
     put "/habits/:id" $ do
-      habit ← readHabit Nothing
-      withIndexAndData uuid habits $ (.~ habit) ∘ ix
+      habit_body ← body
+      habit_id ← param "id"
+      act' $ do
+        habit ← readHabit Nothing habit_body
+        withIndexAndData uuid habit_id habits $ (.~ habit) ∘ ix
     delete "/habits/:id" $ do
-      withIndexAndData uuid habits $ deleteAt
+      habit_id ← param "id"
+      act' $ withIndexAndData uuid habit_id habits deleteAt
     get "/move/habit/:id/:index" $ do
+      habit_id ← param "id"
       new_index ← param "index"
-      withIndexAndData uuid habits $ \index habits →
-        insertAt new_index (Seq.index habits index) (deleteAt index habits)
+      act' $ do
+        withIndexAndData uuid habit_id habits $ \index habits →
+          insertAt new_index (Seq.index habits index) (deleteAt index habits)
     put "/habits" $ do
-      habit ← liftIO randomIO >>= readHabit ∘ Just
-      modifyAndWriteData $ habits %~ (|> habit)
+      habit_body ← body
+      act' $ do
+        habit ← liftIO randomIO >>= flip readHabit habit_body ∘ Just
+        modifyAndWriteData $ habits %~ (|> habit)
     post "/mark" $ do
       marks ← jsonData
-      let markHabits uuids_lens habit_credits game_credits =
-            mapM lookupHabit (marks ^. uuids_lens)
-            >>=
-            modifyAndWriteData
-              ∘
-              (game . game_credits +~)
-              ∘
-              sum
-              ∘
-              map (^. habit_credits)
-      markHabits (marked_habits . success) success_credits Game.success_credits
-      markHabits (marked_habits . failure) failure_credits Game.failure_credits
+      act' $ do
+        let markHabits uuids_lens habit_credits game_credits =
+              mapM lookupHabit (marks ^. uuids_lens)
+              >>=
+              modifyAndWriteData
+                ∘
+                (game . game_credits +~)
+                ∘
+                sum
+                ∘
+                map (^. habit_credits)
+        markHabits (marked_habits . success) success_credits Game.success_credits
+        markHabits (marked_habits . failure) failure_credits Game.failure_credits
     post "/run" $ do
       liftIO (readIORef data_ref) >>= flip unless finish ∘ stillHasCredits
       let go d = do
