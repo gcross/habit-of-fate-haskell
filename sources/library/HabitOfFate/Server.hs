@@ -11,7 +11,9 @@
 module HabitOfFate.Server where
 
 import Control.Concurrent
-import Control.Concurrent.MVar
+import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM.TMVar
 import Control.Lens hiding ((.=))
 import qualified Control.Lens as Lens
 import Control.Monad
@@ -21,7 +23,6 @@ import Control.Monad.Writer
 import Data.Aeson hiding (json)
 import Data.Aeson.Types
 import Data.Bool
-import Data.IORef
 import Data.List hiding (delete)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
@@ -132,9 +133,11 @@ tellParagraphs (paragraph:rest) = do
 data ActionError = ActionError Status (Maybe Text)
   deriving (Eq,Ord,Show)
 
-act ∷ ExceptT ActionError IO (ActionM ()) → ActionM ()
+type ServerAction = ExceptT ActionError STM
+
+act ∷ ServerAction (ActionM ()) → ActionM ()
 act =
-  liftIO ∘ runExceptT
+  liftIO ∘ atomically ∘ runExceptT
   >=>
   either
     (\(ActionError code maybe_message) → do
@@ -143,7 +146,8 @@ act =
     )
     id
 
-act' ∷ ExceptT ActionError IO () → ActionM ()
+
+act' ∷ ServerAction α → ActionM ()
 act' run = act (run >> return (return ()))
 
 throwActionError code = throwError $ ActionError code Nothing
@@ -155,7 +159,7 @@ hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 habitMain = do
   filepath ← getDataFilePath
   info $ "Data file is located at " ++ filepath
-  data_ref ←
+  data_var ←
     doesFileExist filepath
     >>=
     bool (do info "Creating new data file"
@@ -165,21 +169,20 @@ habitMain = do
              readData filepath
          )
     >>=
-    newIORef
-  write_request ← newEmptyMVar
+    newTVarIO
+  write_request ← newEmptyTMVarIO
   file_writer ← liftIO ∘ forkIO ∘ forever $
-    withMVar write_request ∘ const $ readIORef data_ref >>= writeData filepath
+    (atomically $ do
+      takeTMVar write_request
+      readTVar data_var
+    ) >>= writeData filepath
   notice $ "Starting server at " ++ show port
-  let writeDataToFile = liftIO $ readIORef data_ref >>= writeData filepath
-      modifyAndWriteData f = liftIO $ do
-        modifyIORef data_ref f
-        writeDataToFile
-      withIndexAndData ∷ Getter α UUID → UUID → Lens' Data (Seq α) → (Int → Seq α → Seq α) → ExceptT ActionError IO ()
+  let withIndexAndData ∷ Getter α UUID → UUID → Lens' Data (Seq α) → (Int → Seq α → Seq α) → ServerAction ()
       withIndexAndData uuid_lens item_id collection f = do
-        old_data ← liftIO $ readIORef data_ref
-        case Seq.findIndexL (hasId uuid_lens item_id) (old_data ^. collection) of
+        d ← lift $ readTVar data_var
+        case Seq.findIndexL (hasId uuid_lens item_id) (d ^. collection) of
           Nothing → throwActionError notFound404
-          Just index → modifyAndWriteData $ collection %~ f index
+          Just index → lift $ writeTVar data_var $ d & collection %~ f index
       readHabit maybe_uuid =
         return ∘ eitherDecode'
         >=>
@@ -202,14 +205,18 @@ habitMain = do
             ("Error when parsing the habit: " ⊕)
           )
           return
+      lookupHabit ∷ UUID → ServerAction Habit
       lookupHabit habit_id = do
-        d ← liftIO $ readIORef data_ref
+        d ← lift $ readTVar data_var
         case find (hasId uuid habit_id) (d ^. habits) of
           Nothing → throwActionErrorWithMessage badRequest400 ∘ pack ∘ show $ habit_id
           Just habit → return habit
+      modifyAndWriteData f = lift $ do
+        modifyTVar data_var f
+        tryPutTMVar write_request ()
   scotty port $ do
     get "/habits" $ do
-      user_habits ← (^. habits) <$> liftIO (readIORef data_ref)
+      user_habits ← (^. habits) <$> liftIO (readTVarIO data_var)
       jsonObject
         [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
         , "data" .= fmap habitToDoc user_habits
@@ -241,8 +248,9 @@ habitMain = do
           insertAt new_index (Seq.index habits index) (deleteAt index habits)
     put "/habits" $ do
       habit_body ← body
+      seed ← liftIO randomIO
       act' $ do
-        habit ← liftIO randomIO >>= flip readHabit habit_body ∘ Just
+        habit ← readHabit (Just seed) habit_body
         modifyAndWriteData $ habits %~ (|> habit)
     post "/mark" $ do
       marks ← jsonData
@@ -259,26 +267,32 @@ habitMain = do
                 map (^. habit_credits)
         markHabits (marked_habits . success) success_credits Game.success_credits
         markHabits (marked_habits . failure) failure_credits Game.failure_credits
-    post "/run" $ do
-      liftIO (readIORef data_ref) >>= flip unless finish ∘ stillHasCredits
-      let go d = do
-            let r = runData d
-            tellParagraphs (r ^. paragraphs)
-            if stillHasCredits (r ^. new_data)
-              then do
-                tellNewline
-                if r ^. quest_completed
-                  then do
-                    tellQuestSeparator
-                    tellLine "A new quest begins..."
-                    tellQuestSeparator
-                    tellNewline
-                  else do
-                    tellEventSeparator
-                    tellNewline
-                go (r ^. new_data)
-              else return (r ^. new_data)
-      ((), b) ← runWriterT $
-        liftIO (readIORef data_ref) >>= go >>= liftIO ∘ writeIORef data_ref
-      text ∘ Builder.toLazyText $ b
-      liftIO writeDataToFile
+    post "/run" $
+      (liftIO ∘ atomically $ do
+        d ← readTVar data_var
+        if stillHasCredits d
+          then do
+            let go d = do
+                  let r = runData d
+                  tellParagraphs (r ^. paragraphs)
+                  if stillHasCredits (r ^. new_data)
+                    then do
+                      tellNewline
+                      if r ^. quest_completed
+                        then do
+                          tellQuestSeparator
+                          tellLine "A new quest begins..."
+                          tellQuestSeparator
+                          tellNewline
+                        else do
+                          tellEventSeparator
+                          tellNewline
+                      go (r ^. new_data)
+                    else return (r ^. new_data)
+            (new_d, b) ← runWriterT ∘ go $ d
+            writeTVar data_var new_d
+            tryPutTMVar write_request ()
+            return ∘ Builder.toLazyText $ b
+          else do
+            return "No credits."
+      ) >>= text

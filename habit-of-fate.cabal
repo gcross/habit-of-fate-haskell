@@ -28,6 +28,7 @@ library
                      , random
                      , scotty
                      , split
+                     , stm
                      , string-qq
                      , text
                      , time
