@@ -146,7 +146,6 @@ act =
     )
     id
 
-
 act' ∷ ServerAction α → ActionM ()
 act' run = act (run >> return (return ()))
 
