@@ -38,10 +38,10 @@ library
                      , uuid-aeson
                      , yaml
                      , warp
-  exposed-modules:     HabitOfFate.Behaviors.Habit
-                     , HabitOfFate.Console
+  exposed-modules:     HabitOfFate.Console
                      , HabitOfFate.Data
                      , HabitOfFate.Game
+                     , HabitOfFate.Habit
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest

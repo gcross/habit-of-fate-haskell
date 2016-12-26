@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Behaviors.Habit where
+module HabitOfFate.Habit where
 
 import Control.Lens hiding ((.=))
 import Control.Monad

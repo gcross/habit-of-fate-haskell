@@ -33,12 +33,12 @@ import System.Random
 import Text.Printf
 import Text.Read (readEither, readMaybe)
 
-import HabitOfFate.Behaviors.Habit
-import qualified HabitOfFate.Behaviors.Habit as Habit
 import HabitOfFate.Console
 import HabitOfFate.Data
 import HabitOfFate.Game (GameState, belief)
 import qualified HabitOfFate.Game as Game
+import HabitOfFate.Habit
+import qualified HabitOfFate.Habit as Habit
 import HabitOfFate.Unicode
 
 data Quit = BadInput | CtrlC | CtrlD

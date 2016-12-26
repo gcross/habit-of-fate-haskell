@@ -38,9 +38,9 @@ import System.IO
 import System.Random
 import Web.Scotty
 
-import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Data hiding (_habits)
 import qualified HabitOfFate.Game as Game
+import HabitOfFate.Habit
 import HabitOfFate.TH
 import HabitOfFate.Unicode
 

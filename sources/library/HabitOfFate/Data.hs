@@ -18,9 +18,9 @@ import System.Environment
 import System.FilePath
 import System.Random
 
-import HabitOfFate.Behaviors.Habit
 import HabitOfFate.Game
 import qualified HabitOfFate.Game as Game
+import HabitOfFate.Habit
 import HabitOfFate.Quests
 import HabitOfFate.TH
 import HabitOfFate.Unicode
