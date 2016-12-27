@@ -27,9 +27,10 @@ import Data.List hiding (delete)
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.String
-import Data.Text.Lazy (Text, pack, toStrict)
-import qualified Data.Text.Lazy as Text
-import qualified Data.Text.Lazy.Builder as Builder
+import qualified Data.Text as S
+import qualified Data.Text.Lazy as L
+import Data.Text.Lazy.Builder (Builder)
+import qualified Data.Text.Lazy.Builder as B
 import Data.UUID
 import Network.HTTP.Types.Status
 import System.Directory
@@ -60,7 +61,7 @@ marked_habits ∷ Lens' Marks SuccessesAndFailures
 marked_habits = lens _habits (\m h → m { _habits = h})
 
 instance Parsable UUID where
-  parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ toStrict
+  parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ L.toStrict
 
 deleteAt ∷ Int → Seq α → Seq α
 deleteAt i s = Seq.take i s ⊕ Seq.drop (i+1) s
@@ -75,35 +76,35 @@ jsonObject = json ∘ object
 
 port = 8081
 
-tellChar ∷ MonadWriter Builder.Builder m ⇒ Char → m ()
-tellChar = tell ∘ Builder.singleton
+tellChar ∷ MonadWriter Builder m ⇒ Char → m ()
+tellChar = tell ∘ B.singleton
 
-tellNewline ∷ MonadWriter Builder.Builder m ⇒ m ()
+tellNewline ∷ MonadWriter Builder m ⇒ m ()
 tellNewline = tellChar '\n'
 
-tellString ∷ MonadWriter Builder.Builder m ⇒ String → m ()
-tellString = tell ∘ Builder.fromString
+tellString ∷ MonadWriter Builder m ⇒ String → m ()
+tellString = tell ∘ B.fromString
 
-tellText ∷ MonadWriter Builder.Builder m ⇒ Text → m ()
-tellText = tell ∘ Builder.fromLazyText
+tellText ∷ MonadWriter Builder m ⇒ S.Text → m ()
+tellText = tell ∘ B.fromText
 
-tellLine ∷ MonadWriter Builder.Builder m ⇒ Text → m ()
+tellLine ∷ MonadWriter Builder m ⇒ S.Text → m ()
 tellLine t = do
   tellText t
   tellNewline
 
-tellSeparator ∷ MonadWriter Builder.Builder m ⇒ Text → m ()
+tellSeparator ∷ MonadWriter Builder m ⇒ S.Text → m ()
 tellSeparator sep = do
-  tellText $ Text.replicate 80 sep
+  tellText $ S.replicate 80 sep
   tellNewline
 
-tellQuestSeparator ∷ MonadWriter Builder.Builder m ⇒ m ()
+tellQuestSeparator ∷ MonadWriter Builder m ⇒ m ()
 tellQuestSeparator = tellSeparator "="
 
-tellEventSeparator ∷ MonadWriter Builder.Builder m ⇒ m ()
+tellEventSeparator ∷ MonadWriter Builder m ⇒ m ()
 tellEventSeparator = tellSeparator "-"
 
-tellParagraph ∷ MonadWriter Builder.Builder m ⇒ [String] → m ()
+tellParagraph ∷ MonadWriter Builder m ⇒ [String] → m ()
 tellParagraph = go 0
   where
     go _ [] = tellChar '\n'
@@ -119,7 +120,7 @@ tellParagraph = go 0
           tellString word
           go (cols + 1 + length word) rest
 
-tellParagraphs ∷ MonadWriter Builder.Builder m ⇒ [[String]] → m ()
+tellParagraphs ∷ MonadWriter Builder m ⇒ [[String]] → m ()
 tellParagraphs (paragraph:rest) = do
     tellParagraph paragraph
     go rest
@@ -130,7 +131,7 @@ tellParagraphs (paragraph:rest) = do
       tellParagraph paragraph
       go rest
 
-data ActionError = ActionError Status (Maybe Text)
+data ActionError = ActionError Status (Maybe S.Text)
   deriving (Eq,Ord,Show)
 
 type ServerAction = ExceptT ActionError STM
@@ -142,7 +143,7 @@ act =
   either
     (\(ActionError code maybe_message) → do
       status code
-      maybe (return ()) text maybe_message
+      maybe (return ()) (text ∘ L.fromStrict) maybe_message
     )
     id
 
@@ -189,7 +190,7 @@ habitMain = do
           (
             throwActionErrorWithMessage badRequest400
             ∘
-            pack
+            S.pack
             ∘
             ("Error when parsing the document: " ⊕)
           )
@@ -199,7 +200,7 @@ habitMain = do
           (
             throwActionErrorWithMessage badRequest400
             ∘
-            pack
+            S.pack
             ∘
             ("Error when parsing the habit: " ⊕)
           )
@@ -208,7 +209,7 @@ habitMain = do
       lookupHabit habit_id = do
         d ← lift $ readTVar data_var
         case find (hasId uuid habit_id) (d ^. habits) of
-          Nothing → throwActionErrorWithMessage badRequest400 ∘ pack ∘ show $ habit_id
+          Nothing → throwActionErrorWithMessage badRequest400 ∘ S.pack ∘ show $ habit_id
           Just habit → return habit
       modifyAndWriteData f = lift $ do
         modifyTVar data_var f
@@ -291,7 +292,7 @@ habitMain = do
             (new_d, b) ← runWriterT ∘ go $ d
             writeTVar data_var new_d
             tryPutTMVar write_request ()
-            return ∘ Builder.toLazyText $ b
+            return ∘ B.toLazyText $ b
           else do
             return "No credits."
       ) >>= text
