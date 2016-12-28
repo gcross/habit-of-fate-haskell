@@ -21,9 +21,12 @@ import Control.Monad.Except
 import Control.Monad.IO.Class
 import Control.Monad.Writer
 import Data.Aeson hiding (json)
-import Data.Aeson.Types
+import Data.Aeson.Types (Parser, parseEither)
 import Data.Bool
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.List hiding (delete)
+import Data.Maybe
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.String
@@ -32,6 +35,8 @@ import qualified Data.Text.Lazy as L
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as B
 import Data.UUID
+import qualified Data.UUID as UUID
+import Text.Printf
 import Network.HTTP.Types.Status
 import System.Directory
 import System.Log.Logger
@@ -44,6 +49,8 @@ import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.TH
 import HabitOfFate.Unicode
+
+import Debug.Trace
 
 data SuccessesAndFailures = SuccessesAndFailures
   { _success ∷ [UUID]
@@ -71,8 +78,6 @@ insertAt i x s = (Seq.take i s |> x) ⊕ Seq.drop i s
 
 info = infoM "HabitOfFate.Server"
 notice = noticeM "HabitOfFate.Server"
-
-jsonObject = json ∘ object
 
 port = 8081
 
@@ -156,7 +161,24 @@ throwActionErrorWithMessage code message = throwError $ ActionError code (Just m
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 
+decodeAction =
+  either
+    (throwActionErrorWithMessage badRequest400 ∘ S.pack ∘ ("Error decoding JSON: " ⊕))
+    return
+  ∘
+  eitherDecode
+
+decodeAndParseHabitAction =
+  decodeAction
+  >=>
+  either
+    (throwActionErrorWithMessage badRequest400 ∘ S.pack ∘ ("Error parsing the habit: " ⊕))
+    return
+  ∘
+  parseEither parseHabitDoc
+
 habitMain = do
+  let url_prefix = "http://localhost:8081/" ∷ S.Text
   filepath ← getDataFilePath
   info $ "Data file is located at " ++ filepath
   data_var ←
@@ -183,28 +205,6 @@ habitMain = do
         case Seq.findIndexL (hasId uuid_lens item_id) (d ^. collection) of
           Nothing → throwActionError notFound404
           Just index → lift $ writeTVar data_var $ d & collection %~ f index
-      readHabit maybe_uuid =
-        return ∘ eitherDecode'
-        >=>
-        either
-          (
-            throwActionErrorWithMessage badRequest400
-            ∘
-            S.pack
-            ∘
-            ("Error when parsing the document: " ⊕)
-          )
-          (return ∘ parseEither ((.: "data") >=> habitFromDoc maybe_uuid))
-        >=>
-        either
-          (
-            throwActionErrorWithMessage badRequest400
-            ∘
-            S.pack
-            ∘
-            ("Error when parsing the habit: " ⊕)
-          )
-          return
       lookupHabit ∷ UUID → ServerAction Habit
       lookupHabit habit_id = do
         d ← lift $ readTVar data_var
@@ -216,26 +216,27 @@ habitMain = do
         tryPutTMVar write_request ()
   scotty port $ do
     get "/habits" $ do
-      user_habits ← (^. habits) <$> liftIO (readTVarIO data_var)
-      jsonObject
-        [ "links" .= object ["self" .= String "http://localhost:8081/habits"]
-        , "data" .= fmap habitToDoc user_habits
-        ]
+      liftIO (readTVarIO data_var)
+      >>=
+      json ∘ generateHabitsDoc (url_prefix ⊕ "habits") ∘ (^. habits)
     get "/habits/:id" $ do
       habit_id ← param "id"
-      act $ do
-        habit ← lookupHabit habit_id
-        return ∘ jsonObject $
-          [ "links" .= object
-              ["self" .= String ("http://localhost:8081/habit/" ⊕ toText habit_id)
-              ]
-          , "data" .= habitToDoc habit
-          ]
+      act $ json ∘ generateHabitDoc (url_prefix ⊕ "habits/" ⊕ UUID.toText habit_id) <$> lookupHabit habit_id
     put "/habits/:id" $ do
       habit_body ← body
       habit_id ← param "id"
       act' $ do
-        habit ← readHabit Nothing habit_body
+        habit ← decodeAndParseHabitAction habit_body
+        unless (habit ^. uuid == habit_id || UUID.null (habit ^. uuid))
+          ∘
+          throwActionErrorWithMessage badRequest400
+          ∘
+          S.pack
+          $
+          printf
+            "UUID of uploaded doc (%s) does not match the UUID in the URL (%s)"
+            (toString $ habit ^. uuid)
+            (toString $ habit_id)
         withIndexAndData uuid habit_id habits $ (.~ habit) ∘ ix
     delete "/habits/:id" $ do
       habit_id ← param "id"
@@ -248,10 +249,12 @@ habitMain = do
           insertAt new_index (Seq.index habits index) (deleteAt index habits)
     put "/habits" $ do
       habit_body ← body
-      seed ← liftIO randomIO
+      random_uuid ← liftIO randomIO
       act' $ do
-        habit ← readHabit (Just seed) habit_body
-        modifyAndWriteData $ habits %~ (|> habit)
+        habit ← decodeAndParseHabitAction habit_body
+        unless (UUID.null $ habit ^. uuid) $
+          throwActionErrorWithMessage badRequest400  "uploaded doc was given an id"
+        modifyAndWriteData $ habits %~ (|> (uuid .~ random_uuid) habit)
     post "/mark" $ do
       marks ← jsonData
       act' $ do

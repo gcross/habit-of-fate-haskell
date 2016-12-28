@@ -7,16 +7,15 @@
 module HabitOfFate.Habit where
 
 import Control.Lens hiding ((.=))
-import Control.Monad
 import Data.Aeson
 import Data.Aeson.Types
-import qualified Data.HashMap.Strict as HashMap
-import Data.Maybe
-import Data.Text (Text, unpack)
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
+import Data.Text (Text)
 import Data.UUID
 import Data.UUID.Aeson ()
-import Text.Printf
 
+import HabitOfFate.JSON
 import HabitOfFate.TH
 import HabitOfFate.Unicode
 
@@ -29,32 +28,14 @@ data Habit = Habit
 deriveJSON ''Habit
 makeLenses ''Habit
 
-habitToDoc ∷ Habit → Value
-habitToDoc = toDoc "habit"
+generateHabitDoc ∷ Text → Habit → Value
+generateHabitDoc = generateDocWithObject "habit"
 
-toDoc ∷ ToJSON α ⇒ Text → α → Value
-toDoc typ x = object
-  [
-    "type" .= String typ
-  , "id" .= fromJust (HashMap.lookup "uuid" fields)
-  , "attributes" .= Object (HashMap.delete "uuid" fields)
-  ]
-  where
-    Object fields = toJSON x
+generateHabitsDoc ∷ Text → Seq Habit → Value
+generateHabitsDoc = generateDocWithObjects "habit"
 
-habitFromDoc ∷ Maybe UUID → Value → Parser Habit
-habitFromDoc = fromDoc "habit"
+parseHabitDoc ∷ Value → Parser Habit
+parseHabitDoc = parseDocWithObject "habit"
 
-fromDoc ∷ FromJSON α ⇒ Text → Maybe UUID → Value → Parser α
-fromDoc typ maybe_uuid value =
-  flip (withObject $ "Invalid doc of type " ⊕ unpack typ) value $ \fields → do
-    doc_type ← fields .: "type"
-    unless (doc_type == typ) ∘ fail $
-      printf
-        "Expected type %s does not match given type %s"
-        typ
-        doc_type
-    attributes ← fields .: "attributes" >>= withObject "Attributes was not an object" return
-    maybe (fields .: "id") (return ∘ toText) maybe_uuid
-      >>=
-      parseJSON ∘ Object ∘ flip (HashMap.insert "uuid") attributes ∘ String
+parseHabitsDoc ∷ Value → Parser (Seq Habit)
+parseHabitsDoc = fmap Seq.fromList ∘ parseDocWithObjects "habit"
