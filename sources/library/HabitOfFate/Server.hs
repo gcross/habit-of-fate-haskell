@@ -232,7 +232,9 @@ habitMain = do
         withIndexAndData uuid habit_id habits $ (.~ habit) ∘ ix
     delete "/habits/:id" $ do
       HabitId habit_id ← param "id"
-      act' $ withIndexAndData uuid habit_id habits deleteAt
+      act $ do
+        withIndexAndData uuid habit_id habits deleteAt
+        return $ status noContent204
     get "/move/habit/:id/:index" $ do
       HabitId habit_id ← param "id"
       new_index ← param "index"
@@ -242,11 +244,12 @@ habitMain = do
     put "/habits" $ do
       habit_body ← body
       random_uuid ← liftIO randomIO
-      act' $ do
+      act $ do
         habit ← decodeAndParseHabitAction habit_body
         unless (UUID.null $ habit ^. uuid) $
           throwActionErrorWithMessage badRequest400  "uploaded doc was given an id"
         modifyAndWriteData $ habits %~ (|> (uuid .~ random_uuid) habit)
+        return $ status created201
     post "/mark" $ do
       marks ← jsonData
       act' $ do
