@@ -12,24 +12,16 @@ module HabitOfFate.Server where
 
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TVar
-import Control.Concurrent.STM.TMVar
 import Control.Lens hiding ((.=))
-import qualified Control.Lens as Lens
 import Control.Monad
 import Control.Monad.Except
-import Control.Monad.IO.Class
 import Control.Monad.Writer
 import Data.Aeson hiding (json)
-import Data.Aeson.Types (Parser, parseEither)
+import Data.Aeson.Types (parseEither)
 import Data.Bool
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
 import Data.List hiding (delete)
-import Data.Maybe
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
-import Data.String
 import qualified Data.Text as S
 import qualified Data.Text.Lazy as L
 import Data.Text.Lazy.Builder (Builder)
@@ -40,7 +32,6 @@ import Text.Printf
 import Network.HTTP.Types.Status
 import System.Directory
 import System.Log.Logger
-import System.IO
 import System.Random
 import Web.Scotty
 
@@ -49,8 +40,6 @@ import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.TH
 import HabitOfFate.Unicode
-
-import Debug.Trace
 
 data SuccessesAndFailures = SuccessesAndFailures
   { _success ∷ [UUID]
@@ -67,8 +56,10 @@ deriveJSON ''Marks
 marked_habits ∷ Lens' Marks SuccessesAndFailures
 marked_habits = lens _habits (\m h → m { _habits = h})
 
-instance Parsable UUID where
-  parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ L.toStrict
+newtype HabitId = HabitId UUID
+
+instance Parsable HabitId where
+  parseParam = fmap HabitId ∘ maybe (Left "badly formed UUID") Right ∘ fromText ∘ L.toStrict
 
 deleteAt ∷ Int → Seq α → Seq α
 deleteAt i s = Seq.take i s ⊕ Seq.drop (i+1) s
@@ -76,10 +67,9 @@ deleteAt i s = Seq.take i s ⊕ Seq.drop (i+1) s
 insertAt ∷ Int → α → Seq α → Seq α
 insertAt i x s = (Seq.take i s |> x) ⊕ Seq.drop i s
 
+info, notice ∷ String → IO ()
 info = infoM "HabitOfFate.Server"
 notice = noticeM "HabitOfFate.Server"
-
-port = 8081
 
 tellChar ∷ MonadWriter Builder m ⇒ Char → m ()
 tellChar = tell ∘ B.singleton
@@ -177,8 +167,10 @@ decodeAndParseHabitAction =
   ∘
   parseEither parseHabitDoc
 
+habitMain ∷ IO ()
 habitMain = do
   let url_prefix = "http://localhost:8081/" ∷ S.Text
+      port = 8081
   filepath ← getDataFilePath
   info $ "Data file is located at " ++ filepath
   data_var ←
@@ -193,7 +185,7 @@ habitMain = do
     >>=
     newTVarIO
   write_request ← newEmptyTMVarIO
-  file_writer ← liftIO ∘ forkIO ∘ forever $
+  liftIO ∘ forkIO ∘ forever $
     (atomically $ do
       takeTMVar write_request
       readTVar data_var
@@ -220,11 +212,11 @@ habitMain = do
       >>=
       json ∘ generateHabitsDoc (url_prefix ⊕ "habits") ∘ (^. habits)
     get "/habits/:id" $ do
-      habit_id ← param "id"
+      HabitId habit_id ← param "id"
       act $ json ∘ generateHabitDoc (url_prefix ⊕ "habits/" ⊕ UUID.toText habit_id) <$> lookupHabit habit_id
     put "/habits/:id" $ do
       habit_body ← body
-      habit_id ← param "id"
+      HabitId habit_id ← param "id"
       act' $ do
         habit ← decodeAndParseHabitAction habit_body
         unless (habit ^. uuid == habit_id || UUID.null (habit ^. uuid))
@@ -239,10 +231,10 @@ habitMain = do
             (toString $ habit_id)
         withIndexAndData uuid habit_id habits $ (.~ habit) ∘ ix
     delete "/habits/:id" $ do
-      habit_id ← param "id"
+      HabitId habit_id ← param "id"
       act' $ withIndexAndData uuid habit_id habits deleteAt
     get "/move/habit/:id/:index" $ do
-      habit_id ← param "id"
+      HabitId habit_id ← param "id"
       new_index ← param "index"
       act' $ do
         withIndexAndData uuid habit_id habits $ \index habits →
