@@ -12,6 +12,7 @@
 
 module Main where
 
+import Control.Applicative
 import Control.Exception
 import Control.Lens
 import Control.Monad.Error.Lens
@@ -25,11 +26,16 @@ import Data.Foldable
 import Data.List
 import Data.Maybe
 import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import qualified Data.Text as S
 import Data.UUID ()
 import System.Console.ANSI
 import System.Directory
 import System.IO
 import System.Random
+import Text.Megaparsec
+import Text.Megaparsec.Lexer (integer)
+import Text.Megaparsec.Text
 import Text.Printf
 import Text.Read (readEither, readMaybe)
 
@@ -89,38 +95,40 @@ prompt p =
   >>=
   maybe ctrlC return
 
-parseNumberOrRepeat ∷ Int → String → ActionMonad Int
-parseNumberOrRepeat top input =
-  case (readMaybe input ∷ Maybe Int) of
-    Nothing → liftIO (printf "Invalid number: %s\n" input) >> throwError BadInput
-    Just n
-      | 1 ≤ n && n ≤ top → return (n-1)
-      | otherwise → liftIO (putStrLn "Out of range.") >> throwError BadInput
+parseNumberInRange ∷ Int → Parser Int
+parseNumberInRange top = do
+  n ← fromInteger <$> integer <|> fail "Invalid integer."
+  unless (1 ≤ n && n ≤ top) $ fail "Out of range."
+  return (n-1)
+
+parseNumbersInRange ∷ Int → Parser [Int]
+parseNumbersInRange = flip sepBy (char ',') ∘ parseNumberInRange
+
+promptAndParse ∷ Parser α → String → ActionMonad α
+promptAndParse parser p = go
+  where
+    go =
+      prompt p
+      >>=
+      either
+        (\msg → (liftIO ∘ putStrLn ∘ (\[DecFail msg] → msg) ∘ Set.toList ∘ errorCustom $ msg) >> go)
+        return
+      ∘
+      parse parser ""
+      ∘
+      S.pack
 
 promptForIndex ∷  Int → String → ActionMonad Int
 promptForIndex top p =
-  handling_ _BadInput (promptForIndex top p)
-  $
-  prompt (printf "%s [1-%i]" p top)
-  >>=
-  parseNumberOrRepeat top
+  promptAndParse
+    (parseNumberInRange top)
+    (printf "%s [1-%i]" p top)
 
 promptForIndices ∷  Int → String → ActionMonad [Int]
 promptForIndices top p =
-  handling_ _BadInput (promptForIndices top p)
-  $
-  prompt (printf "%s [1-%i]" p top)
-  >>=
-  mapM (parseNumberOrRepeat top) ∘ splitEntries
-  where
-    isSeparator ' ' = True
-    isSeparator ',' = True
-    isSeparator _ = False
-
-    splitEntries [] = []
-    splitEntries entries = entry:splitEntries (dropWhile isSeparator rest)
-      where
-        (entry,rest) = break isSeparator entries
+  promptAndParse
+    (parseNumbersInRange top)
+    (printf "%s [1-%i]" p top)
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =

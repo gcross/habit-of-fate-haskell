@@ -74,8 +74,10 @@ executable habit
                      , directory
                      , filepath
                      , lens
+                     , megaparsec
                      , mtl
                      , random
+                     , text
                      , transformers
                      , uuid
                      , yaml
