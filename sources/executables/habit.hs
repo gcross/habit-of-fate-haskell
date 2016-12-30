@@ -118,17 +118,17 @@ promptAndParse parser p = go
       ∘
       S.pack
 
-promptForIndex ∷  Int → String → ActionMonad Int
-promptForIndex top p =
+promptForI ∷ (Int → Parser α) → Int → String → ActionMonad α
+promptForI parser top p =
   promptAndParse
-    (parseNumberInRange top)
+    (parser top)
     (printf "%s [1-%i]" p top)
 
-promptForIndices ∷  Int → String → ActionMonad [Int]
-promptForIndices top p =
-  promptAndParse
-    (parseNumbersInRange top)
-    (printf "%s [1-%i]" p top)
+promptForIndex ∷ Int → String → ActionMonad Int
+promptForIndex = promptForI parseNumberInRange
+
+promptForIndices ∷ Int → String → ActionMonad [Int]
+promptForIndices = promptForI parseNumbersInRange
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =
