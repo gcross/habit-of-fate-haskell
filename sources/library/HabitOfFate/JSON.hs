@@ -96,11 +96,11 @@ generateDataObject typ x =
         (toJSON x ^? _Object)
 
 generateDocWithObject ∷ ToJSON α ⇒ S.Text → S.Text → α → Value
-generateDocWithObject self typ x = toJSON $
+generateDocWithObject typ self x = toJSON $
   Doc (Just $ HashMap.singleton "self" self) (generateDataObject typ x)
 
 generateDocWithObjects ∷ (Foldable t, ToJSON α) ⇒ S.Text → S.Text → t α → Value
-generateDocWithObjects self typ =
+generateDocWithObjects typ self =
   toJSON
   ∘
   Doc (Just $ HashMap.singleton "self" self)

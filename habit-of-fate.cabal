@@ -20,6 +20,7 @@ library
                      , directory
                      , filepath
                      , hslogger
+                     , http-conduit
                      , http-types
                      , MonadRandom
                      , lens
@@ -38,8 +39,10 @@ library
                      , uuid-aeson
                      , vector
                      , yaml
+                     , wai
                      , warp
-  exposed-modules:     HabitOfFate.Console
+  exposed-modules:     HabitOfFate.Client
+                     , HabitOfFate.Console
                      , HabitOfFate.Data
                      , HabitOfFate.Game
                      , HabitOfFate.Habit
@@ -83,4 +86,18 @@ executable habit-server
   main-is:             habit-server.hs
   build-depends:       habit-of-fate
                      , base
+  default-language:    Haskell2010
+
+test-suite test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      sources/tests
+  main-is:             test.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , containers
+                     , HUnit
+                     , random
+                     , test-framework
+                     , test-framework-hunit
+                     , warp
   default-language:    Haskell2010

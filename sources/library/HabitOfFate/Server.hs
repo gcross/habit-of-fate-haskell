@@ -30,6 +30,8 @@ import Data.UUID
 import qualified Data.UUID as UUID
 import Text.Printf
 import Network.HTTP.Types.Status
+import Network.Wai
+import Network.Wai.Handler.Warp (run)
 import System.Directory
 import System.Log.Logger
 import System.Random
@@ -167,11 +169,9 @@ decodeAndParseHabitAction =
   ∘
   parseEither parseHabitDoc
 
-habitMain ∷ IO ()
-habitMain = do
+makeApp ∷ FilePath → IO Application
+makeApp filepath = do
   let url_prefix = "http://localhost:8081/" ∷ S.Text
-      port = 8081
-  filepath ← getDataFilePath
   info $ "Data file is located at " ++ filepath
   data_var ←
     doesFileExist filepath
@@ -190,7 +190,7 @@ habitMain = do
       takeTMVar write_request
       readTVar data_var
     ) >>= writeData filepath
-  notice $ "Starting server at " ++ show port
+  notice $ "Starting server..."
   let withIndexAndData ∷ Getter α UUID → UUID → Lens' Data (Seq α) → (Int → Seq α → Seq α) → ServerAction ()
       withIndexAndData uuid_lens item_id collection f = do
         d ← lift $ readTVar data_var
@@ -206,7 +206,7 @@ habitMain = do
       modifyAndWriteData f = lift $ do
         modifyTVar data_var f
         tryPutTMVar write_request ()
-  scotty port $ do
+  scottyApp $ do
     get "/habits" $ do
       liftIO (readTVarIO data_var)
       >>=
@@ -294,3 +294,6 @@ habitMain = do
           else do
             return "No credits."
       ) >>= text
+
+habitMain ∷ IO ()
+habitMain = getDataFilePath >>= makeApp >>= run 8081
