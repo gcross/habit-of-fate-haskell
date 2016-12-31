@@ -31,6 +31,7 @@ import Data.UUID ()
 import System.Console.ANSI
 import System.Directory
 import System.IO
+import System.IO.Error (isEOFError)
 import System.Random
 import Text.Megaparsec
 import Text.Megaparsec.Lexer (integer)
@@ -81,21 +82,26 @@ exit ∷ ActionMonad α
 exit = throwError Exit
 
 prompt ∷  String → ActionMonad String
-prompt p =
-  (liftIO $ do
+prompt p = join ∘ liftIO $ do
     putStr p
     putChar ' '
     hFlush stdout
     handleJust
-      (\case
-        UserInterrupt → Just ()
-        _ → Nothing
+      (\e →
+         (
+          case fromException e of
+            Just UserInterrupt → Just cancel
+            _ → Nothing
+         )
+         <|>
+         (
+          isEOFError <$> fromException e
+          >>=
+          bool Nothing (Just $ liftIO (putStrLn "") >> exit)
+         )
       )
-      (const $ return Nothing)
-      (Just <$> getLine)
-  )
-  >>=
-  maybe cancel return
+      return
+      (return <$> getLine)
 
 parseNumberInRange ∷ Int → Parser Int
 parseNumberInRange top = do
