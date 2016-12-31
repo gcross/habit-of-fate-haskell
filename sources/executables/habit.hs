@@ -46,7 +46,7 @@ import HabitOfFate.Habit
 import qualified HabitOfFate.Habit as Habit
 import HabitOfFate.Unicode
 
-data Quit = BadInput | CtrlC | CtrlD
+data Quit = Cancel | Exit
 makePrisms ''Quit
 
 newtype ActionMonad α = ActionMonad
@@ -74,8 +74,11 @@ help commands = liftIO $ do
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
 
-ctrlC ∷ ActionMonad α
-ctrlC = throwError CtrlC
+cancel ∷ ActionMonad α
+cancel = throwError Cancel
+
+exit ∷ ActionMonad α
+exit = throwError Exit
 
 prompt ∷  String → ActionMonad String
 prompt p =
@@ -92,7 +95,7 @@ prompt p =
       (Just <$> getLine)
   )
   >>=
-  maybe ctrlC return
+  maybe cancel return
 
 parseNumberInRange ∷ Int → Parser Int
 parseNumberInRange top = do
@@ -195,7 +198,7 @@ loop labels commands = go
         ∘
         lookup command
         $
-        (chr 4, throwError CtrlD)
+        (chr 4, exit)
         :
         (chr 27, return ())
         :
@@ -219,13 +222,13 @@ gameStillHasCredits =
     <$> ((/= 0) <$> use (game . Game.success_credits))
     <*> ((/= 0) <$> use (game . Game.failure_credits))
 
-catchCtrlC ∷ ActionMonad () → ActionMonad ()
-catchCtrlC = handling_ _CtrlC (liftIO $ putStrLn "")
+catchCancel ∷ ActionMonad () → ActionMonad ()
+catchCancel = handling_ _Cancel (liftIO $ putStrLn "")
 
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
   [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
-    [('a',) ∘ Action "Add a habit." ∘ catchCtrlC $
+    [('a',) ∘ Action "Add a habit." ∘ catchCancel $
       Habit
         <$> liftIO randomIO
         <*> prompt "What is the name of the habit?"
@@ -233,9 +236,9 @@ mainLoop = loop [] $
         <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
       >>=
       (habits %=) ∘ flip (|>)
-    ,('e',) ∘ Action "Edit a habit." ∘ catchCtrlC $ do
+    ,('e',) ∘ Action "Edit a habit." ∘ catchCancel $ do
       number_of_habits ← getNumberOfHabits
-      abortIfNoHabits number_of_habits
+      cancelIfNoHabits number_of_habits
       index ← promptForIndex number_of_habits "Which habit?"
       old_habit ←  fromJust <$> preuse (habits . ix index)
       new_habit ←
@@ -300,10 +303,10 @@ mainLoop = loop [] $
         )
   ]
   where
-    abortIfNoHabits number_of_habits =
+    cancelIfNoHabits number_of_habits =
       when (number_of_habits == 0) $ do
         liftIO $ putStrLn "There are no habits."
-        ctrlC
+        cancel
 
     getGameCreditsAsFloat =
       ((/ (100 ∷ Float)) ∘ fromIntegral <$>)
@@ -338,9 +341,9 @@ mainLoop = loop [] $
           )
 
     markHabits ∷ String → Lens' Habit Double → Lens' GameState Double → ActionMonad ()
-    markHabits name habit_credits game_credits = catchCtrlC $ do
+    markHabits name habit_credits game_credits = catchCancel $ do
       number_of_habits ← getNumberOfHabits
-      abortIfNoHabits number_of_habits
+      cancelIfNoHabits number_of_habits
       indices ← promptForIndices number_of_habits "Which habits?"
       old_success_credits ← use $ game . game_credits
       forM_ indices $ \index →
