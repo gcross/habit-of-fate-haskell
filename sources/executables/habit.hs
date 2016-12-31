@@ -4,6 +4,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -11,6 +13,8 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Main where
+
+import Prelude hiding (print)
 
 import Control.Applicative
 import Control.Exception
@@ -27,16 +31,20 @@ import Data.List
 import Data.Maybe
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
+import Data.String
 import qualified Data.Text as S
+import Data.Text.Format
+import Data.Text.Format.Params
+import qualified Data.Text.Lazy as L
+import qualified Data.Text.Lazy.IO as L
 import Data.UUID ()
 import System.Console.ANSI
 import System.Directory
-import System.IO
+import System.IO hiding (print)
 import System.Random
 import Text.Megaparsec
 import Text.Megaparsec.Lexer (integer)
 import Text.Megaparsec.Text
-import Text.Printf
 import Text.Read (readEither, readMaybe)
 
 import HabitOfFate.Console
@@ -47,7 +55,7 @@ import HabitOfFate.Habit
 import qualified HabitOfFate.Habit as Habit
 import HabitOfFate.Unicode
 
-data Quit = BadInput | CtrlC | CtrlD
+data Quit = CtrlC | CtrlD
 makePrisms ''Quit
 
 newtype ActionMonad α = ActionMonad
@@ -70,7 +78,7 @@ help ∷ MonadIO m ⇒ ActionMap → m ()
 help commands = liftIO $ do
   putStrLn "Commands:"
   forM_ commands $ \(command, action) →
-    printf "  %c: %s\n" command (action ^. description)
+    print "  {}: {}\n" (command, action ^. description)
   putStrLn "  --"
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
@@ -78,10 +86,10 @@ help commands = liftIO $ do
 ctrlC ∷ ActionMonad α
 ctrlC = throwError CtrlC
 
-prompt ∷  String → ActionMonad String
+prompt ∷ L.Text → ActionMonad String
 prompt p =
   (liftIO $ do
-    putStr p
+    L.putStr p
     putChar ' '
     hFlush stdout
     handleJust
@@ -95,6 +103,9 @@ prompt p =
   >>=
   maybe ctrlC return
 
+fprompt ∷ Params ps ⇒ Format → ps → ActionMonad String
+fprompt fmt ps = prompt $ format fmt ps
+
 parseNumberInRange ∷ Int → Parser Int
 parseNumberInRange top = do
   n ← fromInteger <$> integer <|> fail "Invalid integer."
@@ -104,11 +115,11 @@ parseNumberInRange top = do
 parseNumbersInRange ∷ Int → Parser [Int]
 parseNumbersInRange = flip sepBy (char ',') ∘ parseNumberInRange
 
-promptAndParse ∷ Parser α → String → ActionMonad α
-promptAndParse parser p = go
+promptAndParse ∷ Params ps ⇒ Parser α → Format → ps → ActionMonad α
+promptAndParse parser fmt ps = go
   where
     go =
-      prompt p
+      fprompt fmt ps
       >>=
       either
         (\msg → (liftIO ∘ putStrLn ∘ (\[DecFail msg] → msg) ∘ Set.toList ∘ errorCustom $ msg) >> go)
@@ -118,19 +129,13 @@ promptAndParse parser p = go
       ∘
       S.pack
 
-promptForI ∷ (Int → Parser α) → Int → String → ActionMonad α
-promptForI parser top p =
-  promptAndParse
-    (parser top)
-    (printf "%s [1-%i]" p top)
+promptForI ∷ (Int → Parser α) → Int → L.Text → ActionMonad α
+promptForI parser top p = promptAndParse (parser top) "{} [1-{}]" (p,top)
 
-promptForIndex ∷ Int → String → ActionMonad Int
 promptForIndex = promptForI parseNumberInRange
-
-promptForIndices ∷ Int → String → ActionMonad [Int]
 promptForIndices = promptForI parseNumbersInRange
 
-promptForCommand ∷ MonadIO m ⇒ String → m Char
+promptForCommand ∷ MonadIO m ⇒ L.Text → m Char
 promptForCommand p =
   liftIO
   .
@@ -138,7 +143,7 @@ promptForCommand p =
     (hSetBuffering stdin NoBuffering)
     (hSetBuffering stdin LineBuffering)
   $ do
-  putStr p
+  L.putStr p
   putChar ' '
   hFlush stdout
   command ← getChar
@@ -147,7 +152,7 @@ promptForCommand p =
 
 promptWithDefault ∷  String → String → ActionMonad String
 promptWithDefault def p =
-  prompt (printf "%s [%s]" p def)
+  fprompt "{} [{}]" (p, def)
   <&>
   (\input → if null input then def else input)
 
@@ -165,15 +170,16 @@ unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
   | not (isAlpha command) = return ()
   | otherwise = liftIO $
-      printf "Unrecognized command '%c'.  Press ? for help.\n" command
+      print "Unrecognized command '{}'.  Press ? for help.\n" (Only command)
 
 loop ∷ [String] → ActionMap → ActionMonad ()
 loop labels commands = go
   where
     go =
-      (promptForCommand $ printf "%s[%sq?]>"
-        (intercalate "|" ("HoF":labels))
-        (map fst commands)
+      (promptForCommand $ format "{}[{}q?]>"
+        (intercalate "|" ("HoF":labels)
+        ,map fst commands
+        )
       )
       >>=
       \command →
@@ -191,10 +197,15 @@ loop labels commands = go
         :
         map (_2 %~ (>> go) ∘ view code) commands
 
-printHabit = printf "%s [+%f/-%f]\n"
-  <$> (^. name)
-  <*> (^. success_credits)
-  <*> (^. failure_credits)
+printHabit =
+  print "{} [+{}/-{}]\n"
+  ∘
+  (
+    (,,)
+      <$> (^. name)
+      <*> (^. success_credits)
+      <*> (^. failure_credits)
+  )
 
 getNumberOfHabits ∷ ActionMonad Int
 getNumberOfHabits = length <$> use habits
@@ -243,12 +254,12 @@ mainLoop = loop [] $
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
       let printCredits name =
-            use . (game .)
+            use ∘ (game .)
             >=>
-            liftIO ∘ printf "    %s credits: %f\n" name
+            print "    {} credits: {}\n" ∘ (name ∷ String,)
       printCredits "Success" Game.success_credits
       printCredits "Failure" Game.failure_credits
-      use (game . belief) >>= liftIO . printf "    Belief: %i\n"
+      use (game . belief) >>= liftIO . print "    Belief: {}\n" ∘ Only
       liftIO $ putStrLn ""
       use quest >>= liftIO . putStrLn . show
   ,('r',) ∘ Action "Run game." $
@@ -319,7 +330,7 @@ mainLoop = loop [] $
           liftIO
           ∘
           (\(n,habit) → do
-            printf "%i. " (n ∷ Int)
+            print "{}. " $ Only (n ∷ Int)
             printHabit habit
           )
 
@@ -334,11 +345,11 @@ mainLoop = loop [] $
         >>=
         (game . game_credits +=) ∘ fromJust
       new_success_credits ← use $ game . game_credits
-      liftIO $
-        printf "%s credits went from %f to %f\n"
-          name
-          old_success_credits
-          new_success_credits
+      print "{} credits went from {} to {}\n"
+        ( name
+        , old_success_credits
+        , new_success_credits
+        )
 
 main ∷ IO ()
 main = do
