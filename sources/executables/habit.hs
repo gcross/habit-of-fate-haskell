@@ -27,7 +27,6 @@ import Data.List
 import Data.Maybe
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
-import qualified Data.Text as S
 import Data.UUID ()
 import System.Console.ANSI
 import System.Directory
@@ -35,7 +34,7 @@ import System.IO
 import System.Random
 import Text.Megaparsec
 import Text.Megaparsec.Lexer (integer)
-import Text.Megaparsec.Text
+import Text.Megaparsec.String
 import Text.Printf
 import Text.Read (readEither, readMaybe)
 
@@ -115,8 +114,6 @@ promptAndParse parser p = go
         return
       ∘
       parse parser ""
-      ∘
-      S.pack
 
 promptForI ∷ (Int → Parser α) → Int → String → ActionMonad α
 promptForI parser top p =
