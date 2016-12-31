@@ -47,12 +47,14 @@ import HabitOfFate.Habit
 import qualified HabitOfFate.Habit as Habit
 import HabitOfFate.Unicode
 
-data Quit = Cancel | Exit
-makePrisms ''Quit
+data Quit = Quit
 
 newtype ActionMonad α = ActionMonad
   { unwrapActionMonad ∷ ReaderT (IORef Data) (ExceptT Quit IO) α
   } deriving (Applicative, Functor, Monad, MonadError Quit, MonadIO)
+
+quit ∷ ActionMonad α
+quit = throwError Quit
 
 instance MonadState Data ActionMonad where
   get = ActionMonad $ ask >>= liftIO . readIORef
@@ -75,13 +77,14 @@ help commands = liftIO $ do
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
 
-cancel ∷ ActionMonad α
-cancel = throwError Cancel
+data Cancel = Cancel
 
-exit ∷ ActionMonad α
-exit = throwError Exit
+type ActionMonadWithCancel = ExceptT Cancel ActionMonad
 
-prompt ∷  String → ActionMonad String
+cancel ∷ ActionMonadWithCancel α
+cancel = liftIO (putStrLn "") >> throwError Cancel
+
+prompt ∷  String → ActionMonadWithCancel String
 prompt p = join ∘ liftIO $ do
     putStr p
     putChar ' '
@@ -97,7 +100,7 @@ prompt p = join ∘ liftIO $ do
          (
           isEOFError <$> fromException e
           >>=
-          bool Nothing (Just $ liftIO (putStrLn "") >> exit)
+          bool Nothing (Just $ liftIO (putStrLn "") >> lift quit)
          )
       )
       return
@@ -112,7 +115,7 @@ parseNumberInRange top = do
 parseNumbersInRange ∷ Int → Parser [Int]
 parseNumbersInRange = flip sepBy (char ',') ∘ parseNumberInRange
 
-promptAndParse ∷ Parser α → String → ActionMonad α
+promptAndParse ∷ Parser α → String → ActionMonadWithCancel α
 promptAndParse parser p = go
   where
     go =
@@ -141,16 +144,16 @@ promptAndParse parser p = go
       ∘
       parse parser ""
 
-promptForI ∷ (Int → Parser α) → Int → String → ActionMonad α
+promptForI ∷ (Int → Parser α) → Int → String → ActionMonadWithCancel α
 promptForI parser top p =
   promptAndParse
     (parser top)
     (printf "%s [1-%i]" p top)
 
-promptForIndex ∷ Int → String → ActionMonad Int
+promptForIndex ∷ Int → String → ActionMonadWithCancel Int
 promptForIndex = promptForI parseNumberInRange
 
-promptForIndices ∷ Int → String → ActionMonad [Int]
+promptForIndices ∷ Int → String → ActionMonadWithCancel [Int]
 promptForIndices = promptForI parseNumbersInRange
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
@@ -168,13 +171,13 @@ promptForCommand p =
   putStrLn ""
   return command
 
-promptWithDefault ∷  String → String → ActionMonad String
+promptWithDefault ∷  String → String → ActionMonadWithCancel String
 promptWithDefault def p =
   prompt (printf "%s [%s]" p def)
   <&>
   (\input → if null input then def else input)
 
-promptWithDefault' ∷ (Read α, Show α) ⇒  α → String → ActionMonad α
+promptWithDefault' ∷ (Read α, Show α) ⇒  α → String → ActionMonadWithCancel α
 promptWithDefault' def p = doPrompt
   where
     doPrompt =
@@ -204,7 +207,7 @@ loop labels commands = go
         ∘
         lookup command
         $
-        (chr 4, exit)
+        (chr 4, quit)
         :
         (chr 27, return ())
         :
@@ -219,22 +222,20 @@ printHabit = printf "%s [+%f/-%f]\n"
   <*> (^. success_credits)
   <*> (^. failure_credits)
 
-getNumberOfHabits ∷ ActionMonad Int
 getNumberOfHabits = length <$> use habits
 
-gameStillHasCredits ∷ ActionMonad Bool
 gameStillHasCredits =
   (||)
     <$> ((/= 0) <$> use (game . Game.success_credits))
     <*> ((/= 0) <$> use (game . Game.failure_credits))
 
-catchCancel ∷ ActionMonad () → ActionMonad ()
-catchCancel = handling_ _Cancel (liftIO $ putStrLn "")
+withCancel ∷ ActionMonadWithCancel () → ActionMonad ()
+withCancel = void ∘ runExceptT
 
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
   [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
-    [('a',) ∘ Action "Add a habit." ∘ catchCancel $
+    [('a',) ∘ Action "Add a habit." ∘ withCancel $
       Habit
         <$> liftIO randomIO
         <*> prompt "What is the name of the habit?"
@@ -242,7 +243,7 @@ mainLoop = loop [] $
         <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
       >>=
       (habits %=) ∘ flip (|>)
-    ,('e',) ∘ Action "Edit a habit." ∘ catchCancel $ do
+    ,('e',) ∘ Action "Edit a habit." ∘ withCancel $ do
       number_of_habits ← getNumberOfHabits
       cancelIfNoHabits number_of_habits
       index ← promptForIndex number_of_habits "Which habit?"
@@ -347,7 +348,7 @@ mainLoop = loop [] $
           )
 
     markHabits ∷ String → Lens' Habit Double → Lens' GameState Double → ActionMonad ()
-    markHabits name habit_credits game_credits = catchCancel $ do
+    markHabits name habit_credits game_credits = withCancel $ do
       number_of_habits ← getNumberOfHabits
       cancelIfNoHabits number_of_habits
       indices ← promptForIndices number_of_habits "Which habits?"
