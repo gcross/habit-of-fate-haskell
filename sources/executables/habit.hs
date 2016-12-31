@@ -110,7 +110,24 @@ promptAndParse parser p = go
       prompt p
       >>=
       either
-        (\msg → (liftIO ∘ putStrLn ∘ (\[DecFail msg] → msg) ∘ Set.toList ∘ errorCustom $ msg) >> go)
+        (
+          \msg →
+            (
+              liftIO
+              ∘
+              putStrLn
+              ∘
+              (\[DecFail x] → x)
+              ∘
+              Set.toList
+              ∘
+              errorCustom
+              $
+              msg
+            )
+          >>
+          go
+        )
         return
       ∘
       parse parser ""
