@@ -23,8 +23,8 @@ import Data.Char
 import Data.IORef
 import Data.Foldable
 import Data.List
+import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Sequence as Seq
 import Data.UUID (UUID)
 import System.Console.ANSI
 import System.Directory
@@ -192,12 +192,6 @@ loop labels commands = go
         :
         map (_2 %~ (>> go) ∘ view code) commands
 
-printHabit = printf "%s: %s [+%f/-%f]\n"
-  <$> (^. uuid . to show)
-  <*> (^. name)
-  <*> (^. success_credits)
-  <*> (^. failure_credits)
-
 gameStillHasCredits =
   (||)
     <$> ((/= 0) <$> use (game . Game.success_credits))
@@ -211,31 +205,28 @@ printAndCancel = (>> cancel) ∘ liftIO ∘ putStrLn
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
   [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
-    [('a',) ∘ Action "Add a habit." ∘ withCancel $
-      Habit
-        <$> liftIO randomIO
-        <*> prompt "What is the name of the habit?"
-        <*> promptWithDefault' 1.0 "How many credits is a success worth?"
-        <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
-      >>=
-      (habits %=) ∘ flip (|>)
+    [('a',) ∘ Action "Add a habit." ∘ withCancel $ do
+      uuid ← liftIO randomIO
+      habit ←
+        Habit
+          <$> prompt "What is the name of the habit?"
+          <*> promptWithDefault' 1.0 "How many credits is a success worth?"
+          <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
+      habits . at uuid .= Just habit
     ,('e',) ∘ Action "Edit a habit." ∘ withCancel $ do
       cancelIfNoHabits
       habit_id ← promptAndParse parseUUID "Which habit?"
-      index ←
-        Seq.findIndexL ((== habit_id) ∘ (^. uuid)) <$> use habits
+      old_habit ←
+        use (habits . at habit_id)
         >>=
         maybe
           (printAndCancel "No such habit.")
           return
-      old_habit ← fromJust <$> preuse (habits . ix index)
-      new_habit ←
-        Habit
-          <$> (return $ old_habit ^. uuid)
-          <*> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
-          <*> promptWithDefault' (old_habit ^. success_credits) "How many credits is a success worth?"
-          <*> promptWithDefault' (old_habit ^. failure_credits) "How many credits is a failure worth?"
-      habits . ix index .= new_habit
+      Habit
+        <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
+        <*> promptWithDefault' (old_habit ^. success_credits) "How many credits is a success worth?"
+        <*> promptWithDefault' (old_habit ^. failure_credits) "How many credits is a failure worth?"
+       >>= (habits . at habit_id .=) ∘ Just
     ,('f',) ∘ Action "Mark habits as failed." $
        markHabits "Failure" Habit.failure_credits Game.failure_credits
     ,('p',) ∘ Action "Print habits." $ printHabits
@@ -291,11 +282,13 @@ mainLoop = loop [] $
         )
   ]
   where
-    cancelIfNoHabits = do
-      number_of_habits ← Seq.length <$> use habits
-      when (number_of_habits == 0) $ do
+    cancelIfNoHabits =
+      Map.null <$> use habits
+      >>=
+      flip when (do
         liftIO $ putStrLn "There are no habits."
         cancel
+      )
 
     getGameCreditsAsFloat =
       ((/ (100 ∷ Float)) ∘ fromIntegral <$>)
@@ -320,9 +313,14 @@ mainLoop = loop [] $
     printHabits = do
       habits_ ← use habits
       liftIO $
-        if Seq.null habits_
+        if Map.null habits_
           then putStrLn "There are no habits."
-          else mapM_ printHabit habits_
+          else forM_ (Map.toList habits_) $ \(uuid, habit) →
+            printf "%s: %s [+%f/-%f]\n"
+              (show uuid)
+              (habit ^. name)
+              (habit ^. success_credits)
+              (habit ^. failure_credits)
 
     markHabits ∷ String → Lens' Habit Double → Lens' GameState Double → ActionMonad ()
     markHabits name habit_credits game_credits = withCancel $ do
@@ -332,7 +330,7 @@ mainLoop = loop [] $
       let (missing, increase) =
             foldl'
               (\(missing, increase) habit_id →
-                case find ((== habit_id) ∘ (^. uuid)) (toList habits_) of
+                case habits_ ^. at habit_id of
                   Nothing → (habit_id:missing, increase)
                   Just habit → (missing, increase + (habit ^. habit_credits))
               )

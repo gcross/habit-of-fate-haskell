@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -7,11 +8,13 @@ module HabitOfFate.Data where
 import Control.Lens
 import Control.Monad
 import Control.Monad.Random
+import Data.Aeson
 import qualified Data.ByteString as BS
 import Data.Function
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Maybe
-import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
+import Data.UUID (UUID)
 import Data.Yaml hiding ((.=))
 import System.Directory
 import System.Environment
@@ -21,21 +24,16 @@ import System.Random
 import HabitOfFate.Game
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
+import HabitOfFate.JSONInstances ()
 import HabitOfFate.Quests
 import HabitOfFate.TH
 import HabitOfFate.Unicode
-
-instance ToJSON StdGen where
-  toJSON = toJSON ∘ show
-
-instance FromJSON StdGen where
-  parseJSON = fmap read ∘ parseJSON
 
 instance Eq StdGen where
   (==) = (==) `on` show
 
 data Data = Data
-  {   _habits ∷ Seq Habit
+  {   _habits ∷ Map UUID Habit
   ,   _game ∷ GameState
   ,   _quest ∷ Maybe CurrentQuestState
   ,   _rng :: StdGen
@@ -44,7 +42,7 @@ deriveJSON ''Data
 makeLenses ''Data
 
 newData ∷ IO Data
-newData = Data Seq.empty newGame Nothing <$> newStdGen
+newData = Data Map.empty newGame Nothing <$> newStdGen
 
 data RunDataResult = RunDataResult
   { _paragraphs ∷ [[String]]

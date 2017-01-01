@@ -3,8 +3,7 @@
 
 import Control.Concurrent
 import Control.Monad
-import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
+import qualified Data.Map as Map
 import Network.Wai.Handler.Warp
 import System.Random
 import Test.Framework
@@ -21,12 +20,11 @@ serverTestCase name action = testCase name $ do
   filepath ← ("test-" ⊕) <$> replicateM 8 (randomRIO ('a','Z'))
   withApplication (makeApp filepath) action
 
-fetchHabits_ ∷ Port → IO (Seq Habit)
 fetchHabits_ = fetchHabits "localhost"
 
 main = defaultMain
   [ serverTestCase "/habits" $
       fetchHabits_
       >=>
-      (@?= Seq.empty)
+      (@?= Map.empty)
   ]

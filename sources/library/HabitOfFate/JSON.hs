@@ -1,11 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.JSON where
 
-import Control.Lens (Prism', (^?), prism')
+import Control.Lens
 import Control.Monad ((>=>), when)
 import Data.Aeson
   ( FromJSON
@@ -14,20 +15,21 @@ import Data.Aeson
   , parseJSON
   , toJSON
   , withArray
-  , withText
   )
 import Data.Aeson.Types (Object, Parser)
 import Data.Foldable (toList)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe (fromMaybe)
+import Data.Map (Map)
+import qualified Data.Map as Map
 import qualified Data.Text as S
 import Data.UUID (UUID, fromText, nil, toText)
-import qualified Data.UUID as UUID
 import Data.Vector (fromList)
 import Text.Printf (printf)
 
-import HabitOfFate.TH (deriveJSON)
+import HabitOfFate.JSONInstances ()
+import HabitOfFate.TH
 import HabitOfFate.Unicode
 
 _Object ∷ Prism' Value Object
@@ -39,76 +41,59 @@ data Doc = Doc
   } deriving (Read,Show)
 deriveJSON ''Doc
 
-instance ToJSON UUID where
-  toJSON = String ∘ toText
-
-instance FromJSON UUID where
-  parseJSON =
-    withText "expected string"
-    $
-    maybe (fail "invalid UUID") return ∘ fromText
-
 data DataObject = DataObject
   { _type ∷ S.Text
   , _id ∷ Maybe UUID
-  , _attributes ∷ HashMap S.Text Value
+  , _attributes ∷ Value
   } deriving (Eq, Show)
 deriveJSON ''DataObject
 
-parseDataObject ∷ FromJSON α ⇒ S.Text → Value → Parser α
+data ParsedObject α = ParsedObject
+  { _maybe_uuid ∷ Maybe UUID
+  , _parsed_object ∷ α
+  }
+makeLenses ''ParsedObject
+
+parseDataObject ∷ FromJSON α ⇒ S.Text → Value → Parser (Maybe UUID, α)
 parseDataObject expected_type value = do
   dobj ← parseJSON value
   when (_type dobj /= expected_type) ∘ fail $
     printf "Expected type %s but got type %s" expected_type (_type dobj)
-  parseJSON
-    ∘
-    Object
-    ∘
-    (
-      HashMap.insert "uuid"
-      <$> String ∘ toText ∘ fromMaybe nil ∘ _id
-      <*> _attributes
-    )
-    $
-    dobj
+  (_id dobj,) <$> parseJSON (_attributes dobj)
 
-parseDocWithObject ∷ FromJSON α ⇒ S.Text → Value → Parser α
+parseDocWithObject ∷ FromJSON α ⇒ S.Text → Value → Parser (Maybe UUID, α)
 parseDocWithObject expected_type =
   fmap _data ∘ parseJSON
   >=>
   parseDataObject expected_type
 
-parseDocWithObjects ∷ FromJSON α ⇒ S.Text → Value → Parser [α]
+parseDocWithObjects ∷ FromJSON α ⇒ S.Text → Value → Parser (Map UUID α)
 parseDocWithObjects expected_type =
   fmap _data ∘ parseJSON
   >=>
   withArray
     "parseDocWithObjects: data value must be an array"
-    (mapM (parseDataObject expected_type) ∘ toList)
+    (fmap Map.fromList
+     ∘
+     mapM (
+        parseDataObject expected_type
+        >=>
+        \(maybe_uuid, x) →
+          case maybe_uuid of
+            Nothing → fail "expected id"
+            Just uuid → return (uuid, x)
+     )
+     ∘
+     toList)
 
-generateDataObject ∷ ToJSON α ⇒ S.Text → α → Value
-generateDataObject typ x =
-  toJSON
-  $
-  DataObject
-    typ
-    (case HashMap.lookup "uuid" fields of
-      Nothing → error "generateDataObject: given object did not have uuid field"
-      Just (String uuid) → fromText uuid
-      Just v → error $ "generateDataObject: the uuid field must be a string, not " ⊕ show v
-    )
-    (HashMap.delete "uuid" fields)
-  where
-    fields =
-      fromMaybe
-        (error "generateDataObject applied to a non-object value")
-        (toJSON x ^? _Object)
+generateDataObject ∷ ToJSON α ⇒ S.Text → UUID → α → Value
+generateDataObject typ uuid x = toJSON $ DataObject typ (Just uuid) (toJSON x)
 
-generateDocWithObject ∷ ToJSON α ⇒ S.Text → S.Text → α → Value
-generateDocWithObject typ self x = toJSON $
-  Doc (Just $ HashMap.singleton "self" self) (generateDataObject typ x)
+generateDocWithObject ∷ ToJSON α ⇒ S.Text → S.Text → UUID → α → Value
+generateDocWithObject typ self uuid x = toJSON $
+  Doc (Just $ HashMap.singleton "self" self) (generateDataObject typ uuid x)
 
-generateDocWithObjects ∷ (Foldable t, ToJSON α) ⇒ S.Text → S.Text → t α → Value
+generateDocWithObjects ∷ ToJSON α ⇒ S.Text → S.Text → Map UUID α → Value
 generateDocWithObjects typ self =
   toJSON
   ∘
@@ -118,6 +103,6 @@ generateDocWithObjects typ self =
   ∘
   fromList
   ∘
-  map (generateDataObject typ)
+  map (uncurry $ generateDataObject typ)
   ∘
-  toList
+  Map.toList

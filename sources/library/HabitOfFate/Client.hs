@@ -7,10 +7,11 @@ import Control.Exception (Exception, throwIO)
 import Control.Monad (unless)
 import Data.Aeson.Types (parseEither)
 import Data.ByteString (ByteString)
-import Data.Sequence (Seq)
+import Data.Map (Map)
 import qualified Data.Text as S
 import Data.Text.Encoding (decodeUtf8)
 import Data.Typeable (Typeable)
+import Data.UUID (UUID)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (Status(..))
 
@@ -24,7 +25,7 @@ data FetchException =
 
 instance Exception FetchException
 
-fetchHabits ∷ ByteString → Int → IO (Seq Habit)
+fetchHabits ∷ ByteString → Int → IO (Map UUID Habit)
 fetchHabits hostname port = do
   response ←
     httpJSON

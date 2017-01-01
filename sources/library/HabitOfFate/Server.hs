@@ -20,8 +20,7 @@ import Data.Aeson hiding (json)
 import Data.Aeson.Types (parseEither)
 import Data.Bool
 import Data.List hiding (delete)
-import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
+import qualified Data.Map as Map
 import qualified Data.Text as S
 import qualified Data.Text.Lazy as L
 import Data.Text.Lazy.Builder (Builder)
@@ -62,12 +61,6 @@ newtype HabitId = HabitId UUID
 
 instance Parsable HabitId where
   parseParam = fmap HabitId ∘ maybe (Left "badly formed UUID") Right ∘ fromText ∘ L.toStrict
-
-deleteAt ∷ Int → Seq α → Seq α
-deleteAt i s = Seq.take i s ⊕ Seq.drop (i+1) s
-
-insertAt ∷ Int → α → Seq α → Seq α
-insertAt i x s = (Seq.take i s |> x) ⊕ Seq.drop i s
 
 info, notice ∷ String → IO ()
 info = infoM "HabitOfFate.Server"
@@ -191,21 +184,19 @@ makeApp filepath = do
       readTVar data_var
     ) >>= writeData filepath
   notice $ "Starting server..."
-  let withIndexAndData ∷ Getter α UUID → UUID → Lens' Data (Seq α) → (Int → Seq α → Seq α) → ServerAction ()
-      withIndexAndData uuid_lens item_id collection f = do
+  let withHabit ∷ UUID → (Habit → Maybe Habit) → ServerAction ()
+      withHabit habit_id f = do
         d ← lift $ readTVar data_var
-        case Seq.findIndexL (hasId uuid_lens item_id) (d ^. collection) of
-          Nothing → throwActionError notFound404
-          Just index → lift $ writeTVar data_var $ d & collection %~ f index
+        case d ^. habits . at habit_id of
+          Nothing → throwActionErrorWithMessage notFound404 ∘ toText $ habit_id
+          Just habit → lift ∘ modifyTVar' data_var $ habits . at habit_id .~ f habit
       lookupHabit ∷ UUID → ServerAction Habit
       lookupHabit habit_id = do
         d ← lift $ readTVar data_var
-        case find (hasId uuid habit_id) (d ^. habits) of
-          Nothing → throwActionErrorWithMessage badRequest400 ∘ S.pack ∘ show $ habit_id
+        case d ^. habits . at habit_id of
+          Nothing → throwActionErrorWithMessage badRequest400 ∘ toText $ habit_id
           Just habit → return habit
-      modifyAndWriteData f = lift $ do
-        modifyTVar data_var f
-        tryPutTMVar write_request ()
+      submitWriteDataRequest = tryPutTMVar write_request ()
   scottyApp $ do
     get "/habits" $ do
       liftIO (readTVarIO data_var)
@@ -213,42 +204,56 @@ makeApp filepath = do
       json ∘ generateHabitsDoc (url_prefix ⊕ "habits") ∘ (^. habits)
     get "/habits/:id" $ do
       HabitId habit_id ← param "id"
-      act $ json ∘ generateHabitDoc (url_prefix ⊕ "habits/" ⊕ UUID.toText habit_id) <$> lookupHabit habit_id
+      act $
+        json
+        ∘
+        generateHabitDoc
+          (url_prefix ⊕ "habits/" ⊕ UUID.toText habit_id)
+          habit_id
+        <$>
+        lookupHabit habit_id
     put "/habits/:id" $ do
       habit_body ← body
       HabitId habit_id ← param "id"
       act' $ do
-        habit ← decodeAndParseHabitAction habit_body
-        unless (habit ^. uuid == habit_id || UUID.null (habit ^. uuid))
-          ∘
-          throwActionErrorWithMessage badRequest400
-          ∘
-          S.pack
-          $
-          printf
-            "UUID of uploaded doc (%s) does not match the UUID in the URL (%s)"
-            (toString $ habit ^. uuid)
-            (toString $ habit_id)
-        withIndexAndData uuid habit_id habits $ (.~ habit) ∘ ix
+        (maybe_uuid, habit) ← decodeAndParseHabitAction habit_body
+        case maybe_uuid of
+          Just uuid | uuid /= habit_id →
+            throwActionErrorWithMessage badRequest400
+            ∘
+            S.pack
+            $
+            printf
+              "UUID of uploaded doc (%s) does not match the UUID in the URL (%s)"
+              (toString $ uuid)
+              (toString $ habit_id)
+          _ → return ()
+        withHabit habit_id ∘ const $ Just habit
     delete "/habits/:id" $ do
       HabitId habit_id ← param "id"
       act $ do
-        withIndexAndData uuid habit_id habits deleteAt
+        withHabit habit_id ∘ const $ Nothing
         return $ status noContent204
-    get "/move/habit/:id/:index" $ do
-      HabitId habit_id ← param "id"
-      new_index ← param "index"
-      act' $ do
-        withIndexAndData uuid habit_id habits $ \index habits →
-          insertAt new_index (Seq.index habits index) (deleteAt index habits)
     put "/habits" $ do
       habit_body ← body
       random_uuid ← liftIO randomIO
       act $ do
-        habit ← decodeAndParseHabitAction habit_body
-        unless (UUID.null $ habit ^. uuid) $
-          throwActionErrorWithMessage badRequest400  "uploaded doc was given an id"
-        modifyAndWriteData $ habits %~ (|> (uuid .~ random_uuid) habit)
+        (maybe_uuid, habit) ← decodeAndParseHabitAction habit_body
+        d ← lift $ readTVar data_var
+        uuid ← case maybe_uuid of
+          Nothing → return random_uuid
+          Just uuid →
+            if Map.member uuid (d ^. habits)
+              then
+                throwActionErrorWithMessage conflict409
+                ∘
+                S.pack
+                $
+                printf "A habit with UUID %s already exists" (show uuid)
+              else return uuid
+        lift $ do
+          writeTVar data_var $ d & habits . at uuid .~ Just habit
+          submitWriteDataRequest
         return $ status created201
     post "/mark" $ do
       marks ← jsonData
@@ -256,7 +261,9 @@ makeApp filepath = do
         let markHabits uuids_lens habit_credits game_credits =
               mapM lookupHabit (marks ^. uuids_lens)
               >>=
-              modifyAndWriteData
+              lift
+                ∘
+                modifyTVar' data_var
                 ∘
                 (game . game_credits +~)
                 ∘
@@ -265,6 +272,7 @@ makeApp filepath = do
                 map (^. habit_credits)
         markHabits (marked_habits . success) success_credits Game.success_credits
         markHabits (marked_habits . failure) failure_credits Game.failure_credits
+        lift $ submitWriteDataRequest
     post "/run" $
       (liftIO ∘ atomically $ do
         d ← readTVar data_var
