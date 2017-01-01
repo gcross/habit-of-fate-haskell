@@ -18,11 +18,6 @@ infixr 9 ∘
 (∘) = (.)
 {-# INLINE (∘) #-}
 
-infixr 5 ⊞
-(⊞) ∷ [α] → [α] → [α]
-(⊞) = (++)
-{-# INLINE (⊞) #-}
-
 infixr 6 ∈
 (∈) ∷ Eq α ⇒ α → [α] → Bool
 (∈) = elem

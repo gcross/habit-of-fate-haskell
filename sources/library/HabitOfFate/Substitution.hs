@@ -29,20 +29,20 @@ makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
     ⊕
     concatMap
       (\(key, character@(Character name _)) →
-          (name, name) : makeArticles key character ⊞ map (_1 <>~ '|':key) (makeNouns character)
+          (name, name) : makeArticles key character ⊕ map (_1 <>~ '|':key) (makeNouns character)
       )
       table
   where
     makeArticles key (Character name _) =
-        [("a " ⊞ key,article_value)
-        ,("A " ⊞ key,article_value)
-        ,("an " ⊞ key,article_value)
-        ,("An " ⊞ key,article_value)
-        ,("the " ⊞ key,"the " ⊞ name)
-        ,("The " ⊞ key,"The " ⊞ name)
+        [("a " ⊕ key,article_value)
+        ,("A " ⊕ key,article_value)
+        ,("an " ⊕ key,article_value)
+        ,("An " ⊕ key,article_value)
+        ,("the " ⊕ key,"the " ⊕ name)
+        ,("The " ⊕ key,"The " ⊕ name)
         ]
       where
-        article_value = article ⊞ " " ⊞ name
+        article_value = article ⊕ " " ⊕ name
           where
             article
               | elem (toLower ∘ head $ name) ['a','e','i','o','u'] = "an"
@@ -60,7 +60,7 @@ makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
 
         subject_pronouns =
             map (,pronoun) ["he","she","it"]
-            ⊞
+            ⊕
             map (,capitalized pronoun) ["He","She","It"]
           where
             pronoun = case gender of
@@ -77,7 +77,7 @@ makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
 
         possessive_prononuns =
             map (,pronoun) ["his","her'","its"]
-            ⊞
+            ⊕
             map (,capitalized pronoun) ["His","Her","Its"]
           where
             pronoun = case gender of
@@ -108,7 +108,7 @@ substitute table = go
         let (possibly_wrapped_key,remainder) = break (== '}') rest
             key = unwords . words $ possibly_wrapped_key
         in case Map.lookup key table of
-            Nothing → error $ "key " ⊞ key ⊞ " was not found in the table"
-            Just value → value ⊞ go (tail remainder)
+            Nothing → error $ "key " ⊕ key ⊕ " was not found in the table"
+            Just value → value ⊕ go (tail remainder)
     go (x:rest) = x:go rest
     go [] = []
