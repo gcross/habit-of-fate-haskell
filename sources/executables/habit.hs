@@ -15,7 +15,6 @@ module Main where
 import Control.Applicative
 import Control.Exception
 import Control.Lens
-import Control.Monad.Error.Lens
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -26,7 +25,6 @@ import Data.Foldable
 import Data.List
 import Data.Maybe
 import qualified Data.Sequence as Seq
-import qualified Data.Set as Set
 import Data.UUID (UUID)
 import System.Console.ANSI
 import System.Directory
