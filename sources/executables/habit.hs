@@ -27,15 +27,12 @@ import Data.List
 import Data.Maybe
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
-import Data.UUID ()
+import Data.UUID (UUID)
 import System.Console.ANSI
 import System.Directory
 import System.IO
 import System.IO.Error (isEOFError)
 import System.Random
-import Text.Megaparsec
-import Text.Megaparsec.Lexer (integer)
-import Text.Megaparsec.String
 import Text.Printf
 import Text.Read (readEither, readMaybe)
 
@@ -106,55 +103,35 @@ prompt p = join ∘ liftIO $ do
       return
       (return <$> getLine)
 
-parseNumberInRange ∷ Int → Parser Int
-parseNumberInRange top = do
-  n ← fromInteger <$> integer <|> fail "Invalid integer."
-  unless (1 ≤ n && n ≤ top) $ fail "Out of range."
-  return (n-1)
+parseUUID ∷ String → Maybe UUID
+parseUUID = readMaybe
 
-parseNumbersInRange ∷ Int → Parser [Int]
-parseNumbersInRange = flip sepBy (char ',') ∘ parseNumberInRange
-
-promptAndParse ∷ Parser α → String → ActionMonadWithCancel α
-promptAndParse parser p = go
+parseUUIDs ∷ String → Maybe [UUID]
+parseUUIDs =
+    sequence
+    ∘
+    map parseUUID
+    ∘
+    split1
   where
-    go =
-      prompt p
-      >>=
-      either
-        (
-          \msg →
-            (
-              liftIO
-              ∘
-              putStrLn
-              ∘
-              (\[DecFail x] → x)
-              ∘
-              Set.toList
-              ∘
-              errorCustom
-              $
-              msg
-            )
-          >>
-          go
-        )
-        return
-      ∘
-      parse parser ""
+    isSep = flip elem " ,"
 
-promptForI ∷ (Int → Parser α) → Int → String → ActionMonadWithCancel α
-promptForI parser top p =
-  promptAndParse
-    (parser top)
-    (printf "%s [1-%i]" p top)
+    split1 = split2 ∘ dropWhile isSep
 
-promptForIndex ∷ Int → String → ActionMonadWithCancel Int
-promptForIndex = promptForI parseNumberInRange
+    split2 [] = []
+    split2 x = entry:split1 rest
+      where
+        (entry,rest) = break isSep x
 
-promptForIndices ∷ Int → String → ActionMonadWithCancel [Int]
-promptForIndices = promptForI parseNumbersInRange
+promptAndParse ∷ (String → Maybe α) → String → ActionMonadWithCancel α
+promptAndParse parse p =
+  prompt p
+  >>=
+  maybe
+    (liftIO (putStrLn "Bad input.") >> promptAndParse parse p)
+    return
+  ∘
+  parse
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =
@@ -217,12 +194,11 @@ loop labels commands = go
         :
         map (_2 %~ (>> go) ∘ view code) commands
 
-printHabit = printf "%s [+%f/-%f]\n"
-  <$> (^. name)
+printHabit = printf "%s: %s [+%f/-%f]\n"
+  <$> (^. uuid . to show)
+  <*> (^. name)
   <*> (^. success_credits)
   <*> (^. failure_credits)
-
-getNumberOfHabits = length <$> use habits
 
 gameStillHasCredits =
   (||)
@@ -231,6 +207,8 @@ gameStillHasCredits =
 
 withCancel ∷ ActionMonadWithCancel () → ActionMonad ()
 withCancel = void ∘ runExceptT
+
+printAndCancel = (>> cancel) ∘ liftIO ∘ putStrLn
 
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
@@ -244,10 +222,15 @@ mainLoop = loop [] $
       >>=
       (habits %=) ∘ flip (|>)
     ,('e',) ∘ Action "Edit a habit." ∘ withCancel $ do
-      number_of_habits ← getNumberOfHabits
-      cancelIfNoHabits number_of_habits
-      index ← promptForIndex number_of_habits "Which habit?"
-      old_habit ←  fromJust <$> preuse (habits . ix index)
+      cancelIfNoHabits
+      habit_id ← promptAndParse parseUUID "Which habit?"
+      index ←
+        Seq.findIndexL ((== habit_id) ∘ (^. uuid)) <$> use habits
+        >>=
+        maybe
+          (printAndCancel "No such habit.")
+          return
+      old_habit ← fromJust <$> preuse (habits . ix index)
       new_habit ←
         Habit
           <$> (return $ old_habit ^. uuid)
@@ -310,7 +293,8 @@ mainLoop = loop [] $
         )
   ]
   where
-    cancelIfNoHabits number_of_habits =
+    cancelIfNoHabits = do
+      number_of_habits ← Seq.length <$> use habits
       when (number_of_habits == 0) $ do
         liftIO $ putStrLn "There are no habits."
         cancel
@@ -336,33 +320,30 @@ mainLoop = loop [] $
       clearLine
 
     printHabits = do
-      habits' ← use habits
-      if Seq.null habits'
-        then liftIO $ putStrLn "There are no habits."
-        else forM_ (zip [1..] (toList habits')) $
-          liftIO
-          ∘
-          (\(n,habit) → do
-            printf "%i. " (n ∷ Int)
-            printHabit habit
-          )
+      habits_ ← use habits
+      liftIO $
+        if Seq.null habits_
+          then putStrLn "There are no habits."
+          else mapM_ printHabit habits_
 
     markHabits ∷ String → Lens' Habit Double → Lens' GameState Double → ActionMonad ()
     markHabits name habit_credits game_credits = withCancel $ do
-      number_of_habits ← getNumberOfHabits
-      cancelIfNoHabits number_of_habits
-      indices ← promptForIndices number_of_habits "Which habits?"
-      old_success_credits ← use $ game . game_credits
-      forM_ indices $ \index →
-        preuse (habits . ix index . habit_credits)
-        >>=
-        (game . game_credits +=) ∘ fromJust
-      new_success_credits ← use $ game . game_credits
-      liftIO $
-        printf "%s credits went from %f to %f\n"
-          name
-          old_success_credits
-          new_success_credits
+      cancelIfNoHabits
+      habit_ids ← promptAndParse parseUUIDs "Which habits?"
+      habits_ ← use habits
+      let (missing, increase) =
+            foldl'
+              (\(missing, increase) habit_id →
+                case find ((== habit_id) ∘ (^. uuid)) (toList habits_) of
+                  Nothing → (habit_id:missing, increase)
+                  Just habit → (missing, increase + (habit ^. habit_credits))
+              )
+              ([], 0)
+              habit_ids
+      old_credits ← use $ game . game_credits
+      let new_credits = old_credits + increase
+      game . game_credits .= new_credits
+      liftIO $ printf "%s credits went from %f to %f\n" name old_credits new_credits
 
 main ∷ IO ()
 main = do
