@@ -36,7 +36,6 @@ library
                      , transformers
                      , unordered-containers
                      , uuid
-                     , uuid-aeson
                      , vector
                      , yaml
                      , wai

@@ -14,6 +14,7 @@ import Data.Aeson
   , parseJSON
   , toJSON
   , withArray
+  , withText
   )
 import Data.Aeson.Types (Object, Parser)
 import Data.Foldable (toList)
@@ -21,9 +22,8 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as S
-import Data.UUID (UUID)
+import Data.UUID (UUID, fromText, nil, toText)
 import qualified Data.UUID as UUID
-import Data.UUID.Aeson ()
 import Data.Vector (fromList)
 import Text.Printf (printf)
 
@@ -38,6 +38,15 @@ data Doc = Doc
   , _data ∷ Value
   } deriving (Read,Show)
 deriveJSON ''Doc
+
+instance ToJSON UUID where
+  toJSON = String ∘ toText
+
+instance FromJSON UUID where
+  parseJSON =
+    withText "expected string"
+    $
+    maybe (fail "invalid UUID") return ∘ fromText
 
 data DataObject = DataObject
   { _type ∷ S.Text
@@ -57,7 +66,7 @@ parseDataObject expected_type value = do
     ∘
     (
       HashMap.insert "uuid"
-      <$> String ∘ UUID.toText ∘ fromMaybe UUID.nil ∘ _id
+      <$> String ∘ toText ∘ fromMaybe nil ∘ _id
       <*> _attributes
     )
     $
@@ -85,7 +94,7 @@ generateDataObject typ x =
     typ
     (case HashMap.lookup "uuid" fields of
       Nothing → error "generateDataObject: given object did not have uuid field"
-      Just (String uuid) → UUID.fromText uuid
+      Just (String uuid) → fromText uuid
       Just v → error $ "generateDataObject: the uuid field must be a string, not " ⊕ show v
     )
     (HashMap.delete "uuid" fields)

@@ -13,7 +13,6 @@ import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import Data.UUID
-import Data.UUID.Aeson ()
 
 import HabitOfFate.JSON
 import HabitOfFate.TH
