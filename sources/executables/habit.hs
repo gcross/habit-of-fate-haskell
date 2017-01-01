@@ -154,7 +154,7 @@ promptWithDefault def p =
   <&>
   (\input → if null input then def else input)
 
-promptWithDefault' ∷ (Read α, Show α) ⇒  α → String → ActionMonadWithCancel α
+promptWithDefault' ∷ (Read α, Show α) ⇒ α → String → ActionMonadWithCancel α
 promptWithDefault' def p = doPrompt
   where
     doPrompt =
