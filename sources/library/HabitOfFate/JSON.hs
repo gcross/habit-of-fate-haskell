@@ -6,103 +6,64 @@
 
 module HabitOfFate.JSON where
 
+import Prelude hiding (id)
+
 import Control.Lens
-import Control.Monad ((>=>), when)
 import Data.Aeson
   ( FromJSON
   , ToJSON
-  , Value(Array, Object, String)
+  , Value(Array, Object)
   , parseJSON
   , toJSON
-  , withArray
   )
-import Data.Aeson.Types (Object, Parser)
 import Data.Foldable (toList)
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
-import Data.Maybe (fromMaybe)
-import Data.Map (Map)
-import qualified Data.Map as Map
 import qualified Data.Text as S
-import Data.UUID (UUID, fromText, nil, toText)
-import Data.Vector (fromList)
-import Text.Printf (printf)
+import Data.UUID (UUID)
 
 import HabitOfFate.JSONInstances ()
 import HabitOfFate.TH
 import HabitOfFate.Unicode
 
-_Object ∷ Prism' Value Object
-_Object = prism' Object (\case { Object fields → Just fields; _ → Nothing })
+data Links = Links
+  { _self ∷ S.Text
+  } deriving (Eq,Ord,Read,Show)
+makeLenses ''Links
+deriveJSON ''Links
 
-data Doc = Doc
-  { _links ∷ Maybe (HashMap S.Text S.Text)
-  , _data ∷ Value
-  } deriving (Read,Show)
+data WrappedObject α = WrappedObject
+  { _id ∷ Maybe UUID
+  , __type ∷ S.Text
+  , _attributes ∷ α
+  } deriving (Eq,Ord,Read,Show)
+makeLenses ''WrappedObject
+deriveJSON ''WrappedObject
+
+makeWrappedObject ∷ S.Text → α → WrappedObject α
+makeWrappedObject = WrappedObject Nothing
+
+data DocData α =
+    SingleWrappedObject (WrappedObject α)
+  | MultipleWrappedObjects [WrappedObject α]
+  deriving (Eq,Ord,Read,Show)
+
+instance FromJSON α ⇒ FromJSON (DocData α) where
+  parseJSON x@(Object _) = SingleWrappedObject <$> parseJSON x
+  parseJSON (Array xs) = MultipleWrappedObjects ∘ toList <$> mapM parseJSON xs
+  parseJSON _ = fail "data must be an object or an array"
+
+instance ToJSON α ⇒ ToJSON (DocData α) where
+  toJSON (SingleWrappedObject x) = toJSON x
+  toJSON (MultipleWrappedObjects xs) = toJSON xs
+
+data Doc α = Doc
+  { _links ∷ Maybe Links
+  , __data ∷ DocData α
+  } deriving (Eq,Ord,Read,Show)
+makeLenses ''Doc
 deriveJSON ''Doc
 
-data DataObject = DataObject
-  { _type ∷ S.Text
-  , _id ∷ Maybe UUID
-  , _attributes ∷ Value
-  } deriving (Eq, Show)
-deriveJSON ''DataObject
+makeDocWithWrappedObject ∷ WrappedObject α → Doc α
+makeDocWithWrappedObject = Doc Nothing ∘ SingleWrappedObject
 
-data ParsedObject α = ParsedObject
-  { _maybe_uuid ∷ Maybe UUID
-  , _parsed_object ∷ α
-  }
-makeLenses ''ParsedObject
-
-parseDataObject ∷ FromJSON α ⇒ S.Text → Value → Parser (Maybe UUID, α)
-parseDataObject expected_type value = do
-  dobj ← parseJSON value
-  when (_type dobj /= expected_type) ∘ fail $
-    printf "Expected type %s but got type %s" expected_type (_type dobj)
-  (_id dobj,) <$> parseJSON (_attributes dobj)
-
-parseDocWithObject ∷ FromJSON α ⇒ S.Text → Value → Parser (Maybe UUID, α)
-parseDocWithObject expected_type =
-  fmap _data ∘ parseJSON
-  >=>
-  parseDataObject expected_type
-
-parseDocWithObjects ∷ FromJSON α ⇒ S.Text → Value → Parser (Map UUID α)
-parseDocWithObjects expected_type =
-  fmap _data ∘ parseJSON
-  >=>
-  withArray
-    "parseDocWithObjects: data value must be an array"
-    (fmap Map.fromList
-     ∘
-     mapM (
-        parseDataObject expected_type
-        >=>
-        \(maybe_uuid, x) →
-          case maybe_uuid of
-            Nothing → fail "expected id"
-            Just uuid → return (uuid, x)
-     )
-     ∘
-     toList)
-
-generateDataObject ∷ ToJSON α ⇒ S.Text → UUID → α → Value
-generateDataObject typ uuid x = toJSON $ DataObject typ (Just uuid) (toJSON x)
-
-generateDocWithObject ∷ ToJSON α ⇒ S.Text → S.Text → UUID → α → Value
-generateDocWithObject typ self uuid x = toJSON $
-  Doc (Just $ HashMap.singleton "self" self) (generateDataObject typ uuid x)
-
-generateDocWithObjects ∷ ToJSON α ⇒ S.Text → S.Text → Map UUID α → Value
-generateDocWithObjects typ self =
-  toJSON
-  ∘
-  Doc (Just $ HashMap.singleton "self" self)
-  ∘
-  Array
-  ∘
-  fromList
-  ∘
-  map (uncurry $ generateDataObject typ)
-  ∘
-  Map.toList
+makeDocWithWrappedObjects ∷ [WrappedObject α] → Doc α
+makeDocWithWrappedObjects = Doc Nothing ∘ MultipleWrappedObjects

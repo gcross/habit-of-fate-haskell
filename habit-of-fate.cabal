@@ -55,6 +55,7 @@ library
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
                      , HabitOfFate.Unicode
+                     , HabitOfFate.Utils
   default-language:    Haskell2010
 
 executable center-banner

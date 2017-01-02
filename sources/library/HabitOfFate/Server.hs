@@ -10,6 +10,8 @@
 
 module HabitOfFate.Server where
 
+import Prelude hiding (id)
+
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Lens hiding ((.=))
@@ -39,8 +41,10 @@ import Web.Scotty
 import HabitOfFate.Data hiding (_habits)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
+import HabitOfFate.JSON
 import HabitOfFate.TH
 import HabitOfFate.Unicode
+import HabitOfFate.Utils
 
 data SuccessesAndFailures = SuccessesAndFailures
   { _success ∷ [UUID]
@@ -135,7 +139,7 @@ act =
       status code
       maybe (return ()) (text ∘ L.fromStrict) maybe_message
     )
-    id
+    identity
 
 act' ∷ ServerAction α → ActionM ()
 act' run = act (run >> return (return ()))
@@ -145,22 +149,6 @@ throwActionErrorWithMessage code message = throwError $ ActionError code (Just m
 
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
-
-decodeAction =
-  either
-    (throwActionErrorWithMessage badRequest400 ∘ S.pack ∘ ("Error decoding JSON: " ⊕))
-    return
-  ∘
-  eitherDecode
-
-decodeAndParseHabitAction =
-  decodeAction
-  >=>
-  either
-    (throwActionErrorWithMessage badRequest400 ∘ S.pack ∘ ("Error parsing the habit: " ⊕))
-    return
-  ∘
-  parseEither parseHabitDoc
 
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
@@ -201,46 +189,68 @@ makeApp filepath = do
     get "/habits" $ do
       liftIO (readTVarIO data_var)
       >>=
-      json ∘ generateHabitsDoc (url_prefix ⊕ "habits") ∘ (^. habits)
+      json
+      ∘
+      (links._Just.self .~ url_prefix ⊕ "habits")
+      ∘
+      makeDocWithWrappedObjects
+      ∘
+      map (\(uuid,habit) → makeWrappedObject "habit" habit & id._Just .~ uuid)
+      ∘
+      Map.toList
+      ∘
+      (^. habits)
     get "/habits/:id" $ do
       HabitId habit_id ← param "id"
       act $
         json
         ∘
-        generateHabitDoc
-          (url_prefix ⊕ "habits/" ⊕ UUID.toText habit_id)
-          habit_id
+        (links._Just.self .~ url_prefix ⊕ "habits/" ⊕ UUID.toText habit_id)
+        ∘
+        makeDocWithWrappedObject
+        ∘
+        makeWrappedObject "habit"
         <$>
         lookupHabit habit_id
     put "/habits/:id" $ do
-      habit_body ← body
+      doc ← jsonData
       HabitId habit_id ← param "id"
-      act' $ do
-        (maybe_uuid, habit) ← decodeAndParseHabitAction habit_body
-        case maybe_uuid of
-          Just uuid | uuid /= habit_id →
-            throwActionErrorWithMessage badRequest400
-            ∘
-            S.pack
-            $
-            printf
-              "UUID of uploaded doc (%s) does not match the UUID in the URL (%s)"
-              (toString $ uuid)
-              (toString $ habit_id)
-          _ → return ()
-        withHabit habit_id ∘ const $ Just habit
+      act' $
+        case doc ^. _data of
+          MultipleWrappedObjects _ →
+            throwActionErrorWithMessage
+              badRequest400
+              "Update request must contain a single habit"
+          SingleWrappedObject w → do
+            case w ^. id of
+              Just uuid | uuid /= habit_id →
+                throwActionErrorWithMessage badRequest400
+                ∘
+                S.pack
+                $
+                printf
+                  "UUID of uploaded doc (%s) does not match the UUID in the URL (%s)"
+                  (toString $ uuid)
+                  (toString $ habit_id)
+              _ → return ()
+            withHabit habit_id ∘ const ∘ Just $ w ^. attributes
     delete "/habits/:id" $ do
       HabitId habit_id ← param "id"
       act $ do
         withHabit habit_id ∘ const $ Nothing
         return $ status noContent204
     put "/habits" $ do
-      habit_body ← body
+      doc ← jsonData
       random_uuid ← liftIO randomIO
       act $ do
-        (maybe_uuid, habit) ← decodeAndParseHabitAction habit_body
+        w ← case doc ^. _data of
+          MultipleWrappedObjects _ →
+            throwActionErrorWithMessage
+              badRequest400
+              "Create request must contain a single habit"
+          SingleWrappedObject w → return w
         d ← lift $ readTVar data_var
-        uuid ← case maybe_uuid of
+        uuid ← case w ^. id of
           Nothing → return random_uuid
           Just uuid →
             if Map.member uuid (d ^. habits)
@@ -252,7 +262,7 @@ makeApp filepath = do
                 printf "A habit with UUID %s already exists" (show uuid)
               else return uuid
         lift $ do
-          writeTVar data_var $ d & habits . at uuid .~ Just habit
+          writeTVar data_var $ d & habits . at uuid .~ Just (w ^. attributes)
           submitWriteDataRequest
         return $ status created201
     post "/mark" $ do
