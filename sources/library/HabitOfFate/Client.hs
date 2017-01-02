@@ -19,17 +19,26 @@ import Data.Typeable (Typeable)
 import Data.UUID (UUID, fromText, toText)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (Status(..))
+import System.Log.Logger
+import Text.Printf
 
 import HabitOfFate.Habit
 import HabitOfFate.JSON
 import HabitOfFate.Unicode
 
-data ClientException =
-    UnexpectedStatusCode Int S.Text
-  | UnableToParseResponse S.Text
-  deriving (Read,Show,Typeable)
+debug = debugM "HabitOfFate.Client"
 
-instance Exception ClientException
+failStatus ∷ Int → Int → ByteString → IO α
+failStatus expected_code actual_code message =
+  fail
+  $
+  printf "Expected status code %i, but got code %i with message: %s"
+    expected_code
+    actual_code
+    (decodeUtf8 message)
+
+failParse ∷ String → IO α
+failParse = fail ∘ ("Failed parse: " ⊕)
 
 createHabit ∷ ByteString → Int → Habit → IO UUID
 createHabit hostname port habit = do
@@ -37,11 +46,10 @@ createHabit hostname port habit = do
     httpLBS
     ∘
     setRequestBodyJSON (
-      makeDocWithWrappedObject
-      ∘
-      makeWrappedObject "habit"
-      $
-      habit
+      makeJSON $ do
+        addObject "data" $ do
+          addText "type" "habit"
+          add "attributes" habit
     )
     ∘
     setRequestMethod "PUT"
@@ -54,21 +62,18 @@ createHabit hostname port habit = do
     $
     defaultRequest
   let Status code message = getResponseStatus response
-  unless (code == 201) $
-    throwIO $ UnexpectedStatusCode code (decodeUtf8 message)
+  unless (code == 201) $ failStatus 201 code message
   case getResponseHeader "Location" response of
-    [] → throwIO $ UnableToParseResponse "No location returned for created habit."
+    [] → failParse "No location returned for created habit."
     [url] →
       let url_as_text = decodeUtf8 url
       in case fromText ∘ S.takeWhileEnd (/= '/') $ url_as_text of
         Nothing →
-          throwIO
-          ∘
-          UnableToParseResponse
+          failParse
           $
-          "Last part of location did not end with a UUID: " ⊕ url_as_text
+          "Last part of location did not end with a UUID: " ⊕ S.unpack url_as_text
         Just uuid → return uuid
-    _ → throwIO $ UnableToParseResponse "Multiple locations returned for created habit."
+    _ → failParse "Multiple locations returned for created habit."
 
 fetchHabit ∷ ByteString → Int → UUID → IO Habit
 fetchHabit hostname port uuid = do
@@ -85,16 +90,15 @@ fetchHabit hostname port uuid = do
     $
     defaultRequest
   let Status code message = getResponseStatus response
-  unless (code == 200) $
-    throwIO $ UnexpectedStatusCode code (decodeUtf8 message)
+  unless (code == 200) $ failStatus 200 code message
+  debug $
+    "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
   case eitherDecode (getResponseBody response) of
-    Left error_message → throwIO $ UnableToParseResponse (S.pack error_message)
-    Right doc → case doc ^. _data of
-      MultipleWrappedObjects _ → throwIO $ UnableToParseResponse "Document had multiple habits."
-      SingleWrappedObject w → do
-        when (maybe False (== uuid) $ w ^. id) $
-          throwIO $ UnableToParseResponse "A habit did not have an associated id."
-        return $ w ^. attributes
+    Left error_message → failParse error_message
+    Right doc → either failParse return ∘ unmakeJSON doc ∘ retrieveObject "data" $ do
+      checkTypeIs "habit"
+      checkIdIfPresentIs uuid
+      retrieve "attributes"
 
 fetchHabits ∷ ByteString → Int → IO (Map UUID Habit)
 fetchHabits hostname port = do
@@ -111,19 +115,19 @@ fetchHabits hostname port = do
     $
     defaultRequest
   let Status code message = getResponseStatus response
-  unless (code == 200) $
-    throwIO $ UnexpectedStatusCode code (decodeUtf8 message)
+  unless (code == 200) $ failStatus 200 code message
   case eitherDecode (getResponseBody response) of
-    Left error_message → throwIO $ UnableToParseResponse (S.pack error_message)
-    Right doc → case doc ^. _data of
-      SingleWrappedObject _ → throwIO $ UnableToParseResponse "Document only had a single habit."
-      MultipleWrappedObjects ws →
-        Map.fromList
-        <$>
-        mapM
-          (\w →
-            case w ^. id of
-              Nothing → throwIO $ UnableToParseResponse "A habit did not have an associated id."
-              Just uuid → return (uuid, w ^. attributes)
-          )
-          ws
+    Left error_message → failParse error_message
+    Right doc →
+      Map.fromList
+      <$>
+      (
+        either failParse return
+        ∘
+        unmakeJSON doc
+        ∘
+        retrieveObjects "data"
+        $
+        do checkTypeIs "habit"
+           (,) <$> retrieve "id" <*> retrieve "attributes"
+      )

@@ -149,6 +149,14 @@ throwActionErrorWithMessage code message = throwError $ ActionError code (Just m
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 
+unmakeJSONAction ∷ Value → UnmakeJSON α → ServerAction α
+unmakeJSONAction value action =
+  either
+    (throwActionErrorWithMessage badRequest400 ∘ S.pack)
+    return
+  $
+  unmakeJSON value action
+
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
   let url_prefix = "http://localhost:8081/" ∷ S.Text
@@ -190,51 +198,43 @@ makeApp filepath = do
       >>=
       json
       ∘
-      (links._Just.self .~ url_prefix ⊕ "habits")
-      ∘
-      makeDocWithWrappedObjects
-      ∘
-      map (\(uuid,habit) → id .~ Just uuid $ makeWrappedObject "habit" habit)
-      ∘
-      Map.toList
+      (\hs → makeJSON $ do
+        addObject "links" ∘ add "self" $ url_prefix ⊕ "habits"
+        add "data" $
+          map
+           (\(uuid, habit) → makeJSON $ do
+             add "id" uuid
+             addText "type" "habit"
+             add "attributes" habit
+           )
+           (Map.toList hs)
+      )
       ∘
       (^. habits)
     get "/habits/:id" $ do
       HabitId habit_id ← param "id"
       info $ "Fetching habit " ⊕ show habit_id
-      act $
-        json
-        ∘
-        (links._Just.self .~ url_prefix ⊕ "habits/" ⊕ toText habit_id)
-        ∘
-        makeDocWithWrappedObject
-        ∘
-        makeWrappedObject "habit"
-        <$>
-        lookupHabit habit_id
+      let url = url_prefix ⊕ "habits/" ⊕ toText habit_id
+      act $ do
+        habit ← lookupHabit habit_id
+        return ∘ json ∘ makeJSON $ do
+          addObject "links" ∘ add "self" $ url
+          addObject "data" $ do
+            add "id" habit_id
+            addText "type" "habit"
+            add "attributes" habit
     put "/habits/:id" $ do
       doc ← jsonData
       HabitId habit_id ← param "id"
       info $ "Replacing habit " ⊕ show habit_id
       act' $
-        case doc ^. _data of
-          MultipleWrappedObjects _ →
-            throwActionErrorWithMessage
-              badRequest400
-              "Update request must contain a single habit"
-          SingleWrappedObject w → do
-            case w ^. id of
-              Just uuid | uuid /= habit_id →
-                throwActionErrorWithMessage badRequest400
-                ∘
-                S.pack
-                $
-                printf
-                  "UUID of uploaded doc (%s) does not match the UUID in the URL (%s)"
-                  (toString $ uuid)
-                  (toString $ habit_id)
-              _ → return ()
-            withHabit habit_id ∘ const ∘ Just $ w ^. attributes
+        (unmakeJSONAction doc ∘ retrieveObject "data" $ do
+          checkTypeIs "habit"
+          checkIdIfPresentIs habit_id
+          retrieve "attributes"
+        )
+        >>=
+        withHabit habit_id ∘ const ∘ Just
     delete "/habits/:id" $ do
       HabitId habit_id ← param "id"
       act $ do
@@ -244,14 +244,11 @@ makeApp filepath = do
       doc ← jsonData
       random_uuid ← liftIO randomIO
       act $ do
-        w ← case doc ^. _data of
-          MultipleWrappedObjects _ →
-            throwActionErrorWithMessage
-              badRequest400
-              "Create request must contain a single habit"
-          SingleWrappedObject w → return w
+        (maybe_uuid, habit) ← unmakeJSONAction doc ∘ retrieveObject "data" $ do
+          checkTypeIs "habit"
+          (,) <$> retrieveMaybe "id" <*> retrieve "attributes"
         d ← lift $ readTVar data_var
-        uuid ← case w ^. id of
+        uuid ← case maybe_uuid of
           Nothing → return random_uuid
           Just uuid →
             if Map.member uuid (d ^. habits)
@@ -263,14 +260,18 @@ makeApp filepath = do
                 printf "A habit with id %s already exists" (show uuid)
               else return uuid
         lift $ do
-          writeTVar data_var $ d & habits . at uuid .~ Just (w ^. attributes)
+          writeTVar data_var $ d & habits . at uuid .~ Just habit
           submitWriteDataRequest
         return $ do
+          info $ "Created habit " ⊕ show uuid
           let url = url_prefix ⊕ "habit/" ⊕ toText uuid
           addHeader "Location" ∘ (^. from strict) $ url
-          json ∘ (links._Just.self .~ url) $ w
           status created201
-          info $ "Created habit " ⊕ show uuid
+          json ∘ makeJSON ∘ addObject "data" $ do
+            add "id" uuid
+            addText "type" "habit"
+            add "attributes" habit
+            addObject "links" ∘ add "self" $ url
     post "/mark" $ do
       marks ← jsonData
       act' $ do
