@@ -28,14 +28,16 @@ import HabitOfFate.Unicode
 
 debug = debugM "HabitOfFate.Client"
 
-failStatus ∷ Int → Int → ByteString → IO α
-failStatus expected_code actual_code message =
+expectSuccess response =
+  unless (code >= 200 && code <= 299)
+  ∘
   fail
   $
-  printf "Expected status code %i, but got code %i with message: %s"
-    expected_code
-    actual_code
+  printf "Received error code %i: %s"
+    code
     (decodeUtf8 message)
+  where
+    Status code message = getResponseStatus response
 
 failParse ∷ String → IO α
 failParse = fail ∘ ("Failed parse: " ⊕)
@@ -61,8 +63,7 @@ createHabit hostname port habit = do
     setRequestPath "/habits"
     $
     defaultRequest
-  let Status code message = getResponseStatus response
-  unless (code == 201) $ failStatus 201 code message
+  expectSuccess response
   case getResponseHeader "Location" response of
     [] → failParse "No location returned for created habit."
     [url] →
@@ -89,8 +90,7 @@ fetchHabit hostname port uuid = do
     setRequestPath (encodeUtf8 $ "/habits/" ⊕ toText uuid)
     $
     defaultRequest
-  let Status code message = getResponseStatus response
-  unless (code == 200) $ failStatus 200 code message
+  expectSuccess response
   debug $
     "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
   case eitherDecode (getResponseBody response) of
@@ -114,8 +114,7 @@ fetchHabits hostname port = do
     setRequestPath "/habits"
     $
     defaultRequest
-  let Status code message = getResponseStatus response
-  unless (code == 200) $ failStatus 200 code message
+  expectSuccess response
   case eitherDecode (getResponseBody response) of
     Left error_message → failParse error_message
     Right doc →
