@@ -194,7 +194,7 @@ makeApp filepath = do
       ∘
       makeDocWithWrappedObjects
       ∘
-      map (\(uuid,habit) → makeWrappedObject "habit" habit & id._Just .~ uuid)
+      map (\(uuid,habit) → id .~ Just uuid $ makeWrappedObject "habit" habit)
       ∘
       Map.toList
       ∘

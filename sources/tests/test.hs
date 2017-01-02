@@ -55,4 +55,9 @@ main = initialize >> defaultMain
       uuid ← createHabit_ port habit
       fetched_habit ← fetchHabit_ port uuid
       habit @=? fetched_habit
+  , serverTestCase "Create a habit and fetch all habits" $ \port → do
+      let habit = Habit "name" 1 0
+      uuid ← createHabit_ port habit
+      fetched_habits ← fetchHabits_ port
+      Map.singleton uuid habit @=? fetched_habits
   ]
