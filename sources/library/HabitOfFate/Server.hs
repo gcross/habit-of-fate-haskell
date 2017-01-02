@@ -28,7 +28,6 @@ import qualified Data.Text.Lazy as L
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as B
 import Data.UUID
-import qualified Data.UUID as UUID
 import Text.Printf
 import Network.HTTP.Types.Status
 import Network.Wai
@@ -205,7 +204,7 @@ makeApp filepath = do
       act $
         json
         ∘
-        (links._Just.self .~ url_prefix ⊕ "habits/" ⊕ UUID.toText habit_id)
+        (links._Just.self .~ url_prefix ⊕ "habits/" ⊕ toText habit_id)
         ∘
         makeDocWithWrappedObject
         ∘
