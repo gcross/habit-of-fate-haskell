@@ -34,6 +34,7 @@ serverTestCase name action = testCase name $ do
   withApplication (makeApp filepath) action
 
 createHabit_ = createHabit "localhost"
+deleteHabit_ = deleteHabit "localhost"
 fetchHabit_ = fetchHabit "localhost"
 fetchHabits_ = fetchHabits "localhost"
 
@@ -62,4 +63,8 @@ main = initialize >> defaultMain
   , serverTestCase "Create a habit and fetch all habits" $ \port → do
       uuid ← createHabit_ port test_habit
       fetchHabits_ port >>= (@?= Map.singleton uuid test_habit)
+  , serverTestCase "Create a habit, delete it, and fetch all habits" $ \port → do
+      uuid ← createHabit_ port test_habit
+      deleteHabit_ port uuid
+      fetchHabits_ port >>= (@?= Map.empty)
   ]

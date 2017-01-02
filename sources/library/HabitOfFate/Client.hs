@@ -76,6 +76,22 @@ createHabit hostname port habit = do
         Just uuid → return uuid
     _ → failParse "Multiple locations returned for created habit."
 
+deleteHabit ∷ ByteString → Int → UUID → IO ()
+deleteHabit hostname port uuid = do
+  response ←
+    httpLBS
+    ∘
+    setRequestMethod "DELETE"
+    ∘
+    setRequestHost hostname
+    ∘
+    setRequestPort port
+    ∘
+    setRequestPath (encodeUtf8 $ "/habits/" ⊕ toText uuid)
+    $
+    defaultRequest
+  expectSuccess response
+
 fetchHabit ∷ ByteString → Int → UUID → IO Habit
 fetchHabit hostname port uuid = do
   response ←
