@@ -30,16 +30,23 @@ data Links = Links
 makeLenses ''Links
 deriveJSON ''Links
 
+class LinksLens α where
+  links ∷ Lens' α (Maybe Links)
+
 data WrappedObject α = WrappedObject
   { _id ∷ Maybe UUID
+  , _objlinks ∷ Maybe Links
   , __type ∷ S.Text
   , _attributes ∷ α
   } deriving (Eq,Ord,Read,Show)
 makeLenses ''WrappedObject
 deriveJSON ''WrappedObject
 
+instance LinksLens (WrappedObject α) where
+  links = objlinks
+
 makeWrappedObject ∷ S.Text → α → WrappedObject α
-makeWrappedObject = WrappedObject Nothing
+makeWrappedObject = WrappedObject Nothing Nothing
 
 data DocData α =
     SingleWrappedObject (WrappedObject α)
@@ -56,11 +63,14 @@ instance ToJSON α ⇒ ToJSON (DocData α) where
   toJSON (MultipleWrappedObjects xs) = toJSON xs
 
 data Doc α = Doc
-  { _links ∷ Maybe Links
+  { _doclinks ∷ Maybe Links
   , __data ∷ DocData α
   } deriving (Eq,Ord,Read,Show)
 makeLenses ''Doc
 deriveJSON ''Doc
+
+instance LinksLens (Doc α) where
+  links = doclinks
 
 makeDocWithWrappedObject ∷ WrappedObject α → Doc α
 makeDocWithWrappedObject = Doc Nothing ∘ SingleWrappedObject

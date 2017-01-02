@@ -264,7 +264,11 @@ makeApp filepath = do
         lift $ do
           writeTVar data_var $ d & habits . at uuid .~ Just (w ^. attributes)
           submitWriteDataRequest
-        return $ status created201
+        return $ do
+          let url = url_prefix ⊕ "habit/" ⊕ toText uuid
+          addHeader "Location" ∘ (^. from strict) $ url
+          json ∘ (links._Just.self .~ url) $ w
+          status created201
     post "/mark" $ do
       marks ← jsonData
       act' $ do
