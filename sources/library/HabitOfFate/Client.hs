@@ -1,13 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Client where
 
 import Prelude hiding (id)
 
-import Control.Exception (Exception, throwIO)
 import Control.Lens
-import Control.Monad (unless, when)
+import Control.Monad (unless)
+import Control.Monad.Reader
 import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as LBS
@@ -15,7 +16,6 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Text as S
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Data.Typeable (Typeable)
 import Data.UUID (UUID, fromText, toText)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (Status(..))
@@ -24,10 +24,20 @@ import Text.Printf
 
 import HabitOfFate.Habit
 import HabitOfFate.JSON
+import HabitOfFate.TH
 import HabitOfFate.Unicode
 
-debug = debugM "HabitOfFate.Client"
+debug = liftIO ∘ debugM "HabitOfFate.Client"
 
+data ServerInfo = ServerInfo
+  { _hostname ∷ ByteString
+  , _port ∷ Int
+  }
+makeLenses ''ServerInfo
+
+type Client = ReaderT ServerInfo IO
+
+expectSuccess ∷ Response α → Client ()
 expectSuccess response =
   unless (code >= 200 && code <= 299)
   ∘
@@ -39,31 +49,51 @@ expectSuccess response =
   where
     Status code message = getResponseStatus response
 
-failParse ∷ String → IO α
+failParse ∷ String → Client α
 failParse = fail ∘ ("Failed parse: " ⊕)
 
-createHabit ∷ ByteString → Int → Habit → IO UUID
-createHabit hostname port habit = do
-  response ←
-    httpLBS
+pathToHabit ∷ UUID → S.Text
+pathToHabit = ("/habits/" ⊕) ∘ toText
+
+makeRequest ∷ S.Text → S.Text → Client Request
+makeRequest method path = do
+  server ← ask
+  return
     ∘
-    setRequestBodyJSON (
-      makeJSON $ do
-        addObject "data" $ do
-          addText "type" "habit"
-          add "attributes" habit
-    )
+    setRequestMethod (encodeUtf8 method)
     ∘
-    setRequestMethod "PUT"
+    setRequestPath (encodeUtf8 path)
     ∘
-    setRequestHost hostname
+    setRequestHost (server ^. hostname)
     ∘
-    setRequestPort port
-    ∘
-    setRequestPath "/habits"
+    setRequestPort (server ^. port)
     $
     defaultRequest
+
+request ∷ S.Text → S.Text → Client (Response LBS.ByteString)
+request method path = do
+  response ← makeRequest method path >>= httpLBS
   expectSuccess response
+  return response
+
+requestWithBody ∷ S.Text → S.Text → Value → Client (Response LBS.ByteString)
+requestWithBody method path value = do
+  response ←
+    (makeRequest method path <&> setRequestBodyJSON value)
+    >>=
+    httpLBS
+  expectSuccess response
+  return response
+
+createHabit ∷ Habit → Client UUID
+createHabit habit = do
+  response ←
+    requestWithBody "PUT" "/habits"
+    $
+    makeJSON $ do
+      addObject "data" $ do
+        addText "type" "habit"
+        add "attributes" habit
   case getResponseHeader "Location" response of
     [] → failParse "No location returned for created habit."
     [url] →
@@ -76,39 +106,14 @@ createHabit hostname port habit = do
         Just uuid → return uuid
     _ → failParse "Multiple locations returned for created habit."
 
-deleteHabit ∷ ByteString → Int → UUID → IO ()
-deleteHabit hostname port uuid = do
-  response ←
-    httpLBS
-    ∘
-    setRequestMethod "DELETE"
-    ∘
-    setRequestHost hostname
-    ∘
-    setRequestPort port
-    ∘
-    setRequestPath (encodeUtf8 $ "/habits/" ⊕ toText uuid)
-    $
-    defaultRequest
-  expectSuccess response
+deleteHabit ∷ UUID → Client ()
+deleteHabit uuid =
+  void $ request "DELETE" (pathToHabit uuid)
 
-fetchHabit ∷ ByteString → Int → UUID → IO Habit
-fetchHabit hostname port uuid = do
-  response ←
-    httpLBS
-    ∘
-    setRequestMethod "GET"
-    ∘
-    setRequestHost hostname
-    ∘
-    setRequestPort port
-    ∘
-    setRequestPath (encodeUtf8 $ "/habits/" ⊕ toText uuid)
-    $
-    defaultRequest
-  expectSuccess response
-  debug $
-    "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
+fetchHabit ∷ UUID → Client Habit
+fetchHabit uuid = do
+  response ← request "GET" (pathToHabit uuid)
+  debug $ "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
   case eitherDecode (getResponseBody response) of
     Left error_message → failParse error_message
     Right doc → either failParse return ∘ unmakeJSON doc ∘ retrieveObject "data" $ do
@@ -116,20 +121,9 @@ fetchHabit hostname port uuid = do
       checkIdIfPresentIs uuid
       retrieve "attributes"
 
-fetchHabits ∷ ByteString → Int → IO (Map UUID Habit)
-fetchHabits hostname port = do
-  response ←
-    httpLBS
-    ∘
-    setRequestMethod "GET"
-    ∘
-    setRequestHost hostname
-    ∘
-    setRequestPort port
-    ∘
-    setRequestPath "/habits"
-    $
-    defaultRequest
+fetchHabits ∷ Client (Map UUID Habit)
+fetchHabits = do
+  response ← request "GET" "/habits"
   expectSuccess response
   case eitherDecode (getResponseBody response) of
     Left error_message → failParse error_message

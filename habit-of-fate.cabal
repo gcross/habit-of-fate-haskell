@@ -101,6 +101,7 @@ test-suite test
                      , filepath
                      , hslogger
                      , HUnit
+                     , mtl
                      , random
                      , test-framework
                      , test-framework-hunit

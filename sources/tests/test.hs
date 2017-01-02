@@ -3,6 +3,7 @@
 
 import Control.Concurrent
 import Control.Monad
+import Control.Monad.Reader
 import qualified Data.Map as Map
 import Network.Wai.Handler.Warp
 import System.Directory
@@ -26,17 +27,12 @@ header header = replicate left_dash_count '-' ++ " " ++ header ++ " " ++ replica
     right_dash_count = dash_count `div` 2
     left_dash_count = dash_count - right_dash_count
 
-serverTestCase ∷ String → (Port → IO ()) → Test
+serverTestCase ∷ String → (Client ()) → Test
 serverTestCase name action = testCase name $ do
   debugM "Test" $ header name
   tempdir ← getTemporaryDirectory
   filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','z'))
-  withApplication (makeApp filepath) action
-
-createHabit_ = createHabit "localhost"
-deleteHabit_ = deleteHabit "localhost"
-fetchHabit_ = fetchHabit "localhost"
-fetchHabits_ = fetchHabits "localhost"
+  withApplication (makeApp filepath) (runReaderT action ∘ ServerInfo "localhost")
 
 initialize = do
   doesFileExist "test.log" >>= flip when (removeFile "test.log")
@@ -51,20 +47,20 @@ test_habit = Habit "name" 1 0
 
 main = initialize >> defaultMain
   [ serverTestCase "Get all habits when none exist" $
-      fetchHabits_
-      >=>
-      (@?= Map.empty)
-  , serverTestCase "Create and fetch a habit" $ \port →
-      createHabit_ port test_habit
+      fetchHabits
       >>=
-      fetchHabit_ port
+      liftIO ∘ (@?= Map.empty)
+  , serverTestCase "Create and fetch a habit" $
+      createHabit test_habit
       >>=
-      (@?= test_habit)
-  , serverTestCase "Create a habit and fetch all habits" $ \port → do
-      uuid ← createHabit_ port test_habit
-      fetchHabits_ port >>= (@?= Map.singleton uuid test_habit)
-  , serverTestCase "Create a habit, delete it, and fetch all habits" $ \port → do
-      uuid ← createHabit_ port test_habit
-      deleteHabit_ port uuid
-      fetchHabits_ port >>= (@?= Map.empty)
+      fetchHabit
+      >>=
+      liftIO ∘ (@?= test_habit)
+  , serverTestCase "Create a habit and fetch all habits" $ do
+      uuid ← createHabit test_habit
+      fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit)
+  , serverTestCase "Create a habit, delete it, and fetch all habits" $ do
+      uuid ← createHabit test_habit
+      deleteHabit uuid
+      fetchHabits >>= liftIO ∘ (@?= Map.empty)
   ]
