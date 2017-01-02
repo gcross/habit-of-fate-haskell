@@ -140,3 +140,14 @@ fetchHabits = do
         do checkTypeIs "habit"
            (,) <$> retrieve "id" <*> retrieve "attributes"
       )
+
+replaceHabit ∷ UUID → Habit → Client ()
+replaceHabit uuid habit =
+  void
+  ∘
+  requestWithBody "PUT" (pathToHabit uuid)
+  $
+  makeJSON $ do
+    addObject "data" $ do
+      addText "type" "habit"
+      add "attributes" habit

@@ -42,8 +42,8 @@ initialize = do
     ∘
     setHandlers [file_handler]
 
-test_habit ∷ Habit
 test_habit = Habit "name" 1 0
+test_habit_2 = Habit "test" 0 1
 
 main = initialize >> defaultMain
   [ serverTestCase "Get all habits when none exist" $
@@ -63,4 +63,8 @@ main = initialize >> defaultMain
       uuid ← createHabit test_habit
       deleteHabit uuid
       fetchHabits >>= liftIO ∘ (@?= Map.empty)
+  , serverTestCase "Create a habit, replace it, and fetch all habits" $ do
+      uuid ← createHabit test_habit
+      replaceHabit uuid test_habit_2
+      fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit_2)
   ]
