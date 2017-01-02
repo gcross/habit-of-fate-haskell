@@ -97,6 +97,9 @@ test-suite test
   build-depends:       habit-of-fate
                      , base
                      , containers
+                     , directory
+                     , filepath
+                     , hslogger
                      , HUnit
                      , random
                      , test-framework

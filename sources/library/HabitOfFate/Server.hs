@@ -65,9 +65,9 @@ newtype HabitId = HabitId UUID
 instance Parsable HabitId where
   parseParam = fmap HabitId ∘ maybe (Left "badly formed UUID") Right ∘ fromText ∘ L.toStrict
 
-info, notice ∷ String → IO ()
-info = infoM "HabitOfFate.Server"
-notice = noticeM "HabitOfFate.Server"
+info, notice ∷ MonadIO m ⇒ String → m ()
+info = liftIO ∘ infoM "HabitOfFate.Server"
+notice = liftIO ∘ noticeM "HabitOfFate.Server"
 
 tellChar ∷ MonadWriter Builder m ⇒ Char → m ()
 tellChar = tell ∘ B.singleton
@@ -183,7 +183,7 @@ makeApp filepath = do
         case d ^. habits . at habit_id of
           Nothing → throwActionErrorWithMessage badRequest400 ∘ toText $ habit_id
           Just habit → return habit
-      submitWriteDataRequest = tryPutTMVar write_request ()
+      submitWriteDataRequest = void $ tryPutTMVar write_request ()
   scottyApp $ do
     get "/habits" $ do
       liftIO (readTVarIO data_var)
@@ -201,6 +201,7 @@ makeApp filepath = do
       (^. habits)
     get "/habits/:id" $ do
       HabitId habit_id ← param "id"
+      info $ "Fetching habit " ⊕ show habit_id
       act $
         json
         ∘
@@ -214,6 +215,7 @@ makeApp filepath = do
     put "/habits/:id" $ do
       doc ← jsonData
       HabitId habit_id ← param "id"
+      info $ "Replacing habit " ⊕ show habit_id
       act' $
         case doc ^. _data of
           MultipleWrappedObjects _ →
@@ -258,7 +260,7 @@ makeApp filepath = do
                 ∘
                 S.pack
                 $
-                printf "A habit with UUID %s already exists" (show uuid)
+                printf "A habit with id %s already exists" (show uuid)
               else return uuid
         lift $ do
           writeTVar data_var $ d & habits . at uuid .~ Just (w ^. attributes)
@@ -268,6 +270,7 @@ makeApp filepath = do
           addHeader "Location" ∘ (^. from strict) $ url
           json ∘ (links._Just.self .~ url) $ w
           status created201
+          info $ "Created habit " ⊕ show uuid
     post "/mark" $ do
       marks ← jsonData
       act' $ do
