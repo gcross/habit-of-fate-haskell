@@ -45,19 +45,21 @@ initialize = do
     ∘
     setHandlers [file_handler]
 
+test_habit ∷ Habit
+test_habit = Habit "name" 1 0
+
 main = initialize >> defaultMain
   [ serverTestCase "Get all habits when none exist" $
       fetchHabits_
       >=>
       (@?= Map.empty)
-  , serverTestCase "Create and fetch a habit" $ \port → do
-      let habit = Habit "name" 1 0
-      uuid ← createHabit_ port habit
-      fetched_habit ← fetchHabit_ port uuid
-      habit @=? fetched_habit
+  , serverTestCase "Create and fetch a habit" $ \port →
+      createHabit_ port test_habit
+      >>=
+      fetchHabit_ port
+      >>=
+      (@?= test_habit)
   , serverTestCase "Create a habit and fetch all habits" $ \port → do
-      let habit = Habit "name" 1 0
-      uuid ← createHabit_ port habit
-      fetched_habits ← fetchHabits_ port
-      Map.singleton uuid habit @=? fetched_habits
+      uuid ← createHabit_ port test_habit
+      fetchHabits_ port >>= (@?= Map.singleton uuid test_habit)
   ]
