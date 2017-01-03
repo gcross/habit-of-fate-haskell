@@ -141,6 +141,22 @@ fetchHabits =
     )
   )
 
+getCredits ∷ Client (Double, Double)
+getCredits =
+  request "GET" "/mark"
+  >>=
+  (flip parseDoc $ (,) <$> retrieve "success" <*> retrieve "failure")
+
+markHabits ∷ [UUID] → [UUID] → Client ()
+markHabits success_habits failure_habits =
+  void
+  ∘
+  requestWithBody "POST" "/mark"
+  $
+  makeJSON $ do
+    add "success" success_habits
+    add "failure" failure_habits
+
 replaceHabit ∷ UUID → Habit → Client ()
 replaceHabit uuid habit =
   void

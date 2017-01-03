@@ -45,21 +45,6 @@ import HabitOfFate.TH
 import HabitOfFate.Unicode
 import HabitOfFate.Utils
 
-data SuccessesAndFailures = SuccessesAndFailures
-  { _success ∷ [UUID]
-  , _failure ∷ [UUID]
-  }
-deriveJSON ''SuccessesAndFailures
-makeLenses ''SuccessesAndFailures
-
-data Marks = Marks
-  { _habits ∷ SuccessesAndFailures
-  }
-deriveJSON ''Marks
-
-marked_habits ∷ Lens' Marks SuccessesAndFailures
-marked_habits = lens _habits (\m h → m { _habits = h})
-
 newtype HabitId = HabitId UUID
 
 instance Parsable HabitId where
@@ -272,11 +257,18 @@ makeApp filepath = do
             addText "type" "habit"
             add "attributes" habit
             addObject "links" ∘ add "self" $ url
+    get "/mark" $ do
+      d ← liftIO $ readTVarIO data_var
+      json ∘ makeJSON $ do
+        add "success" (d ^. game . Game.success_credits)
+        add "failure" (d ^. game . Game.failure_credits)
     post "/mark" $ do
-      marks ← jsonData
+      doc ← jsonData
       act' $ do
-        let markHabits uuids_lens habit_credits game_credits =
-              mapM lookupHabit (marks ^. uuids_lens)
+        (success_habits, failure_habits) ← unmakeJSONAction doc $
+          (,) <$> retrieve "success" <*> retrieve "failure"
+        let markHabits uuids habit_credits game_credits =
+              mapM lookupHabit uuids
               >>=
               lift
                 ∘
@@ -287,8 +279,8 @@ makeApp filepath = do
                 sum
                 ∘
                 map (^. habit_credits)
-        markHabits (marked_habits . success) success_credits Game.success_credits
-        markHabits (marked_habits . failure) failure_credits Game.failure_credits
+        markHabits success_habits success_credits Game.success_credits
+        markHabits failure_habits failure_credits Game.failure_credits
         lift $ submitWriteDataRequest
     post "/run" $
       (liftIO ∘ atomically $ do
