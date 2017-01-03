@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -82,6 +83,15 @@ request method path = do
   expectSuccess response
   return response
 
+requestMaybe ∷ S.Text → S.Text → Client (Maybe (Response LBS.ByteString))
+requestMaybe method path = do
+  response ← makeRequest method path >>= httpLBS
+  if statusCode (getResponseStatus response) == 404
+    then return Nothing
+    else do
+      expectSuccess response
+      return ∘ Just $ response
+
 requestWithBody ∷ S.Text → S.Text → Value → Client (Response LBS.ByteString)
 requestWithBody method path value = do
   response ←
@@ -116,14 +126,18 @@ deleteHabit ∷ UUID → Client ()
 deleteHabit uuid =
   void $ request "DELETE" (pathToHabit uuid)
 
-fetchHabit ∷ UUID → Client Habit
+fetchHabit ∷ UUID → Client (Maybe Habit)
 fetchHabit uuid = do
-  response ← request "GET" (pathToHabit uuid)
-  debug $ "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
-  parseDoc response ∘ retrieveObject "data" $ do
-    checkTypeIs "habit"
-    checkIdIfPresentIs uuid
-    retrieve "attributes"
+  requestMaybe "GET" (pathToHabit uuid)
+  >>=
+  \case
+    Nothing → return Nothing
+    Just response → do
+      debug $ "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
+      parseDoc response ∘ retrieveObject "data" $ do
+        checkTypeIs "habit"
+        checkIdIfPresentIs uuid
+        retrieve "attributes"
 
 fetchHabits ∷ Client (Map UUID Habit)
 fetchHabits =

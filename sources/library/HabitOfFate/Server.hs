@@ -174,7 +174,7 @@ makeApp filepath = do
       lookupHabit habit_id = do
         d ← lift $ readTVar data_var
         case d ^. habits . at habit_id of
-          Nothing → throwActionErrorWithMessage badRequest400 ∘ toText $ habit_id
+          Nothing → throwActionErrorWithMessage notFound404 ∘ toText $ habit_id
           Just habit → return habit
       submitWriteDataRequest = void $ tryPutTMVar write_request ()
   scottyApp $ do

@@ -50,12 +50,16 @@ main = initialize >> defaultMain
       fetchHabits
       >>=
       liftIO ∘ (@?= Map.empty)
+  , serverTestCase "Get a particular habit when none exist" $
+      fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
+      >>=
+      liftIO ∘ (@?= Nothing)
   , serverTestCase "Create and fetch a habit" $
       createHabit test_habit
       >>=
       fetchHabit
       >>=
-      liftIO ∘ (@?= test_habit)
+      liftIO ∘ (@?= Just test_habit)
   , serverTestCase "Create a habit and fetch all habits" $ do
       uuid ← createHabit test_habit
       fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit)
