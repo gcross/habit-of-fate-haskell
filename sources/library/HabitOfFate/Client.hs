@@ -70,6 +70,12 @@ makeRequest method path = do
     $
     defaultRequest
 
+parseDoc ∷ Response LBS.ByteString → UnmakeJSON α → Client α
+parseDoc response parser =
+  case eitherDecode (getResponseBody response) of
+    Left error_message → failParse error_message
+    Right doc → either failParse return ∘ unmakeJSON doc $ parser
+
 request ∷ S.Text → S.Text → Client (Response LBS.ByteString)
 request method path = do
   response ← makeRequest method path >>= httpLBS
@@ -114,32 +120,26 @@ fetchHabit ∷ UUID → Client Habit
 fetchHabit uuid = do
   response ← request "GET" (pathToHabit uuid)
   debug $ "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
-  case eitherDecode (getResponseBody response) of
-    Left error_message → failParse error_message
-    Right doc → either failParse return ∘ unmakeJSON doc ∘ retrieveObject "data" $ do
-      checkTypeIs "habit"
-      checkIdIfPresentIs uuid
-      retrieve "attributes"
+  parseDoc response ∘ retrieveObject "data" $ do
+    checkTypeIs "habit"
+    checkIdIfPresentIs uuid
+    retrieve "attributes"
 
 fetchHabits ∷ Client (Map UUID Habit)
-fetchHabits = do
-  response ← request "GET" "/habits"
-  expectSuccess response
-  case eitherDecode (getResponseBody response) of
-    Left error_message → failParse error_message
-    Right doc →
-      Map.fromList
-      <$>
-      (
-        either failParse return
-        ∘
-        unmakeJSON doc
-        ∘
-        retrieveObjects "data"
-        $
-        do checkTypeIs "habit"
-           (,) <$> retrieve "id" <*> retrieve "attributes"
-      )
+fetchHabits =
+  Map.fromList
+  <$>
+  (
+    request "GET" "/habits"
+    >>=
+    (flip parseDoc
+      ∘
+      retrieveObjects "data"
+      $
+      do checkTypeIs "habit"
+         (,) <$> retrieve "id" <*> retrieve "attributes"
+    )
+  )
 
 replaceHabit ∷ UUID → Habit → Client ()
 replaceHabit uuid habit =
