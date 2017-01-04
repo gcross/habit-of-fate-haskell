@@ -64,9 +64,9 @@ executable center-banner
   build-depends:       base
   default-language:    Haskell2010
 
-executable habit
+executable habit-client
   hs-source-dirs:      sources/executables
-  main-is:             habit.hs
+  main-is:             habit-client.hs
   build-depends:       habit-of-fate
                      , ansi-terminal
                      , base

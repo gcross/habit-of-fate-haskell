@@ -181,3 +181,9 @@ replaceHabit uuid habit =
     addObject "data" $ do
       addText "type" "habit"
       add "attributes" habit
+
+runGame ∷ Client S.Text
+runGame =
+  (decodeUtf8Lazy ∘ getResponseBody)
+  <$>
+  request "POST" "/run"
