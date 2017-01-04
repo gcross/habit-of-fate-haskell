@@ -12,7 +12,7 @@ import Control.Monad (unless)
 import Control.Monad.Reader
 import Data.Aeson
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as LBS
+import qualified Data.ByteString.Lazy as LBS
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Text as S
@@ -28,7 +28,9 @@ import HabitOfFate.JSON
 import HabitOfFate.TH
 import HabitOfFate.Unicode
 
-debug = liftIO ∘ debugM "HabitOfFate.Client"
+decodeUtf8Lazy = decodeUtf8 ∘ (^. strict)
+
+debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ S.unpack
 
 data ServerInfo = ServerInfo
   { _hostname ∷ ByteString
@@ -133,7 +135,7 @@ fetchHabit uuid = do
   \case
     Nothing → return Nothing
     Just response → do
-      debug $ "Result of fetch was " ⊕ (LBS.unpack ∘ getResponseBody $ response)
+      debug $ "Result of fetch was " ⊕ (decodeUtf8Lazy ∘ getResponseBody $ response)
       parseDoc response ∘ retrieveObject "data" $ do
         checkTypeIs "habit"
         checkIdIfPresentIs uuid
