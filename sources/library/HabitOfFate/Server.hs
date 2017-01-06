@@ -19,9 +19,7 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Writer
 import Data.Aeson hiding (json)
-import Data.Aeson.Types (parseEither)
 import Data.Bool
-import Data.List hiding (delete)
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
@@ -41,7 +39,6 @@ import HabitOfFate.Data hiding (_habits)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.JSON
-import HabitOfFate.TH
 import HabitOfFate.Unicode
 import HabitOfFate.Utils
 

@@ -25,7 +25,6 @@ import Text.Printf
 
 import HabitOfFate.Habit
 import HabitOfFate.JSON
-import HabitOfFate.TH
 import HabitOfFate.Unicode
 
 decodeUtf8Lazy = decodeUtf8 ∘ (^. strict)
