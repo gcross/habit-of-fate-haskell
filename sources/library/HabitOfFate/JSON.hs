@@ -19,7 +19,7 @@ import Data.Aeson
 import Data.Aeson.Types
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import qualified Data.Text as S
+import Data.Text (Text)
 import Data.UUID (UUID)
 import Text.Printf
 
@@ -27,26 +27,26 @@ import HabitOfFate.JSONInstances ()
 import HabitOfFate.Unicode
 
 newtype MakeJSON α = MakeJSON
-  { unwrapMakeJSON ∷ State (HashMap S.Text Value) α
+  { unwrapMakeJSON ∷ State (HashMap Text Value) α
   } deriving (Applicative,Functor,Monad)
 
 makeJSON ∷ MakeJSON () → Value
 makeJSON = Object ∘ flip execState HashMap.empty ∘ unwrapMakeJSON
 
-add ∷ ToJSON α ⇒ S.Text → α → MakeJSON ()
+add ∷ ToJSON α ⇒ Text → α → MakeJSON ()
 add key = MakeJSON ∘ modify ∘ HashMap.insert key ∘ toJSON
 
-addText ∷ S.Text → S.Text → MakeJSON ()
+addText ∷ Text → Text → MakeJSON ()
 addText = add
 
-addObject ∷ S.Text → MakeJSON () → MakeJSON ()
+addObject ∷ Text → MakeJSON () → MakeJSON ()
 addObject key = add key ∘ makeJSON
 
-type InnerUnmakeJSON α = ReaderT (String, HashMap S.Text Value) (Except String) α
+type InnerUnmakeJSON α = ReaderT (String, HashMap Text Value) (Except String) α
 
 newtype UnmakeJSON α = UnmakeJSON
   { unwrapUnmakeJSON ∷ InnerUnmakeJSON α
-  } deriving (Applicative,Functor,Monad,MonadReader (String, HashMap S.Text Value))
+  } deriving (Applicative,Functor,Monad,MonadReader (String, HashMap Text Value))
 
 raiseWith ∷ MonadError String m ⇒ String → String → m α
 raiseWith path message = throwError $ printf "Error at path \"%s\": %s" path message
@@ -66,7 +66,7 @@ unmakeJSONWithPath path value (UnmakeJSON action) = runExcept $ do
 unmakeJSON ∷ Value → UnmakeJSON α → Either String α
 unmakeJSON value action = unmakeJSONWithPath "" value action
 
-retrieveMaybe ∷ FromJSON α ⇒ S.Text → UnmakeJSON (Maybe α)
+retrieveMaybe ∷ FromJSON α ⇒ Text → UnmakeJSON (Maybe α)
 retrieveMaybe key = UnmakeJSON $ do
   s ← view _2
   case HashMap.lookup key s of
@@ -76,13 +76,13 @@ retrieveMaybe key = UnmakeJSON $ do
       $
       parseEither parseJSON value
 
-retrieve ∷ FromJSON α ⇒ S.Text → UnmakeJSON α
+retrieve ∷ FromJSON α ⇒ Text → UnmakeJSON α
 retrieve key =
   retrieveMaybe key
   >>=
  maybe (fail $ printf "Unable to find field \"%s\"" key) return
 
-checkTypeIs ∷ S.Text → UnmakeJSON ()
+checkTypeIs ∷ Text → UnmakeJSON ()
 checkTypeIs expected_type = do
   found_type ← retrieve "type"
   unless (found_type == expected_type) $
@@ -100,7 +100,7 @@ checkIdIfPresentIs expected_uuid =
         (show expected_uuid)
     _ → return ()
 
-retrieveObject ∷ S.Text → UnmakeJSON α → UnmakeJSON α
+retrieveObject ∷ Text → UnmakeJSON α → UnmakeJSON α
 retrieveObject key action = UnmakeJSON $ do
   path ← view _1
   value ← unwrapUnmakeJSON $ retrieve key
@@ -108,7 +108,7 @@ retrieveObject key action = UnmakeJSON $ do
     $
     unmakeJSONWithPath (printf "%s/%s" path key) value action
 
-retrieveObjects ∷ S.Text → UnmakeJSON α → UnmakeJSON [α]
+retrieveObjects ∷ Text → UnmakeJSON α → UnmakeJSON [α]
 retrieveObjects key action = UnmakeJSON $ do
   path ← view _1
   values ← unwrapUnmakeJSON $ retrieve key

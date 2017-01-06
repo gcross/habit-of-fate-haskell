@@ -15,7 +15,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Map (Map)
 import qualified Data.Map as Map
-import qualified Data.Text as S
+import Data.Text
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.UUID (UUID, fromText, toText)
 import Network.HTTP.Simple
@@ -30,7 +30,7 @@ import HabitOfFate.Unicode
 
 decodeUtf8Lazy = decodeUtf8 ∘ (^. strict)
 
-debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ S.unpack
+debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ unpack
 
 data ServerInfo = ServerInfo
   { _hostname ∷ ByteString
@@ -55,10 +55,10 @@ expectSuccess response =
 failParse ∷ String → Client α
 failParse = fail ∘ ("Failed parse: " ⊕)
 
-pathToHabit ∷ UUID → S.Text
+pathToHabit ∷ UUID → Text
 pathToHabit = ("/habits/" ⊕) ∘ toText
 
-makeRequest ∷ S.Text → S.Text → Client Request
+makeRequest ∷ Text → Text → Client Request
 makeRequest method path = do
   server ← ask
   return
@@ -79,13 +79,13 @@ parseDoc response parser =
     Left error_message → failParse error_message
     Right doc → either failParse return ∘ unmakeJSON doc $ parser
 
-request ∷ S.Text → S.Text → Client (Response LBS.ByteString)
+request ∷ Text → Text → Client (Response LBS.ByteString)
 request method path = do
   response ← makeRequest method path >>= httpLBS
   expectSuccess response
   return response
 
-requestMaybe ∷ S.Text → S.Text → Client (Maybe (Response LBS.ByteString))
+requestMaybe ∷ Text → Text → Client (Maybe (Response LBS.ByteString))
 requestMaybe method path = do
   response ← makeRequest method path >>= httpLBS
   if statusCode (getResponseStatus response) == 404
@@ -94,7 +94,7 @@ requestMaybe method path = do
       expectSuccess response
       return ∘ Just $ response
 
-requestWithBody ∷ S.Text → S.Text → Value → Client (Response LBS.ByteString)
+requestWithBody ∷ Text → Text → Value → Client (Response LBS.ByteString)
 requestWithBody method path value = do
   response ←
     (makeRequest method path <&> setRequestBodyJSON value)
@@ -116,11 +116,11 @@ createHabit habit = do
     [] → failParse "No location returned for created habit."
     [url] →
       let url_as_text = decodeUtf8 url
-      in case fromText ∘ S.takeWhileEnd (/= '/') $ url_as_text of
+      in case fromText ∘ takeWhileEnd (/= '/') $ url_as_text of
         Nothing →
           failParse
           $
-          "Last part of location did not end with a UUID: " ⊕ S.unpack url_as_text
+          "Last part of location did not end with a UUID: " ⊕ unpack url_as_text
         Just uuid → return uuid
     _ → failParse "Multiple locations returned for created habit."
 
@@ -184,7 +184,7 @@ replaceHabit uuid habit =
       addText "type" "habit"
       add "attributes" habit
 
-runGame ∷ Client S.Text
+runGame ∷ Client Text
 runGame =
   (decodeUtf8Lazy ∘ getResponseBody)
   <$>

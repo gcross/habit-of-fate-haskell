@@ -23,8 +23,8 @@ import Data.Aeson.Types (parseEither)
 import Data.Bool
 import Data.List hiding (delete)
 import qualified Data.Map as Map
-import qualified Data.Text as S
-import qualified Data.Text.Lazy as L
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as B
 import Data.UUID
@@ -48,7 +48,7 @@ import HabitOfFate.Utils
 newtype HabitId = HabitId UUID
 
 instance Parsable HabitId where
-  parseParam = fmap HabitId ∘ maybe (Left "badly formed UUID") Right ∘ fromText ∘ L.toStrict
+  parseParam = fmap HabitId ∘ maybe (Left "badly formed UUID") Right ∘ fromText ∘ (^. strict)
 
 info, notice ∷ MonadIO m ⇒ String → m ()
 info = liftIO ∘ infoM "HabitOfFate.Server"
@@ -63,17 +63,17 @@ tellNewline = tellChar '\n'
 tellString ∷ MonadWriter Builder m ⇒ String → m ()
 tellString = tell ∘ B.fromString
 
-tellText ∷ MonadWriter Builder m ⇒ S.Text → m ()
+tellText ∷ MonadWriter Builder m ⇒ Text → m ()
 tellText = tell ∘ B.fromText
 
-tellLine ∷ MonadWriter Builder m ⇒ S.Text → m ()
+tellLine ∷ MonadWriter Builder m ⇒ Text → m ()
 tellLine t = do
   tellText t
   tellNewline
 
-tellSeparator ∷ MonadWriter Builder m ⇒ S.Text → m ()
+tellSeparator ∷ MonadWriter Builder m ⇒ Text → m ()
 tellSeparator sep = do
-  tellText $ S.replicate 80 sep
+  tellText $ Text.replicate 80 sep
   tellNewline
 
 tellQuestSeparator ∷ MonadWriter Builder m ⇒ m ()
@@ -109,7 +109,7 @@ tellParagraphs (paragraph:rest) = do
       tellParagraph paragraph
       go rest
 
-data ActionError = ActionError Status (Maybe S.Text)
+data ActionError = ActionError Status (Maybe Text)
   deriving (Eq,Ord,Show)
 
 type ServerAction = ExceptT ActionError STM
@@ -121,7 +121,7 @@ act =
   either
     (\(ActionError code maybe_message) → do
       status code
-      maybe (return ()) (text ∘ L.fromStrict) maybe_message
+      maybe (return ()) (text ∘ (^. from strict)) maybe_message
     )
     identity
 
@@ -137,14 +137,14 @@ hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 unmakeJSONAction ∷ Value → UnmakeJSON α → ServerAction α
 unmakeJSONAction value action =
   either
-    (throwActionErrorWithMessage badRequest400 ∘ S.pack)
+    (throwActionErrorWithMessage badRequest400 ∘ Text.pack)
     return
   $
   unmakeJSON value action
 
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
-  let url_prefix = "http://localhost:8081/" ∷ S.Text
+  let url_prefix = "http://localhost:8081/" ∷ Text
   info $ "Data file is located at " ++ filepath
   data_var ←
     doesFileExist filepath
@@ -240,7 +240,7 @@ makeApp filepath = do
               then
                 throwActionErrorWithMessage conflict409
                 ∘
-                S.pack
+                Text.pack
                 $
                 printf "A habit with id %s already exists" (show uuid)
               else return uuid
