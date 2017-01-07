@@ -8,18 +8,17 @@ module HabitOfFate.Data where
 import Control.Lens
 import Control.Monad
 import Control.Monad.Random
-import Data.Aeson
 import qualified Data.ByteString as BS
 import Data.Function
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.Text (Text)
 import Data.UUID (UUID)
 import Data.Yaml hiding ((.=))
 import System.Directory
 import System.Environment
 import System.FilePath
-import System.Random
 
 import HabitOfFate.Game
 import qualified HabitOfFate.Game as Game
@@ -27,7 +26,6 @@ import HabitOfFate.Habit
 import HabitOfFate.JSONInstances ()
 import HabitOfFate.Quests
 import HabitOfFate.TH
-import HabitOfFate.Unicode
 
 data Data = Data
   {   _habits ∷ Map UUID Habit
@@ -42,7 +40,7 @@ newData ∷ IO Data
 newData = Data Map.empty newGame Nothing <$> newStdGen
 
 data RunDataResult = RunDataResult
-  { _paragraphs ∷ [[String]]
+  { _paragraphs ∷ Text
   , _quest_completed ∷ Bool
   , _new_data ∷ Data
   }
@@ -57,7 +55,7 @@ runData d =
   &
   \(r, new_rng) →
     RunDataResult
-      (r ^. game_paragraphs)
+      (r ^. game_text)
       (isNothing (r ^. returned_value))
       (d & game .~ r ^. new_game
          & quest .~ r ^. returned_value

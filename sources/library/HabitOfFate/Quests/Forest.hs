@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -14,13 +15,20 @@ module HabitOfFate.Quests.Forest where
 ----------------------------------- Imports ------------------------------------
 --------------------------------------------------------------------------------
 
+import Control.Applicative
 import Control.Lens
 import Control.Monad.State hiding (State)
+import Control.Monad.Writer
+import Data.Attoparsec.Text
 import Data.Bool
-import Data.List.Lens
-import Data.List.Split
+import Data.Char
+import Data.Foldable (toList)
 import Data.Map (fromList)
+import qualified Data.Sequence as Seq
 import Data.String.QQ
+import Data.Text (Text)
+import qualified Data.Text as Text
+import qualified Data.Text.Lens as TextLens
 
 import HabitOfFate.Game
 import HabitOfFate.Quest
@@ -37,7 +45,7 @@ import Debug.Trace
 data State = State
   { _parent ∷ Character
   , _patient ∷ Character
-  , _herb ∷ String
+  , _herb ∷ Text
   , _herb_found ∷ Bool
   , _credits_until_success ∷ Double
   , _credits_until_failure ∷ Double
@@ -58,7 +66,7 @@ defaultSubstitutionTable forest = makeSubstitutionTable
   ,("Illsbane",Character (forest ^. herb) Neuter)
   ]
 
-textWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(String,String)] → String → m ()
+textWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → Text → m ()
 textWithDefaultSubstitutionsPlus forest additional_substitutions template =
   text
   ∘
@@ -70,39 +78,36 @@ textWithDefaultSubstitutionsPlus forest additional_substitutions template =
   $
   forest
 
-textWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → String → m ()
+textWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → Text → m ()
 textWithDefaultSubstitutionsForLens lens template =
   use lens
   >>=
   \forest → textWithDefaultSubstitutionsPlus forest [] template
 
-forestText ∷ String → ForestAction ()
-forestText = textWithDefaultSubstitutionsForLens quest ∘ stripEquals
+forestText ∷ Text → ForestAction ()
+forestText = textWithDefaultSubstitutionsForLens quest
 
-forestTexts ∷ String → ForestAction ()
+forestTexts ∷ Text → ForestAction ()
 forestTexts = uniformAction ∘ map forestText ∘ splitTexts
 
-startsWithEquals ∷ String → Bool
-startsWithEquals = (== Just '=') ∘ (^? _head)
-
-splitTexts ∷ String → [String]
+splitTexts ∷ Text → [Text]
 splitTexts =
-  filter (not ∘ all (∈ " \n"))
+  either
+    (error ∘ ("Error when splitting text: " ⊕))
+    (toList ∘ snd)
   ∘
-  map unlines
-  ∘
-  split (condense ∘ dropDelims ∘ whenElt $ startsWithEquals)
-  ∘
-  lines
-
-stripEquals ∷ String → String
-stripEquals = unlines ∘ filter (not ∘ startsWithEquals) ∘ lines
+  parseOnly (runWriterT parser)
+  where
+    parser = do
+      story ← lift $ takeTill (== '=')
+      unless (allOf TextLens.text isSpace story) ∘ tell ∘ Seq.singleton $ story
+      lift endOfInput <|> (lift (skipWhile (== '=')) >> parser)
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-introText = textWithDefaultSubstitutionsForLens id ∘ stripEquals
+introText = textWithDefaultSubstitutionsForLens id ∘ Text.filter (/= '=')
 
 new ∷ Game State
 new =
@@ -198,9 +203,9 @@ alter to you out of gratitude.
 data FailureResult = FailureAverted | FailureHappened
 
 data FailureStory = FailureStory
-  { _common_failure_story ∷ String
-  , _failure_averted_story ∷ String
-  , _failure_happened_story ∷ String
+  { _common_failure_story ∷ Text
+  , _failure_averted_story ∷ Text
+  , _failure_happened_story ∷ Text
   }
 makeLenses ''FailureStory
 

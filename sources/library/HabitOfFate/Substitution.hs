@@ -1,13 +1,21 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Substitution where
 
-import Control.Lens ((<>~), _1, makeLenses)
+import Control.Applicative
+import Control.Lens
+import Control.Monad.Writer.Strict
+import Data.Attoparsec.Text
 import Data.Char (toLower, toUpper)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as Text
+import Data.Text.Lazy.Builder
+import Text.Printf
 
 import HabitOfFate.TH
 import HabitOfFate.Unicode
@@ -15,24 +23,27 @@ import HabitOfFate.Unicode
 data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
 deriveJSON ''Gender
 
-data Character = Character String Gender deriving (Eq,Ord,Read,Show)
+data Character = Character Text Gender deriving (Eq,Ord,Read,Show)
 deriveJSON ''Character
 
-type Substitutions = Map String String
+type Substitutions = Map Text Text
 
-makeSubstitutionTable ∷ [(String,Character)] → Substitutions
+makeSubstitutionTable ∷ [(Text,Character)] → Substitutions
 makeSubstitutionTable [] = Map.empty
-makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
+makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
     Map.fromList
     $
     makeNouns first_character
     ⊕
     concatMap
       (\(key, character@(Character name _)) →
-          (name, name) : makeArticles key character ⊕ map (_1 <>~ '|':key) (makeNouns character)
+          (name, name)
+          :
+          makeArticles key character ⊕ map (_1 ⊕~ Text.cons '|' key) (makeNouns character)
       )
       table
   where
+    makeArticles ∷ Text → Character → [(Text,Text)]
     makeArticles key (Character name _) =
         [("a " ⊕ key,article_value)
         ,("A " ⊕ key,article_value)
@@ -45,10 +56,11 @@ makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
         article_value = article ⊕ " " ⊕ name
           where
             article
-              | elem (toLower ∘ head $ name) ['a','e','i','o','u'] = "an"
+              | flip elem ("aeiou" ∷ String) ∘ toLower ∘ Text.head $ name = "an"
               | otherwise = "a"
 
-    makeNouns (Character name gender) = concat
+    makeNouns ∷ Character → [(Text,Text)]
+    makeNouns (Character _ gender) = concat
         [subject_pronouns
         ,object_pronouns
         ,possessive_prononuns
@@ -56,7 +68,7 @@ makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
         ,category_nouns
         ]
       where
-        capitalized word = toUpper (head word):tail word
+        capitalized word = Text.cons (toUpper $ Text.head word) (Text.tail word)
 
         subject_pronouns =
             map (,pronoun) ["he","she","it"]
@@ -101,14 +113,38 @@ makeSubstitutionTable table@((_,first_character@(Character name _)):_) =
                 Female → "woman"
                 Neuter → "thing"
 
-substitute ∷ Substitutions → String → String
-substitute table = go
+
+substitute ∷ Substitutions → Text → Text
+substitute table t =
+  either
+    (error ∘ ("Error when performing substitutions: " ⊕))
+    ((^. strict) ∘ toLazyText ∘ snd)
+  ∘
+  flip parseOnly t
+  ∘
+  runWriterT
+  $
+  takeTillNextSub >> parseAnotherSub
   where
-    go ('{':rest) =
-        let (possibly_wrapped_key,remainder) = break (== '}') rest
-            key = unwords . words $ possibly_wrapped_key
-        in case Map.lookup key table of
-            Nothing → error $ "key " ⊕ key ⊕ " was not found in the table"
-            Just value → value ⊕ go (tail remainder)
-    go (x:rest) = x:go rest
-    go [] = []
+    takeTillNextSub ∷ WriterT Builder Parser ()
+    takeTillNextSub = (lift $ takeTill (== '{')) >>= tell ∘ fromText
+
+    parseAnotherSub ∷ WriterT Builder Parser ()
+    parseAnotherSub =
+      (do
+        key ← lift $ do
+          _ ← char '{'
+          key ← takeTill (== '}')
+          _ ← char '}'
+          return key
+        maybe
+          (fail $ printf "key %s was not found in the table" key)
+          return
+          (Map.lookup key table)
+         >>=
+         tell ∘ fromText
+        takeTillNextSub
+        parseAnotherSub
+      )
+      <|>
+      (lift endOfInput)

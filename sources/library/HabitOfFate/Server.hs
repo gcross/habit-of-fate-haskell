@@ -57,9 +57,6 @@ tellChar = tell ∘ B.singleton
 tellNewline ∷ MonadWriter Builder m ⇒ m ()
 tellNewline = tellChar '\n'
 
-tellString ∷ MonadWriter Builder m ⇒ String → m ()
-tellString = tell ∘ B.fromString
-
 tellText ∷ MonadWriter Builder m ⇒ Text → m ()
 tellText = tell ∘ B.fromText
 
@@ -78,33 +75,6 @@ tellQuestSeparator = tellSeparator "="
 
 tellEventSeparator ∷ MonadWriter Builder m ⇒ m ()
 tellEventSeparator = tellSeparator "-"
-
-tellParagraph ∷ MonadWriter Builder m ⇒ [String] → m ()
-tellParagraph = go 0
-  where
-    go _ [] = tellChar '\n'
-    go cols words@(word:rest)
-      | cols == 0 = do
-          tellString word
-          go (length word) rest
-      | cols + 1 + length word > 80 = do
-          tellChar '\n'
-          go 0 words
-      | otherwise = do
-          tellChar ' '
-          tellString word
-          go (cols + 1 + length word) rest
-
-tellParagraphs ∷ MonadWriter Builder m ⇒ [[String]] → m ()
-tellParagraphs (paragraph:rest) = do
-    tellParagraph paragraph
-    go rest
-  where
-    go [] = return ()
-    go (paragraph:rest) = do
-      tellChar '\n'
-      tellParagraph paragraph
-      go rest
 
 data ActionError = ActionError Status (Maybe Text)
   deriving (Eq,Ord,Show)
@@ -286,7 +256,7 @@ makeApp filepath = do
           then do
             let go d = do
                   let r = runData d
-                  tellParagraphs (r ^. paragraphs)
+                  tellText (r ^. paragraphs)
                   if stillHasCredits (r ^. new_data)
                     then do
                       tellNewline

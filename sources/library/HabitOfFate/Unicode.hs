@@ -2,12 +2,18 @@
 
 module HabitOfFate.Unicode where
 
+import Control.Lens ((<>~), ASetter)
 import Data.Monoid (mappend)
 
 infixr 6 ⊕
 (⊕) ∷ Monoid m ⇒ m → m → m
 (⊕) = mappend
 {-# INLINE (⊕) #-}
+
+infixr 4 ⊕~
+(⊕~) ∷ Monoid a ⇒ ASetter s t a a → a → s → t
+(⊕~) = (<>~)
+{-# INLINE (⊕~) #-}
 
 (⊘) ∷ Monoid m ⇒ m
 (⊘) = mempty

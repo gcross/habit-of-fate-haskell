@@ -10,14 +10,14 @@
 
 module HabitOfFate.Game where
 
-import Control.Lens (makeLenses)
+import Control.Lens
 import Control.Monad (join)
 import Control.Monad.Random hiding (split, uniform)
 import Control.Monad.State
 import Control.Monad.Writer
 import qualified Control.Monad.Random as Random
-import Data.List.Split
-import System.Random hiding (split)
+import Data.Text (Text)
+import Data.Text.Lazy.Builder
 
 import HabitOfFate.TH
 import HabitOfFate.Unicode
@@ -31,25 +31,25 @@ deriveJSON ''GameState
 makeLenses ''GameState
 
 newtype Game α =
-    Game { unwrapGame ∷ StateT GameState (WriterT [[String]] (Rand StdGen)) α }
+    Game { unwrapGame ∷ StateT GameState (WriterT Builder (Rand StdGen)) α }
   deriving
     (Applicative
     ,Functor
     ,Monad
     ,MonadRandom
     ,MonadState GameState
-    ,MonadWriter [[String]]
+    ,MonadWriter Builder
     )
 
 data RunGameResult α = RunGameResult
   { _returned_value ∷ α
   , _new_game ∷ GameState
-  , _game_paragraphs ∷ [[String]]
+  , _game_text ∷ Text
   } deriving (Eq,Ord,Read,Show)
 makeLenses ''RunGameResult
 
 class MonadRandom m ⇒ MonadGame m where
-  text ∷ String → m ()
+  text ∷ Text → m ()
 
 instance MonadGame Game where
   text = gameText
@@ -64,23 +64,16 @@ runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
 runGame state =
   fmap (uncurry ∘ uncurry $ RunGameResult)
   ∘
+  fmap (_2 %~ (^. strict) ∘ toLazyText)
+  ∘
   runWriterT
   ∘
   flip runStateT state
   ∘
   unwrapGame
 
-gameText ∷ String → Game ()
-gameText =
-  tell
-  ∘
-  map (concatMap words)
-  ∘
-  filter (not ∘ null)
-  ∘
-  splitWhen null
-  ∘
-  lines
+gameText ∷ Text → Game ()
+gameText = tell ∘ fromText
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform
