@@ -40,7 +40,7 @@ newData ∷ IO Data
 newData = Data Map.empty newGame Nothing <$> newStdGen
 
 data RunDataResult = RunDataResult
-  { _paragraphs ∷ Text
+  { _story ∷ Text
   , _quest_completed ∷ Bool
   , _new_data ∷ Data
   }

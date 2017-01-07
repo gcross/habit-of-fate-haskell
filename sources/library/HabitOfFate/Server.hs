@@ -256,7 +256,7 @@ makeApp filepath = do
           then do
             let go d = do
                   let r = runData d
-                  tellText (r ^. paragraphs)
+                  tellText (r ^. story)
                   if stillHasCredits (r ^. new_data)
                     then do
                       tellNewline
