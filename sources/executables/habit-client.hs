@@ -242,7 +242,7 @@ mainLoop = loop [] $
         if Map.null habits
           then putStrLn "There are no habits."
           else forM_ (Map.toList habits) $ \(uuid, habit) →
-            printf "%s: %s [+%f/-%f]\n"
+            printf "%s %s [+%f/-%f]\n"
               (show uuid)
               (habit ^. name)
               (habit ^. success_credits)
