@@ -29,15 +29,12 @@ import HabitOfFate.Quests
 import HabitOfFate.TH
 import HabitOfFate.Unicode
 
-instance Eq StdGen where
-  (==) = (==) `on` show
-
 data Data = Data
   {   _habits ∷ Map UUID Habit
   ,   _game ∷ GameState
   ,   _quest ∷ Maybe CurrentQuestState
   ,   _rng :: StdGen
-  } deriving (Eq,Read,Show)
+  } deriving (Read,Show)
 deriveJSON ''Data
 makeLenses ''Data
 
