@@ -70,6 +70,8 @@ textWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] →
 textWithDefaultSubstitutionsPlus forest additional_substitutions template =
   text
   ∘
+  Text.filter (/= '=')
+  ∘
   flip substitute template
   ∘
   (⊕ fromList additional_substitutions)
@@ -107,7 +109,7 @@ splitTexts =
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-introText = textWithDefaultSubstitutionsForLens id ∘ Text.filter (/= '=')
+introText = textWithDefaultSubstitutionsForLens id
 
 new ∷ Game State
 new =

@@ -1,11 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server where
@@ -14,17 +18,26 @@ import Prelude hiding (id)
 
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Lens hiding ((.=))
+import Control.Lens
 import Control.Monad
+import Control.Monad.Base
 import Control.Monad.Except
+import Control.Monad.State hiding (get, put)
+import qualified Control.Monad.State as State
+import Control.Monad.Trans.Control
 import Control.Monad.Writer
-import Data.Aeson hiding (json)
+import Data.Aeson hiding ((.=), json)
+import Data.Attoparsec.Text
 import Data.Bool
 import qualified Data.Map as Map
+import Data.Maybe
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as B
+import qualified Data.Text.Lens as TextLens
 import Data.UUID
 import Text.Printf
 import Network.HTTP.Types.Status
@@ -36,7 +49,7 @@ import System.Random
 import Web.Scotty
 
 import HabitOfFate.Data hiding (_habits)
-import qualified HabitOfFate.Game as Game
+import qualified HabitOfFate.Game as Game hiding (text)
 import HabitOfFate.Habit
 import HabitOfFate.JSON
 import HabitOfFate.Unicode
@@ -60,21 +73,89 @@ tellNewline = tellChar '\n'
 tellText ∷ MonadWriter Builder m ⇒ Text → m ()
 tellText = tell ∘ B.fromText
 
+tellString ∷ MonadWriter Builder m ⇒ String → m ()
+tellString = tell ∘ B.fromString
+
 tellLine ∷ MonadWriter Builder m ⇒ Text → m ()
 tellLine t = do
   tellText t
   tellNewline
 
-tellSeparator ∷ MonadWriter Builder m ⇒ Text → m ()
-tellSeparator sep = do
-  tellText $ Text.replicate 80 sep
-  tellNewline
-
 tellQuestSeparator ∷ MonadWriter Builder m ⇒ m ()
-tellQuestSeparator = tellSeparator "="
+tellQuestSeparator = tellLine "<questSeparator/>"
 
 tellEventSeparator ∷ MonadWriter Builder m ⇒ m ()
-tellEventSeparator = tellSeparator "-"
+tellEventSeparator = tellLine "<eventSeparator/>"
+
+tellOpenTag ∷ MonadWriter Builder m ⇒ String → m ()
+tellOpenTag = tellString ∘ printf "<%s>"
+
+tellCloseTag ∷ MonadWriter Builder m ⇒ String → m ()
+tellCloseTag = tellOpenTag ∘ ('/':)
+
+data Format = Bold | Underline deriving (Eq,Ord,Read,Show)
+
+type FormatTextMonad = StateT (Set Format) (WriterT Builder Parser)
+
+instance MonadBase Parser Parser where
+  liftBase = identity
+
+instance MonadBaseControl Parser Parser where
+  type StM Parser α = α
+  liftBaseWith f = f identity
+  restoreM = return
+
+formatText ∷ Text → Text
+formatText t =
+  either error ((^. strict) ∘ B.toLazyText ∘ snd)
+  ∘
+  flip parseOnly t
+  ∘
+  runWriterT
+  ∘
+  void
+  ∘
+  flip runStateT Set.empty
+  $
+  parseText
+  where
+    liftedChoice ∷ [FormatTextMonad α] → FormatTextMonad α
+    liftedChoice choices = control $ \run → choice (map run choices)
+
+    parseText ∷ FormatTextMonad ()
+    parseText = do
+      liftBase skipSpace
+      liftedChoice
+        [ do liftBase endOfInput
+             s ← State.get
+             unless (Set.null s) $
+               fail ("The following were left open: " ⊕ show s)
+        , do tellLine "<p>"
+             parseParagraph
+             tellLine "\n</p>"
+        ]
+
+    parseParagraph ∷ FormatTextMonad ()
+    parseParagraph = do
+      liftBase (takeTill $ \c → elemOf TextLens.text c ("*_\n" ∷ Text)) >>= tellText
+      liftedChoice
+        [ liftBase endOfInput
+        , void ∘ liftBase ∘ string $ "\n\n"
+        , liftBase (char '\n') >>= tellChar >> parseParagraph
+        , parseFormatChar '*' "b" Bold
+        , parseFormatChar '_' "u" Underline
+        ]
+
+    parseFormatChar ∷ Char → String → Format → FormatTextMonad ()
+    parseFormatChar format_char tag format =
+      liftBase (char format_char)
+      >>
+      (isJust <$> use (at format))
+      >>=
+      bool
+        (tellOpenTag  tag >> at format .= Just ())
+        (tellCloseTag tag >> at format .= Nothing)
+
 
 data ActionError = ActionError Status (Maybe Text)
   deriving (Eq,Ord,Show)
@@ -256,19 +337,12 @@ makeApp filepath = do
           then do
             let go d = do
                   let r = runData d
-                  tellText (r ^. story)
+                  tellText ∘ formatText $ r ^. story
                   if stillHasCredits (r ^. new_data)
                     then do
-                      tellNewline
                       if r ^. quest_completed
-                        then do
-                          tellQuestSeparator
-                          tellLine "A new quest begins..."
-                          tellQuestSeparator
-                          tellNewline
-                        else do
-                          tellEventSeparator
-                          tellNewline
+                        then tellQuestSeparator
+                        else tellEventSeparator
                       go (r ^. new_data)
                     else return (r ^. new_data)
             (new_d, b) ← runWriterT ∘ go $ d
