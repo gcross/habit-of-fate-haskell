@@ -32,7 +32,7 @@ newtype QuestAction s α = QuestAction
     )
 
 instance MonadGame (QuestAction s) where
-  text = QuestAction ∘ lift ∘ lift ∘ lift ∘ text
+  story = QuestAction ∘ lift ∘ lift ∘ lift ∘ story
 
 instance MonadState (QuestState s) (QuestAction s) where
   get =

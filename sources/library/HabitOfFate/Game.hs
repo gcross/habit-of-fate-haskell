@@ -49,13 +49,13 @@ data RunGameResult α = RunGameResult
 makeLenses ''RunGameResult
 
 class MonadRandom m ⇒ MonadGame m where
-  text ∷ Text → m ()
+  story ∷ Text → m ()
 
 instance MonadGame Game where
-  text = gameText
+  story = gameStory
 
 instance MonadGame m ⇒ MonadGame (StateT s m) where
-  text = lift . text
+  story = lift . story
 
 newGame ∷ GameState
 newGame = GameState 0 0 0
@@ -72,8 +72,8 @@ runGame state =
   ∘
   unwrapGame
 
-gameText ∷ Text → Game ()
-gameText = tell ∘ fromText
+gameStory ∷ Text → Game ()
+gameStory = tell ∘ fromText
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform

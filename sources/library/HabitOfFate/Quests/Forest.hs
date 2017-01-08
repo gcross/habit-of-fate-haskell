@@ -66,9 +66,9 @@ defaultSubstitutionTable forest = makeSubstitutionTable
   ,("Illsbane",Character (forest ^. herb) Neuter)
   ]
 
-textWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → Text → m ()
-textWithDefaultSubstitutionsPlus forest additional_substitutions template =
-  text
+storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → Text → m ()
+storyWithDefaultSubstitutionsPlus forest additional_substitutions template =
+  story
   ∘
   Text.filter (/= '=')
   ∘
@@ -80,20 +80,20 @@ textWithDefaultSubstitutionsPlus forest additional_substitutions template =
   $
   forest
 
-textWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → Text → m ()
-textWithDefaultSubstitutionsForLens lens template =
+storyWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → Text → m ()
+storyWithDefaultSubstitutionsForLens lens template =
   use lens
   >>=
-  \forest → textWithDefaultSubstitutionsPlus forest [] template
+  \forest → storyWithDefaultSubstitutionsPlus forest [] template
 
-forestText ∷ Text → ForestAction ()
-forestText = textWithDefaultSubstitutionsForLens quest
+forestStory ∷ Text → ForestAction ()
+forestStory = storyWithDefaultSubstitutionsForLens quest
 
-forestTexts ∷ Text → ForestAction ()
-forestTexts = uniformAction ∘ map forestText ∘ splitTexts
+forestStories ∷ Text → ForestAction ()
+forestStories = uniformAction ∘ map forestStory ∘ splitStories
 
-splitTexts ∷ Text → [Text]
-splitTexts =
+splitStories ∷ Text → [Text]
+splitStories =
   either
     (error ∘ ("Error when splitting text: " ⊕))
     (toList ∘ snd)
@@ -109,7 +109,7 @@ splitTexts =
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-introText = textWithDefaultSubstitutionsForLens id
+introStory = storyWithDefaultSubstitutionsForLens id
 
 new ∷ Game State
 new =
@@ -123,7 +123,7 @@ new =
     <*> numberUntilEvent 1
   )
   >>=
-  execStateT (introText [s|
+  execStateT (introStory [s|
 ================================================================================
 The last thing in the world that {Susie} wanted to do was to wander alone in the
 Wicked Forest at night, but her son, little {Tommy} was sick and would not live
@@ -141,11 +141,11 @@ light the way.
 
 found ∷ ForestAction ()
 found = do
-  forestTexts found_texts
+  forestStories found_stories
   quest . herb_found .= True
   numberUntilEvent 5 >>= (quest . credits_until_success .=)
   where
-    found_texts = [s|
+    found_stories = [s|
 ================================================================================
 
 After searching for what feels like hours, {Susie} nearly steps on {an Illsbane}
@@ -177,11 +177,11 @@ gets up and starts heading back to her home.
 
 won ∷ ForestAction ()
 won = do
-  forestText won_text
+  forestStory won_story
   game . belief += 1
   questHasEnded
   where
-    won_text = [s|
+    won_story = [s|
 ================================================================================
 {Susie} is starting to feel like {she} will never make it back when she notices
 that things are starting to get brighter -- {she} must be getting close to the
@@ -222,15 +222,15 @@ averted = uniform failure_stories >>= runFailureStory FailureAverted
 
 runFailureStory ∷ FailureResult → FailureStory → ForestAction ()
 runFailureStory failure_result story = do
-  forestText $ story ^. common_failure_story
-  forestText ∘ (story ^.) $
+  forestStory $ story ^. common_failure_story
+  forestStory ∘ (story ^.) $
     case failure_result of
       FailureAverted → failure_averted_story
       FailureHappened → failure_happened_story
 
 makeFailureStory story = FailureStory common averted happened
   where
-    [common,averted,happened] = splitTexts story
+    [common,averted,happened] = splitStories story
 
 failure_stories ∷ [FailureStory]
 failure_stories = map makeFailureStory
@@ -265,7 +265,7 @@ She sobs -- there is no way that she will be able to make it home in time now.
 --------------------------------------------------------------------------------
 
 wander ∷ ForestAction ()
-wander = forestTexts [s|
+wander = forestStories [s|
 ================================================================================
 Nothing happens as {Susie} wanders through the forest.
 ================================================================================
