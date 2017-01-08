@@ -28,12 +28,13 @@ library
                      , lens
                      , mtl
                      , operational
+                     , parsec
                      , random
                      , scotty
                      , stm
-                     , string-qq
                      , text
                      , time
+                     , template-haskell
                      , transformers
                      , transformers-base
                      , unordered-containers

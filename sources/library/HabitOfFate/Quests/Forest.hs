@@ -19,13 +19,11 @@ import Control.Applicative
 import Control.Lens
 import Control.Monad.State hiding (State)
 import Control.Monad.Writer
-import Data.Attoparsec.Text
 import Data.Bool
 import Data.Char
 import Data.Foldable (toList)
 import Data.Map (fromList)
 import qualified Data.Sequence as Seq
-import Data.String.QQ
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lens as TextLens
@@ -89,21 +87,8 @@ storyWithDefaultSubstitutionsForLens lens template =
 forestStory ∷ Text → ForestAction ()
 forestStory = storyWithDefaultSubstitutionsForLens quest
 
-forestStories ∷ Text → ForestAction ()
-forestStories = uniformAction ∘ map forestStory ∘ splitStories
-
-splitStories ∷ Text → [Text]
-splitStories =
-  either
-    (error ∘ ("Error when splitting text: " ⊕))
-    (toList ∘ snd)
-  ∘
-  parseOnly (runWriterT parser)
-  where
-    parser = do
-      story ← lift $ takeTill (== '=')
-      unless (allOf TextLens.text isSpace story) ∘ tell ∘ Seq.singleton $ story
-      lift endOfInput <|> (lift (skipWhile (== '=')) >> parser)
+forestStories ∷ [Text] → ForestAction ()
+forestStories = uniformAction ∘ map forestStory
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
@@ -230,7 +215,7 @@ runFailureStory failure_result story = do
 
 makeFailureStory story = FailureStory common averted happened
   where
-    [common,averted,happened] = splitStories story
+    [common,averted,happened] = story
 
 failure_stories ∷ [FailureStory]
 failure_stories = map makeFailureStory
