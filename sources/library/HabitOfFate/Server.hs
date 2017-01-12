@@ -23,22 +23,25 @@ import Control.Monad
 import Control.Monad.Base
 import Control.Monad.Except
 import Control.Monad.State hiding (get, put)
-import qualified Control.Monad.State as State
 import Control.Monad.Trans.Control
 import Control.Monad.Writer
 import Data.Aeson hiding ((.=), json)
-import Data.Attoparsec.Text
 import Data.Bool
+import Data.Foldable
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Map as Map
+import Data.HashMap.Strict (HashMap)
 import Data.Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as B
 import qualified Data.Text.Lens as TextLens
-import Data.UUID
+import Data.UUID hiding (null)
 import Text.Printf
 import Network.HTTP.Types.Status
 import Network.Wai
@@ -46,6 +49,8 @@ import Network.Wai.Handler.Warp (run)
 import System.Directory
 import System.Log.Logger
 import System.Random
+import Text.Parsec hiding (uncons)
+-- import Text.Taggy hiding (run)
 import Web.Scotty
 
 import HabitOfFate.Data hiding (_habits)
@@ -64,103 +69,100 @@ info, notice ∷ MonadIO m ⇒ String → m ()
 info = liftIO ∘ infoM "HabitOfFate.Server"
 notice = liftIO ∘ noticeM "HabitOfFate.Server"
 
-tellChar ∷ MonadWriter Builder m ⇒ Char → m ()
-tellChar = tell ∘ B.singleton
-
-tellNewline ∷ MonadWriter Builder m ⇒ m ()
-tellNewline = tellChar '\n'
-
-tellText ∷ MonadWriter Builder m ⇒ Text → m ()
-tellText = tell ∘ B.fromText
-
-tellString ∷ MonadWriter Builder m ⇒ String → m ()
-tellString = tell ∘ B.fromString
-
-tellLine ∷ MonadWriter Builder m ⇒ Text → m ()
-tellLine t = do
-  tellText t
-  tellNewline
-
-tellQuestSeparator ∷ MonadWriter Builder m ⇒ m ()
-tellQuestSeparator = tellLine "<questSeparator/>"
-
-tellEventSeparator ∷ MonadWriter Builder m ⇒ m ()
-tellEventSeparator = tellLine "<eventSeparator/>"
-
-tellOpenTag ∷ MonadWriter Builder m ⇒ String → m ()
-tellOpenTag = tellString ∘ printf "<%s>"
-
-tellCloseTag ∷ MonadWriter Builder m ⇒ String → m ()
-tellCloseTag = tellOpenTag ∘ ('/':)
-
-data Format = Bold | Underline deriving (Eq,Ord,Read,Show)
-
-type FormatTextMonad = StateT (Set Format) (WriterT Builder Parser)
-
-instance MonadBase Parser Parser where
-  liftBase = identity
-
-instance MonadBaseControl Parser Parser where
-  type StM Parser α = α
-  liftBaseWith f = f identity
-  restoreM = return
-
-formatText ∷ Text → Text
-formatText t =
-  either error ((^. strict) ∘ B.toLazyText ∘ snd)
-  ∘
-  flip parseOnly t
-  ∘
-  runWriterT
-  ∘
-  void
-  ∘
-  flip runStateT Set.empty
-  $
-  parseText
-  where
-    liftedChoice ∷ [FormatTextMonad α] → FormatTextMonad α
-    liftedChoice choices = control $ \run → choice (map run choices)
-
-    parseText ∷ FormatTextMonad ()
-    parseText = do
-      liftBase skipSpace
-      liftedChoice
-        [ do liftBase endOfInput
-             s ← State.get
-             unless (Set.null s) $
-               fail ("The following were left open: " ⊕ show s)
-        , do tellLine "<p>"
-             parseParagraph
-             tellLine "\n</p>"
-        ]
-
-    parseParagraph ∷ FormatTextMonad ()
-    parseParagraph = do
-      liftBase (takeTill $ \c → elemOf TextLens.text c ("*_\n" ∷ Text)) >>= tellText
-      liftedChoice
-        [ liftBase endOfInput
-        , void ∘ liftBase ∘ string $ "\n\n"
-        , liftBase (char '\n') >>= tellChar >> parseParagraph
-        , parseFormatChar '*' "b" Bold
-        , parseFormatChar '_' "u" Underline
-        ]
-
-    parseFormatChar ∷ Char → String → Format → FormatTextMonad ()
-    parseFormatChar format_char tag format =
-      liftBase (char format_char)
-      >>
-      (isJust <$> use (at format))
-      >>=
-      bool
-        (tellOpenTag  tag >> at format .= Just ())
-        (tellCloseTag tag >> at format .= Nothing)
-
-
 data ActionError = ActionError Status (Maybe Text)
   deriving (Eq,Ord,Show)
 
+throwActionError code = throwError $ ActionError code Nothing
+throwActionErrorWithMessage code message = throwError $ ActionError code (Just message)
+
 type ServerAction = ExceptT ActionError STM
+
+type ServerStoryAction = WriterT Builder ServerAction
+
+data Tag = Bold | Underline | Color deriving (Eq,Ord,Read,Show)
+
+data FormatState = FormatState
+  { _bold ∷ Bool
+  , _underline ∷ Bool
+  , _tags ∷ [Tag]
+  }
+makeLenses ''FormatState
+
+writeChar ∷ MonadWriter Builder m ⇒ Char → m ()
+writeChar = tell ∘ B.singleton
+
+writeNewline ∷ MonadWriter Builder m ⇒ m ()
+writeNewline = writeChar '\n'
+
+writeText ∷ MonadWriter Builder m ⇒ Text → m ()
+writeText = tell ∘ B.fromText
+
+writeLine ∷ MonadWriter Builder m ⇒ Text → m ()
+writeLine t = writeText t >> writeNewline
+
+writeQuestSeparator ∷ MonadWriter Builder m ⇒ m ()
+writeQuestSeparator = writeLine "<questSeparator/>"
+
+writeEventSeparator ∷ MonadWriter Builder m ⇒ m ()
+writeEventSeparator = writeLine "<eventSeparator/>"
+
+writeFormattedText ∷ Text → ServerStoryAction ()
+writeFormattedText =
+  runParserT parser (FormatState False False []) ""
+  >=>
+  either (error ∘ show) return
+  where
+    parser ∷ ParsecT Text FormatState ServerStoryAction ()
+    parser = do
+      spaces
+      lift $ writeLine "<p>"
+      fmap mconcat ∘ many1 $ choice
+        [do string "\n\n"
+            getState
+              >>=
+              flip unless (fail "unclosed formats in paragraph")
+              ∘
+              null
+              ∘
+              (^. tags)
+            spaces
+            lift $ writeLine "</p><p>"
+        ,parseFormatChar '*' "b" Bold bold "bold"
+        ,parseFormatChar '_' "u" Underline underline "underline"
+        ,do char '['
+            hue ←
+              choice
+              ∘
+              map (\(c,color) → char c >> return color)
+              $
+              [('r',"red")
+              ,('r',"blue")
+              ,('r',"green")
+              ]
+            modifyState $ tags %~ (Color:)
+            lift ∘ writeText $ "<color hue=\"" ⊕ hue ⊕ "\">"
+        ,do char ']'
+            getState <&> (^. tags) >>= \case
+              Color:rest_tags → do
+                modifyState $ tags .~ rest_tags
+                lift ∘ writeText $ "</color>"
+              _ → fail "color closed when not the most recent format"
+        ]
+      lift $ writeLine "</p>"
+
+    parseFormatChar ∷ Char → Text → Tag → Lens' FormatState Bool → String → ParsecT Text FormatState ServerStoryAction ()
+    parseFormatChar format_char tag_name tag format_lens format_name = do
+      char format_char
+      active ← getState
+      if active ^. format_lens
+        then case active ^. tags of
+          top_tag:rest_tags | top_tag == tag → do
+            modifyState $ (format_lens .~ False) ∘ (tags .~ rest_tags)
+            lift ∘ writeText $ "</\"" ⊕ tag_name ⊕ "\">"
+          _ → fail $ printf "%s closed when not the most recent format" format_name
+        else do
+          modifyState $ (format_lens .~ True) ∘ (tags %~ (tag:))
+          lift ∘ writeText $ "<\"" ⊕ tag_name ⊕ "\">"
 
 act ∷ ServerAction (ActionM ()) → ActionM ()
 act =
@@ -175,9 +177,6 @@ act =
 
 act' ∷ ServerAction α → ActionM ()
 act' run = act (run >> return (return ()))
-
-throwActionError code = throwError $ ActionError code Nothing
-throwActionErrorWithMessage code message = throwError $ ActionError code (Just message)
 
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
@@ -330,28 +329,28 @@ makeApp filepath = do
         markHabits success_habits success_credits Game.success_credits
         markHabits failure_habits failure_credits Game.failure_credits
         lift $ submitWriteDataRequest
-    post "/run" $
-      (liftIO ∘ atomically $ do
-        d ← readTVar data_var
+    post "/run" ∘ act' ∘ fmap text $ do
+        d ← lift $ readTVar data_var
         if stillHasCredits d
           then do
-            let go d = do
+            let go ∷ Data → ServerStoryAction Data
+                go d = do
                   let r = runData d
-                  tellText ∘ formatText $ r ^. story
+                  writeFormattedText $ r ^. story
                   if stillHasCredits (r ^. new_data)
                     then do
                       if r ^. quest_completed
-                        then tellQuestSeparator
-                        else tellEventSeparator
+                        then writeQuestSeparator
+                        else writeEventSeparator
                       go (r ^. new_data)
                     else return (r ^. new_data)
             (new_d, b) ← runWriterT ∘ go $ d
-            writeTVar data_var new_d
-            tryPutTMVar write_request ()
+            lift $ do
+              writeTVar data_var new_d
+              tryPutTMVar write_request ()
             return ∘ B.toLazyText $ b
           else do
             return "No credits."
-      ) >>= text
 
 habitMain ∷ IO ()
 habitMain = getDataFilePath >>= makeApp >>= run 8081

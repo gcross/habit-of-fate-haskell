@@ -20,6 +20,8 @@ library
                      , containers
                      , directory
                      , filepath
+                     , taggy
+                     , taggy-lens
                      , hslogger
                      , http-conduit
                      , http-types
