@@ -166,12 +166,14 @@ unrecognizedCommand command
   | otherwise = liftIO $
       printf "Unrecognized command '%c'.  Press ? for help.\n" command
 
+data Escape = Escape
+
 loop ∷ [String] → [Action] → ActionMonad ()
-loop labels actions = flip runContT return $ callCC $ \escape → do
+loop labels actions = void ∘ runExceptT $ do
   let action_map =
         [(chr 4, lift quit)
-        ,(chr 27, escape ())
-        ,('q', escape ())
+        ,(chr 27, throwError Escape)
+        ,('q', throwError Escape)
         ,('?',help actions)
         ]
         ⊕
