@@ -14,8 +14,10 @@
 module Main where
 
 import Control.Applicative
+import Control.Arrow (second)
 import Control.Exception
 import Control.Lens
+import Control.Monad.Cont
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Bool
@@ -166,28 +168,23 @@ unrecognizedCommand command
       printf "Unrecognized command '%c'.  Press ? for help.\n" command
 
 loop ∷ [String] → ActionMap → ActionMonad ()
-loop labels commands = go
-  where
-    go =
-      (promptForCommand $ printf "%s[%sq?]>"
+loop labels commands = flip runContT return $ callCC $ \escape → do
+  let action_map =
+        [(chr 4, lift quit)
+        ,(chr 27, escape ())
+        ,('q', escape ())
+        ,('?',help commands)
+        ]
+        ⊕
+        (commands & each . _2 %~ (^. code . to lift))
+  forever $ do
+    command ← promptForCommand $
+      printf "%s[%sq?]>"
         (intercalate "|" ("HoF":labels))
         (map fst commands)
-      )
-      >>=
-      \command →
-        fromMaybe (unrecognizedCommand command >> go)
-        ∘
-        lookup command
-        $
-        (chr 4, quit)
-        :
-        (chr 27, return ())
-        :
-        ('q',return ())
-        :
-        ('?',help commands >> go)
-        :
-        map (_2 %~ (>> go) ∘ view code) commands
+    case lookup command action_map of
+      Nothing → unrecognizedCommand command
+      Just code → code
 
 withCancel ∷ ActionMonadWithCancel () → ActionMonad ()
 withCancel = void ∘ runExceptT
