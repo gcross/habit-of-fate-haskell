@@ -2,7 +2,8 @@
 
 module HabitOfFate.Unicode where
 
-import Control.Lens ((<>~), ASetter)
+import Control.Lens ((<>~), (<>=), ASetter, ASetter')
+import Control.Monad.State (MonadState)
 import Data.Monoid (mappend)
 
 infixr 6 ⊕
@@ -11,9 +12,14 @@ infixr 6 ⊕
 {-# INLINE (⊕) #-}
 
 infixr 4 ⊕~
-(⊕~) ∷ Monoid a ⇒ ASetter s t a a → a → s → t
+(⊕~) ∷ Monoid α ⇒ ASetter s t α α → α → s → t
 (⊕~) = (<>~)
 {-# INLINE (⊕~) #-}
+
+infixr 4 ⊕=
+(⊕=) ∷ (MonadState s m, Monoid α) => ASetter' s α -> α -> m ()
+(⊕=) = (<>=)
+{-# INLINE (⊕=) #-}
 
 (⊘) ∷ Monoid m ⇒ m
 (⊘) = mempty
@@ -28,6 +34,11 @@ infixr 6 ∈
 (∈) ∷ Eq α ⇒ α → [α] → Bool
 (∈) = elem
 {-# INLINE (∈)  #-}
+
+infixr 6 ∉
+(∉) ∷ Eq α ⇒ α → [α] → Bool
+(∉) x xs = not (x ∈ xs)
+{-# INLINE (∉)  #-}
 
 infix  4 ≤
 (≤) ∷ Ord α ⇒ α → α → Bool
