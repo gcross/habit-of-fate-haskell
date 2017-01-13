@@ -7,8 +7,10 @@ module HabitOfFate.Client where
 
 import Prelude hiding (id)
 
+import Control.Exception
 import Control.Lens
 import Control.Monad (unless)
+import Control.Monad.Catch
 import Control.Monad.Reader
 import Data.Aeson
 import Data.ByteString (ByteString)
@@ -17,6 +19,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Text.Lens
+import Data.Typeable
 import Data.UUID (UUID, fromText, toText)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (Status(..))
@@ -39,15 +43,21 @@ makeLenses ''ServerInfo
 
 type Client = ReaderT ServerInfo IO
 
+data ClientException = ClientException Int String deriving (Eq, Typeable)
+
+instance Show ClientException where
+  show (ClientException code message) =
+    printf "Received unexpected response code %i: %s" code message
+
+instance Exception ClientException where
+
 expectSuccess ∷ Response α → Client ()
 expectSuccess response =
   unless (code >= 200 && code <= 299)
   ∘
-  fail
+  throwM
   $
-  printf "Received error code %i: %s"
-    code
-    (decodeUtf8 message)
+  ClientException code (decodeUtf8 message ^. unpacked)
   where
     Status code message = getResponseStatus response
 

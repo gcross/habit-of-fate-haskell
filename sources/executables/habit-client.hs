@@ -8,18 +8,23 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Main where
 
 import Control.Applicative
 import Control.Arrow ((&&&))
-import Control.Exception
+import Control.Exception (AsyncException(UserInterrupt))
 import Control.Lens
+import Control.Monad.Base
+import Control.Monad.Catch
 import Control.Monad.Cont
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Monad.Trans.Control
 import Data.Bool
 import Data.Char
 import Data.List
@@ -38,9 +43,25 @@ import HabitOfFate.Unicode
 
 data Quit = Quit
 
+type InnerAction = ExceptT Quit Client
+
 newtype ActionMonad α = ActionMonad
-  { unwrapActionMonad ∷ ExceptT Quit Client α
-  } deriving (Applicative, Functor, Monad, MonadError Quit, MonadIO)
+  { unwrapActionMonad ∷ InnerAction α }
+  deriving
+  ( Applicative
+  , Functor
+  , Monad
+  , MonadBase IO
+  , MonadCatch
+  , MonadError Quit
+  , MonadIO
+  , MonadThrow
+  )
+
+instance MonadBaseControl IO ActionMonad where
+  type StM ActionMonad α = StM InnerAction α
+  liftBaseWith f = ActionMonad $ liftBaseWith $ \r → f (r ∘ unwrapActionMonad)
+  restoreM = ActionMonad ∘ restoreM
 
 quit ∷ ActionMonad α
 quit = throwError Quit
@@ -185,7 +206,7 @@ loop labels actions = void ∘ runExceptT $ do
         (map (^. key) actions)
     case lookup command action_map of
       Nothing → unrecognizedCommand command
-      Just code → code
+      Just code → code `catchAll` (liftIO ∘ putStrLn ∘ show)
 
 withCancel ∷ ActionMonadWithCancel () → ActionMonad ()
 withCancel = void ∘ runExceptT
