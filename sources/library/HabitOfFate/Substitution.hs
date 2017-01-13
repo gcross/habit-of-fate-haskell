@@ -5,10 +5,9 @@
 
 module HabitOfFate.Substitution where
 
-import Control.Applicative
-import Control.Lens
+import Control.Applicative hiding (many)
+import Control.Lens hiding (noneOf)
 import Control.Monad.Writer.Strict
-import Data.Attoparsec.Text
 import Data.Char (toLower, toUpper)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -16,6 +15,8 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Lazy.Builder
 import Text.Printf
+import Text.Parsec
+import Text.Parsec.Char
 
 import HabitOfFate.TH
 import HabitOfFate.Unicode
@@ -115,36 +116,26 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
 
 
 substitute ∷ Substitutions → Text → Text
-substitute table t =
+substitute table =
   either
-    (error ∘ ("Error when performing substitutions: " ⊕))
-    ((^. strict) ∘ toLazyText ∘ snd)
+    (error ∘ show)
+    id
   ∘
-  flip parseOnly t
-  ∘
-  runWriterT
-  $
-  takeTillNextSub >> parseAnotherSub
+  runParser parser () ""
   where
-    takeTillNextSub ∷ WriterT Builder Parser ()
-    takeTillNextSub = (lift $ takeTill (== '{')) >>= tell ∘ fromText
+    parser ∷ Parsec Text () Text
+    parser =
+      mappend
+        <$> takeTillNextSub
+        <*> (fmap mconcat ∘ many $ mappend <$> parseAnotherSub <*> takeTillNextSub)
 
-    parseAnotherSub ∷ WriterT Builder Parser ()
-    parseAnotherSub =
-      (do
-        key ← lift $ do
-          _ ← char '{'
-          key ← Text.pack ∘ unwords ∘ words ∘ Text.unpack <$> takeTill (== '}')
-          _ ← char '}'
-          return key
-        maybe
-          (fail $ printf "key %s was not found in the table" key)
-          return
-          (Map.lookup key table)
-         >>=
-         tell ∘ fromText
-        takeTillNextSub
-        parseAnotherSub
-      )
-      <|>
-      (lift endOfInput)
+    takeTillNextSub = fmap Text.pack ∘ many $ satisfy (/='{')
+
+    parseAnotherSub = do
+      char '{'
+      key ← unwords ∘ words <$> many1 (satisfy (/='}'))
+      when ('{' ∈ key) $ fail "nested brace"
+      char '}'
+      case Map.lookup (Text.pack key) table of
+        Nothing → fail $ "key " ⊕ key ⊕ " was not found in the table"
+        Just value → return value
