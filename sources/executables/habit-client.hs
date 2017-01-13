@@ -14,7 +14,7 @@
 module Main where
 
 import Control.Applicative
-import Control.Arrow (second)
+import Control.Arrow ((&&&))
 import Control.Exception
 import Control.Lens
 import Control.Monad.Cont
@@ -52,18 +52,17 @@ instance MonadClient ActionMonad where
   liftC = ActionMonad ∘ lift
 
 data Action = Action
-  { _description ∷ String
+  { _key ∷ Char
+  , _description ∷ String
   , _code ∷ ActionMonad ()
   }
 makeLenses ''Action
 
-type ActionMap = [(Char,Action)]
-
-help ∷ MonadIO m ⇒ ActionMap → m ()
-help commands = liftIO $ do
-  putStrLn "Commands:"
-  forM_ commands $ \(command, action) →
-    printf "  %c: %s\n" command (action ^. description)
+help ∷ MonadIO m ⇒ [Action] → m ()
+help actions = liftIO $ do
+  putStrLn "Actions:"
+  forM_ actions $
+    printf "  %c: %s\n" <$> (^. key) <*> (^. description)
   putStrLn "  --"
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
@@ -167,21 +166,21 @@ unrecognizedCommand command
   | otherwise = liftIO $
       printf "Unrecognized command '%c'.  Press ? for help.\n" command
 
-loop ∷ [String] → ActionMap → ActionMonad ()
-loop labels commands = flip runContT return $ callCC $ \escape → do
+loop ∷ [String] → [Action] → ActionMonad ()
+loop labels actions = flip runContT return $ callCC $ \escape → do
   let action_map =
         [(chr 4, lift quit)
         ,(chr 27, escape ())
         ,('q', escape ())
-        ,('?',help commands)
+        ,('?',help actions)
         ]
         ⊕
-        (commands & each . _2 %~ (^. code . to lift))
+        (map ((^. key) &&& (^. code . to lift)) actions)
   forever $ do
     command ← promptForCommand $
       printf "%s[%sq?]>"
         (intercalate "|" ("HoF":labels))
-        (map fst commands)
+        (map (^. key) actions)
     case lookup command action_map of
       Nothing → unrecognizedCommand command
       Just code → code
@@ -193,15 +192,15 @@ printAndCancel = (>> cancel) ∘ liftIO ∘ putStrLn
 
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
-  [('h',) ∘ Action "Edit habits." ∘ loop ["Habits"] $
-    [('a',) ∘ Action "Add a habit." ∘ withCancel $ do
+  [Action 'h' "Edit habits." ∘ loop ["Habits"] $
+    [Action 'a' "Add a habit." ∘ withCancel $ do
       Habit
         <$> prompt "What is the name of the habit?"
         <*> promptWithDefault' 1.0 "How many credits is a success worth?"
         <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
       >>=
       void ∘ liftC ∘ createHabit
-    ,('e',) ∘ Action "Edit a habit." ∘ withCancel $ do
+    ,Action 'e' "Edit a habit." ∘ withCancel $ do
       habit_id ← promptAndParse parseUUID "Which habit?"
       old_habit ←
         liftC (fetchHabit habit_id)
@@ -215,13 +214,13 @@ mainLoop = loop [] $
         <*> promptWithDefault' (old_habit ^. failure_credits) "How many credits is a failure worth?"
        >>=
        liftC ∘ replaceHabit habit_id
-    ,('f',) ∘ Action "Mark habits as failed." $
+    ,Action 'f' "Mark habits as failed." $
        withCancel $ promptAndParse parseUUIDs "Which habits failed?" >>= liftC ∘ markHabits []
-    ,('p',) ∘ Action "Print habits." $ printHabits
-    ,('s',) ∘ Action "Mark habits as successful." $
+    ,Action 'p' "Print habits." $ printHabits
+    ,Action 's' "Mark habits as successful." $
        withCancel $ promptAndParse parseUUIDs "Which habits succeeded?" >>= liftC ∘ flip markHabits []
     ]
-  ,('p',) ∘ Action "Print data." $ do
+  ,Action 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"
       printHabits
       liftIO $ putStrLn ""
@@ -229,7 +228,7 @@ mainLoop = loop [] $
       (success_credits, failure_credits) ← liftC getCredits
       liftIO $ printf "    Success credits: %f\n" success_credits
       liftIO $ printf "    Failure credits: %f\n" failure_credits
-  ,('r',) ∘ Action "Run game." $
+  ,Action 'r' "Run game." $
       liftC runGame >>= liftIO ∘ S.putStrLn
   ]
   where
