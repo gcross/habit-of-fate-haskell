@@ -18,6 +18,7 @@ library
                      , attoparsec
                      , bytestring
                      , containers
+                     , deepseq
                      , directory
                      , exceptions
                      , filepath

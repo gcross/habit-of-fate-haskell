@@ -18,6 +18,7 @@ import Prelude hiding (id)
 
 import Control.Concurrent
 import Control.Concurrent.STM
+import Control.DeepSeq
 import Control.Lens
 import Control.Monad
 import Control.Monad.Base
@@ -348,7 +349,7 @@ makeApp filepath = do
             (new_d, b) ← runWriterT ∘ go $ d
             writeTVar data_var new_d
             tryPutTMVar write_request ()
-            return ∘ B.toLazyText $ b
+            return $!! B.toLazyText b
           else do
             return "No credits."
       ) >>= text
