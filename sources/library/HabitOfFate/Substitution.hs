@@ -134,7 +134,7 @@ substitute table t =
       (do
         key ← lift $ do
           _ ← char '{'
-          key ← takeTill (== '}')
+          key ← Text.pack ∘ unwords ∘ words ∘ Text.unpack <$> takeTill (== '}')
           _ ← char '}'
           return key
         maybe
