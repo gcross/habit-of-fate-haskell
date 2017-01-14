@@ -82,11 +82,11 @@ makeRequest method path = do
     $
     defaultRequest
 
-parseDoc ∷ Response LBS.ByteString → UnmakeJSON α → Client α
+parseDoc ∷ Response LBS.ByteString → JSONParser α → Client α
 parseDoc response parser =
   case eitherDecode (getResponseBody response) of
     Left error_message → failParse error_message
-    Right doc → either failParse return ∘ unmakeJSON doc $ parser
+    Right doc → either failParse return ∘ runJSONParser doc $ parser
 
 request ∷ Text → Text → Client (Response LBS.ByteString)
 request method path = do
@@ -117,7 +117,7 @@ createHabit habit = do
   response ←
     requestWithBody "PUT" "/habits"
     $
-    makeJSON $ do
+    runJSONCreator $ do
       addObject "data" $ do
         addText "type" "habit"
         add "attributes" habit
@@ -178,7 +178,7 @@ markHabits success_habits failure_habits =
   ∘
   requestWithBody "POST" "/mark"
   $
-  makeJSON $ do
+  runJSONCreator $ do
     add "success" success_habits
     add "failure" failure_habits
 
@@ -188,7 +188,7 @@ replaceHabit uuid habit =
   ∘
   requestWithBody "PUT" (pathToHabit uuid)
   $
-  makeJSON $ do
+  runJSONCreator $ do
     addObject "data" $ do
       addText "type" "habit"
       add "attributes" habit

@@ -26,48 +26,48 @@ import Text.Printf
 import HabitOfFate.JSONInstances ()
 import HabitOfFate.Unicode
 
-newtype MakeJSON α = MakeJSON
-  { unwrapMakeJSON ∷ State (HashMap Text Value) α
+newtype JSONCreator α = JSONCreator
+  { unwrapJSONCreator ∷ State (HashMap Text Value) α
   } deriving (Applicative,Functor,Monad)
 
-makeJSON ∷ MakeJSON () → Value
-makeJSON = Object ∘ flip execState HashMap.empty ∘ unwrapMakeJSON
+runJSONCreator ∷ JSONCreator () → Value
+runJSONCreator = Object ∘ flip execState HashMap.empty ∘ unwrapJSONCreator
 
-add ∷ ToJSON α ⇒ Text → α → MakeJSON ()
-add key = MakeJSON ∘ modify ∘ HashMap.insert key ∘ toJSON
+add ∷ ToJSON α ⇒ Text → α → JSONCreator ()
+add key = JSONCreator ∘ modify ∘ HashMap.insert key ∘ toJSON
 
-addText ∷ Text → Text → MakeJSON ()
+addText ∷ Text → Text → JSONCreator ()
 addText = add
 
-addObject ∷ Text → MakeJSON () → MakeJSON ()
-addObject key = add key ∘ makeJSON
+addObject ∷ Text → JSONCreator () → JSONCreator ()
+addObject key = add key ∘ runJSONCreator
 
-type InnerUnmakeJSON α = ReaderT (String, HashMap Text Value) (Except String) α
+type InnerJSONParser α = ReaderT (String, HashMap Text Value) (Except String) α
 
-newtype UnmakeJSON α = UnmakeJSON
-  { unwrapUnmakeJSON ∷ InnerUnmakeJSON α
+newtype JSONParser α = JSONParser
+  { unwrapJSONParser ∷ InnerJSONParser α
   } deriving (Applicative,Functor,Monad,MonadReader (String, HashMap Text Value))
 
 raiseWith ∷ MonadError String m ⇒ String → String → m α
 raiseWith path message = throwError $ printf "Error at path \"%s\": %s" path message
 
-raise ∷ String → InnerUnmakeJSON α
+raise ∷ String → InnerJSONParser α
 raise message = view _1 >>= flip raiseWith message
 
-instance MonadFail UnmakeJSON where
-  fail = UnmakeJSON ∘ raise
+instance MonadFail JSONParser where
+  fail = JSONParser ∘ raise
 
-unmakeJSONWithPath ∷ String → Value → UnmakeJSON α → Either String α
-unmakeJSONWithPath path value (UnmakeJSON action) = runExcept $ do
+runJSONParserWithPath ∷ String → Value → JSONParser α → Either String α
+runJSONParserWithPath path value (JSONParser action) = runExcept $ do
   case value of
     Object fields → runReaderT action (path,fields)
     _ → raiseWith path "Expected an object."
 
-unmakeJSON ∷ Value → UnmakeJSON α → Either String α
-unmakeJSON value action = unmakeJSONWithPath "" value action
+runJSONParser ∷ Value → JSONParser α → Either String α
+runJSONParser value action = runJSONParserWithPath "" value action
 
-retrieveMaybe ∷ FromJSON α ⇒ Text → UnmakeJSON (Maybe α)
-retrieveMaybe key = UnmakeJSON $ do
+retrieveMaybe ∷ FromJSON α ⇒ Text → JSONParser (Maybe α)
+retrieveMaybe key = JSONParser $ do
   s ← view _2
   case HashMap.lookup key s of
     Nothing → return Nothing
@@ -76,19 +76,19 @@ retrieveMaybe key = UnmakeJSON $ do
       $
       parseEither parseJSON value
 
-retrieve ∷ FromJSON α ⇒ Text → UnmakeJSON α
+retrieve ∷ FromJSON α ⇒ Text → JSONParser α
 retrieve key =
   retrieveMaybe key
   >>=
  maybe (fail $ printf "Unable to find field \"%s\"" key) return
 
-checkTypeIs ∷ Text → UnmakeJSON ()
+checkTypeIs ∷ Text → JSONParser ()
 checkTypeIs expected_type = do
   found_type ← retrieve "type"
   unless (found_type == expected_type) $
     fail $ printf "Expected type \"%s\" but found type \"%s\"" expected_type found_type
 
-checkIdIfPresentIs ∷ UUID → UnmakeJSON ()
+checkIdIfPresentIs ∷ UUID → JSONParser ()
 checkIdIfPresentIs expected_uuid =
   retrieveMaybe "id" >>= \case
     Just uuid | uuid /= expected_uuid →
@@ -100,19 +100,19 @@ checkIdIfPresentIs expected_uuid =
         (show expected_uuid)
     _ → return ()
 
-retrieveObject ∷ Text → UnmakeJSON α → UnmakeJSON α
-retrieveObject key action = UnmakeJSON $ do
+retrieveObject ∷ Text → JSONParser α → JSONParser α
+retrieveObject key action = JSONParser $ do
   path ← view _1
-  value ← unwrapUnmakeJSON $ retrieve key
+  value ← unwrapJSONParser $ retrieve key
   either throwError return
     $
-    unmakeJSONWithPath (printf "%s/%s" path key) value action
+    runJSONParserWithPath (printf "%s/%s" path key) value action
 
-retrieveObjects ∷ Text → UnmakeJSON α → UnmakeJSON [α]
-retrieveObjects key action = UnmakeJSON $ do
+retrieveObjects ∷ Text → JSONParser α → JSONParser [α]
+retrieveObjects key action = JSONParser $ do
   path ← view _1
-  values ← unwrapUnmakeJSON $ retrieve key
+  values ← unwrapJSONParser $ retrieve key
   forM (zip [0 ∷ Int ..] values) $ \(i, value) →
     either throwError return
     $
-    unmakeJSONWithPath (printf "%s/%s[%i]" path key i) value action
+    runJSONParserWithPath (printf "%s/%s[%i]" path key i) value action

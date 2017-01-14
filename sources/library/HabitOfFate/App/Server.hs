@@ -110,13 +110,13 @@ throwActionErrorWithMessage code message = throwError $ ActionError code (Just m
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 
-unmakeJSONAction ∷ Value → UnmakeJSON α → ServerAction α
-unmakeJSONAction value action =
+runJSONParserAction ∷ Value → JSONParser α → ServerAction α
+runJSONParserAction value action =
   either
     (throwActionErrorWithMessage badRequest400 ∘ Text.pack)
     return
   $
-  unmakeJSON value action
+  runJSONParser value action
 
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
@@ -159,11 +159,11 @@ makeApp filepath = do
       >>=
       json
       ∘
-      (\hs → makeJSON $ do
+      (\hs → runJSONCreator $ do
         addObject "links" ∘ add "self" $ url_prefix ⊕ "habits"
         add "data" $
           map
-           (\(uuid, habit) → makeJSON $ do
+           (\(uuid, habit) → runJSONCreator $ do
              add "id" uuid
              addText "type" "habit"
              add "attributes" habit
@@ -178,7 +178,7 @@ makeApp filepath = do
       let url = url_prefix ⊕ "habits/" ⊕ toText habit_id
       act $ do
         habit ← lookupHabit habit_id
-        return ∘ json ∘ makeJSON $ do
+        return ∘ json ∘ runJSONCreator $ do
           addObject "links" ∘ add "self" $ url
           addObject "data" $ do
             add "id" habit_id
@@ -189,7 +189,7 @@ makeApp filepath = do
       HabitId habit_id ← param "id"
       info $ "Replacing habit " ⊕ show habit_id
       act' $
-        (unmakeJSONAction doc ∘ retrieveObject "data" $ do
+        (runJSONParserAction doc ∘ retrieveObject "data" $ do
           checkTypeIs "habit"
           checkIdIfPresentIs habit_id
           retrieve "attributes"
@@ -205,7 +205,7 @@ makeApp filepath = do
       doc ← jsonData
       random_uuid ← liftIO randomIO
       act $ do
-        (maybe_uuid, habit) ← unmakeJSONAction doc ∘ retrieveObject "data" $ do
+        (maybe_uuid, habit) ← runJSONParserAction doc ∘ retrieveObject "data" $ do
           checkTypeIs "habit"
           (,) <$> retrieveMaybe "id" <*> retrieve "attributes"
         d ← lift $ readTVar data_var
@@ -228,20 +228,20 @@ makeApp filepath = do
           let url = url_prefix ⊕ "habit/" ⊕ toText uuid
           addHeader "Location" ∘ (^. from strict) $ url
           status created201
-          json ∘ makeJSON ∘ addObject "data" $ do
+          json ∘ runJSONCreator ∘ addObject "data" $ do
             add "id" uuid
             addText "type" "habit"
             add "attributes" habit
             addObject "links" ∘ add "self" $ url
     get "/mark" $ do
       d ← liftIO $ readTVarIO data_var
-      json ∘ makeJSON $ do
+      json ∘ runJSONCreator $ do
         add "success" (d ^. game . Game.success_credits)
         add "failure" (d ^. game . Game.failure_credits)
     post "/mark" $ do
       doc ← jsonData
       act' $ do
-        (success_habits, failure_habits) ← unmakeJSONAction doc $
+        (success_habits, failure_habits) ← runJSONParserAction doc $
           (,) <$> retrieve "success" <*> retrieve "failure"
         let markHabits uuids habit_credits game_credits =
               mapM lookupHabit uuids
