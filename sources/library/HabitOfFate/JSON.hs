@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -19,12 +20,45 @@ import Data.Aeson
 import Data.Aeson.Types
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Text (Text)
-import Data.UUID (UUID)
+import Data.UUID
 import Text.Printf
 
-import HabitOfFate.JSONInstances ()
 import HabitOfFate.Unicode
+
+instance ToJSON UUID where
+  toJSON = String ∘ toText
+
+instance FromJSON UUID where
+  parseJSON =
+    withText "expected string"
+    $
+    maybe (fail "invalid UUID") return ∘ fromText
+
+instance ToJSON α ⇒ ToJSON (Map UUID α) where
+  toJSON =
+    Object
+    ∘
+    HashMap.fromList
+    ∘
+    map ((_1 %~ toText) ∘ (_2 %~ toJSON))
+    ∘
+    Map.toList
+
+instance FromJSON α ⇒ FromJSON (Map UUID α) where
+  parseJSON =
+    withObject "expected object"
+    $
+    fmap Map.fromList
+    ∘
+    mapM (\(key,value) →
+      (,) <$> maybe (fail "invalid UUID") return (fromText key)
+          <*> parseJSON value
+    )
+    ∘
+    HashMap.toList
 
 newtype JSONCreator α = JSONCreator
   { unwrapJSONCreator ∷ State (HashMap Text Value) α

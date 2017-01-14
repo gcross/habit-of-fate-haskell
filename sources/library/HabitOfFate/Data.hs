@@ -23,9 +23,16 @@ import System.FilePath
 import HabitOfFate.Game
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
-import HabitOfFate.JSONInstances ()
+import HabitOfFate.JSON
 import HabitOfFate.Quests
 import HabitOfFate.TH
+import HabitOfFate.Unicode
+
+instance ToJSON StdGen where
+  toJSON = toJSON ∘ show
+
+instance FromJSON StdGen where
+  parseJSON = fmap read ∘ parseJSON
 
 data Data = Data
   {   _habits ∷ Map UUID Habit
