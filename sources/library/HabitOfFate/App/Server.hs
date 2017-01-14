@@ -12,7 +12,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server where
+module HabitOfFate.App.Server where
 
 import Prelude hiding (id)
 

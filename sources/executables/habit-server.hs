@@ -1,7 +1,7 @@
 module Main where
 
 
-import HabitOfFate.Server
+import HabitOfFate.App.Server
 
 main :: IO ()
 main = habitMain

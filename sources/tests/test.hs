@@ -16,9 +16,9 @@ import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.HUnit hiding (Test)
 
+import HabitOfFate.App.Server
 import HabitOfFate.Client
 import HabitOfFate.Habit
-import HabitOfFate.Server
 import HabitOfFate.Unicode
 
 header header = replicate left_dash_count '-' ++ " " ++ header ++ " " ++ replicate right_dash_count '-'

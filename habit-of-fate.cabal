@@ -45,7 +45,8 @@ library
                      , yaml
                      , wai
                      , warp
-  exposed-modules:     HabitOfFate.Client
+  exposed-modules:     HabitOfFate.App.Server
+                     , HabitOfFate.Client
                      , HabitOfFate.Console
                      , HabitOfFate.Data
                      , HabitOfFate.Game
@@ -55,7 +56,6 @@ library
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
-                     , HabitOfFate.Server
                      , HabitOfFate.Substitution
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
