@@ -12,7 +12,7 @@ import qualified Data.Aeson.TH as AesonTH
 import Data.Foldable
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
-import Data.Text (pack)
+import Instances.TH.Lift ()
 import Language.Haskell.TH.Quote
 import Text.Parsec
 
@@ -32,8 +32,8 @@ makeLenses ''StoryParserState
 s = QuasiQuoter
   (
     (\case
-      [x] → [|pack x|]
-      xs → [|map pack xs|]
+      [x] → [|x|]
+      xs → [|xs|]
     )
     ∘
     either

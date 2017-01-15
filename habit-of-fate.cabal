@@ -35,6 +35,7 @@ library
                      , scotty
                      , stm
                      , text
+                     , th-lift-instances
                      , time
                      , template-haskell
                      , transformers
