@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -5,21 +6,14 @@
 
 module HabitOfFate.Substitution where
 
-import Control.Applicative hiding (many)
-import Control.Lens hiding (noneOf)
-import Control.Monad.Writer.Strict
-import Data.Char (toLower, toUpper)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Text (Text)
-import qualified Data.Text as Text
+import HabitOfFate.Prelude hiding (many)
+
+import qualified Data.Char as Char
 import Data.Text.Lazy.Builder
-import Text.Printf
 import Text.Parsec
 import Text.Parsec.Char
 
 import HabitOfFate.TH
-import HabitOfFate.Unicode
 
 data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
 deriveJSON ''Gender
@@ -30,9 +24,9 @@ deriveJSON ''Character
 type Substitutions = Map Text Text
 
 makeSubstitutionTable ∷ [(Text,Character)] → Substitutions
-makeSubstitutionTable [] = Map.empty
+makeSubstitutionTable [] = mempty
 makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
-    Map.fromList
+    mapFromList
     $
     makeNouns first_character
     ⊕
@@ -40,25 +34,29 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
       (\(key, character@(Character name _)) →
           (name, name)
           :
-          makeArticles key character ⊕ map (_1 ⊕~ Text.cons '|' key) (makeNouns character)
+          makeArticles key character ⊕ fmap (_1 ⊕~ ('|' <| key)) (makeNouns character)
       )
       table
   where
     makeArticles ∷ Text → Character → [(Text,Text)]
     makeArticles key (Character name _) =
-        [("a " ⊕ key,article_value)
-        ,("A " ⊕ key,article_value)
-        ,("an " ⊕ key,article_value)
-        ,("An " ⊕ key,article_value)
-        ,("the " ⊕ key,"the " ⊕ name)
-        ,("The " ⊕ key,"The " ⊕ name)
+        [("a " ⊕ key, articleValue False)
+        ,("A " ⊕ key, articleValue True)
+        ,("an " ⊕ key, articleValue False)
+        ,("An " ⊕ key, articleValue True)
+        ,("the " ⊕ key, "the " ⊕ name)
+        ,("The " ⊕ key, "The " ⊕ name)
         ]
       where
-        article_value = article ⊕ " " ⊕ name
+        articleValue ∷ 𝔹 → Text
+        articleValue capitalize = article ⊕ " " ⊕ name
           where
-            article
-              | flip elem ("aeiou" ∷ String) ∘ toLower ∘ Text.head $ name = "an"
-              | otherwise = "a"
+            article =
+              (_head %~ if capitalize then Char.toUpper else Char.toLower)
+              $
+              case name ^? _head of
+                Just c | Char.toLower c ∈ "aeiou" → "an"
+                _ → "a"
 
     makeNouns ∷ Character → [(Text,Text)]
     makeNouns (Character _ gender) = concat
@@ -69,19 +67,19 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
         ,category_nouns
         ]
       where
-        capitalized word = Text.cons (toUpper $ Text.head word) (Text.tail word)
+        capitalized = (_head %~ Char.toUpper)
 
         subject_pronouns =
-            map (,pronoun) ["he","she","it"]
+            fmap (,pronoun) ["he","she","it"]
             ⊕
-            map (,capitalized pronoun) ["He","She","It"]
+            fmap (,capitalized pronoun) ["He","She","It"]
           where
             pronoun = case gender of
                 Male → "he"
                 Female → "she"
                 Neuter → "it"
 
-        object_pronouns = map (,pronoun) ["him","her","it"]
+        object_pronouns = fmap (,pronoun) ["him","her","it"]
           where
             pronoun = case gender of
                 Male → "him"
@@ -89,9 +87,9 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
                 Neuter → "it"
 
         possessive_prononuns =
-            map (,pronoun) ["his","her'","its"]
+            fmap (,pronoun) ["his","her'","its"]
             ⊕
-            map (,capitalized pronoun) ["His","Her","Its"]
+            fmap (,capitalized pronoun) ["His","Her","Its"]
           where
             pronoun = case gender of
                 Male → "his"
@@ -99,7 +97,7 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
                 Neuter → "its"
 
         descriptive_possessive_pronouns =
-            map (,pronoun) ["his","hers","its"]
+            fmap (,pronoun) ["his","hers","its"]
           where
             pronoun = case gender of
                 Male → "his"
@@ -107,7 +105,7 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
                 Neuter → "its"
 
         category_nouns =
-            map (,category) ["man","woman","thing"]
+            fmap (,category) ["man","woman","thing"]
           where
             category = case gender of
                 Male → "man"
@@ -129,13 +127,13 @@ substitute table =
         <$> takeTillNextSub
         <*> (fmap mconcat ∘ many $ mappend <$> parseAnotherSub <*> takeTillNextSub)
 
-    takeTillNextSub = fmap Text.pack ∘ many $ satisfy (/='{')
+    takeTillNextSub = (^. packed) <$> many (satisfy (/='{'))
 
     parseAnotherSub = do
       char '{'
       key ← unwords ∘ words <$> many1 (satisfy (/='}'))
       when ('{' ∈ key) $ fail "nested brace"
       char '}'
-      case Map.lookup (Text.pack key) table of
-        Nothing → fail $ "key " ⊕ key ⊕ " was not found in the table"
+      case lookup (key ^. packed) table of
+        Nothing → fail $ printf "key %s was not found in the table" key
         Just value → return value

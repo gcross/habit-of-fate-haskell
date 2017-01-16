@@ -27,6 +27,7 @@ library
                      , monad-control
                      , MonadRandom
                      , lens
+                     , mono-traversable
                      , mtl
                      , operational
                      , parsec
@@ -52,14 +53,13 @@ library
                      , HabitOfFate.Game
                      , HabitOfFate.Habit
                      , HabitOfFate.JSON
+                     , HabitOfFate.Prelude
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Substitution
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
-                     , HabitOfFate.Unicode
-                     , HabitOfFate.Utils
   default-language:    Haskell2010
 
 executable center-banner

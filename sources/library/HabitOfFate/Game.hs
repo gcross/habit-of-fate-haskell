@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -10,17 +11,13 @@
 
 module HabitOfFate.Game where
 
-import Control.Lens
-import Control.Monad (join)
+import HabitOfFate.Prelude
+
 import Control.Monad.Random hiding (split, uniform)
-import Control.Monad.State
-import Control.Monad.Writer
 import qualified Control.Monad.Random as Random
-import Data.Text (Text)
 import Data.Text.Lazy.Builder
 
 import HabitOfFate.TH
-import HabitOfFate.Unicode
 
 data GameState = GameState
   { _belief ∷ Int
@@ -82,7 +79,7 @@ uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = join . uniform
 
 weighted ∷ MonadRandom m ⇒ [(Rational,α)] → m α
-weighted = fromList . map (\(x,y) → (y,x))
+weighted = Random.fromList . fmap swap
 
 weightedAction ∷ MonadRandom m ⇒ [(Rational,m α)] → m α
 weightedAction = join . weighted

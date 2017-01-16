@@ -1,9 +1,10 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+import HabitOfFate.Prelude
+
 import Control.Concurrent
-import Control.Monad
-import Control.Monad.Reader
 import qualified Data.Map as Map
 import Network.Wai.Handler.Warp
 import System.Directory
@@ -19,9 +20,9 @@ import Test.HUnit hiding (Test)
 import HabitOfFate.App.Server
 import HabitOfFate.Client
 import HabitOfFate.Habit
-import HabitOfFate.Unicode
 
-header header = replicate left_dash_count '-' ++ " " ++ header ++ " " ++ replicate right_dash_count '-'
+header ∷ String → String
+header header = replicate left_dash_count '-' ⊕ " " ⊕ header ⊕ " " ⊕ replicate right_dash_count '-'
   where
     dash_count = 80 - 2 - length header
     right_dash_count = dash_count `div` 2

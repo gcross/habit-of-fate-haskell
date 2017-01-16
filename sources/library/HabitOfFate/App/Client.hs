@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -15,30 +16,22 @@
 
 module HabitOfFate.App.Client where
 
-import Control.Applicative
-import Control.Arrow ((&&&))
+import HabitOfFate.Prelude
+
 import Control.Exception (AsyncException(UserInterrupt))
-import Control.Lens
 import Control.Monad.Base
 import Control.Monad.Catch
 import Control.Monad.Cont
-import Control.Monad.Except
-import Control.Monad.Reader
 import Control.Monad.Trans.Control
-import Data.Bool
 import Data.Char
-import Data.List
-import qualified Data.Map as Map
 import qualified Data.Text.IO as S
 import Data.UUID (UUID)
 import System.IO
 import System.IO.Error (isEOFError)
-import Text.Printf
 import Text.Read (readEither, readMaybe)
 
 import HabitOfFate.Client
 import HabitOfFate.Habit
-import HabitOfFate.Unicode
 
 data Quit = Quit
 
@@ -257,9 +250,9 @@ mainLoop = loop [] $
     printHabits = do
       habits ← liftC fetchHabits
       liftIO $
-        if Map.null habits
+        if null habits
           then putStrLn "There are no habits."
-          else forM_ (Map.toList habits) $ \(uuid, habit) →
+          else forM_ (mapToList habits) $ \(uuid, habit) →
             printf "%s %s [+%f/-%f]\n"
               (show uuid)
               (habit ^. name)

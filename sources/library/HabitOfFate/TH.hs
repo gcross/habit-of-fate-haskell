@@ -1,21 +1,17 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.TH where
 
-import Control.Lens
-import Control.Monad
-import Control.Monad.State
+import HabitOfFate.Prelude hiding (many)
+
 import Data.Aeson.TH (Options(fieldLabelModifier), defaultOptions)
 import qualified Data.Aeson.TH as AesonTH
-import Data.Foldable
-import Data.Sequence (Seq)
 import Instances.TH.Lift ()
 import Language.Haskell.TH.Quote
 import Text.Parsec
-
-import HabitOfFate.Unicode
 
 deriveJSON = AesonTH.deriveJSON $ defaultOptions
   { fieldLabelModifier = dropWhile (== '_')

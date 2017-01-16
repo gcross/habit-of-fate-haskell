@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -15,19 +16,13 @@ module HabitOfFate.Quests.Forest where
 ----------------------------------- Imports ------------------------------------
 --------------------------------------------------------------------------------
 
-import Control.Lens
-import Control.Monad.State hiding (State)
-import Data.Bool
-import Data.Map (fromList)
-import Data.Text (Text)
-import qualified Data.Text as Text
+import HabitOfFate.Prelude hiding (State)
 
 import HabitOfFate.Game
 import HabitOfFate.Quest
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
-import HabitOfFate.Unicode
 
 --------------------------------------------------------------------------------
 ------------------------------------ Types -------------------------------------
@@ -61,11 +56,11 @@ storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] �
 storyWithDefaultSubstitutionsPlus forest additional_substitutions template =
   story
   ∘
-  Text.filter (/= '=')
+  filter (/= '=')
   ∘
   flip substitute template
   ∘
-  (⊕ fromList additional_substitutions)
+  (⊕ mapFromList additional_substitutions)
   ∘
   defaultSubstitutionTable
   $
@@ -81,7 +76,7 @@ forestStory ∷ Text → ForestAction ()
 forestStory = storyWithDefaultSubstitutionsForLens quest
 
 forestStories ∷ [Text] → ForestAction ()
-forestStories = uniformAction ∘ map forestStory
+forestStories = uniformAction ∘ fmap forestStory
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
@@ -211,7 +206,7 @@ makeFailureStory story = FailureStory common averted happened
     [common,averted,happened] = story
 
 failure_stories ∷ [FailureStory]
-failure_stories = map makeFailureStory
+failure_stories = fmap makeFailureStory
 ------------------------------ Gingerbread House -------------------------------
   [[s|
 ================================================================================

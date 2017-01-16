@@ -1,18 +1,17 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Quest where
 
-import Control.Lens
+import HabitOfFate.Prelude
+
 import Control.Monad.Cont
 import Control.Monad.Random
-import Control.Monad.Reader
-import Control.Monad.State
 
 import HabitOfFate.Game
-import HabitOfFate.Unicode
 
 data QuestState α = QuestState
   { _game ∷ GameState

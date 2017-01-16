@@ -1,17 +1,17 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Quests where
 
-import Control.Lens (Prism', (^.), (^?), makePrisms, re)
+import HabitOfFate.Prelude
 
 import HabitOfFate.Game
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest
 import HabitOfFate.TH
-import HabitOfFate.Unicode
 
 data CurrentQuestState =
     Forest Forest.State

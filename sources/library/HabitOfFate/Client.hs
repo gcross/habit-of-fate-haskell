@@ -1,39 +1,31 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Client where
 
-import Prelude hiding (id)
+import HabitOfFate.Prelude
 
 import Control.Exception
-import Control.Lens
-import Control.Monad (unless)
 import Control.Monad.Catch
-import Control.Monad.Reader
 import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Text
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Data.Text.Lens
+import qualified Data.Text as Text
 import Data.Typeable
 import Data.UUID (UUID, fromText, toText)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (Status(..))
 import System.Log.Logger
-import Text.Printf
 
 import HabitOfFate.Habit
 import HabitOfFate.JSON
-import HabitOfFate.Unicode
 
 decodeUtf8Lazy = decodeUtf8 ∘ (^. strict)
 
-debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ unpack
+debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ (^. from packed)
 
 data ServerInfo = ServerInfo
   { _hostname ∷ ByteString
@@ -125,11 +117,11 @@ createHabit habit = do
     [] → failParse "No location returned for created habit."
     [url] →
       let url_as_text = decodeUtf8 url
-      in case fromText ∘ takeWhileEnd (/= '/') $ url_as_text of
+      in case fromText ∘ Text.takeWhileEnd (/= '/') $ url_as_text of
         Nothing →
           failParse
           $
-          "Last part of location did not end with a UUID: " ⊕ unpack url_as_text
+          "Last part of location did not end with a UUID: " ⊕ (url_as_text ^. from packed)
         Just uuid → return uuid
     _ → failParse "Multiple locations returned for created habit."
 
@@ -152,7 +144,7 @@ fetchHabit uuid = do
 
 fetchHabits ∷ Client (Map UUID Habit)
 fetchHabits =
-  Map.fromList
+  mapFromList
   <$>
   (
     request "GET" "/habits"

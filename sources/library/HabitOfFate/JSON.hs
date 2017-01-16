@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -9,24 +10,11 @@
 
 module HabitOfFate.JSON where
 
-import Prelude hiding (fail)
+import HabitOfFate.Prelude
 
-import Control.Lens
-import Control.Monad.Except hiding (fail)
-import Control.Monad.Fail
-import Control.Monad.Reader hiding (fail)
-import Control.Monad.State hiding (fail)
 import Data.Aeson
 import Data.Aeson.Types
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Text (Text)
 import Data.UUID
-import Text.Printf
-
-import HabitOfFate.Unicode
 
 instance ToJSON UUID where
   toJSON = String ∘ toText
@@ -41,34 +29,34 @@ instance ToJSON α ⇒ ToJSON (Map UUID α) where
   toJSON =
     Object
     ∘
-    HashMap.fromList
+    mapFromList
     ∘
-    map ((_1 %~ toText) ∘ (_2 %~ toJSON))
+    fmap (toText *** toJSON)
     ∘
-    Map.toList
+    mapToList
 
 instance FromJSON α ⇒ FromJSON (Map UUID α) where
   parseJSON =
     withObject "expected object"
     $
-    fmap Map.fromList
+    fmap mapFromList
     ∘
     mapM (\(key,value) →
       (,) <$> maybe (fail "invalid UUID") return (fromText key)
           <*> parseJSON value
     )
     ∘
-    HashMap.toList
+    mapToList
 
 newtype JSONCreator α = JSONCreator
   { unwrapJSONCreator ∷ State (HashMap Text Value) α
   } deriving (Applicative,Functor,Monad)
 
 runJSONCreator ∷ JSONCreator () → Value
-runJSONCreator = Object ∘ flip execState HashMap.empty ∘ unwrapJSONCreator
+runJSONCreator = Object ∘ flip execState mempty ∘ unwrapJSONCreator
 
 add ∷ ToJSON α ⇒ Text → α → JSONCreator ()
-add key = JSONCreator ∘ modify ∘ HashMap.insert key ∘ toJSON
+add key = JSONCreator ∘ modify ∘ insertMap key ∘ toJSON
 
 addText ∷ Text → Text → JSONCreator ()
 addText = add
@@ -103,7 +91,7 @@ runJSONParser value action = runJSONParserWithPath "" value action
 retrieveMaybe ∷ FromJSON α ⇒ Text → JSONParser (Maybe α)
 retrieveMaybe key = JSONParser $ do
   s ← view _2
-  case HashMap.lookup key s of
+  case lookup key s of
     Nothing → return Nothing
     Just value →
       either (raise ∘ printf "Error parsing value \"%s\": %s" (show value)) return
@@ -114,7 +102,7 @@ retrieve ∷ FromJSON α ⇒ Text → JSONParser α
 retrieve key =
   retrieveMaybe key
   >>=
- maybe (fail $ printf "Unable to find field \"%s\"" key) return
+  maybe (fail $ printf "Unable to find field \"%s\"" key) return
 
 checkTypeIs ∷ Text → JSONParser ()
 checkTypeIs expected_type = do

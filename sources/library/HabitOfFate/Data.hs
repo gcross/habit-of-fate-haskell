@@ -1,9 +1,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Data where
+
+import HabitOfFate.Prelude
 
 import Control.Lens
 import Control.Monad
@@ -24,7 +27,6 @@ import HabitOfFate.Habit
 import HabitOfFate.JSON ()
 import HabitOfFate.Quests
 import HabitOfFate.TH
-import HabitOfFate.Unicode
 
 instance ToJSON StdGen where
   toJSON = toJSON ∘ show

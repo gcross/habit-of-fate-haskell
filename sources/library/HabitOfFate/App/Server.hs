@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -14,24 +15,15 @@
 
 module HabitOfFate.App.Server where
 
-import Prelude hiding (id)
+import HabitOfFate.Prelude
 
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
-import Control.Lens
-import Control.Monad
-import Control.Monad.Except
-import Control.Monad.Writer
 import Data.Aeson hiding ((.=), json)
-import Data.Bool
-import qualified Data.Map as Map
-import Data.Text (Text)
-import qualified Data.Text as Text
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as B
 import Data.UUID
-import Text.Printf
 import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
@@ -39,13 +31,12 @@ import System.Directory
 import System.Log.Logger
 import System.Random
 import Web.Scotty
+import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data hiding (_habits)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.JSON
-import HabitOfFate.Unicode
-import HabitOfFate.Utils
 
 newtype HabitId = HabitId UUID
 
@@ -88,7 +79,7 @@ act =
   either
     (\(ActionError code maybe_message) → do
       status code
-      maybe (return ()) (text ∘ (^. from strict)) maybe_message
+      maybe (return ()) (Scotty.text ∘ (^. from strict)) maybe_message
     )
     identity
 
@@ -104,7 +95,7 @@ hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 runJSONParserAction ∷ Value → JSONParser α → ServerAction α
 runJSONParserAction value action =
   either
-    (throwActionErrorWithMessage badRequest400 ∘ Text.pack)
+    (throwActionErrorWithMessage badRequest400 ∘ (^. packed))
     return
   $
   runJSONParser value action
@@ -112,7 +103,7 @@ runJSONParserAction value action =
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
   let url_prefix = "http://localhost:8081/" ∷ Text
-  info $ "Data file is located at " ++ filepath
+  info $ "Data file is located at " ⊕ filepath
   data_var ←
     doesFileExist filepath
     >>=
@@ -145,7 +136,7 @@ makeApp filepath = do
           Just habit → return habit
       submitWriteDataRequest = void $ tryPutTMVar write_request ()
   scottyApp $ do
-    get "/habits" $ do
+    Scotty.get "/habits" $ do
       liftIO (readTVarIO data_var)
       >>=
       json
@@ -153,17 +144,17 @@ makeApp filepath = do
       (\hs → runJSONCreator $ do
         addObject "links" ∘ add "self" $ url_prefix ⊕ "habits"
         add "data" $
-          map
+          fmap
            (\(uuid, habit) → runJSONCreator $ do
              add "id" uuid
              addText "type" "habit"
              add "attributes" habit
            )
-           (Map.toList hs)
+           (mapToList hs)
       )
       ∘
       (^. habits)
-    get "/habits/:id" $ do
+    Scotty.get "/habits/:id" $ do
       HabitId habit_id ← param "id"
       info $ "Fetching habit " ⊕ show habit_id
       let url = url_prefix ⊕ "habits/" ⊕ toText habit_id
@@ -175,7 +166,7 @@ makeApp filepath = do
             add "id" habit_id
             addText "type" "habit"
             add "attributes" habit
-    put "/habits/:id" $ do
+    Scotty.put "/habits/:id" $ do
       doc ← jsonData
       HabitId habit_id ← param "id"
       info $ "Replacing habit " ⊕ show habit_id
@@ -187,12 +178,12 @@ makeApp filepath = do
         )
         >>=
         withHabit habit_id ∘ const ∘ Just
-    delete "/habits/:id" $ do
+    Scotty.delete "/habits/:id" $ do
       HabitId habit_id ← param "id"
       act $ do
         withHabit habit_id ∘ const $ Nothing
         return $ status noContent204
-    put "/habits" $ do
+    Scotty.put "/habits" $ do
       doc ← jsonData
       random_uuid ← liftIO randomIO
       act $ do
@@ -203,11 +194,11 @@ makeApp filepath = do
         uuid ← case maybe_uuid of
           Nothing → return random_uuid
           Just uuid →
-            if Map.member uuid (d ^. habits)
+            if member uuid (d ^. habits)
               then
                 throwActionErrorWithMessage conflict409
                 ∘
-                Text.pack
+                (^. packed)
                 $
                 printf "A habit with id %s already exists" (show uuid)
               else return uuid
@@ -224,12 +215,12 @@ makeApp filepath = do
             addText "type" "habit"
             add "attributes" habit
             addObject "links" ∘ add "self" $ url
-    get "/mark" $ do
+    Scotty.get "/mark" $ do
       d ← liftIO $ readTVarIO data_var
       json ∘ runJSONCreator $ do
         add "success" (d ^. game . Game.success_credits)
         add "failure" (d ^. game . Game.failure_credits)
-    post "/mark" $ do
+    Scotty.post "/mark" $ do
       doc ← jsonData
       act' $ do
         (success_habits, failure_habits) ← runJSONParserAction doc $
@@ -249,7 +240,7 @@ makeApp filepath = do
         markHabits success_habits success_credits Game.success_credits
         markHabits failure_habits failure_credits Game.failure_credits
         lift $ submitWriteDataRequest
-    post "/run" $
+    Scotty.post "/run" $
       (liftIO ∘ atomically $ do
         d ← readTVar data_var
         if stillHasCredits d
@@ -270,7 +261,7 @@ makeApp filepath = do
             return $!! B.toLazyText b
           else do
             return "No credits."
-      ) >>= text
+      ) >>= Scotty.text
 
 habitMain ∷ IO ()
 habitMain = getDataFilePath >>= makeApp >>= run 8081
