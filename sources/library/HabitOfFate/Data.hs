@@ -23,7 +23,7 @@ import System.FilePath
 import HabitOfFate.Game
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
-import HabitOfFate.JSON
+import HabitOfFate.JSON ()
 import HabitOfFate.Quests
 import HabitOfFate.TH
 import HabitOfFate.Unicode
