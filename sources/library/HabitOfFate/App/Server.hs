@@ -21,24 +21,15 @@ import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Lens
 import Control.Monad
-import Control.Monad.Base
 import Control.Monad.Except
-import Control.Monad.State hiding (get, put)
-import qualified Control.Monad.State as State
-import Control.Monad.Trans.Control
 import Control.Monad.Writer
 import Data.Aeson hiding ((.=), json)
-import Data.Attoparsec.Text
 import Data.Bool
 import qualified Data.Map as Map
-import Data.Maybe
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as B
-import qualified Data.Text.Lens as TextLens
 import Data.UUID
 import Text.Printf
 import Network.HTTP.Types.Status
@@ -50,7 +41,7 @@ import System.Random
 import Web.Scotty
 
 import HabitOfFate.Data hiding (_habits)
-import qualified HabitOfFate.Game as Game hiding (text)
+import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.JSON
 import HabitOfFate.Unicode

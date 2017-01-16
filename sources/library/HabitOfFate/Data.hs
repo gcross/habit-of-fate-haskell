@@ -9,9 +9,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.Random
 import qualified Data.ByteString as BS
-import Data.Function
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Maybe
 import Data.Text (Text)
 import Data.UUID (UUID)
@@ -44,7 +42,7 @@ deriveJSON ''Data
 makeLenses ''Data
 
 newData ∷ IO Data
-newData = Data Map.empty newGame Nothing <$> newStdGen
+newData = Data mempty newGame Nothing <$> newStdGen
 
 data RunDataResult = RunDataResult
   { _story ∷ Text

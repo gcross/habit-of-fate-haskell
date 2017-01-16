@@ -29,7 +29,6 @@ import Data.Bool
 import Data.Char
 import Data.List
 import qualified Data.Map as Map
-import Data.Maybe
 import qualified Data.Text.IO as S
 import Data.UUID (UUID)
 import System.IO

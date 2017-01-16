@@ -15,7 +15,6 @@ library
   build-depends:       base
                      , aeson
                      , ansi-terminal
-                     , attoparsec
                      , bytestring
                      , containers
                      , deepseq

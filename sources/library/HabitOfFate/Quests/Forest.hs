@@ -15,18 +15,12 @@ module HabitOfFate.Quests.Forest where
 ----------------------------------- Imports ------------------------------------
 --------------------------------------------------------------------------------
 
-import Control.Applicative
 import Control.Lens
 import Control.Monad.State hiding (State)
-import Control.Monad.Writer
 import Data.Bool
-import Data.Char
-import Data.Foldable (toList)
 import Data.Map (fromList)
-import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as Text
-import qualified Data.Text.Lens as TextLens
 
 import HabitOfFate.Game
 import HabitOfFate.Quest
@@ -34,7 +28,6 @@ import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
 import HabitOfFate.Unicode
-import Debug.Trace
 
 --------------------------------------------------------------------------------
 ------------------------------------ Types -------------------------------------

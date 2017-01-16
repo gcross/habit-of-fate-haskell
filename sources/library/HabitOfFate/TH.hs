@@ -11,7 +11,6 @@ import Data.Aeson.TH (Options(fieldLabelModifier), defaultOptions)
 import qualified Data.Aeson.TH as AesonTH
 import Data.Foldable
 import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
 import Instances.TH.Lift ()
 import Language.Haskell.TH.Quote
 import Text.Parsec
@@ -40,7 +39,7 @@ s = QuasiQuoter
       (error ∘ show)
       (^. stories . to toList)
     ∘
-    flip evalState (StoryParserState Seq.empty "" "")
+    flip evalState (StoryParserState mempty "" "")
     ∘
     runParserT (parser >> get) () ""
   )
