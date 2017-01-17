@@ -1,5 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 import HabitOfFate.Prelude
@@ -20,6 +22,7 @@ import Test.HUnit hiding (Test)
 import HabitOfFate.App.Server
 import HabitOfFate.Client
 import HabitOfFate.Habit
+import HabitOfFate.Story
 
 header ∷ String → String
 header header = replicate left_dash_count '-' ⊕ " " ⊕ header ⊕ " " ⊕ replicate right_dash_count '-'
@@ -47,34 +50,54 @@ test_habit = Habit "name" 1 1
 test_habit_2 = Habit "test" 2 2
 
 main = initialize >> defaultMain
-  [ serverTestCase "Get all habits when none exist" $
-      fetchHabits
-      >>=
-      liftIO ∘ (@?= Map.empty)
-  , serverTestCase "Get a particular habit when none exist" $
-      fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
-      >>=
-      liftIO ∘ (@?= Nothing)
-  , serverTestCase "Create and fetch a habit" $
-      createHabit test_habit
-      >>=
-      fetchHabit
-      >>=
-      liftIO ∘ (@?= Just test_habit)
-  , serverTestCase "Create a habit and fetch all habits" $ do
-      uuid ← createHabit test_habit
-      fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit)
-  , serverTestCase "Create a habit, delete it, and fetch all habits" $ do
-      uuid ← createHabit test_habit
-      deleteHabit uuid
-      fetchHabits >>= liftIO ∘ (@?= Map.empty)
-  , serverTestCase "Create a habit, replace it, and fetch all habits" $ do
-      uuid ← createHabit test_habit
-      replaceHabit uuid test_habit_2
-      fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit_2)
-  , serverTestCase "Mark habits." $ do
-      uuid_1 ← createHabit test_habit
-      uuid_2 ← createHabit test_habit_2
-      markHabits [uuid_1] [uuid_2]
-      getCredits >>= liftIO ∘ (@?= (1,2))
+  [ testGroup "HabitOfFate.App.Server"
+    [ serverTestCase "Get all habits when none exist" $
+        fetchHabits
+        >>=
+        liftIO ∘ (@?= Map.empty)
+    , serverTestCase "Get a particular habit when none exist" $
+        fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
+        >>=
+        liftIO ∘ (@?= Nothing)
+    , serverTestCase "Create and fetch a habit" $
+        createHabit test_habit
+        >>=
+        fetchHabit
+        >>=
+        liftIO ∘ (@?= Just test_habit)
+    , serverTestCase "Create a habit and fetch all habits" $ do
+        uuid ← createHabit test_habit
+        fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit)
+    , serverTestCase "Create a habit, delete it, and fetch all habits" $ do
+        uuid ← createHabit test_habit
+        deleteHabit uuid
+        fetchHabits >>= liftIO ∘ (@?= Map.empty)
+    , serverTestCase "Create a habit, replace it, and fetch all habits" $ do
+        uuid ← createHabit test_habit
+        replaceHabit uuid test_habit_2
+        fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit_2)
+    , serverTestCase "Mark habits." $ do
+        uuid_1 ← createHabit test_habit
+        uuid_2 ← createHabit test_habit_2
+        markHabits [uuid_1] [uuid_2]
+        getCredits >>= liftIO ∘ (@?= (1,2))
+    ]
+  , testGroup "HabitOfFate.Story"
+    [ testGroup "s"
+      [ testCase "empty" $ length [s||] @?= 0
+      , testCase "single separator" $ length [s|=|] @?= 0
+      , testCase "just a substitution" $ length [s|{test}|] @?= 1
+      , testCase "single story plain text" $
+          length [s|line1|] @?= 1
+      , testCase "2 stories: 1 empty, 1 non-empty" $
+          length [s|line1
+                    =
+                   |] @?= 1
+      , testCase "2 stories: both non-empty" $
+          length [s|line1
+                    =
+                    line2
+                   |] @?= 2
+      ]
+    ]
   ]

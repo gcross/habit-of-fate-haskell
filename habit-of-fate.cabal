@@ -17,6 +17,7 @@ library
                      , ansi-terminal
                      , bytestring
                      , containers
+                     , data-default
                      , deepseq
                      , directory
                      , exceptions
@@ -35,6 +36,7 @@ library
                      , scotty
                      , stm
                      , text
+                     , th-lift
                      , th-lift-instances
                      , time
                      , template-haskell
@@ -43,6 +45,7 @@ library
                      , unordered-containers
                      , uuid
                      , vector
+                     , xml-conduit
                      , yaml
                      , wai
                      , warp
@@ -58,6 +61,7 @@ library
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Substitution
+                     , HabitOfFate.Story
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   default-language:    Haskell2010

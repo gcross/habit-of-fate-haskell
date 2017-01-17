@@ -37,6 +37,7 @@ import HabitOfFate.Data hiding (_habits)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.JSON
+import HabitOfFate.Story
 
 newtype HabitId = HabitId UUID
 
@@ -46,26 +47,6 @@ instance Parsable HabitId where
 info, notice ∷ MonadIO m ⇒ String → m ()
 info = liftIO ∘ infoM "HabitOfFate.Server"
 notice = liftIO ∘ noticeM "HabitOfFate.Server"
-
-tellChar ∷ MonadWriter Builder m ⇒ Char → m ()
-tellChar = tell ∘ B.singleton
-
-tellNewline ∷ MonadWriter Builder m ⇒ m ()
-tellNewline = tellChar '\n'
-
-tellText ∷ MonadWriter Builder m ⇒ Text → m ()
-tellText = tell ∘ B.fromText
-
-tellLine ∷ MonadWriter Builder m ⇒ Text → m ()
-tellLine t = do
-  tellText t
-  tellNewline
-
-tellQuestSeparator ∷ MonadWriter Builder m ⇒ m ()
-tellQuestSeparator = tellLine "<questSeparator/>"
-
-tellEventSeparator ∷ MonadWriter Builder m ⇒ m ()
-tellEventSeparator = tellLine "<eventSeparator/>"
 
 data ActionError = ActionError Status (Maybe Text)
   deriving (Eq,Ord,Show)
@@ -99,6 +80,12 @@ runJSONParserAction value action =
     return
   $
   runJSONParser value action
+
+data QuestAccumulator = QuestAccumulator
+  { _quests ∷ Seq (Seq (Seq Paragraph))
+  , _current_quest ∷ Seq (Seq Paragraph)
+  }
+makeLenses ''QuestAccumulator
 
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
@@ -247,18 +234,17 @@ makeApp filepath = do
           then do
             let go d = do
                   let r = runData d
-                  tellText $ r ^. story
+                  current_quest %= (|> r ^. story)
                   if stillHasCredits (r ^. new_data)
                     then do
-                      if r ^. quest_completed
-                        then tellQuestSeparator
-                        else tellEventSeparator
+                      when (r ^. quest_completed) $
+                        (current_quest <<.= mempty) >>= (quests %=) ∘ flip (|>)
                       go (r ^. new_data)
                     else return (r ^. new_data)
-            (new_d, b) ← runWriterT ∘ go $ d
+            (new_d, s) ← flip runStateT (QuestAccumulator mempty mempty) ∘ go $ d
             writeTVar data_var new_d
             tryPutTMVar write_request ()
-            return $!! B.toLazyText b
+            return $!! renderStory (s ^. quests |> s ^. current_quest)
           else do
             return "No credits."
       ) >>= Scotty.text

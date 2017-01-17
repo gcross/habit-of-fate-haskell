@@ -20,7 +20,7 @@ import HabitOfFate.Prelude hiding (State)
 
 import HabitOfFate.Game
 import HabitOfFate.Quest
-import HabitOfFate.Substitution
+import HabitOfFate.Story
 import HabitOfFate.TH
 import HabitOfFate.Trial
 
@@ -52,13 +52,9 @@ defaultSubstitutionTable forest = makeSubstitutionTable
   ,("Illsbane",Character (forest ^. herb) Neuter)
   ]
 
-storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → Text → m ()
-storyWithDefaultSubstitutionsPlus forest additional_substitutions template =
-  story
-  ∘
-  filter (/= '=')
-  ∘
-  flip substitute template
+storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → [SubParagraph] → m ()
+storyWithDefaultSubstitutionsPlus forest additional_substitutions paragraphs =
+  flip substituteAndAddParagraphs paragraphs
   ∘
   (⊕ mapFromList additional_substitutions)
   ∘
@@ -66,23 +62,23 @@ storyWithDefaultSubstitutionsPlus forest additional_substitutions template =
   $
   forest
 
-storyWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → Text → m ()
+storyWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → [SubParagraph] → m ()
 storyWithDefaultSubstitutionsForLens lens template =
   use lens
   >>=
   \forest → storyWithDefaultSubstitutionsPlus forest [] template
 
-forestStory ∷ Text → ForestAction ()
+forestStory ∷ [SubParagraph] → ForestAction ()
 forestStory = storyWithDefaultSubstitutionsForLens quest
 
-forestStories ∷ [Text] → ForestAction ()
+forestStories ∷ [[SubParagraph]] → ForestAction ()
 forestStories = uniformAction ∘ fmap forestStory
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-introStory = storyWithDefaultSubstitutionsForLens id
+introStory = storyWithDefaultSubstitutionsForLens identity
 
 new ∷ Game State
 new =
@@ -96,7 +92,7 @@ new =
     <*> numberUntilEvent 1
   )
   >>=
-  execStateT (introStory [s|
+  execStateT (introStory [s1|
 ================================================================================
 The last thing in the world that {Susie} wanted to do was to wander alone in the
 Wicked Forest at night, but her son, little {Tommy} was sick and would not live
@@ -154,7 +150,7 @@ won = do
   game . belief += 1
   questHasEnded
   where
-    won_story = [s|
+    won_story = [s1|
 ================================================================================
 {Susie} is starting to feel like {she} will never make it back when she notices
 that things are starting to get brighter -- {she} must be getting close to the
@@ -178,9 +174,9 @@ alter to you out of gratitude.
 data FailureResult = FailureAverted | FailureHappened
 
 data FailureStory = FailureStory
-  { _common_failure_story ∷ Text
-  , _failure_averted_story ∷ Text
-  , _failure_happened_story ∷ Text
+  { _common_failure_story ∷ [SubParagraph]
+  , _failure_averted_story ∷ [SubParagraph]
+  , _failure_happened_story ∷ [SubParagraph]
   }
 makeLenses ''FailureStory
 

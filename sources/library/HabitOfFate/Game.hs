@@ -15,8 +15,8 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Random hiding (split, uniform)
 import qualified Control.Monad.Random as Random
-import Data.Text.Lazy.Builder
 
+import HabitOfFate.Story
 import HabitOfFate.TH
 
 data GameState = GameState
@@ -28,31 +28,31 @@ deriveJSON ''GameState
 makeLenses ''GameState
 
 newtype Game α =
-    Game { unwrapGame ∷ StateT GameState (WriterT Builder (Rand StdGen)) α }
+    Game { unwrapGame ∷ StateT GameState (WriterT (Seq Paragraph) (Rand StdGen)) α }
   deriving
     (Applicative
     ,Functor
     ,Monad
     ,MonadRandom
     ,MonadState GameState
-    ,MonadWriter Builder
+    ,MonadWriter (Seq Paragraph)
     )
 
 data RunGameResult α = RunGameResult
   { _returned_value ∷ α
   , _new_game ∷ GameState
-  , _game_text ∷ Text
+  , _game_paragraphs ∷ Seq Paragraph
   } deriving (Eq,Ord,Read,Show)
 makeLenses ''RunGameResult
 
 class MonadRandom m ⇒ MonadGame m where
-  story ∷ Text → m ()
+  addParagraph ∷ Paragraph → m ()
 
 instance MonadGame Game where
-  story = gameStory
+  addParagraph = gameAddParagraph
 
 instance MonadGame m ⇒ MonadGame (StateT s m) where
-  story = lift . story
+  addParagraph = lift . addParagraph
 
 newGame ∷ GameState
 newGame = GameState 0 0 0
@@ -61,16 +61,22 @@ runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
 runGame state =
   fmap (uncurry ∘ uncurry $ RunGameResult)
   ∘
-  fmap (_2 %~ (^. strict) ∘ toLazyText)
-  ∘
   runWriterT
   ∘
   flip runStateT state
   ∘
   unwrapGame
 
-gameStory ∷ Text → Game ()
-gameStory = tell ∘ fromText
+gameAddParagraph ∷ Paragraph → Game ()
+gameAddParagraph = tell ∘ singleton
+
+substituteAndAddParagraphs ∷ MonadGame m ⇒ Substitutions → [SubParagraph] → m ()
+substituteAndAddParagraphs subs =
+  traverse_ addParagraph
+  ∘
+  either (\keys → error $ "Missing keys: " ⊕ show keys) identity
+  ∘
+  traverse (substitute subs)
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform

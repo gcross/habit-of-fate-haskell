@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Prelude
@@ -45,6 +46,7 @@ module HabitOfFate.Prelude
   , Bool(..)
   , Char
   , Double
+  , Enum(..)
   , FilePath
   , Float
   , Floating(..)
@@ -62,6 +64,7 @@ module HabitOfFate.Prelude
   , RealFloat(..)
   , RealFrac(..)
   , Seq
+  , Set
   , String
   , Text
   , Word
@@ -70,6 +73,7 @@ module HabitOfFate.Prelude
   , error
   , even
   , fromIntegral
+  , fst
   , gcd
   , identity
   , lcm
@@ -78,13 +82,14 @@ module HabitOfFate.Prelude
   , read
   , realToFrac
   , showText
+  , snd
   , subtract
   , swap
   , uncurry
   , zip
   ) where
 
-import Control.Applicative
+import Control.Applicative hiding (many)
 
 import Control.Arrow hiding (loop)
 
@@ -157,6 +162,8 @@ import Data.Sequences
     , unsnoc
     )
 
+import Data.Set (Set)
+
 import Data.Text (Text)
 
 import Data.Text.Lens
@@ -167,6 +174,9 @@ import Text.Printf
 
 instance MonadFail (ParsecT s u m) where
   fail = parserFail
+
+instance MonadFail (Either String) where
+  fail = Left
 
 infixr 6 ⊕
 (⊕) ∷ Monoid m ⇒ m → m → m

@@ -26,6 +26,7 @@ import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.JSON ()
 import HabitOfFate.Quests
+import HabitOfFate.Story
 import HabitOfFate.TH
 
 instance ToJSON StdGen where
@@ -47,7 +48,7 @@ newData ∷ IO Data
 newData = Data mempty newGame Nothing <$> newStdGen
 
 data RunDataResult = RunDataResult
-  { _story ∷ Text
+  { _story ∷ Seq Paragraph
   , _quest_completed ∷ Bool
   , _new_data ∷ Data
   }
@@ -62,7 +63,7 @@ runData d =
   &
   \(r, new_rng) →
     RunDataResult
-      (r ^. game_text)
+      (r ^. game_paragraphs)
       (isNothing (r ^. returned_value))
       (d & game .~ r ^. new_game
          & quest .~ r ^. returned_value
