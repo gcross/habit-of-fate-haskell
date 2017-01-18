@@ -77,11 +77,8 @@ isNull (Text_ t) = allSpaces t
 isNull (Merged xs) = all isNull xs
 isNull _ = False
 
-parseEvents ∷ String → Either String [[Paragraph]]
-parseEvents =
-  (_Left %~ show) ∘ parseText def ∘ LazyText.pack
-  >=>
-  parseContainer "stories" parseEvents ∘ NodeElement ∘ documentRoot
+parseStory ∷ Document → Either String [[Paragraph]]
+parseStory = parseContainer "stories" parseEvents ∘ NodeElement ∘ documentRoot
   where
     parseContainer ∷ Text → ([Node] → Either String α) → Node → Either String α
     parseContainer expected_tag parseChildren node =
@@ -279,7 +276,9 @@ parseQuote =
     either (error ∘ show) identity
     ∘
     (
-      parseEvents
+      (_Left %~ show) ∘ parseText def ∘ LazyText.pack
+      >=>
+      parseStory
       >=>
       (
         fmap fst
