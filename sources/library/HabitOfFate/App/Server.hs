@@ -244,7 +244,17 @@ makeApp filepath = do
             (new_d, s) ← flip runStateT (QuestAccumulator mempty mempty) ∘ go $ d
             writeTVar data_var new_d
             tryPutTMVar write_request ()
-            return $!! renderStory (s ^. quests |> s ^. current_quest)
+            return $!! (
+              renderStory
+              ∘
+              toList
+              ∘
+              (each %~ toList)
+              ∘
+              (each ∘ each %~ toList)
+              $
+              s ^. quests |> s ^. current_quest
+             )
           else do
             return "No credits."
       ) >>= Scotty.text

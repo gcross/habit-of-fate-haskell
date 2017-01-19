@@ -57,7 +57,7 @@ insertMarkers ∷ String → String
 insertMarkers =
   unlines
   ∘
-  (\x → ["<stories><event><p>"] ⊕ x ⊕ ["</p></event></stories>"])
+  (\x → ["<story><quest><event><p>"] ⊕ x ⊕ ["</p></event></quest></story>"])
   ∘
   fmap (\case
     "" → "</p><p>"
@@ -77,8 +77,13 @@ isNull (Text_ t) = allSpaces t
 isNull (Merged xs) = all isNull xs
 isNull _ = False
 
-parseStory ∷ Document → Either String [[Paragraph]]
-parseStory = parseContainer "stories" parseEvents ∘ NodeElement ∘ documentRoot
+parseStory ∷ Document → Either String [[[Paragraph]]]
+parseStory =
+  parseContainer "story" parseQuests
+  ∘
+  NodeElement
+  ∘
+  documentRoot
   where
     parseContainer ∷ Text → ([Node] → Either String α) → Node → Either String α
     parseContainer expected_tag parseChildren node =
@@ -94,6 +99,12 @@ parseStory = parseContainer "stories" parseEvents ∘ NodeElement ∘ documentRo
           | not ∘ null $ attrs →
               fail $ printf "expected no attributes in <%s>"  tag
           | otherwise → parseChildren children
+
+    parseQuests ∷ [Node] → Either String [[[Paragraph]]]
+    parseQuests =
+      fmap (filter (not ∘ null))
+      ∘
+      mapM (parseContainer "quest" parseEvents)
 
     parseEvents ∷ [Node] → Either String [[Paragraph]]
     parseEvents =
@@ -285,7 +296,12 @@ parseQuote =
         ∘
         runWriterT
         ∘
-        traverseOf (each . each) parseSubstitutions
+        traverseOf (each . each . each) parseSubstitutions
+      )
+      >=>
+      (\case
+        [x] → return x
+        xs → throwError $ printf "saw %i quests instead of 1" (length xs)
       )
     )
     ∘
@@ -301,7 +317,7 @@ s1 = QuasiQuoter
   (
     (\case
       [x] → [|x|]
-      xs → error $ printf "saw %i stories instead of 1" (length xs)
+      xs → error $ printf "saw %i events instead of 1" (length xs)
     )
     ∘
     parseQuote
@@ -329,13 +345,13 @@ generateParagraph (Style style paragraph) =
 generateParagraph (Merged children) = concatMap generateParagraph children
 generateParagraph (Text_ t) = [NodeContent t]
 
-generateEvent ∷ Foldable t ⇒ t Paragraph → Node
+generateEvent ∷ [Paragraph] → Node
 generateEvent = NodeElement ∘ Element "event" mempty ∘ concatMap generateParagraph
 
-generateQuest ∷ Foldable t ⇒ t (t Paragraph) → Node
+generateQuest ∷ [[Paragraph]] → Node
 generateQuest = NodeElement ∘ Element "quest" mempty ∘ foldr ((:) ∘ generateEvent) []
 
-generateStory ∷ Foldable t ⇒ t (t (t Paragraph)) → Document
+generateStory ∷ [[[Paragraph]]] → Document
 generateStory =
   (\n → Document (Prologue [] Nothing []) n [])
   ∘
@@ -343,5 +359,5 @@ generateStory =
   ∘
   foldr ((:) ∘ generateQuest) []
 
-renderStory ∷ Foldable t ⇒ t (t (t Paragraph)) → LazyText.Text
+renderStory ∷ [[[Paragraph]]] → LazyText.Text
 renderStory = renderText def ∘ generateStory
