@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -79,11 +80,7 @@ runJSONParserAction value action =
   $
   runJSONParser value action
 
-data QuestAccumulator = QuestAccumulator
-  { _quests ∷ Seq (Seq (Seq Paragraph))
-  , _current_quest ∷ Seq (Seq Paragraph)
-  }
-makeLenses ''QuestAccumulator
+type Quest = Seq (Seq Paragraph)
 
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
@@ -230,7 +227,9 @@ makeApp filepath = do
         d ← readTVar data_var
         if stillHasCredits d
           then do
-            let go d = do
+            let quests = _1 ∷ Lens' (Seq Quest, Quest) (Seq Quest)
+                current_quest = _2 ∷ Lens' (Seq Quest, Quest) Quest
+                go d = do
                   let r = runData d
                   current_quest %= (|> r ^. story)
                   if stillHasCredits (r ^. new_data)
@@ -239,7 +238,7 @@ makeApp filepath = do
                         (current_quest <<.= mempty) >>= (quests %=) ∘ flip (|>)
                       go (r ^. new_data)
                     else return (r ^. new_data)
-            (new_d, s) ← flip runStateT (QuestAccumulator mempty mempty) ∘ go $ d
+            (new_d, s) ← flip runStateT (mempty,mempty) ∘ go $ d
             writeTVar data_var new_d
             tryPutTMVar write_request ()
             return $!! (
