@@ -134,12 +134,12 @@ parseStory =
           | not ∘ null $ attrs → fail "<u> tag had unexpected attributes"
           | otherwise → Style Underline <$> parseGenParagraph children
         "color" → case mapToList attrs of
-          [("color",color)] → case color of
+          [("hue",hue)] → case hue of
             "red" → Style (Color Red) <$> parseGenParagraph children
             "blue" → Style (Color Blue) <$> parseGenParagraph children
             "green" → Style (Color Green) <$> parseGenParagraph children
-            _ → fail $ printf "invalid color %s" color
-          _ → fail "<color> must have just a color attribute"
+            _ → fail $ printf "invalid hue %s" hue
+          _ → fail "<color> must have just a hue attribute"
         _ → fail $ printf "unexpected tag <%s>" tag
 
 parseSubstitutions ∷ Paragraph → WriterT (Set Text) (Either String) SubParagraph
