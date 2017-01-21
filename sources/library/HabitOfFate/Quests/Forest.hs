@@ -92,7 +92,7 @@ new =
     <*> numberUntilEvent 1
   )
   >>=
-  execStateT (introStory [s1|
+  execStateT (introStory [s_fixed|
 ================================================================================
 The last thing in the world that {Susie} wanted to do was to wander alone in the
 Wicked Forest at night, but her son, little {Tommy} was sick and would not live
@@ -150,7 +150,7 @@ won = do
   game . belief += 1
   questHasEnded
   where
-    won_story = [s1|
+    won_story = [s_fixed|
 ================================================================================
 {Susie} is starting to feel like {she} will never make it back when she notices
 that things are starting to get brighter -- {she} must be getting close to the
@@ -197,14 +197,12 @@ runFailureEvent failure_result event = do
       FailureAverted → failure_averted_event
       FailureHappened → failure_happened_event
 
-makeFailureEvent event = FailureEvent common averted happened
-  where
-    [common,averted,happened] = event
+makeFailureEvent (common,averted,happened) = FailureEvent common averted happened
 
 failure_stories ∷ [FailureEvent]
 failure_stories = fmap makeFailureEvent
 ------------------------------ Gingerbread House -------------------------------
-  [[s|
+  [[s_fixed|
 ================================================================================
 {Susie} sees a house made out of... gingerbread?
 
