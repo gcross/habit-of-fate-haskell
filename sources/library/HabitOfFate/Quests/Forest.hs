@@ -52,9 +52,9 @@ defaultSubstitutionTable forest = makeSubstitutionTable
   ,("Illsbane",Character (forest ^. herb) Neuter)
   ]
 
-storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → [SubParagraph] → m ()
-storyWithDefaultSubstitutionsPlus forest additional_substitutions paragraphs =
-  flip substituteAndAddParagraphs paragraphs
+storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → SubEvent → m ()
+storyWithDefaultSubstitutionsPlus forest additional_substitutions event =
+  flip substituteAndAddParagraphs (event ^.. paragraphs)
   ∘
   (⊕ mapFromList additional_substitutions)
   ∘
@@ -62,17 +62,17 @@ storyWithDefaultSubstitutionsPlus forest additional_substitutions paragraphs =
   $
   forest
 
-storyWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → [SubParagraph] → m ()
+storyWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
 storyWithDefaultSubstitutionsForLens lens template =
   use lens
   >>=
   \forest → storyWithDefaultSubstitutionsPlus forest [] template
 
-forestStory ∷ [SubParagraph] → ForestAction ()
-forestStory = storyWithDefaultSubstitutionsForLens quest
+forestEvent ∷ SubEvent → ForestAction ()
+forestEvent = storyWithDefaultSubstitutionsForLens quest
 
-forestStories ∷ [[SubParagraph]] → ForestAction ()
-forestStories = uniformAction ∘ fmap forestStory
+forestEvents ∷ [SubEvent] → ForestAction ()
+forestEvents = uniformAction ∘ fmap forestEvent
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
@@ -110,7 +110,7 @@ light the way.
 
 found ∷ ForestAction ()
 found = do
-  forestStories found_stories
+  forestEvents found_stories
   quest . herb_found .= True
   numberUntilEvent 5 >>= (quest . credits_until_success .=)
   where
@@ -146,7 +146,7 @@ gets up and starts heading back to her home.
 
 won ∷ ForestAction ()
 won = do
-  forestStory won_story
+  forestEvent won_story
   game . belief += 1
   questHasEnded
   where
@@ -173,36 +173,36 @@ alter to you out of gratitude.
 
 data FailureResult = FailureAverted | FailureHappened
 
-data FailureStory = FailureStory
-  { _common_failure_story ∷ [SubParagraph]
-  , _failure_averted_story ∷ [SubParagraph]
-  , _failure_happened_story ∷ [SubParagraph]
+data FailureEvent = FailureEvent
+  { _common_failure_event ∷ SubEvent
+  , _failure_averted_event ∷ SubEvent
+  , _failure_happened_event ∷ SubEvent
   }
-makeLenses ''FailureStory
+makeLenses ''FailureEvent
 
 lost ∷ ForestAction ()
 lost = do
-  uniform failure_stories >>= runFailureStory FailureHappened
+  uniform failure_stories >>= runFailureEvent FailureHappened
   game . belief -= 1
   questHasEnded
 
 averted ∷ ForestAction ()
-averted = uniform failure_stories >>= runFailureStory FailureAverted
+averted = uniform failure_stories >>= runFailureEvent FailureAverted
 
-runFailureStory ∷ FailureResult → FailureStory → ForestAction ()
-runFailureStory failure_result story = do
-  forestStory $ story ^. common_failure_story
-  forestStory ∘ (story ^.) $
+runFailureEvent ∷ FailureResult → FailureEvent → ForestAction ()
+runFailureEvent failure_result event = do
+  forestEvent $ event ^. common_failure_event
+  forestEvent ∘ (event ^.) $
     case failure_result of
-      FailureAverted → failure_averted_story
-      FailureHappened → failure_happened_story
+      FailureAverted → failure_averted_event
+      FailureHappened → failure_happened_event
 
-makeFailureStory story = FailureStory common averted happened
+makeFailureEvent event = FailureEvent common averted happened
   where
-    [common,averted,happened] = story
+    [common,averted,happened] = event
 
-failure_stories ∷ [FailureStory]
-failure_stories = fmap makeFailureStory
+failure_stories ∷ [FailureEvent]
+failure_stories = fmap makeFailureEvent
 ------------------------------ Gingerbread House -------------------------------
   [[s|
 ================================================================================
@@ -234,7 +234,7 @@ She sobs -- there is no way that she will be able to make it home in time now.
 --------------------------------------------------------------------------------
 
 wander ∷ ForestAction ()
-wander = forestStories [s|
+wander = forestEvents [s|
 ================================================================================
 Nothing happens as {Susie} wanders through the forest.
 ================================================================================

@@ -2,11 +2,16 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Story where
@@ -35,11 +40,6 @@ data GenParagraph α =
   | Text_ α
   deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
-replaceTextM ∷ Applicative f ⇒ (α → f (GenParagraph β)) → GenParagraph α → f (GenParagraph β)
-replaceTextM f (Style s x) = Style s <$> replaceTextM f x
-replaceTextM f (Merged xs) = Merged <$> traverse (replaceTextM f) xs
-replaceTextM f (Text_ t) = f t
-
 instance Monoid (GenParagraph α) where
   mempty = Merged mempty
   mappend (Merged xs) (Merged ys) = Merged (xs ⊕ ys)
@@ -48,10 +48,51 @@ instance Monoid (GenParagraph α) where
   mappend x y = mconcat [x,y]
   mconcat = Merged ∘ fromList
 
+replaceTextM ∷ Applicative f ⇒ (α → f (GenParagraph β)) → GenParagraph α → f (GenParagraph β)
+replaceTextM f (Style s x) = Style s <$> replaceTextM f x
+replaceTextM f (Merged xs) = Merged <$> traverse (replaceTextM f) xs
+replaceTextM f (Text_ t) = f t
+
+newtype GenEvent α = GenEvent { unwrapGenEvent ∷ [GenParagraph α] }
+  deriving (Eq,Lift,Monoid,Ord,Read,Show)
+makeWrapped ''GenEvent
+
+newtype GenQuest α = GenQuest { unwrapGenQuest ∷ [GenEvent α] }
+  deriving (Eq,Lift,Monoid,Ord,Read,Show)
+makeWrapped ''GenQuest
+
+newtype GenStory α = GenStory { unwrapGenStory ∷ [GenQuest α] }
+  deriving (Eq,Lift,Monoid,Ord,Read,Show)
+makeWrapped ''GenStory
+
+paragraphs ∷ IndexedTraversal Int (GenEvent α) (GenEvent β) (GenParagraph α) (GenParagraph β)
+paragraphs f (GenEvent ps) = GenEvent <$> (traversed f ps)
+
+events ∷ IndexedTraversal Int (GenQuest α) (GenQuest β) (GenEvent α) (GenEvent β)
+events f (GenQuest ps) = GenQuest <$> (traversed f ps)
+
+quests ∷ IndexedTraversal Int (GenStory α) (GenStory β) (GenQuest α) (GenQuest β)
+quests f (GenStory ps) = GenStory <$> (traversed f ps)
+
+createEvent ∷ Foldable t ⇒ t Paragraph → Event
+createEvent = GenEvent ∘ toList
+
+createQuest ∷ Foldable t ⇒ t Event → Quest
+createQuest = GenQuest ∘ toList
+
+createStory ∷ Foldable t ⇒ t Quest → Story
+createStory = GenStory ∘ toList
+
 type Paragraph = GenParagraph Text
+type Event = GenEvent Text
+type Quest = GenQuest Text
+type Story = GenStory Text
 
 data SubText = Key Text | Literal Text deriving (Eq,Lift,Ord,Read,Show)
 type SubParagraph = GenParagraph SubText
+type SubEvent = GenEvent SubText
+type SubQuest = GenQuest SubText
+type SubStory = GenStory SubText
 
 insertMarkers ∷ String → String
 insertMarkers =
@@ -77,9 +118,9 @@ isNull (Text_ t) = allSpaces t
 isNull (Merged xs) = all isNull xs
 isNull _ = False
 
-parseStory ∷ Document → Either String [[[Paragraph]]]
+parseStory ∷ Document → Either String Story
 parseStory =
-  parseContainer "story" parseQuests
+  parseContainer "story" parseStory
   ∘
   NodeElement
   ∘
@@ -100,47 +141,47 @@ parseStory =
               fail $ printf "expected no attributes in <%s>"  tag
           | otherwise → parseChildren children
 
-    parseQuests ∷ [Node] → Either String [[[Paragraph]]]
-    parseQuests =
-      fmap (filter (not ∘ null))
+    parseStory ∷ [Node] → Either String Story
+    parseStory =
+      fmap (GenStory ∘ filter (not ∘ nullOf events))
       ∘
-      mapM (parseContainer "quest" parseEvents)
+      mapM (parseContainer "quest" parseQuest)
 
-    parseEvents ∷ [Node] → Either String [[Paragraph]]
-    parseEvents =
-      fmap (filter (not ∘ null))
+    parseQuest ∷ [Node] → Either String Quest
+    parseQuest =
+      fmap (GenQuest ∘ filter (not ∘ nullOf paragraphs))
       ∘
-      mapM (parseContainer "event" parseParagraphs)
+      mapM (parseContainer "event" parseEvent)
 
-    parseParagraphs ∷ [Node] → Either String [Paragraph]
-    parseParagraphs =
-      fmap (filter (not ∘ isNull))
+    parseEvent ∷ [Node] → Either String Event
+    parseEvent =
+      fmap (GenEvent ∘ filter (not ∘ isNull))
       ∘
-      mapM (parseContainer "p" parseGenParagraph)
+      mapM (parseContainer "p" parseParagraph)
 
-    parseGenParagraph ∷ [Node] → Either String Paragraph
-    parseGenParagraph = fmap mconcat ∘ mapM parseGenParagraphChild
-
-    parseGenParagraphChild ∷ Node → Either String Paragraph
-    parseGenParagraphChild (NodeInstruction _) = fail "unexpected XML instruction"
-    parseGenParagraphChild (NodeComment _) = return mempty
-    parseGenParagraphChild (NodeContent t) = return $ Text_ t
-    parseGenParagraphChild (NodeElement (Element (Name tag _ _) attrs children)) =
-      case tag of
-        "b"
-          | not ∘ null $ attrs → fail "<b> had unexpected attributes"
-          | otherwise → Style Bold <$> parseGenParagraph children
-        "u"
-          | not ∘ null $ attrs → fail "<u> tag had unexpected attributes"
-          | otherwise → Style Underline <$> parseGenParagraph children
-        "color" → case mapToList attrs of
-          [("hue",hue)] → case hue of
-            "red" → Style (Color Red) <$> parseGenParagraph children
-            "blue" → Style (Color Blue) <$> parseGenParagraph children
-            "green" → Style (Color Green) <$> parseGenParagraph children
-            _ → fail $ printf "invalid hue %s" hue
-          _ → fail "<color> must have just a hue attribute"
-        _ → fail $ printf "unexpected tag <%s>" tag
+    parseParagraph ∷ [Node] → Either String Paragraph
+    parseParagraph = fmap mconcat ∘ mapM parseParagraphChild
+      where
+        parseParagraphChild ∷ Node → Either String Paragraph
+        parseParagraphChild (NodeInstruction _) = fail "unexpected XML instruction"
+        parseParagraphChild (NodeComment _) = return mempty
+        parseParagraphChild (NodeContent t) = return $ Text_ t
+        parseParagraphChild (NodeElement (Element (Name tag _ _) attrs children)) =
+          case tag of
+            "b"
+              | not ∘ null $ attrs → fail "<b> had unexpected attributes"
+              | otherwise → Style Bold <$> parseParagraph children
+            "u"
+              | not ∘ null $ attrs → fail "<u> tag had unexpected attributes"
+              | otherwise → Style Underline <$> parseParagraph children
+            "color" → case mapToList attrs of
+              [("hue",hue)] → case hue of
+                "red" → Style (Color Red) <$> parseParagraph children
+                "blue" → Style (Color Blue) <$> parseParagraph children
+                "green" → Style (Color Green) <$> parseParagraph children
+                _ → fail $ printf "invalid hue %s" hue
+              _ → fail "<color> must have just a hue attribute"
+            _ → fail $ printf "unexpected tag <%s>" tag
 
 parseSubstitutions ∷ Paragraph → WriterT (Set Text) (Either String) SubParagraph
 parseSubstitutions =
@@ -282,7 +323,7 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
                 Female → "woman"
                 Neuter → "thing"
 
-parseQuote ∷ String → [[SubParagraph]]
+parseQuote ∷ String → [SubEvent]
 parseQuote =
     either (error ∘ show) identity
     ∘
@@ -296,12 +337,12 @@ parseQuote =
         ∘
         runWriterT
         ∘
-        traverseOf (each . each . each) parseSubstitutions
+        traverseOf (quests . events . paragraphs) parseSubstitutions
       )
       >=>
       (\case
-        [x] → return x
-        xs → throwError $ printf "saw %i quests instead of 1" (length xs)
+        GenStory [quest] → return $ unwrapGenQuest quest
+        GenStory xs → throwError $ printf "saw %i quests instead of 1" (length xs)
       )
     )
     ∘
@@ -326,8 +367,8 @@ s1 = QuasiQuoter
   (error "Cannot use s1 as a type")
   (error "Cannot use s1 as a dec")
 
-generateParagraph ∷ Paragraph → [Node]
-generateParagraph (Style style paragraph) =
+renderParagraphToNodes ∷ Paragraph → [Node]
+renderParagraphToNodes (Style style paragraph) =
   singleton
   $
   case style of
@@ -340,24 +381,39 @@ generateParagraph (Style style paragraph) =
             Green → "green"
       in NodeElement $ Element "color" (singletonMap "hue" color_name) nested
   where
-    nested = generateParagraph paragraph
+    nested = renderParagraphToNodes paragraph
+renderParagraphToNodes (Merged children) = concatMap renderParagraphToNodes children
+renderParagraphToNodes (Text_ t) = [NodeContent t]
 
-generateParagraph (Merged children) = concatMap generateParagraph children
-generateParagraph (Text_ t) = [NodeContent t]
+renderEventToNode ∷ Event → Node
+renderEventToNode =
+  NodeElement
+  ∘
+  Element "event" mempty
+  ∘
+  concatMap renderParagraphToNodes
+  ∘
+  unwrapGenEvent
 
-generateEvent ∷ [Paragraph] → Node
-generateEvent = NodeElement ∘ Element "event" mempty ∘ concatMap generateParagraph
+renderQuestToNode ∷ Quest → Node
+renderQuestToNode =
+  NodeElement
+  ∘
+  Element "quest" mempty
+  ∘
+  foldr ((:) ∘ renderEventToNode) []
+  ∘
+  unwrapGenQuest
 
-generateQuest ∷ [[Paragraph]] → Node
-generateQuest = NodeElement ∘ Element "quest" mempty ∘ foldr ((:) ∘ generateEvent) []
-
-generateStory ∷ [[[Paragraph]]] → Document
-generateStory =
+renderStoryToDocument ∷ Story → Document
+renderStoryToDocument =
   (\n → Document (Prologue [] Nothing []) n [])
   ∘
   Element "story" mempty
   ∘
-  foldr ((:) ∘ generateQuest) []
+  foldr ((:) ∘ renderQuestToNode) []
+  ∘
+  unwrapGenStory
 
-renderStory ∷ [[[Paragraph]]] → LazyText.Text
-renderStory = renderText def ∘ generateStory
+renderStoryToText ∷ Story → LazyText.Text
+renderStoryToText = renderText def ∘ renderStoryToDocument

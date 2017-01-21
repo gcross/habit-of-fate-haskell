@@ -80,8 +80,6 @@ runJSONParserAction value action =
   $
   runJSONParser value action
 
-type Quest = Seq (Seq Paragraph)
-
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
   let url_prefix = "http://localhost:8081/" ∷ Text
@@ -227,30 +225,28 @@ makeApp filepath = do
         d ← readTVar data_var
         if stillHasCredits d
           then do
-            let quests = _1 ∷ Lens' (Seq Quest, Quest) (Seq Quest)
-                current_quest = _2 ∷ Lens' (Seq Quest, Quest) Quest
+            let quests = _1 ∷ Lens' (Seq Quest, Seq Event) (Seq Quest)
+                quest_events = _2 ∷ Lens' (Seq Quest, Seq Event) (Seq Event)
                 go d = do
                   let r = runData d
-                  current_quest %= (|> r ^. story)
+                  quest_events %= (|> r ^. story . to createEvent)
                   if stillHasCredits (r ^. new_data)
                     then do
                       when (r ^. quest_completed) $
-                        (current_quest <<.= mempty) >>= (quests %=) ∘ flip (|>)
+                        (quest_events <<.= mempty)
+                        >>=
+                        (quests %=) ∘ flip (|>) ∘ createQuest
                       go (r ^. new_data)
                     else return (r ^. new_data)
             (new_d, s) ← flip runStateT (mempty,mempty) ∘ go $ d
             writeTVar data_var new_d
             tryPutTMVar write_request ()
             return $!! (
-              renderStory
+              renderStoryToText
               ∘
-              toList
-              ∘
-              (each %~ toList)
-              ∘
-              (each ∘ each %~ toList)
+              createStory
               $
-              s ^. quests |> s ^. current_quest
+              s ^. quests |> s ^. quest_events . to createQuest
              )
           else do
             return "No credits."
