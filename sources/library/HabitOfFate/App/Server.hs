@@ -21,8 +21,6 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
 import Data.Aeson hiding ((.=), json)
-import Data.Text.Lazy.Builder (Builder)
-import qualified Data.Text.Lazy.Builder as B
 import Data.UUID
 import Network.HTTP.Types.Status
 import Network.Wai
