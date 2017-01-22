@@ -19,9 +19,12 @@ import Data.UUID (UUID, fromText, toText)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (Status(..))
 import System.Log.Logger
+import System.IO.Error
+import Text.XML
 
 import HabitOfFate.Habit
 import HabitOfFate.JSON
+import HabitOfFate.Story
 
 decodeUtf8Lazy = decodeUtf8 ∘ (^. strict)
 
@@ -185,8 +188,18 @@ replaceHabit uuid habit =
       addText "type" "habit"
       add "attributes" habit
 
-runGame ∷ Client Text
+runGame ∷ Client Story
 runGame =
-  (decodeUtf8Lazy ∘ getResponseBody)
-  <$>
   request "POST" "/run"
+  >>=
+  either throwM return
+  ∘
+  (
+    parseLBS def
+    >=>
+    (_Left %~ (toException ∘ userError))
+    ∘
+    parseStoryFromDocument
+  )
+  ∘
+  getResponseBody

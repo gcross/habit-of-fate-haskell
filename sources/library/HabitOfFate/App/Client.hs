@@ -244,7 +244,7 @@ mainLoop = loop [] $
       liftIO $ printf "    Success credits: %f\n" success_credits
       liftIO $ printf "    Failure credits: %f\n" failure_credits
   ,Action 'r' "Run game." $
-      liftC runGame >>= liftIO ∘ S.putStrLn
+      liftC runGame >>= liftIO ∘ putStrLn ∘ show
   ]
   where
     printHabits = do

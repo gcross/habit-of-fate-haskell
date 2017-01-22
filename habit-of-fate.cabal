@@ -98,8 +98,12 @@ test-suite test
                      , hslogger
                      , HUnit
                      , mtl
+                     , QuickCheck
                      , random
+                     , smallcheck
                      , test-framework
                      , test-framework-hunit
+                     , test-framework-quickcheck2
+                     , test-framework-smallcheck
                      , warp
   default-language:    Haskell2010

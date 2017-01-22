@@ -14,12 +14,14 @@ module HabitOfFate.Prelude
   , module Control.Monad.Writer.Strict
   , module Data.Bool
   , module Data.Containers
+  , module Data.Default
   , module Data.Either
   , module Data.Foldable
   , module Data.Function
   , module Data.Functor
   , module Data.Maybe
   , module Data.Monoid
+  , module Data.MonoTraversable
   , module Data.MonoTraversable.Unprefixed
   , module Data.Sequences
   , module Data.Text.Lens
@@ -44,6 +46,7 @@ module HabitOfFate.Prelude
   -- Types
   , 𝔹
   , Bool(..)
+  , ByteString
   , Char
   , Double
   , Enum(..)
@@ -129,11 +132,15 @@ import Control.Monad.Writer.Strict
 
 import Data.Bool
 
+import Data.ByteString (ByteString)
+
 import Data.Containers
+
+import Data.Default
 
 import Data.Either
 
-import Data.Foldable
+import Data.Foldable hiding (length)
 
 import Data.Function
 
@@ -147,7 +154,9 @@ import Data.Maybe hiding (catMaybes)
 
 import Data.Monoid
 
-import Data.MonoTraversable.Unprefixed (intercalate)
+import Data.MonoTraversable
+
+import Data.MonoTraversable.Unprefixed (intercalate, length)
 
 import Data.Sequence (Seq)
 
