@@ -18,11 +18,10 @@ import System.Log
 import System.Log.Handler.Simple
 import System.Log.Logger
 import System.Random
-import Test.Framework
-import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck2
-import qualified Test.Framework.Providers.SmallCheck as S
-import Test.HUnit hiding (Test)
+import Test.Tasty
+import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
+import qualified Test.Tasty.SmallCheck as S
 import Test.QuickCheck
 import Test.SmallCheck.Series
 
@@ -101,7 +100,7 @@ header header = replicate left_dash_count '-' ⊕ " " ⊕ header ⊕ " " ⊕ rep
     right_dash_count = dash_count `div` 2
     left_dash_count = dash_count - right_dash_count
 
-serverTestCase ∷ String → (Client ()) → Test
+serverTestCase ∷ String → (Client ()) → TestTree
 serverTestCase name action = testCase name $ do
   debugM "Test" $ header name
   tempdir ← getTemporaryDirectory
@@ -119,7 +118,7 @@ initialize = do
 test_habit = Habit "name" 1 1
 test_habit_2 = Habit "test" 2 2
 
-main = initialize >> defaultMain
+main = initialize >> (defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.App.Server"
     [ serverTestCase "Get all habits when none exist" $
         fetchHabits
@@ -185,7 +184,7 @@ main = initialize >> defaultMain
                       ,"ROUND-TRIP XML:"
                       ,"    " ⊕ show round_trip_xml_text
                       ]
-        , plusTestOptions (mempty { topt_maximum_test_size = Just 20 })
+        , localOption (QuickCheckMaxSize 20)
           $
           testProperty "QuickCheck" $ \story →
             let xml_text = renderStoryToText story
@@ -209,3 +208,4 @@ main = initialize >> defaultMain
       ]
     ]
   ]
+ )
