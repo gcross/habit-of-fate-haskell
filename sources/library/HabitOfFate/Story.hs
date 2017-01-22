@@ -347,13 +347,23 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
 clearNullElements isNull = _Wrapped' %~ filter (not ∘ isNull)
 
-dropEmptyEvents ∷ HasLiterals α ⇒ GenStory α → GenStory α
+class TextIsNull α where
+  textIsNull ∷ α → Bool
+
+instance TextIsNull Text where
+  textIsNull = allSpaces
+
+instance TextIsNull SubText where
+  textIsNull (Literal t) = allSpaces t
+  textIsNull _ = False
+
+dropEmptyEvents ∷ TextIsNull α ⇒ GenStory α → GenStory α
 dropEmptyEvents =
   (clearNullElements (nullOf events))
   ∘
   (quests %~ clearNullElements (nullOf paragraphs))
   ∘
-  (quests . events %~ clearNullElements (allOf literals allSpaces))
+  (quests . events %~ clearNullElements (all textIsNull))
 
 parseQuote ∷ String → [SubEvent]
 parseQuote =

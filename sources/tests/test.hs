@@ -153,7 +153,8 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
     ]
   , testGroup "HabitOfFate.Story"
     [ testGroup "s"
-      [ testCase "single story plain text" $
+      [ testCase "just a substitution" $ length [s|{test}|] @?= 1
+      , testCase "single story plain text" $
           length [s|line1|] @?= 1
       , testCase "2 stories: 1 empty, 1 non-empty" $
           length [s|line1
