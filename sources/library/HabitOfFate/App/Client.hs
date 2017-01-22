@@ -23,6 +23,7 @@ import Control.Monad.Base
 import Control.Monad.Catch
 import Control.Monad.Cont
 import Control.Monad.Trans.Control
+import qualified Data.ByteString as BS
 import Data.Char
 import qualified Data.Text.IO as S
 import Data.UUID (UUID)
@@ -246,10 +247,18 @@ mainLoop = loop [] $
       (success_credits, failure_credits) ← liftC getCredits
       liftIO $ printf "    Success credits: %f\n" success_credits
       liftIO $ printf "    Failure credits: %f\n" failure_credits
-  ,Action 'r' "Run game." $
-      liftC runGame
-      >>=
-      liftIO ∘ traverse_ putChunk ∘ renderStoryToChunks
+  ,Action 'r' "Run game." $ do
+      story ← liftC runGame
+      printer ← liftIO byteStringMakerFromEnvironment
+      liftIO
+        ∘
+        traverse_ BS.putStr
+        ∘
+        chunksToByteStrings printer
+        ∘
+        renderStoryToChunks
+        $
+        story
   ]
   where
     printHabits = do
