@@ -178,21 +178,20 @@ parseParagraphFromNodes = fmap mconcat ∘ mapM parseParagraphChild
     parseParagraphChild (NodeComment _) = return mempty
     parseParagraphChild (NodeContent t) = return $ Text_ t
     parseParagraphChild (NodeElement (Element (Name tag _ _) attrs children)) =
-      case tag of
-        "b"
-          | not ∘ null $ attrs → fail "<b> had unexpected attributes"
-          | otherwise → Style Bold <$> parseParagraphFromNodes children
-        "u"
-          | not ∘ null $ attrs → fail "<u> tag had unexpected attributes"
-          | otherwise → Style Underline <$> parseParagraphFromNodes children
-        "color" → case mapToList attrs of
-          [("hue",hue)] → case hue of
-            "red" → Style (Color Red) <$> parseParagraphFromNodes children
-            "blue" → Style (Color Blue) <$> parseParagraphFromNodes children
-            "green" → Style (Color Green) <$> parseParagraphFromNodes children
-            _ → fail $ printf "invalid hue %s" hue
-          _ → fail "<color> must have just a hue attribute"
-        _ → fail $ printf "unexpected tag <%s>" tag
+      case lookup tag tags of
+        Nothing → fail $ printf "unexpected tag <%s>" tag
+        Just style
+          | not ∘ null $ attrs → fail $ printf "<%s> had unexpected attributes" tag
+          | otherwise → Style style <$> parseParagraphFromNodes children
+      where
+        tags ∷ Map Text Style
+        tags = mapFromList
+          [ ("b", Bold)
+          , ("u", Underline)
+          , ("red", Color Red)
+          , ("blue", Color Blue)
+          , ("green", Color Green)
+          ]
 
 parseStoryFromDocument ∷ Document → Either String Story
 parseStoryFromDocument =
@@ -435,16 +434,16 @@ renderParagraphToNodes paragraph =
       | null nested = []
       | otherwise =
           singleton
+          ∘
+          NodeElement
           $
-          case style of
-            Bold → NodeElement $ Element "b" mempty nested
-            Underline → NodeElement $ Element "u" mempty nested
-            Color color →
-              let color_name = case color of
-                    Red → "red"
-                    Blue → "blue"
-                    Green → "green"
-              in NodeElement $ Element "color" (singletonMap "hue" color_name) nested
+          let tag = case style of
+                Bold → "b"
+                Underline → "u"
+                Color Red → "red"
+                Color Blue → "blue"
+                Color Green → "green"
+          in Element tag mempty nested
       where
         nested = recurse p
     recurse (Merged children) = concatMap recurse children
