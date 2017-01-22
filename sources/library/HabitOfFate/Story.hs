@@ -28,6 +28,7 @@ import GHC.Generics
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote
+import Rainbow
 import Text.XML
 import Text.Parsec hiding (uncons)
 
@@ -357,8 +358,8 @@ instance TextIsNull SubText where
   textIsNull (Literal t) = allSpaces t
   textIsNull _ = False
 
-dropEmptyEvents ∷ TextIsNull α ⇒ GenStory α → GenStory α
-dropEmptyEvents =
+dropEmptyThingsFromStory ∷ TextIsNull α ⇒ GenStory α → GenStory α
+dropEmptyThingsFromStory =
   (clearNullElements (nullOf events))
   ∘
   (quests %~ clearNullElements (nullOf paragraphs))
@@ -372,7 +373,7 @@ parseQuote =
     (
       parseStoryFromText
       >=>
-      (return ∘ dropEmptyEvents)
+      (return ∘ dropEmptyThingsFromStory)
       >=>
       (
         fmap fst
@@ -387,7 +388,7 @@ parseQuote =
         GenStory xs → throwError $ printf "saw %i quests instead of 1" (length xs)
       )
       ∘
-      dropEmptyEvents
+      dropEmptyThingsFromStory
     )
     ∘
     LazyText.pack
@@ -483,3 +484,88 @@ renderStoryToDocument =
 
 renderStoryToText ∷ Story → LazyText.Text
 renderStoryToText = renderText def ∘ renderStoryToDocument
+
+renderStoryToChunks ∷ Story → [Chunk Text]
+renderStoryToChunks =
+  toList
+  ∘
+  execWriter
+  ∘
+  maybe
+    (return ())
+    (
+      \(first, rest) → do
+        tellEventSeparator
+        renderQuest first
+        forM_ rest $ \quest → do
+          tellQuestSeparator
+          tellLine "A new quest begins..."
+          tellQuestSeparator
+          renderQuest quest
+        tellEventSeparator
+    )
+  ∘
+  uncons
+  ∘
+  unwrapGenStory
+  ∘
+  dropEmptyThingsFromStory
+  where
+    tellChunk ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Chunk Text → m ()
+    tellChunk = tell ∘ singleton
+    tellLine = tellChunk ∘ chunk ∘ (|> '\n')
+    tellNewline = tellLine ""
+    tellSeparator = tellLine ∘ replicate 80
+    tellEventSeparator = tellSeparator '-'
+    tellQuestSeparator = tellSeparator '='
+
+    renderQuest = go ∘ unwrapGenQuest
+      where
+        go [] = return ()
+        go (x:[]) = renderEvent x
+        go (x:xs) = do
+          renderEvent x
+          tellEventSeparator
+          go xs
+
+    renderEvent = go ∘ unwrapGenEvent
+      where
+        go [] = return ()
+        go (x:[]) = do
+          renderParagraph x
+          tellNewline
+        go (x:xs) = do
+          renderParagraph x
+          tellNewline
+          tellNewline
+          go xs
+
+    renderParagraph ∷ Paragraph → Writer (Seq (Chunk Text)) ()
+    renderParagraph = flip evalStateT 0 ∘ go mempty
+      where
+        go formatting (Style style rest) = go (addFormat formatting) rest
+          where
+            addFormat =
+              case style of
+                Bold → bold
+                Underline → underline
+                Color Red → fore red
+                Color Blue → fore blue
+                Color Green → fore green
+        go formatting (Merged paragraphs) = mapM_ (go formatting) paragraphs
+        go formatting (Text_ t) = mapM_ renderWord ∘ words $ t
+          where
+            renderWord ∷ Text → StateT Int (Writer (Seq (Chunk Text))) ()
+            renderWord word = do
+              number_of_columns ← get
+              let new_number_of_columns = number_of_columns + 1 + length word
+              (case number_of_columns of
+                 0 → return $ length word
+                 _ | new_number_of_columns > 80 → do
+                       lift $ tellNewline
+                       return $ length word
+                 _ | otherwise → do
+                       lift ∘ tellChunk $ chunk " "
+                       return new_number_of_columns
+               ) >>= put
+              lift ∘ tellChunk $ formatting ⊕ chunk word

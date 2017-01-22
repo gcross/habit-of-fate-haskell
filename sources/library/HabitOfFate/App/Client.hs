@@ -26,12 +26,15 @@ import Control.Monad.Trans.Control
 import Data.Char
 import qualified Data.Text.IO as S
 import Data.UUID (UUID)
+import Rainbow.Translate
 import System.IO
 import System.IO.Error (isEOFError)
 import Text.Read (readEither, readMaybe)
+import Text.XML
 
 import HabitOfFate.Client
 import HabitOfFate.Habit
+import HabitOfFate.Story
 
 data Quit = Quit
 
@@ -244,7 +247,9 @@ mainLoop = loop [] $
       liftIO $ printf "    Success credits: %f\n" success_credits
       liftIO $ printf "    Failure credits: %f\n" failure_credits
   ,Action 'r' "Run game." $
-      liftC runGame >>= liftIO ∘ putStrLn ∘ show
+      liftC runGame
+      >>=
+      liftIO ∘ traverse_ putChunk ∘ renderStoryToChunks
   ]
   where
     printHabits = do

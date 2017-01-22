@@ -223,33 +223,29 @@ makeApp filepath = do
     Scotty.post "/run" $
       (liftIO ∘ atomically $ do
         d ← readTVar data_var
-        if stillHasCredits d
-          then do
-            let quests = _1 ∷ Lens' (Seq Quest, Seq Event) (Seq Quest)
-                quest_events = _2 ∷ Lens' (Seq Quest, Seq Event) (Seq Event)
-                go d = do
-                  let r = runData d
-                  quest_events %= (|> r ^. story . to createEvent)
-                  if stillHasCredits (r ^. new_data)
-                    then do
-                      when (r ^. quest_completed) $
-                        (quest_events <<.= mempty)
-                        >>=
-                        (quests %=) ∘ flip (|>) ∘ createQuest
-                      go (r ^. new_data)
-                    else return (r ^. new_data)
-            (new_d, s) ← flip runStateT (mempty,mempty) ∘ go $ d
-            writeTVar data_var new_d
-            tryPutTMVar write_request ()
-            return $!! (
-              renderStoryToText
-              ∘
-              createStory
-              $
-              s ^. quests |> s ^. quest_events . to createQuest
-             )
-          else do
-            return "No credits."
+        let quests = _1 ∷ Lens' (Seq Quest, Seq Event) (Seq Quest)
+            quest_events = _2 ∷ Lens' (Seq Quest, Seq Event) (Seq Event)
+            go d = do
+              let r = runData d
+              quest_events %= (|> r ^. story . to createEvent)
+              if stillHasCredits (r ^. new_data)
+                then do
+                  when (r ^. quest_completed) $
+                    (quest_events <<.= mempty)
+                    >>=
+                    (quests %=) ∘ flip (|>) ∘ createQuest
+                  go (r ^. new_data)
+                else return (r ^. new_data)
+        (new_d, s) ← flip runStateT (mempty,mempty) ∘ go $ d
+        writeTVar data_var new_d
+        tryPutTMVar write_request ()
+        return $!! (
+          renderStoryToText
+          ∘
+          createStory
+          $
+          s ^. quests |> s ^. quest_events . to createQuest
+          )
       ) >>= Scotty.text
 
 habitMain ∷ IO ()
