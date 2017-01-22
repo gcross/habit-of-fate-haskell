@@ -101,10 +101,21 @@ type Quest = GenQuest Text
 type Story = GenStory Text
 
 data SubText = Key Text | Literal Text deriving (Eq,Generic,Lift,Ord,Read,Show)
+makePrisms ''SubText
+
 type SubParagraph = GenParagraph SubText
 type SubEvent = GenEvent SubText
 type SubQuest = GenQuest SubText
 type SubStory = GenStory SubText
+
+class HasLiterals α where
+  literals ∷ IndexedFold Int (GenParagraph α) Text
+
+instance HasLiterals Text where
+  literals = folded
+
+instance HasLiterals SubText where
+  literals = folded . _Literal
 
 insertMarkers ∷ String → String
 insertMarkers =
@@ -336,23 +347,13 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
 clearNullElements isNull = _Wrapped' %~ filter (not ∘ isNull)
 
-class TextIsNull α where
-  textIsNull ∷ α → Bool
-
-instance TextIsNull Text where
-  textIsNull = allSpaces
-
-instance TextIsNull SubText where
-  textIsNull (Literal t) = allSpaces t
-  textIsNull _ = False
-
-dropEmptyEvents ∷ TextIsNull α ⇒ GenStory α → GenStory α
+dropEmptyEvents ∷ HasLiterals α ⇒ GenStory α → GenStory α
 dropEmptyEvents =
   (clearNullElements (nullOf events))
   ∘
   (quests %~ clearNullElements (nullOf paragraphs))
   ∘
-  (quests . events %~ clearNullElements (all textIsNull))
+  (quests . events %~ clearNullElements (allOf literals allSpaces))
 
 parseQuote ∷ String → [SubEvent]
 parseQuote =
