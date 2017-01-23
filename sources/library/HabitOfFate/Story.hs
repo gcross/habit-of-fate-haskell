@@ -265,7 +265,7 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
     ⊕
     concatMap
       (\(key, character@(Character name _)) →
-          (name, Style Bold (Text_ name))
+          (name, Text_ name)
           :
           makeArticles key character ⊕ fmap (_1 ⊕~ ('|' <| key)) (makeNouns character)
       )
