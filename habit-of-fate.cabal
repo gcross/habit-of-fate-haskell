@@ -25,6 +25,7 @@ library
                      , hslogger
                      , http-conduit
                      , http-types
+                     , labels
                      , monad-control
                      , MonadRandom
                      , lens

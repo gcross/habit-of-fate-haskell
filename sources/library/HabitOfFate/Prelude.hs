@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Prelude
@@ -25,6 +26,7 @@ module HabitOfFate.Prelude
   , module Data.MonoTraversable.Unprefixed
   , module Data.Sequences
   , module Data.Text.Lens
+  , module Labels
   , module Text.Printf
   -- Operators
   , (^)
@@ -59,6 +61,7 @@ module HabitOfFate.Prelude
   , Integer
   , Integral(..)
   , IO
+  , l_
   , Map
   , Maybe(..)
   , Num(..)
@@ -177,6 +180,9 @@ import Data.Text (Text)
 
 import Data.Text.Lens
 
+import Labels ((:=)(..))
+import qualified Labels as Labels
+
 import Text.Parsec
 
 import Text.Printf
@@ -229,6 +235,8 @@ infix  4 ≥
 (⊥) = undefined
 
 type 𝔹 = Bool
+
+l_ = Labels.lens
 
 identity ∷ α → α
 identity = id

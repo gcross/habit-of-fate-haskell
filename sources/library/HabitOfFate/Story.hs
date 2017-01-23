@@ -9,6 +9,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -24,7 +25,8 @@ import HabitOfFate.Prelude
 import qualified Data.Char as Char
 import qualified Data.Text.Lazy as LazyText
 import Instances.TH.Lift ()
-import GHC.Generics
+import GHC.Generics hiding (from)
+import Labels ((:=))
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote
@@ -239,15 +241,30 @@ parseSubstitutions =
 
 type Substitutions = Map Text Text
 
-substitute ∷ Substitutions → SubParagraph → Either (Set Text) Paragraph
-substitute subs = traverse substituteIn
+substitute ∷ Substitutions → SubParagraph → Either String Paragraph
+substitute subs = replaceTextM substituteIn
   where
-    substituteIn ∷ SubText → Either (Set Text) Text
-    substituteIn (Literal t) = return t
-    substituteIn (Key k) =
-      case lookup k subs of
-        Nothing → throwError ∘ singletonSet $ k
-        Just t → return t
+    substituteIn (Literal t) = return (Text_ t)
+    substituteIn (Key key) =
+      case lookup key subs of
+        Nothing → throwError $ "unable to find key: " ⊕ (key ^. unpacked)
+        Just value →
+          (
+            fmap storyToLists
+            ∘
+            (_Left %~ show)
+            ∘
+            parseStoryFromText
+            ∘
+            (^. packed)
+            $
+            printf "<story><quest><event><p>%s</p></event></quest></story>" value
+          )
+          >>=
+          (\case
+            [[[p]]] → return p
+            _ → throwError "there was more than a single paragraph in the substitution"
+          )
 
 data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
 deriveJSON ''Gender
@@ -512,9 +529,16 @@ renderStoryToChunks =
   where
     tellChunk ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Chunk Text → m ()
     tellChunk = tell ∘ singleton
+
+    tellLine ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Text → m ()
     tellLine = tellChunk ∘ chunk ∘ (|> '\n')
+
+    tellNewline ∷ MonadWriter (Seq (Chunk Text)) m ⇒ m ()
     tellNewline = tellLine ""
+
+    tellSeparator ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Char → m ()
     tellSeparator = tellLine ∘ replicate 80
+
     tellEventSeparator = tellSeparator '-'
     tellQuestSeparator = tellSeparator '='
 
@@ -540,7 +564,16 @@ renderStoryToChunks =
           go xs
 
     renderParagraph ∷ Paragraph → Writer (Seq (Chunk Text)) ()
-    renderParagraph = flip evalStateT 0 ∘ go mempty
+    renderParagraph =
+      flip evalStateT
+        ( #number_of_columns := 0
+        , #current_word := (mempty ∷ Seq Char)
+        , #saw_spaces_last := False
+        , #pending_chunks := (mempty ∷ Seq (Chunk Text))
+        , #pending_length := 0
+        )
+      ∘
+      go mempty
       where
         go formatting (Style style rest) = go (addFormat formatting) rest
           where
@@ -552,19 +585,36 @@ renderStoryToChunks =
                 Color Blue → fore blue
                 Color Green → fore green
         go formatting (Merged paragraphs) = mapM_ (go formatting) paragraphs
-        go formatting (Text_ t) = mapM_ renderWord ∘ words $ t
-          where
-            renderWord ∷ Text → StateT Int (Writer (Seq (Chunk Text))) ()
-            renderWord word = do
-              number_of_columns ← get
-              let new_number_of_columns = number_of_columns + 1 + length word
-              (case number_of_columns of
-                 0 → return $ length word
-                 _ | new_number_of_columns > 80 → do
-                       lift $ tellNewline
-                       return $ length word
-                 _ | otherwise → do
-                       lift ∘ tellChunk $ chunk " "
-                       return new_number_of_columns
-               ) >>= put
-              lift ∘ tellChunk $ formatting ⊕ chunk word
+        go formatting (Text_ t) =
+          (forMOf_ text t $ \c →
+            if c ∈ " \t\r\n"
+              then do
+                saw_spaces_last ← l_ #saw_spaces_last <<.= True
+                current_word_is_empty ←
+                  (&&)
+                    <$> (null <$> use (l_ #current_word))
+                    <*> (null <$> use (l_ #pending_chunks))
+                unless (saw_spaces_last || current_word_is_empty) $ do
+                  word ← (^. packed) ∘ toList <$> (l_ #current_word <<.= mempty)
+                  word_length ← (length word +) <$> (l_ #pending_length <<.= 0)
+                  number_of_columns ← use (l_ #number_of_columns)
+                  case number_of_columns of
+                    0 → l_ #number_of_columns .= word_length
+                    _ | number_of_columns + 1 + word_length >= 80 → do
+                          tellNewline
+                          l_ #number_of_columns .= word_length
+                    _ | otherwise → do
+                          tellChunk $ chunk " "
+                          l_ #number_of_columns += 1 + word_length
+                  (l_ #pending_chunks <<.= mempty) >>= traverse_ tellChunk
+                  tellChunk $ chunk word
+              else do
+                l_ #current_word %= (|> c)
+                l_ #saw_spaces_last .= False
+          )
+          >>
+          (do
+            word ← (^. packed) ∘ toList <$> (l_ #current_word <<.= mempty)
+            l_ #pending_chunks %= (|> formatting <> chunk word)
+            l_ #pending_length += length word
+          )

@@ -3,3 +3,5 @@ extra-package-dbs: []
 packages:
 - '.'
 resolver: lts-7.6
+extra-deps:
+- 'labels-0.1.2'
