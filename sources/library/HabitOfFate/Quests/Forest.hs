@@ -94,9 +94,10 @@ new =
   >>=
   execStateT (introStory [s_fixed|
 ================================================================================
-The last thing in the world that <introduce>{Susie}</introduce> wanted to do was to wander alone in the
-Wicked Forest at night, but her son, little <introduce>{Tommy}</introduce> was sick and would not live
-through the night unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
+The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
+to wander alone in the Wicked Forest at night, but her son, little
+<introduce>{Tommy}</introduce> was sick and would not live through the night
+unless {Susie} could find an <introduce>{Illsbane}</introduce> plant. It is a
 hopeless task, but she has no other choice.
 
 She prays to you for a miracle, and then begins her search, carrying a candle to
@@ -117,8 +118,8 @@ found = do
     found_stories = [s|
 ================================================================================
 
-After searching for what feels like hours, {Susie} nearly steps on {an Illsbane}
-plant. {Her} heart leaps and {she} gives a short prayer of thanks. {She} reaches
+After searching for what feels like hours, {Susie} nearly steps on an {Illsbane}
+plant. her heart leaps and she gives a short prayer of thanks. she reaches
 down carefully to pick it up, and then starts heading back to her home.
 
 ================================================================================
@@ -130,11 +131,11 @@ brightly in the dark. The fairy beckons to her, and then flies away. {Susie}
 hesitates briefly, and then runs after the fairy.
 
 {Susie} chases the fairy for about an hour, starting to doubt whether this is
-such a good idea, when the fairy stops. She catches up to it and sees {an
-Illsbane} plant under it. Carefully, she reaches down and picks it. When she
+such a good idea, when the fairy stops. She catches up to it and sees an
+{Illsbane} plant under it. Carefully, she reaches down and picks it. When she
 looks up, the fairy is gone.
 
-{She} falls to her knees and thanks you for guiding her to the plan. {She} then
+she falls to her knees and thanks you for guiding her to the plan. she then
 gets up and starts heading back to her home.
 
 ================================================================================
@@ -152,17 +153,17 @@ won = do
   where
     won_story = [s_fixed|
 ================================================================================
-{Susie} is starting to feel like {she} will never make it back when she notices
-that things are starting to get brighter -- {she} must be getting close to the
-vilage! {She} gives you thanks for guiding {her} home.
+{Susie} is starting to feel like she will never make it back when she notices
+that things are starting to get brighter -- she must be getting close to the
+vilage! she gives you thanks for guiding her home.
 
-A little bit further, and {she} is back to her house. Without a moment to spare,
-{she} immediately starts brewing medicine for {Tommy}! {She} brings the medicine
-to {Tommy}, and wakes him up long enough to ladel it down his throat. {He|Tommy}
+A little bit further, and she is back to her house. Without a moment to spare,
+she immediately starts brewing medicine for {Tommy}! she brings the medicine
+to {Tommy}, and wakes him up long enough to ladel it down his throat. He
 immediately falls back asleep. As {Susie} is filled with relief, exhaustion
-catches up to her and {she} falls asleep on the floor.
+catches up to her and she falls asleep on the floor.
 
-{She} sleeps peacefully, with a smile on her face. The next day, she builds an
+she sleeps peacefully, with a smile on her face. The next day, she builds an
 alter to you out of gratitude.
 ================================================================================
 |]
@@ -240,7 +241,7 @@ As {Susie} continues to search she hears wolves howling in the distance, which
 makes her shiver. Thank goodness they seem to be in the distance.
 ================================================================================
 {Susie} is paying so much attention to looking for {Illsbane} that she almost
-misses the ominous circle of mushrooms. {She} says a prayer of thanks that {she}
+misses the ominous circle of mushrooms. she says a prayer of thanks that she
 noticed it before stepping inside.
 ================================================================================
 {Susie} starts to notice that it is growing brighter. She looks around and sees

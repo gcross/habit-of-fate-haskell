@@ -258,100 +258,10 @@ data Character = Character Text Gender deriving (Eq,Ord,Read,Show)
 deriveJSON ''Character
 
 makeSubstitutor ∷ [(Text,Character)] → Substitutor
-makeSubstitutor [] = mempty
-makeSubstitutor table@((_,first_character@(Character _ _)):_) =
-    flip lookup
-    ∘
-    (mapFromList ∷ [(Text,Paragraph)] → Map Text Paragraph)
-    $
-    makeNouns first_character
-    ⊕
-    concatMap
-      (\(key, character@(Character name _)) →
-          (name, Text_ name)
-          :
-          makeArticles key character ⊕ fmap (_1 ⊕~ ('|' <| key)) (makeNouns character)
-      )
-      table
-  where
-    makeArticles ∷ Text → Character → [(Text,Paragraph)]
-    makeArticles key (Character name _) =
-      map (_2 %~ Text_)
-      $
-      [("a " ⊕ key, articleValue False)
-      ,("A " ⊕ key, articleValue True)
-      ,("an " ⊕ key, articleValue False)
-      ,("An " ⊕ key, articleValue True)
-      ,("the " ⊕ key, "the " ⊕ name)
-      ,("The " ⊕ key, "The " ⊕ name)
-      ]
-      where
-        articleValue ∷ 𝔹 → Text
-        articleValue capitalize = article ⊕ " " ⊕ name
-          where
-            article =
-              (_head %~ if capitalize then Char.toUpper else Char.toLower)
-              $
-              case name ^? _head of
-                Just c | Char.toLower c ∈ "aeiou" → "an"
-                _ → "a"
-
-    makeNouns ∷ Character → [(Text,Paragraph)]
-    makeNouns (Character _ gender) =
-      map (_2 %~ Text_)
-      $
-      concat
-        [subject_pronouns
-        ,object_pronouns
-        ,possessive_prononuns
-        ,descriptive_possessive_pronouns
-        ,category_nouns
-        ]
-      where
-        capitalized = (_head %~ Char.toUpper)
-
-        subject_pronouns =
-            fmap (,pronoun) ["he","she","it"]
-            ⊕
-            fmap (,capitalized pronoun) ["He","She","It"]
-          where
-            pronoun = case gender of
-                Male → "he"
-                Female → "she"
-                Neuter → "it"
-
-        object_pronouns = fmap (,pronoun) ["him","her","it"]
-          where
-            pronoun = case gender of
-                Male → "him"
-                Female → "her"
-                Neuter → "it"
-
-        possessive_prononuns =
-            fmap (,pronoun) ["his","her'","its"]
-            ⊕
-            fmap (,capitalized pronoun) ["His","Her","Its"]
-          where
-            pronoun = case gender of
-                Male → "his"
-                Female → "her"
-                Neuter → "its"
-
-        descriptive_possessive_pronouns =
-            fmap (,pronoun) ["his","hers","its"]
-          where
-            pronoun = case gender of
-                Male → "his"
-                Female → "her"
-                Neuter → "its"
-
-        category_nouns =
-            fmap (,category) ["man","woman","thing"]
-          where
-            category = case gender of
-                Male → "man"
-                Female → "woman"
-                Neuter → "thing"
+makeSubstitutor characters key =
+  (\(Character name _) → Text_ name)
+  <$>
+  lookup key characters
 
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
 clearNullElements isNull = _Wrapped' %~ filter (not ∘ isNull)
