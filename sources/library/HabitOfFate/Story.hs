@@ -596,7 +596,7 @@ renderStoryToChunks =
                           tellChunk $ chunk " "
                           l_ #number_of_columns += 1 + word_length
                   (l_ #pending_chunks <<.= mempty) >>= traverse_ tellChunk
-                  tellChunk $ chunk word
+                  tellChunk $ formatting ⊕ chunk word
               else do
                 l_ #current_word %= (|> c)
                 l_ #saw_spaces_last .= False
