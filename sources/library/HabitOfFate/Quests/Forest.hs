@@ -52,7 +52,7 @@ defaultSubstitutionTable forest = makeSubstitutionTable
   ,("Illsbane",Character (forest ^. herb) Neuter)
   ]
 
-storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Text)] → SubEvent → m ()
+storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Paragraph)] → SubEvent → m ()
 storyWithDefaultSubstitutionsPlus forest additional_substitutions event =
   flip substituteAndAddParagraphs (event ^.. paragraphs)
   ∘

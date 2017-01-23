@@ -239,7 +239,7 @@ parseSubstitutions =
       lift ∘ tell $ singletonSet key
       return ∘ Text_ ∘ Key $ key
 
-type Substitutions = Map Text Text
+type Substitutions = Map Text Paragraph
 
 substitute ∷ Substitutions → SubParagraph → Either String Paragraph
 substitute subs = replaceTextM substituteIn
@@ -248,23 +248,7 @@ substitute subs = replaceTextM substituteIn
     substituteIn (Key key) =
       case lookup key subs of
         Nothing → throwError $ "unable to find key: " ⊕ (key ^. unpacked)
-        Just value →
-          (
-            fmap storyToLists
-            ∘
-            (_Left %~ show)
-            ∘
-            parseStoryFromText
-            ∘
-            (^. packed)
-            $
-            printf "<story><quest><event><p>%s</p></event></quest></story>" value
-          )
-          >>=
-          (\case
-            [[[p]]] → return p
-            _ → throwError "there was more than a single paragraph in the substitution"
-          )
+        Just value → return value
 
 data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
 deriveJSON ''Gender
@@ -281,21 +265,23 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
     ⊕
     concatMap
       (\(key, character@(Character name _)) →
-          (name, name)
+          (name, Style Bold (Text_ name))
           :
           makeArticles key character ⊕ fmap (_1 ⊕~ ('|' <| key)) (makeNouns character)
       )
       table
   where
-    makeArticles ∷ Text → Character → [(Text,Text)]
+    makeArticles ∷ Text → Character → [(Text,Paragraph)]
     makeArticles key (Character name _) =
-        [("a " ⊕ key, articleValue False)
-        ,("A " ⊕ key, articleValue True)
-        ,("an " ⊕ key, articleValue False)
-        ,("An " ⊕ key, articleValue True)
-        ,("the " ⊕ key, "the " ⊕ name)
-        ,("The " ⊕ key, "The " ⊕ name)
-        ]
+      map (_2 %~ Text_)
+      $
+      [("a " ⊕ key, articleValue False)
+      ,("A " ⊕ key, articleValue True)
+      ,("an " ⊕ key, articleValue False)
+      ,("An " ⊕ key, articleValue True)
+      ,("the " ⊕ key, "the " ⊕ name)
+      ,("The " ⊕ key, "The " ⊕ name)
+      ]
       where
         articleValue ∷ 𝔹 → Text
         articleValue capitalize = article ⊕ " " ⊕ name
@@ -307,8 +293,11 @@ makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
                 Just c | Char.toLower c ∈ "aeiou" → "an"
                 _ → "a"
 
-    makeNouns ∷ Character → [(Text,Text)]
-    makeNouns (Character _ gender) = concat
+    makeNouns ∷ Character → [(Text,Paragraph)]
+    makeNouns (Character _ gender) =
+      map (_2 %~ Text_)
+      $
+      concat
         [subject_pronouns
         ,object_pronouns
         ,possessive_prononuns
