@@ -45,8 +45,8 @@ type ForestAction = QuestAction State
 -------------------------------- Text Functions --------------------------------
 --------------------------------------------------------------------------------
 
-defaultSubstitutionTable ∷ State → Substitutions
-defaultSubstitutionTable forest = makeSubstitutionTable
+defaultSubstitutor ∷ State → Substitutor
+defaultSubstitutor forest = makeSubstitutor
   [("Susie",forest ^. parent)
   ,("Tommy",forest ^. patient)
   ,("Illsbane",Character (forest ^. herb) Neuter)
@@ -54,13 +54,13 @@ defaultSubstitutionTable forest = makeSubstitutionTable
 
 storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Paragraph)] → SubEvent → m ()
 storyWithDefaultSubstitutionsPlus forest additional_substitutions event =
-  flip substituteAndAddParagraphs (event ^.. paragraphs)
-  ∘
-  (⊕ mapFromList additional_substitutions)
-  ∘
-  defaultSubstitutionTable
-  $
-  forest
+  substituteAndAddParagraphs
+    (\key →
+      defaultSubstitutor forest key
+      `mplus`
+      lookup key (mapFromList additional_substitutions ∷ Map Text Paragraph)
+    )
+    (event ^.. paragraphs)
 
 storyWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
 storyWithDefaultSubstitutionsForLens lens template =

@@ -240,14 +240,14 @@ parseSubstitutions =
       lift ∘ tell $ singletonSet key
       return ∘ Text_ ∘ Key $ key
 
-type Substitutions = Map Text Paragraph
+type Substitutor = Text → Maybe Paragraph
 
-substitute ∷ Substitutions → SubParagraph → Either String Paragraph
-substitute subs = replaceTextM substituteIn
+substitute ∷ Substitutor → SubParagraph → Either String Paragraph
+substitute lookupSubFor = replaceTextM substituteIn
   where
     substituteIn (Literal t) = return (Text_ t)
     substituteIn (Key key) =
-      case lookup key subs of
+      case lookupSubFor key of
         Nothing → throwError $ "unable to find key: " ⊕ (key ^. unpacked)
         Just value → return value
 
@@ -257,10 +257,12 @@ deriveJSON ''Gender
 data Character = Character Text Gender deriving (Eq,Ord,Read,Show)
 deriveJSON ''Character
 
-makeSubstitutionTable ∷ [(Text,Character)] → Substitutions
-makeSubstitutionTable [] = mempty
-makeSubstitutionTable table@((_,first_character@(Character _ _)):_) =
-    mapFromList
+makeSubstitutor ∷ [(Text,Character)] → Substitutor
+makeSubstitutor [] = mempty
+makeSubstitutor table@((_,first_character@(Character _ _)):_) =
+    flip lookup
+    ∘
+    (mapFromList ∷ [(Text,Paragraph)] → Map Text Paragraph)
     $
     makeNouns first_character
     ⊕

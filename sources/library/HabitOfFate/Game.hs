@@ -70,7 +70,7 @@ runGame state =
 gameAddParagraph ∷ Paragraph → Game ()
 gameAddParagraph = tell ∘ singleton
 
-substituteAndAddParagraphs ∷ MonadGame m ⇒ Substitutions → [SubParagraph] → m ()
+substituteAndAddParagraphs ∷ MonadGame m ⇒ Substitutor → [SubParagraph] → m ()
 substituteAndAddParagraphs subs =
   traverse_ addParagraph
   ∘
