@@ -38,7 +38,7 @@ import HabitOfFate.TH
 
 data Color = Red | Green | Blue deriving (Enum,Eq,Generic,Lift,Ord,Read,Show)
 
-data Style = Bold | Underline | Color Color deriving (Eq,Generic,Lift,Ord,Read,Show)
+data Style = Bold | Underline | Color Color | Introduce deriving (Eq,Generic,Lift,Ord,Read,Show)
 
 data GenParagraph α =
     Style Style (GenParagraph α)
@@ -193,6 +193,7 @@ parseParagraphFromNodes = fmap mconcat ∘ mapM parseParagraphChild
           , ("red", Color Red)
           , ("blue", Color Blue)
           , ("green", Color Green)
+          , ("introduce", Introduce)
           ]
 
 parseStoryFromDocument ∷ Document → Either String Story
@@ -449,6 +450,7 @@ renderParagraphToNodes paragraph =
                 Color Red → "red"
                 Color Blue → "blue"
                 Color Green → "green"
+                Introduce → "introduce"
           in Element tag mempty nested
       where
         nested = recurse p
@@ -573,6 +575,7 @@ renderStoryToChunks =
                 Color Red → fore red
                 Color Blue → fore blue
                 Color Green → fore green
+                Introduce → bold
         go formatting (Merged paragraphs) = mapM_ (go formatting) paragraphs
         go formatting (Text_ t) =
           (forMOf_ text t $ \c →

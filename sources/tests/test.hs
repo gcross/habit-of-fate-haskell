@@ -45,6 +45,7 @@ instance Arbitrary Style where
     [ return Bold
     , return Underline
     , Color <$> arbitrary
+    , return Introduce
     ]
 
 instance Monad m ⇒ Serial m Style where
