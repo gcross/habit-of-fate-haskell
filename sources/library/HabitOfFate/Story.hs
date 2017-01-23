@@ -604,6 +604,6 @@ renderStoryToChunks =
           >>
           (do
             word ← (^. packed) ∘ toList <$> (l_ #current_word <<.= mempty)
-            l_ #pending_chunks %= (|> formatting <> chunk word)
+            l_ #pending_chunks %= (|> formatting ⊕ chunk word)
             l_ #pending_length += length word
           )
