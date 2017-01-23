@@ -528,8 +528,8 @@ renderStoryToChunks =
     tellSeparator ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Char → m ()
     tellSeparator = tellLine ∘ replicate 80
 
-    tellEventSeparator = tellSeparator '-'
-    tellQuestSeparator = tellSeparator '='
+    tellEventSeparator = tellSeparator '―'
+    tellQuestSeparator = tellSeparator '═'
 
     renderQuest = go ∘ unwrapGenQuest
       where
