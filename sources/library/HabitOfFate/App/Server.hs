@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -223,20 +224,24 @@ makeApp filepath = do
     Scotty.post "/run" $
       (liftIO ∘ atomically $ do
         d ← readTVar data_var
-        let quests = _1 ∷ Lens' (Seq Quest, Seq Event) (Seq Quest)
-            quest_events = _2 ∷ Lens' (Seq Quest, Seq Event) (Seq Event)
-            go d = do
+        let go d = do
               let r = runData d
-              quest_events %= (|> r ^. story . to createEvent)
+              l_ #quest_events %= (|> r ^. story . to createEvent)
               if stillHasCredits (r ^. new_data)
                 then do
                   when (r ^. quest_completed) $
-                    (quest_events <<.= mempty)
+                    (l_ #quest_events <<.= mempty)
                     >>=
-                    (quests %=) ∘ flip (|>) ∘ createQuest
+                    (l_ #quests %=) ∘ flip (|>) ∘ createQuest
                   go (r ^. new_data)
                 else return (r ^. new_data)
-        (new_d, s) ← flip runStateT (mempty,mempty) ∘ go $ d
+        (new_d, s) ←
+          flip runStateT
+            ( #quests := (mempty ∷ Seq Quest)
+            , #quest_events := (mempty ∷ Seq Event)
+            )
+          $
+          go d
         writeTVar data_var new_d
         tryPutTMVar write_request ()
         return $!! (
@@ -244,7 +249,7 @@ makeApp filepath = do
           ∘
           createStory
           $
-          s ^. quests |> s ^. quest_events . to createQuest
+          s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
           )
       ) >>= Scotty.text
 
