@@ -230,11 +230,11 @@ parseSubstitutions =
         <$> takeTillNextSub
         <*> (mconcat <$> (many $ mappend <$> parseAnotherSub <*> takeTillNextSub))
 
-    takeTillNextSub = Text_ ∘ Literal ∘ (^. packed) <$> many (satisfy (/='{'))
+    takeTillNextSub = Text_ ∘ Literal ∘ pack <$> many (satisfy (/='{'))
 
     parseAnotherSub = do
       char '{'
-      key ← (^. packed) ∘ unwords ∘ words <$> many1 (satisfy (/='}'))
+      key ← pack ∘ unwords ∘ words <$> many1 (satisfy (/='}'))
       when (elemOf text '{' key) $ fail "nested brace"
       char '}'
       lift ∘ tell $ singletonSet key
@@ -248,7 +248,7 @@ substitute lookupSubFor = replaceTextM substituteIn
     substituteIn (Literal t) = return (Text_ t)
     substituteIn (Key key) =
       case lookupSubFor key of
-        Nothing → throwError $ "unable to find key: " ⊕ (key ^. unpacked)
+        Nothing → throwError $ printf "unable to find key: %s" key
         Just value → return value
 
 data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
@@ -499,7 +499,7 @@ renderStoryToChunks =
                     <$> (null <$> use (l_ #current_word))
                     <*> (null <$> use (l_ #pending_chunks))
                 unless (saw_spaces_last || current_word_is_empty) $ do
-                  word ← (^. packed) ∘ toList <$> (l_ #current_word <<.= mempty)
+                  word ← repack <$> (l_ #current_word <<.= mempty)
                   word_length ← (length word +) <$> (l_ #pending_length <<.= 0)
                   number_of_columns ← use (l_ #number_of_columns)
                   case number_of_columns of
@@ -518,7 +518,7 @@ renderStoryToChunks =
           )
           >>
           (do
-            word ← (^. packed) ∘ toList <$> (l_ #current_word <<.= mempty)
+            word ← repack <$> (l_ #current_word <<.= mempty)
             l_ #pending_chunks %= (|> formatting ⊕ chunk word)
             l_ #pending_length += length word
           )

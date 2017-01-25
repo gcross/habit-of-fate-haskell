@@ -76,7 +76,7 @@ hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 runJSONParserAction ∷ Value → JSONParser α → ServerAction α
 runJSONParserAction value action =
   either
-    (throwActionErrorWithMessage badRequest400 ∘ (^. packed))
+    (throwActionErrorWithMessage badRequest400 ∘ pack)
     return
   $
   runJSONParser value action
@@ -179,7 +179,7 @@ makeApp filepath = do
               then
                 throwActionErrorWithMessage conflict409
                 ∘
-                (^. packed)
+                pack
                 $
                 printf "A habit with id %s already exists" (show uuid)
               else return uuid

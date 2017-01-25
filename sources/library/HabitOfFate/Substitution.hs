@@ -127,13 +127,13 @@ substitute table =
         <$> takeTillNextSub
         <*> (fmap mconcat ∘ many $ mappend <$> parseAnotherSub <*> takeTillNextSub)
 
-    takeTillNextSub = (^. packed) <$> many (satisfy (/='{'))
+    takeTillNextSub = pack <$> many (satisfy (/='{'))
 
     parseAnotherSub = do
       char '{'
       key ← unwords ∘ words <$> many1 (satisfy (/='}'))
       when ('{' ∈ key) $ fail "nested brace"
       char '}'
-      case lookup (key ^. packed) table of
+      case lookup (pack key) table of
         Nothing → fail $ printf "key %s was not found in the table" key
         Just value → return value

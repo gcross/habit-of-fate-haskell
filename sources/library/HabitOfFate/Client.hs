@@ -28,7 +28,7 @@ import HabitOfFate.Story
 
 decodeUtf8Lazy = decodeUtf8 ∘ (^. strict)
 
-debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ (^. from packed)
+debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ unpack
 
 data ServerInfo = ServerInfo
   { _hostname ∷ ByteString
@@ -52,7 +52,7 @@ expectSuccess response =
   ∘
   throwM
   $
-  ClientException code (decodeUtf8 message ^. unpacked)
+  ClientException code (unpack $ decodeUtf8 message)
   where
     Status code message = getResponseStatus response
 

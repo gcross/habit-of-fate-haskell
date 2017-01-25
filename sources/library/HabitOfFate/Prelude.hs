@@ -149,7 +149,7 @@ import Data.Function
 
 import Data.Functor
 
-import Data.HashMap.Strict hiding (map)
+import Data.HashMap.Strict (HashMap)
 
 import Data.Map (Map)
 

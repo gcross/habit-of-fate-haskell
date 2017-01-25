@@ -33,7 +33,7 @@ import HabitOfFate.Habit
 import HabitOfFate.Story
 
 instance Arbitrary Text where
-  arbitrary = (^. packed) <$> arbitrary
+  arbitrary = pack <$> arbitrary
 
 instance Arbitrary Color where
   arbitrary = elements [Red, Green, Blue]
@@ -82,7 +82,7 @@ instance (Monad m, Serial m α) ⇒ Serial m (Seq α) where
   series = fromList <$> series
 
 instance Monad m ⇒ Serial m Text where
-  series = (^. packed) <$> series
+  series = pack <$> series
 
 instance Monad m ⇒ Serial m SubText where
 
