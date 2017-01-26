@@ -217,7 +217,7 @@ parseSubstitutions =
       >>=
       either
         (
-          throwError
+          fail
           ∘
           printf "Error parsing substitutions for text chunk \"%s\": %s" t
           ∘
@@ -248,7 +248,7 @@ substitute lookupSubFor = replaceTextM substituteIn
     substituteIn (Literal t) = return (Text_ t)
     substituteIn (Key key) =
       case lookupSubFor key of
-        Nothing → throwError $ printf "unable to find key: %s" key
+        Nothing → fail $ printf "unable to find key: %s" key
         Just value → return value
 
 data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
@@ -303,7 +303,7 @@ parseQuote =
       >=>
       (\case
         GenStory [quest] → return $ unwrapGenQuest quest
-        GenStory xs → throwError $ printf "saw %i quests instead of 1" (length xs)
+        GenStory xs → fail $ printf "saw %i quests instead of 1" (length xs)
       )
       ∘
       dropEmptyThingsFromStory
