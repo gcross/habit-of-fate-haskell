@@ -9,6 +9,7 @@
 import HabitOfFate.Prelude hiding (elements)
 
 import Control.Concurrent
+import Control.Lens.Extras
 import qualified Data.Map as Map
 import Network.Wai.Handler.Warp
 import System.Directory
@@ -168,7 +169,31 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
                    |] @?= 2
       ]
     , testGroup "round-trip"
-      [ testGroup "Paragraph -> [Node] -> Paragraph"
+      [ testGroup "makeSubstitutor"
+        [ testGroup "name" $
+            [ testCase "gendered"
+                ∘
+                (Right "Y" @=?)
+                ∘
+                (_Right %~ textFromParagraph)
+                $
+                makeSubstitutor
+                  (flip lookup [("X", Gendered "Y" (error "should not be using the gender"))])
+                  (const Nothing)
+                  "X"
+            , testCase "neutered"
+                ∘
+                (Right "Y" @=?)
+                ∘
+                (_Right %~ textFromParagraph)
+                $
+                makeSubstitutor
+                  (const Nothing)
+                  (flip lookup [("X","Y")])
+                  "X"
+            ]
+        ]
+      , testGroup "Paragraph -> [Node] -> Paragraph"
         [ S.testProperty "SmallCheck" $ \story →
             let xml_text = renderStoryToText story
                 round_trip_story = parseStoryFromText xml_text

@@ -74,7 +74,7 @@ substituteAndAddParagraphs ∷ MonadGame m ⇒ Substitutor → [SubParagraph] �
 substituteAndAddParagraphs subs =
   traverse_ addParagraph
   ∘
-  either (\keys → error $ "Missing keys: " ⊕ show keys) identity
+  either error identity
   ∘
   traverse (substitute subs)
 

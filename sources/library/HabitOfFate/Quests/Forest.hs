@@ -29,8 +29,8 @@ import HabitOfFate.Trial
 --------------------------------------------------------------------------------
 
 data State = State
-  { _parent ∷ Character
-  , _patient ∷ Character
+  { _parent ∷ Gendered
+  , _patient ∷ Gendered
   , _herb ∷ Text
   , _herb_found ∷ Bool
   , _credits_until_success ∷ Double
@@ -45,31 +45,31 @@ type ForestAction = QuestAction State
 -------------------------------- Text Functions --------------------------------
 --------------------------------------------------------------------------------
 
-defaultSubstitutor ∷ State → Substitutor
-defaultSubstitutor forest = makeSubstitutor
-  [("Susie",forest ^. parent)
-  ,("Tommy",forest ^. patient)
-  ,("Illsbane",Character (forest ^. herb) Neuter)
-  ]
-
-storyWithDefaultSubstitutionsPlus ∷ MonadGame m ⇒ State → [(Text,Paragraph)] → SubEvent → m ()
-storyWithDefaultSubstitutionsPlus forest additional_substitutions event =
-  substituteAndAddParagraphs
-    (\key →
-      defaultSubstitutor forest key
-      `mplus`
-      lookup key (mapFromList additional_substitutions ∷ Map Text Paragraph)
+forestSubstitutor ∷ State → Substitutor
+forestSubstitutor forest =
+  makeSubstitutor
+    (flip lookup
+      [("",forest ^. parent)
+      ,("Susie",forest ^. parent)
+      ,("Tommy",forest ^. patient)
+      ]
     )
+    (flip lookup
+      [("Illsbane",forest ^. herb)
+      ]
+    )
+
+storyForState ∷ MonadGame m ⇒ State → SubEvent → m ()
+storyForState forest event =
+  substituteAndAddParagraphs
+    (forestSubstitutor forest)
     (event ^.. paragraphs)
 
-storyWithDefaultSubstitutionsForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
-storyWithDefaultSubstitutionsForLens lens template =
-  use lens
-  >>=
-  \forest → storyWithDefaultSubstitutionsPlus forest [] template
+storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
+storyForLens lens template = use lens >>= \forest → storyForState forest template
 
 forestEvent ∷ SubEvent → ForestAction ()
-forestEvent = storyWithDefaultSubstitutionsForLens quest
+forestEvent = storyForLens quest
 
 forestEvents ∷ [SubEvent] → ForestAction ()
 forestEvents = uniformAction ∘ fmap forestEvent
@@ -78,14 +78,14 @@ forestEvents = uniformAction ∘ fmap forestEvent
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-introStory = storyWithDefaultSubstitutionsForLens identity
+introStory = storyForLens identity
 
 new ∷ Game State
 new =
   (
     State
-      (Character "Susie" Female)
-      (Character "Tommy" Male)
+      (Gendered "Susie" Female)
+      (Gendered "Tommy" Male)
       "Illsbane"
       False
     <$> numberUntilEvent 5

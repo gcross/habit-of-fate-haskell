@@ -22,17 +22,17 @@ module HabitOfFate.Story where
 
 import HabitOfFate.Prelude
 
+import Data.Aeson hiding ((.=))
 import qualified Data.Char as Char
 import qualified Data.Text.Lazy as LazyText
 import Instances.TH.Lift ()
-import GHC.Generics hiding (from)
-import Labels ((:=))
+import GHC.Generics hiding (from, to)
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote
 import Rainbow
 import Text.XML
-import Text.Parsec hiding (uncons)
+import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.TH
 
@@ -119,6 +119,9 @@ instance HasLiterals Text where
 
 instance HasLiterals SubText where
   literals = folded . _Literal
+
+textFromParagraph ∷ Paragraph → Text
+textFromParagraph = fold
 
 insertMarkers ∷ String → String
 insertMarkers =
@@ -240,28 +243,133 @@ parseSubstitutions =
       lift ∘ tell $ singletonSet key
       return ∘ Text_ ∘ Key $ key
 
-type Substitutor = Text → Maybe Paragraph
+data Gender = Male | Female deriving (Enum,Eq,Ord,Read,Show)
+
+instance ToJSON Gender where
+  toJSON gender = String $
+    case gender of
+      Male → "male"
+      Female → "female"
+
+instance FromJSON Gender where
+  parseJSON = withText "expected text" parseGender
+    where
+      parseGender "male" = return Male
+      parseGender "female" = return Female
+      parseGender t = fail $
+        printf "gender must be \"male\" or \"female\", not \"%s\"" t
+
+data Gendered = Gendered
+  { _gendered_name ∷ Text
+  , _gendered_gender ∷ Gender
+  } deriving (Eq,Ord,Read,Show)
+deriveJSONDropping 10 ''Gendered
+makeLenses ''Gendered
+
+_case ∷ Lens' Char Bool
+_case = lens Char.isUpper (\c → bool (Char.toLower c) (Char.toUpper c))
+
+first_case ∷ Traversal' Text Bool
+first_case = _head . _case
+
+findNounConverter ∷ Text → Maybe (Gender → Text)
+findNounConverter "" = Nothing
+findNounConverter word
+  | word ∈ ["His", "Her"] = Just $ \case { Male → "His"; Female → "Her" }
+  | otherwise =
+      (\(m,f) gender →
+        (first_case .~ (word ^?! first_case))
+        ∘
+        takeWhile (/= '|')
+        $
+        case gender of { Male → m; Female → f }
+      )
+      <$>
+      find (elemOf both (word & first_case .~ False)) nouns
+  where
+    nouns =
+      [ ("he","she")
+      , ("him","her|obj")
+      , ("his|pp","hers")
+      , ("himself","herself")
+      , ("his","her|pos")
+      , ("man","woman")
+      , ("son","daughter")
+      ]
+
+type Substitutor = Text → Either String Paragraph
 
 substitute ∷ Substitutor → SubParagraph → Either String Paragraph
-substitute lookupSubFor = replaceTextM substituteIn
+substitute substitutor = replaceTextM substituteIn
   where
-    substituteIn (Literal t) = return (Text_ t)
-    substituteIn (Key key) =
-      case lookupSubFor key of
-        Nothing → fail $ printf "unable to find key: %s" key
-        Just value → return value
+    substituteIn (Literal t) = return $ Text_ t
+    substituteIn (Key key) = substitutor key
 
-data Gender = Male | Female | Neuter deriving (Eq,Ord,Read,Show)
-deriveJSON ''Gender
+isVowel ∷ Char → Bool
+isVowel = (∈ "aeiouAEIOU")
 
-data Character = Character Text Gender deriving (Eq,Ord,Read,Show)
-deriveJSON ''Character
-
-makeSubstitutor ∷ [(Text,Character)] → Substitutor
-makeSubstitutor characters key =
-  (\(Character name _) → Text_ name)
-  <$>
-  lookup key characters
+makeSubstitutor ∷ (Text → Maybe Gendered) → (Text → Maybe Text) → Substitutor
+makeSubstitutor lookupGendered lookupNeutered "" = error "empty keys are not supported"
+makeSubstitutor lookupGendered lookupNeutered key =
+  bimap show Text_
+  ∘
+  runParser parser () ""
+  $
+  key
+  where
+    parser =
+      (do starts_with_uppercase ← try $ do
+            starts_with_uppercase ← Char.isUpper <$> oneOf "Aa"
+            _ ← optional (char 'n')
+            _ ← space
+            return starts_with_uppercase
+          neutered_name ← pack ∘ unwords ∘ words <$> many1 letter
+          name ←
+            maybe
+              (fail $ printf "unable to find neuter entity with name \"%s\"" neutered_name)
+              return
+            $
+            lookupNeutered neutered_name
+          return $ mconcat
+            [ if starts_with_uppercase then "A" else "a"
+            , if fromMaybe False (isVowel <$> name ^? _head) then "n " else " "
+            , name
+            ]
+      )
+      <|>
+      (do word ← pack <$> many1 (letter <|> char '|')
+          maybe_name ←
+            optionMaybe
+            $
+            between
+              (char '[')
+              (char ']')
+              (pack ∘ unwords ∘ words <$> many (letter <|> space))
+          case findNounConverter word of
+            Nothing →
+              maybe (fail $ printf "unrecognized word \"%s\"" word)
+                    return
+              $
+              (view gendered_name <$> lookupGendered word) <|> lookupNeutered word
+            Just convertNoun → do
+              let tryName name message =
+                    maybe
+                      (fail message)
+                      (
+                        return
+                        ∘
+                        convertNoun
+                        ∘
+                        view gendered_gender
+                      )
+                    $
+                    lookupGendered name
+              case maybe_name of
+                Nothing →
+                  tryName "" "no default entity provided"
+                Just name →
+                  tryName name (printf "unable to find entity with name \"%s\"" name)
+      )
 
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
 clearNullElements isNull = _Wrapped' %~ filter (not ∘ isNull)

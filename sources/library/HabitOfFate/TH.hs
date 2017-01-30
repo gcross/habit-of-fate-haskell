@@ -13,3 +13,7 @@ import qualified Data.Aeson.TH as AesonTH
 deriveJSON = AesonTH.deriveJSON $ defaultOptions
   { fieldLabelModifier = dropWhile (== '_')
   }
+
+deriveJSONDropping n = AesonTH.deriveJSON $ defaultOptions
+  { fieldLabelModifier = drop n
+  }
