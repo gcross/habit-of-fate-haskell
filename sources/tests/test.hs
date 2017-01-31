@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -120,6 +121,26 @@ initialize = do
 test_habit = Habit "name" 1 1
 test_habit_2 = Habit "test" 2 2
 
+originalFromSubParagraph ∷ SubParagraph → Text
+originalFromSubParagraph =
+  rewords
+  ∘
+  foldMap (
+    \case
+      Literal t → t
+      Key k → "{" ⊕ k ⊕ "}"
+  )
+
+originalFromSubEvent ∷ SubEvent → Text
+originalFromSubEvent =
+  mconcat
+  ∘
+  intersperse "\n"
+  ∘
+  map originalFromSubParagraph
+  ∘
+  unwrapGenEvent
+
 main = initialize >> (defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.App.Server"
     [ serverTestCase "Get all habits when none exist" $
@@ -167,33 +188,63 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
                     =
                     line2
                    |] @?= 2
+      , testCase "single literal letter round trip" $
+          "x" @?= originalFromSubEvent [s_fixed|x|]
+      , testCase "single key letter round trip" $
+          "{x}" @?= originalFromSubEvent [s_fixed|{x}|]
+      , testCase "two keys separated by a space" $
+          "{x} {y}" @?= originalFromSubEvent [s_fixed|{x} {y}|]
       ]
-    , testGroup "round-trip"
-      [ testGroup "makeSubstitutor"
-        [ testGroup "name" $
-            [ testCase "gendered"
-                ∘
-                (Right "Y" @=?)
-                ∘
-                (_Right %~ textFromParagraph)
-                $
-                makeSubstitutor
-                  (flip lookup [("X", Gendered "Y" (error "should not be using the gender"))])
-                  (const Nothing)
-                  "X"
-            , testCase "neutered"
-                ∘
-                (Right "Y" @=?)
-                ∘
-                (_Right %~ textFromParagraph)
-                $
-                makeSubstitutor
-                  (const Nothing)
-                  (flip lookup [("X","Y")])
-                  "X"
-            ]
+    , testGroup "makeSubstitutor"
+      [ testGroup "name" $
+          [ testCase "gendered"
+              ∘
+              (Right "Y" @=?)
+              ∘
+              (_Right %~ textFromParagraph)
+              $
+              makeSubstitutor
+                (flip lookup [("X", Gendered "Y" (error "should not be using the gender"))])
+                (const Nothing)
+                "X"
+          , testCase "neutered"
+              ∘
+              (Right "Y" @=?)
+              ∘
+              (_Right %~ textFromParagraph)
+              $
+              makeSubstitutor
+                (const Nothing)
+                (flip lookup [("X","Y")])
+                "X"
+          ]
+      ]
+    , testGroup "substitute"
+        [ testCase "single letter" $ do
+            let GenEvent [subparagraph] = [s_fixed|{x}|]
+            Right "X" @=? (
+              rewords
+              ∘
+              textFromParagraph
+              <$>
+              substitute (const ∘ Right ∘ Text_ $ "X") subparagraph
+             )
+        , testCase "two keys separated by a space" $ do
+            let GenEvent [subparagraph] = [s_fixed|{x} {y}|]
+            Right "X Y" @=? (
+              rewords
+              ∘
+              textFromParagraph
+              <$>
+              substitute (
+                  fmap Text_
+                  ∘
+                  \case {"x" → Right "X"; "y" → Right "Y"; _ → Left "not found"}
+              ) subparagraph
+             )
         ]
-      , testGroup "Paragraph -> [Node] -> Paragraph"
+    , testGroup "round-trip"
+      [ testGroup "Paragraph -> [Node] -> Paragraph"
         [ S.testProperty "SmallCheck" $ \story →
             let xml_text = renderStoryToText story
                 round_trip_story = parseStoryFromText xml_text
