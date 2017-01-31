@@ -62,7 +62,6 @@ library
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
-                     , HabitOfFate.Substitution
                      , HabitOfFate.Story
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
