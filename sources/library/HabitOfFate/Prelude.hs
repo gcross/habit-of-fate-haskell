@@ -1,36 +1,45 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Prelude
   (
   -- Modules
-    module Control.Applicative
+    module Prelude
+  , module Control.Applicative
   , module Control.Arrow
   , module Control.Lens
+  , module Control.Monad
   , module Control.Monad.Except
   , module Control.Monad.Fail
   , module Control.Monad.Reader
   , module Control.Monad.State.Strict
   , module Control.Monad.Writer.Strict
   , module Data.Bool
+  , module Data.ByteString
   , module Data.Containers
   , module Data.Default
   , module Data.Either
   , module Data.Foldable
   , module Data.Function
   , module Data.Functor
+  , module Data.HashMap.Strict
+  , module Data.List
+  , module Data.Map.Strict
   , module Data.Maybe
   , module Data.Monoid
   , module Data.MonoTraversable
   , module Data.MonoTraversable.Unprefixed
+  , module Data.Sequence
   , module Data.Sequences
+  , module Data.Set
+  , module Data.Text
   , module Data.Text.Lens
   , module Labels
   , module Text.Printf
+  , module System.FilePath
   -- Operators
-  , (^)
-  , (^^)
   , (∘)
   , (⊕)
   , (⊕~)
@@ -39,61 +48,53 @@ module HabitOfFate.Prelude
   , (∉)
   , (≤)
   , (≥)
-  , (⊥)
-  -- Typeclasses
-  , Eq(..)
-  , Ord(..)
-  , Read(..)
-  , Show(..)
-  -- Types
-  , 𝔹
-  , Bool(..)
-  , ByteString
+  , identity
+  , l_
+  , rewords
+  , showText
+  , swap
+  ) where
+
+import Prelude
+  ( Bool(..)
   , Char
   , Double
   , Enum(..)
-  , FilePath
+  , Eq(..)
   , Float
   , Floating(..)
   , Fractional(..)
-  , HashMap
   , Int
   , Integer
   , Integral(..)
   , IO
-  , l_
-  , Map
-  , Maybe(..)
   , Num(..)
+  , Ord(..)
   , Rational
+  , Read(..)
   , Real(..)
   , RealFloat(..)
   , RealFrac(..)
-  , Seq
-  , Set
+  , Show(..)
   , String
-  , Text
-  , Word
-  -- Functions
+  , (^)
+  , (^^)
   , curry
   , error
   , even
   , fromIntegral
   , fst
   , gcd
-  , identity
   , lcm
   , map
   , odd
   , read
   , realToFrac
-  , showText
   , snd
   , subtract
-  , swap
   , uncurry
   , zip
-  ) where
+  )
 
 import Control.Applicative hiding (many)
 
@@ -102,6 +103,9 @@ import Control.Arrow hiding (loop)
 import Control.Lens
 
 import Control.Monad
+  hiding
+    ( fail
+    )
 
 import Control.Monad.Except
   hiding
@@ -151,7 +155,9 @@ import Data.Functor
 
 import Data.HashMap.Strict (HashMap)
 
-import Data.Map (Map)
+import Data.List (intersperse)
+
+import Data.Map.Strict (Map)
 
 import Data.Maybe hiding (catMaybes)
 
@@ -159,20 +165,32 @@ import Data.Monoid
 
 import Data.MonoTraversable
 
-import Data.MonoTraversable.Unprefixed (intercalate, length)
+import Data.MonoTraversable.Unprefixed
+  ( intercalate
+  , length
+  )
 
 import Data.Sequence (Seq)
 
 import Data.Sequences
-  hiding
-    ( Index
-    , cons
-    , find
-    , index
-    , snoc
-    , uncons
-    , unsnoc
-    )
+  ( break
+  , decodeUtf8
+  , drop
+  , dropWhile
+  , encodeUtf8
+  , filter
+  , fromList
+  , lines
+  , pack
+  , repack
+  , replicate
+  , singleton
+  , takeWhile
+  , unlines
+  , unpack
+  , unwords
+  , words
+  )
 
 import Data.Set (Set)
 
@@ -182,6 +200,8 @@ import Data.Text.Lens
 
 import Labels ((:=)(..))
 import qualified Labels as Labels
+
+import System.FilePath (FilePath)
 
 import Text.Parsec
 
@@ -231,15 +251,12 @@ infix  4 ≥
 (≥) ∷ Ord α ⇒ α → α → Bool
 (≥) = (>=)
 
-(⊥) ∷ α
-(⊥) = undefined
-
-type 𝔹 = Bool
-
 l_ = Labels.lens
 
 identity ∷ α → α
 identity = id
+
+rewords = unwords ∘ words
 
 showText ∷ Show α ⇒ α → Text
 showText = view packed ∘ show
