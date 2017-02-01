@@ -27,8 +27,6 @@ import qualified Test.Tasty.SmallCheck as S
 import Test.QuickCheck
 import Test.SmallCheck.Series
 
-import Debug.Trace
-
 import HabitOfFate.App.Server
 import HabitOfFate.Client
 import HabitOfFate.Habit

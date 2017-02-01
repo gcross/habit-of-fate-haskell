@@ -36,6 +36,7 @@ module HabitOfFate.Prelude
   , module Data.Set
   , module Data.Text
   , module Data.Text.Lens
+  , module Debug.Trace
   , module Labels
   , module Text.Printf
   , module System.FilePath
@@ -197,6 +198,8 @@ import Data.Set (Set)
 import Data.Text (Text)
 
 import Data.Text.Lens
+
+import Debug.Trace
 
 import Labels ((:=)(..))
 import qualified Labels as Labels
