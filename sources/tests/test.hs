@@ -240,47 +240,78 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
                   \case {"x" → Right "X"; "y" → Right "Y"; _ → Left "not found"}
               ) subparagraph
              )
+        , testCase "paragraph" $ do
+            let GenEvent [subparagraph] = [s_fixed|
+The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
+to wander alone in the Wicked Forest at night, but {her|pos} {son}, little
+<introduce>{Tommy}</introduce>, was sick and would not live through the night
+unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
+hopeless task, but {she} has no other choice.
+|]
+            Right "The last thing in the world that Mark wanted to do was to wander alone in the Wicked Forest at night, but his daughter, little Sally, was sick and would not live through the night unless Mark could find a Wolfsbane plant. It is a hopeless task, but he has no other choice." @=? (
+              rewords
+              ∘
+              textFromParagraph
+              <$>
+              substitute (
+                  fmap Text_
+                  ∘
+                  (\case
+                    "Susie" → Right "Mark"
+                    "her|pos" → Right "his"
+                    "son" → Right "daughter"
+                    "Tommy" → Right "Sally"
+                    "an Illsbane" → Right "a Wolfsbane"
+                    "she" → Right "he"
+                    other → Left ("not found: " ⊕ show other)
+                  )
+              ) subparagraph
+             )
+        ]
+    , testGroup "rendering"
+        [ testCase "three Text_, middle space" $
+            (renderStoryToText $ GenStory [GenQuest [GenEvent ["X Y"]]])
+            @?=
+            (renderStoryToText $ GenStory [GenQuest [GenEvent [mconcat ["X", " ", "Y"]]]])
         ]
     , testGroup "round-trip"
-      [ testGroup "Paragraph -> [Node] -> Paragraph"
-        [ S.testProperty "SmallCheck" $ \story →
-            let xml_text = renderStoryToText story
-                round_trip_story = parseStoryFromText xml_text
-                round_trip_xml_text = renderStoryToText <$> round_trip_story
-            in if round_trip_xml_text == Right xml_text
-                  then Right ("" ∷ String)
-                  else Left $
-                    unlines
-                      ["ORIGINAL STORY:"
-                      ,"    Right " ⊕ show (storyToLists story)
-                      ,"ROUND-TRIP STORY:"
-                      ,"    " ⊕ show (fmap storyToLists round_trip_story)
-                      ,"ORIGINAL XML:"
-                      ,"    Right " ⊕ show xml_text
-                      ,"ROUND-TRIP XML:"
-                      ,"    " ⊕ show round_trip_xml_text
-                      ]
-        , localOption (QuickCheckMaxSize 20)
-          $
-          testProperty "QuickCheck" $ \story →
-            let xml_text = renderStoryToText story
-                round_trip_story = parseStoryFromText xml_text
-                round_trip_xml_text = renderStoryToText <$> round_trip_story
-            in counterexample (
-                unlines
-                  ["ORIGINAL STORY:"
-                  ,"    Right " ⊕ show (storyToLists story)
-                  ,"ROUND-TRIP STORY:"
-                  ,"    " ⊕ show (fmap storyToLists round_trip_story)
-                  ,"ORIGINAL XML:"
-                  ,"    Right " ⊕ show xml_text
-                  ,"ROUND-TRIP XML:"
-                  ,"    " ⊕ show round_trip_xml_text
-                  ]
-              )
-              $
-              round_trip_xml_text == Right xml_text
-        ]
+      [ testGroup "Paragraph -> [Node] -> Paragraph" $
+          let doTest story =
+                ( is _Right double_round_trip_xml_text
+                  &&
+                  double_round_trip_xml_text == round_trip_xml_text
+                , message
+                )
+                where
+                  xml_text = renderStoryToText story
+                  round_trip_story = parseStoryFromText xml_text
+                  round_trip_xml_text = renderStoryToText <$> round_trip_story
+                  double_round_trip_story = round_trip_xml_text >>= parseStoryFromText
+                  double_round_trip_xml_text = renderStoryToText <$> double_round_trip_story
+                  message = unlines
+                    ["ORIGINAL STORY:"
+                    ,"    Right " ⊕ show (storyToLists story)
+                    ,"ROUND-TRIP STORY:"
+                    ,"    " ⊕ show (fmap storyToLists round_trip_story)
+                    ,"DOUBLE ROUND-TRIP STORY:"
+                    ,"    " ⊕ show (fmap storyToLists double_round_trip_story)
+                    ,"ORIGINAL XML:"
+                    ,"    Right " ⊕ show xml_text
+                    ,"ROUND-TRIP XML:"
+                    ,"    " ⊕ show round_trip_xml_text
+                    ,"DOUBLE ROUND-TRIP XML:"
+                    ,"    " ⊕ show double_round_trip_xml_text
+                    ]
+          in
+          [ S.testProperty "SmallCheck" $ \story →
+              let (result, message) = doTest story
+              in if result then Right ("" ∷ String) else Left message
+          , localOption (QuickCheckMaxSize 20)
+            $
+            testProperty "QuickCheck" $ \story →
+              let (result, message) = doTest story
+              in counterexample message result
+          ]
       ]
     ]
   ]

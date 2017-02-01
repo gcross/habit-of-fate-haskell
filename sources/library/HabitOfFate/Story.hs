@@ -24,6 +24,7 @@ import HabitOfFate.Prelude
 
 import Data.Aeson hiding ((.=))
 import qualified Data.Char as Char
+import Data.String (IsString(..))
 import qualified Data.Text.Lazy as LazyText
 import Instances.TH.Lift ()
 import GHC.Generics hiding (from, to)
@@ -45,14 +46,6 @@ data GenParagraph α =
   | Merged (Seq (GenParagraph α))
   | Text_ α
   deriving (Eq,Foldable,Functor,Generic,Lift,Ord,Read,Show,Traversable)
-
-instance Monoid (GenParagraph α) where
-  mempty = Merged mempty
-  mappend (Merged xs) (Merged ys) = Merged (xs ⊕ ys)
-  mappend (Merged xs) y = Merged (xs |> y)
-  mappend x (Merged ys) = Merged (x <| ys)
-  mappend x y = mconcat [x,y]
-  mconcat = Merged ∘ fromList
 
 replaceTextM ∷ Applicative f ⇒ (α → f (GenParagraph β)) → GenParagraph α → f (GenParagraph β)
 replaceTextM f (Style s x) = Style s <$> replaceTextM f x
@@ -103,6 +96,9 @@ type Event = GenEvent Text
 type Quest = GenQuest Text
 type Story = GenStory Text
 
+instance IsString Paragraph where
+  fromString = Text_ ∘ pack
+
 data SubText = Key Text | Literal Text deriving (Eq,Generic,Lift,Ord,Read,Show)
 makePrisms ''SubText
 
@@ -119,6 +115,31 @@ instance HasLiterals Text where
 
 instance HasLiterals SubText where
   literals = folded . _Literal
+
+class GenText α where
+  textIsNull ∷ α → Bool
+  textIsAllSpaces ∷ α → Bool
+
+instance GenText Text where
+  textIsNull = onull
+
+  textIsAllSpaces = allSpaces
+
+instance GenText SubText where
+  textIsNull (Literal t) = onull t
+  textIsNull _ = False
+
+  textIsAllSpaces (Literal t) = allSpaces t
+  textIsAllSpaces _ = False
+
+instance GenText α ⇒ Monoid (GenParagraph α) where
+  mempty = Merged mempty
+  mappend (Text_ x) ys | textIsNull x = ys
+  mappend xs (Text_ y) | textIsNull y = xs
+  mappend (Merged xs) (Merged ys) = Merged (xs ⊕ ys)
+  mappend (Merged xs) y = Merged (xs |> y)
+  mappend x (Merged ys) = Merged (x <| ys)
+  mappend x y = Merged ∘ fromList $ [x,y]
 
 textFromParagraph ∷ Paragraph → Text
 textFromParagraph = fold
@@ -236,10 +257,13 @@ parseSubstitutions =
     takeTillNextSub = Text_ ∘ Literal ∘ pack <$> many (satisfy (/='{'))
 
     parseAnotherSub = do
-      char '{'
-      key ← pack ∘ unwords ∘ words <$> many1 (satisfy (/='}'))
-      when (elemOf text '{' key) $ fail "nested brace"
-      char '}'
+      key ←
+        pack
+        <$>
+        between
+          (char '{')
+          (char '}')
+          (pack ∘ rewords <$> (many1 $ letter <|> char '|' <|> space))
       lift ∘ tell $ singletonSet key
       return ∘ Text_ ∘ Key $ key
 
@@ -309,7 +333,7 @@ isVowel ∷ Char → Bool
 isVowel = (∈ "aeiouAEIOU")
 
 makeSubstitutor ∷ (Text → Maybe Gendered) → (Text → Maybe Text) → Substitutor
-makeSubstitutor lookupGendered lookupNeutered "" = error "empty keys are not supported"
+makeSubstitutor _ _ "" = error "empty keys are not supported"
 makeSubstitutor lookupGendered lookupNeutered key =
   bimap show Text_
   ∘
@@ -323,7 +347,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
             _ ← optional (char 'n')
             _ ← space
             return starts_with_uppercase
-          neutered_name ← pack ∘ unwords ∘ words <$> many1 letter
+          neutered_name ← pack ∘ rewords <$> many1 letter
           name ←
             maybe
               (fail $ printf "unable to find neuter entity with name \"%s\"" neutered_name)
@@ -344,7 +368,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
             between
               (char '[')
               (char ']')
-              (pack ∘ unwords ∘ words <$> many (letter <|> space))
+              (pack ∘ rewords <$> many (letter <|> space))
           case findNounConverter word of
             Nothing →
               maybe (fail $ printf "unrecognized word \"%s\"" word)
@@ -374,23 +398,13 @@ makeSubstitutor lookupGendered lookupNeutered key =
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
 clearNullElements isNull = _Wrapped' %~ filter (not ∘ isNull)
 
-class TextIsNull α where
-  textIsNull ∷ α → Bool
-
-instance TextIsNull Text where
-  textIsNull = allSpaces
-
-instance TextIsNull SubText where
-  textIsNull (Literal t) = allSpaces t
-  textIsNull _ = False
-
-dropEmptyThingsFromStory ∷ TextIsNull α ⇒ GenStory α → GenStory α
+dropEmptyThingsFromStory ∷ GenText α ⇒ GenStory α → GenStory α
 dropEmptyThingsFromStory =
   (clearNullElements (nullOf events))
   ∘
   (quests %~ clearNullElements (nullOf paragraphs))
   ∘
-  (quests . events %~ clearNullElements (all textIsNull))
+  (quests . events %~ clearNullElements (all textIsAllSpaces))
 
 parseQuote ∷ String → [SubEvent]
 parseQuote =
@@ -475,9 +489,7 @@ renderParagraphToNodes paragraph =
       where
         nested = recurse p
     recurse (Merged children) = concatMap recurse children
-    recurse (Text_ t)
-      | allSpaces t = []
-      | otherwise = [NodeContent t]
+    recurse (Text_ t) = [NodeContent t]
 
 renderEventToNode ∷ Event → Node
 renderEventToNode =
