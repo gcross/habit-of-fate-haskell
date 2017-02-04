@@ -97,7 +97,7 @@ instance (Monad m, Serial m α) ⇒ Serial m (GenStory α) where
 header ∷ String → String
 header header = replicate left_dash_count '-' ⊕ " " ⊕ header ⊕ " " ⊕ replicate right_dash_count '-'
   where
-    dash_count = 80 - 2 - length header
+    dash_count = 80 - 2 - olength header
     right_dash_count = dash_count `div` 2
     left_dash_count = dash_count - right_dash_count
 
@@ -174,15 +174,15 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
     ]
   , testGroup "HabitOfFate.Story"
     [ testGroup "s"
-      [ testCase "just a substitution" $ length [s|{test}|] @?= 1
+      [ testCase "just a substitution" $ olength [s|{test}|] @?= 1
       , testCase "single story plain text" $
-          length [s|line1|] @?= 1
+          olength [s|line1|] @?= 1
       , testCase "2 stories: 1 empty, 1 non-empty" $
-          length [s|line1
+          olength [s|line1
                     =
                    |] @?= 1
       , testCase "2 stories: both non-empty" $
-          length [s|line1
+          olength [s|line1
                     =
                     line2
                    |] @?= 2

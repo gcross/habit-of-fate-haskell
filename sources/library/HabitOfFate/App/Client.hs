@@ -198,7 +198,7 @@ loop labels actions = void ∘ runExceptT $ do
   forever $ do
     command ← promptForCommand $
       printf "%s[%sq?]>"
-        (intercalate "|" ("HoF":labels))
+        (ointercalate "|" ("HoF":labels))
         (map (^. key) actions)
     case lookup command action_map of
       Nothing → unrecognizedCommand command

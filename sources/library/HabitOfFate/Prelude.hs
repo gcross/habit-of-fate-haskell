@@ -30,7 +30,6 @@ module HabitOfFate.Prelude
   , module Data.Maybe
   , module Data.Monoid
   , module Data.MonoTraversable
-  , module Data.MonoTraversable.Unprefixed
   , module Data.Sequence
   , module Data.Sequences
   , module Data.Set
@@ -165,11 +164,6 @@ import Data.Maybe hiding (catMaybes)
 import Data.Monoid
 
 import Data.MonoTraversable
-
-import Data.MonoTraversable.Unprefixed
-  ( intercalate
-  , length
-  )
 
 import Data.Sequence (Seq)
 

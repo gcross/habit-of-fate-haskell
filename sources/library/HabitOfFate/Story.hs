@@ -425,7 +425,7 @@ parseQuote =
       >=>
       (\case
         GenStory [quest] → return $ unwrapGenQuest quest
-        GenStory xs → fail $ printf "saw %i quests instead of 1" (length xs)
+        GenStory xs → fail $ printf "saw %i quests instead of 1" (olength xs)
       )
       ∘
       dropEmptyThingsFromStory
@@ -455,7 +455,7 @@ s_fixed = QuasiQuoter
       [x1,x2,x3,x4,x5,x6,x7,x8] → [|(x1,x2,x3,x4,x5,x6,x7,x8)|]
       [x1,x2,x3,x4,x5,x6,x7,x8,x9] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9)|]
       [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)|]
-      xs → error $ printf "saw %i events, which is too many (> 10)" (length xs)
+      xs → error $ printf "saw %i events, which is too many (> 10)" (olength xs)
     )
     ∘
     parseQuote
@@ -620,7 +620,7 @@ renderStoryToChunks =
                     <*> (null <$> use (l_ #pending_chunks))
                 unless (saw_spaces_last || current_word_is_empty) $ do
                   word ← repack <$> (l_ #current_word <<.= mempty)
-                  word_length ← (length word +) <$> (l_ #pending_length <<.= 0)
+                  word_length ← (olength word +) <$> (l_ #pending_length <<.= 0)
                   number_of_columns ← use (l_ #number_of_columns)
                   case number_of_columns of
                     0 → l_ #number_of_columns .= word_length
@@ -640,5 +640,5 @@ renderStoryToChunks =
           (do
             word ← repack <$> (l_ #current_word <<.= mempty)
             l_ #pending_chunks %= (|> formatting ⊕ chunk word)
-            l_ #pending_length += length word
+            l_ #pending_length += olength word
           )
