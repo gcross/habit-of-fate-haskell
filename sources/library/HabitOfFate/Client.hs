@@ -23,6 +23,7 @@ import System.IO.Error
 import Text.XML
 
 import HabitOfFate.Credits
+import HabitOfFate.Data
 import HabitOfFate.Habit
 import HabitOfFate.JSON
 import HabitOfFate.Story
@@ -168,15 +169,11 @@ getCredits =
   >>=
   (flip parseDoc $ Credits <$> retrieve "success" <*> retrieve "failure")
 
-markHabits ∷ [UUID] → [UUID] → Client ()
+markHabits ∷ [UUID] → [UUID] → Client Credits
 markHabits success_habits failure_habits =
-  void
-  ∘
-  requestWithBody "POST" "/mark"
-  $
-  runJSONCreator $ do
-    add "success" success_habits
-    add "failure" failure_habits
+  requestWithBody "POST" "/mark" (toJSON $ HabitsToMark success_habits failure_habits)
+  >>=
+  (flip parseDoc $ Credits <$> retrieve "success" <*> retrieve "failure")
 
 replaceHabit ∷ UUID → Habit → Client ()
 replaceHabit uuid habit =

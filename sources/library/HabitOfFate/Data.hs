@@ -88,3 +88,10 @@ stillHasCredits ∷ Data → Bool
 stillHasCredits d = (||)
   (d ^. game . credits . success /= 0)
   (d ^. game . credits . failure /= 0)
+
+data HabitsToMark = HabitsToMark
+  { _successes ∷ [UUID]
+  , _failures ∷ [UUID]
+  }
+deriveJSON ''HabitsToMark
+makeLenses ''HabitsToMark

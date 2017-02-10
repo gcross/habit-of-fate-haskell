@@ -239,10 +239,10 @@ mainLoop = loop [] $
        >>=
        liftC ∘ replaceHabit habit_id
     ,Action 'f' "Mark habits as failed." $
-       withCancel $ promptAndParse parseUUIDs "Which habits failed?" >>= liftC ∘ markHabits []
+       withCancel $ promptAndParse parseUUIDs "Which habits failed?" >>= void ∘ liftC ∘ markHabits []
     ,Action 'p' "Print habits." $ printHabits
     ,Action 's' "Mark habits as successful." $
-       withCancel $ promptAndParse parseUUIDs "Which habits succeeded?" >>= liftC ∘ flip markHabits []
+       withCancel $ promptAndParse parseUUIDs "Which habits succeeded?" >>= void ∘ liftC ∘ flip markHabits []
     ]
   ,Action 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"

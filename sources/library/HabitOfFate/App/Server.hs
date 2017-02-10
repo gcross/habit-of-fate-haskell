@@ -199,29 +199,28 @@ makeApp filepath = do
             addObject "links" ∘ add "self" $ url
     Scotty.get "/mark" $ do
       d ← liftIO $ readTVarIO data_var
-      json ∘ runJSONCreator $ do
-        add "success" (d ^. game . credits . success)
-        add "failure" (d ^. game . credits . failure)
+      json $ d ^. game . credits
     Scotty.post "/mark" $ do
-      doc ← jsonData
-      act' $ do
-        (success_habits, failure_habits) ← runJSONParserAction doc $
-          (,) <$> retrieve "success" <*> retrieve "failure"
-        let markHabits uuids habit_credits game_credits =
-              mapM lookupHabit uuids
-              >>=
-              lift
-                ∘
-                modifyTVar' data_var
-                ∘
-                (game . game_credits +~)
-                ∘
-                sum
-                ∘
-                map (^. habit_credits)
-        markHabits success_habits (credits . success) (credits . success)
-        markHabits failure_habits (credits . failure) (credits . failure)
+      marks ← jsonData
+      act $ do
+        let markHabits ∷ [UUID] → (Lens' Credits Double) → ServerAction Double
+            markHabits uuids which_credits = do
+              habits ← mapM lookupHabit uuids
+              lift $ do
+                new_credits ←
+                  (+ sum (map (view $ credits . which_credits) habits))
+                  ∘
+                  view (game . credits . which_credits)
+                  <$>
+                  readTVar data_var
+                modifyTVar' data_var $ game . credits . which_credits .~ new_credits
+                return new_credits
+        new_credits ←
+          Credits
+            <$> markHabits (marks ^. successes) success
+            <*> markHabits (marks ^. failures ) failure
         lift $ submitWriteDataRequest
+        return $ json new_credits
     Scotty.post "/run" $
       (liftIO ∘ atomically $ do
         d ← readTVar data_var
