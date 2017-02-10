@@ -34,6 +34,7 @@ import Text.Read (readEither, readMaybe)
 import Text.XML
 
 import HabitOfFate.Client
+import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
@@ -215,8 +216,10 @@ mainLoop = loop [] $
     [Action 'a' "Add a habit." ∘ withCancel $ do
       Habit
         <$> prompt "What is the name of the habit?"
-        <*> promptWithDefault' 1.0 "How many credits is a success worth?"
-        <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
+        <*> (Credits
+              <$> promptWithDefault' 1.0 "How many credits is a success worth?"
+              <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
+            )
       >>=
       void ∘ liftC ∘ createHabit
     ,Action 'e' "Edit a habit." ∘ withCancel $ do
@@ -229,8 +232,10 @@ mainLoop = loop [] $
           return
       Habit
         <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
-        <*> promptWithDefault' (old_habit ^. success_credits) "How many credits is a success worth?"
-        <*> promptWithDefault' (old_habit ^. failure_credits) "How many credits is a failure worth?"
+        <*> (Credits
+             <$> promptWithDefault' (old_habit ^. credits . success) "How many credits is a success worth?"
+             <*> promptWithDefault' (old_habit ^. credits . failure) "How many credits is a failure worth?"
+            )
        >>=
        liftC ∘ replaceHabit habit_id
     ,Action 'f' "Mark habits as failed." $
@@ -244,9 +249,9 @@ mainLoop = loop [] $
       printHabits
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
-      (success_credits, failure_credits) ← liftC getCredits
-      liftIO $ printf "    Success credits: %f\n" success_credits
-      liftIO $ printf "    Failure credits: %f\n" failure_credits
+      credits ← liftC getCredits
+      liftIO $ printf "    Success credits: %f\n" (credits ^. success)
+      liftIO $ printf "    Failure credits: %f\n" (credits ^. failure)
   ,Action 'r' "Run game." $ do
       story ← liftC runGame
       printer ← liftIO byteStringMakerFromEnvironment
@@ -270,8 +275,8 @@ mainLoop = loop [] $
             printf "%s %s [+%f/-%f]\n"
               (show uuid)
               (habit ^. name)
-              (habit ^. success_credits)
-              (habit ^. failure_credits)
+              (habit ^. credits . success)
+              (habit ^. credits . failure)
 
 habitMain ∷ IO ()
 habitMain =

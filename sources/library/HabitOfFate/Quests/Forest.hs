@@ -18,6 +18,7 @@ module HabitOfFate.Quests.Forest where
 
 import HabitOfFate.Prelude hiding (State)
 
+import HabitOfFate.Credits
 import HabitOfFate.Game
 import HabitOfFate.Quest
 import HabitOfFate.Story
@@ -321,7 +322,7 @@ run ∷ ForestAction ()
 run = do
   spendCredits
     (quest . credits_until_failure)
-    (game . failure_credits)
+    (game . credits . failure)
     >>=
     \case
       SomethingHappened → lost
@@ -329,7 +330,7 @@ run = do
       NoCredits → return ()
   spendCredits
     (quest . credits_until_success)
-    (game . success_credits)
+    (game . credits . success)
     >>=
     \case
       SomethingHappened → (use $ quest . herb_found) >>= bool found won

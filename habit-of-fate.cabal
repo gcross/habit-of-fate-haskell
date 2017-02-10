@@ -54,6 +54,7 @@ library
   exposed-modules:     HabitOfFate.App.Client
                      , HabitOfFate.App.Server
                      , HabitOfFate.Client
+                     , HabitOfFate.Credits
                      , HabitOfFate.Data
                      , HabitOfFate.Game
                      , HabitOfFate.Habit

@@ -21,6 +21,7 @@ import System.Directory
 import System.Environment
 import System.FilePath
 
+import HabitOfFate.Credits
 import HabitOfFate.Game
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
@@ -85,5 +86,5 @@ getDataFilePath =
 
 stillHasCredits ∷ Data → Bool
 stillHasCredits d = (||)
-  (d ^. game . Game.success_credits /= 0)
-  (d ^. game . Game.failure_credits /= 0)
+  (d ^. game . credits . success /= 0)
+  (d ^. game . credits . failure /= 0)

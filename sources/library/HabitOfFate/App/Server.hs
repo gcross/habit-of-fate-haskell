@@ -33,6 +33,7 @@ import System.Random
 import Web.Scotty
 import qualified Web.Scotty as Scotty
 
+import HabitOfFate.Credits
 import HabitOfFate.Data hiding (_habits)
 import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
@@ -199,8 +200,8 @@ makeApp filepath = do
     Scotty.get "/mark" $ do
       d ← liftIO $ readTVarIO data_var
       json ∘ runJSONCreator $ do
-        add "success" (d ^. game . Game.success_credits)
-        add "failure" (d ^. game . Game.failure_credits)
+        add "success" (d ^. game . credits . success)
+        add "failure" (d ^. game . credits . failure)
     Scotty.post "/mark" $ do
       doc ← jsonData
       act' $ do
@@ -218,8 +219,8 @@ makeApp filepath = do
                 sum
                 ∘
                 map (^. habit_credits)
-        markHabits success_habits success_credits Game.success_credits
-        markHabits failure_habits failure_credits Game.failure_credits
+        markHabits success_habits (credits . success) (credits . success)
+        markHabits failure_habits (credits . failure) (credits . failure)
         lift $ submitWriteDataRequest
     Scotty.post "/run" $
       (liftIO ∘ atomically $ do

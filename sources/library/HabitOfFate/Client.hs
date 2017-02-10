@@ -22,6 +22,7 @@ import System.Log.Logger
 import System.IO.Error
 import Text.XML
 
+import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.JSON
 import HabitOfFate.Story
@@ -161,11 +162,11 @@ fetchHabits =
     )
   )
 
-getCredits ∷ Client (Double, Double)
+getCredits ∷ Client Credits
 getCredits =
   request "GET" "/mark"
   >>=
-  (flip parseDoc $ (,) <$> retrieve "success" <*> retrieve "failure")
+  (flip parseDoc $ Credits <$> retrieve "success" <*> retrieve "failure")
 
 markHabits ∷ [UUID] → [UUID] → Client ()
 markHabits success_habits failure_habits =

@@ -29,6 +29,7 @@ import Test.SmallCheck.Series
 
 import HabitOfFate.App.Server
 import HabitOfFate.Client
+import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
@@ -116,8 +117,8 @@ initialize = do
     ∘
     setHandlers [file_handler]
 
-test_habit = Habit "name" 1 1
-test_habit_2 = Habit "test" 2 2
+test_habit = Habit "name" (Credits 1 1)
+test_habit_2 = Habit "test" (Credits 2 2)
 
 originalFromSubParagraph ∷ SubParagraph → Text
 originalFromSubParagraph =
@@ -170,7 +171,7 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
         uuid_1 ← createHabit test_habit
         uuid_2 ← createHabit test_habit_2
         markHabits [uuid_1] [uuid_2]
-        getCredits >>= liftIO ∘ (@?= (1,2))
+        getCredits >>= liftIO ∘ (@?= Credits 1 2)
     ]
   , testGroup "HabitOfFate.Story"
     [ testGroup "s"

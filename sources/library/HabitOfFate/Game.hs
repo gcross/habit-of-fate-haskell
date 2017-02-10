@@ -16,16 +16,19 @@ import HabitOfFate.Prelude
 import Control.Monad.Random hiding (split, uniform)
 import qualified Control.Monad.Random as Random
 
+import HabitOfFate.Credits
 import HabitOfFate.Story
 import HabitOfFate.TH
 
 data GameState = GameState
   { _belief ∷ Int
-  , _success_credits ∷ Double
-  , _failure_credits ∷ Double
+  , __credits ∷ Credits
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''GameState
 makeLenses ''GameState
+
+instance HasCredits GameState where
+  credits = _credits
 
 newtype Game α =
     Game { unwrapGame ∷ StateT GameState (WriterT (Seq Paragraph) (Rand StdGen)) α }
@@ -55,7 +58,7 @@ instance MonadGame m ⇒ MonadGame (StateT s m) where
   addParagraph = lift . addParagraph
 
 newGame ∷ GameState
-newGame = GameState 0 0 0
+newGame = GameState 0 (Credits 0 0)
 
 runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
 runGame state =
