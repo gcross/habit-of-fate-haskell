@@ -8,29 +8,21 @@ module HabitOfFate.Client where
 
 import HabitOfFate.Prelude
 
-import Control.Exception
 import Control.Monad.Catch
 import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Text as Text
 import Data.Typeable
 import Data.UUID (UUID, fromText, toText)
+import qualified Data.UUID as UUID
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (Status(..))
-import System.Log.Logger
-import System.IO.Error
 import Text.XML
 
 import HabitOfFate.Credits
 import HabitOfFate.Data
 import HabitOfFate.Habit
-import HabitOfFate.JSON
 import HabitOfFate.Story
-
-decodeUtf8Lazy = decodeUtf8 ∘ (^. strict)
-
-debug = liftIO ∘ debugM "HabitOfFate.Client" ∘ unpack
 
 data ServerInfo = ServerInfo
   { _hostname ∷ ByteString
@@ -40,23 +32,8 @@ makeLenses ''ServerInfo
 
 type Client = ReaderT ServerInfo IO
 
-data ClientException = ClientException Int String deriving (Eq, Typeable)
-
-instance Show ClientException where
-  show (ClientException code message) =
-    printf "Received unexpected response code %i: %s" code message
-
-instance Exception ClientException where
-
-expectSuccess ∷ Response α → Client ()
-expectSuccess response =
-  unless (code >= 200 && code <= 299)
-  ∘
-  throwM
-  $
-  ClientException code (unpack $ decodeUtf8 message)
-  where
-    Status code message = getResponseStatus response
+decodeUtf8InResponse ∷ Response LBS.ByteString → Text
+decodeUtf8InResponse = decodeUtf8 ∘ LBS.toStrict ∘ getResponseBody
 
 pathToHabit ∷ UUID → Text
 pathToHabit = ("/habits/" ⊕) ∘ toText
@@ -76,74 +53,77 @@ makeRequest method path = do
     $
     defaultRequest
 
-parseDoc ∷ FromJSON α ⇒ Response LBS.ByteString → Client α
-parseDoc response =
-  case eitherDecode (getResponseBody response) of
-    Left error_message →
-      fail
-      $
-      printf "Failed parsing JSON with error message %s: %s"
-        error_message
-        (decodeUtf8Lazy ∘ getResponseBody $ response ∷ Text)
-    Right value → return value
+data InvalidJSON = InvalidJSON String deriving (Typeable)
+instance Show InvalidJSON where
+  show (InvalidJSON doc) = "Invalid JSON: " ⊕ show doc
+instance Exception InvalidJSON where
 
-request ∷ Text → Text → Client (Response LBS.ByteString)
-request method path = do
-  response ← makeRequest method path >>= httpLBS
-  expectSuccess response
-  return response
-
-requestMaybe ∷ Text → Text → Client (Maybe (Response LBS.ByteString))
-requestMaybe method path = do
-  response ← makeRequest method path >>= httpLBS
-  if statusCode (getResponseStatus response) == 404
-    then return Nothing
-    else do
-      expectSuccess response
-      return ∘ Just $ response
-
-requestWithBody ∷ Text → Text → Value → Client (Response LBS.ByteString)
-requestWithBody method path value = do
-  response ←
-    (makeRequest method path <&> setRequestBodyJSON value)
-    >>=
-    httpLBS
-  expectSuccess response
-  return response
-
-postHabit ∷ Habit → Client UUID
-postHabit habit =
-  requestWithBody "POST" "/habits" (toJSON habit)
-  >>=
-  (\body →
-    maybe
-      (fail $ printf "Error parsing UUID: %s" body)
-      return
-    $
-    fromText body
-  )
+parseResponseBody ∷ FromJSON α ⇒ Response LBS.ByteString → Client α
+parseResponseBody =
+  either (throwM ∘ InvalidJSON) return
   ∘
-  decodeUtf8Lazy
+  eitherDecode'
   ∘
   getResponseBody
 
+data UnexpectedStatus = UnexpectedStatus Status deriving (Typeable)
+instance Show UnexpectedStatus where
+  show (UnexpectedStatus status) = "Unexpected status: " ⊕ show status
+instance Exception UnexpectedStatus where
+
+sendRequest ∷ [Int] → Request → Client (Response LBS.ByteString)
+sendRequest expected_codes =
+  liftIO ∘ httpLBS
+  >=>
+  (\response →
+    if getResponseStatusCode response ∈ expected_codes
+      then return response
+      else throwM ∘ UnexpectedStatus ∘ getResponseStatus $ response
+  )
+
+request ∷ Text → Text → [Int] → Client (Response LBS.ByteString)
+request method path expected_codes = do
+  makeRequest method path
+  >>=
+  sendRequest expected_codes
+
+requestWithJSON ∷ ToJSON α ⇒ Text → Text → [Int] → α → Client (Response LBS.ByteString)
+requestWithJSON method path expected_codes value = do
+  (makeRequest method path <&> setRequestBodyJSON value)
+  >>=
+  sendRequest expected_codes
+
+postHabit ∷ Habit → Client UUID
+postHabit habit =
+  requestWithJSON "POST" "/habits" [200,201] habit
+  <&>
+  \response →
+    if UUID.null (habit ^. uuid)
+      then
+        let uuid_text = decodeUtf8InResponse response
+        in fromMaybe (error $ "Invalid UUID: " ⊕ show uuid_text) (fromText uuid_text)
+      else habit ^. uuid
+
 deleteHabit ∷ UUID → Client ()
-deleteHabit uuid =
-  void $ request "DELETE" (pathToHabit uuid)
+deleteHabit habit_id =
+  void $ request "DELETE" (pathToHabit habit_id) [204]
 
 fetchHabit ∷ UUID → Client (Maybe Habit)
-fetchHabit uuid = do
-  requestMaybe "GET" (pathToHabit uuid)
-  >>=
-  \case
-    Nothing → return Nothing
-    Just response → do
-      debug $ "Result of fetch was " ⊕ (decodeUtf8Lazy ∘ getResponseBody $ response)
-      parseDoc response
+fetchHabit habit_id =
+  (
+    request "GET" (pathToHabit habit_id) [200]
+    >>=
+    parseResponseBody
+  )
+  `catch`
+  \e@(UnexpectedStatus status) →
+    if statusCode status == 404
+      then return Nothing
+      else throwM e
 
 fetchHabits ∷ Client (Map UUID Habit)
 fetchHabits =
-  request "GET" "/habits"
+  request "GET" "/habits" [200]
   >>=
   fmap (
     mapFromList
@@ -151,29 +131,21 @@ fetchHabits =
     map (view uuid &&& identity)
   )
   ∘
-  parseDoc
+  parseResponseBody
 
 getCredits ∷ Client Credits
-getCredits = request "GET" "/mark" >>= parseDoc
+getCredits = request "GET" "/mark" [200] >>= parseResponseBody
 
 markHabits ∷ [UUID] → [UUID] → Client Credits
 markHabits success_habits failure_habits =
-  requestWithBody "POST" "/mark" (toJSON $ HabitsToMark success_habits failure_habits)
+  requestWithJSON "POST" "/mark" [200] (HabitsToMark success_habits failure_habits)
   >>=
-  parseDoc
+  parseResponseBody
 
 runGame ∷ Client Story
 runGame =
-  request "POST" "/run"
+  request "POST" "/run" [200]
   >>=
-  either throwM return
-  ∘
-  (
-    parseLBS def
-    >=>
-    (_Left %~ (toException ∘ userError))
-    ∘
-    parseStoryFromDocument
-  )
-  ∘
-  getResponseBody
+  either throwM return ∘ parseText def ∘ decodeUtf8 ∘ getResponseBody
+  >>=
+  either error return ∘ parseStoryFromDocument
