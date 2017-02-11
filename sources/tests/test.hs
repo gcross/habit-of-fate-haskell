@@ -12,6 +12,7 @@ import HabitOfFate.Prelude hiding (elements)
 import Control.Concurrent
 import Control.Lens.Extras
 import qualified Data.Map as Map
+import qualified Data.UUID as UUID
 import Network.Wai.Handler.Warp
 import System.Directory
 import System.FilePath
@@ -117,8 +118,8 @@ initialize = do
     ∘
     setHandlers [file_handler]
 
-test_habit = Habit "name" (Credits 1 1)
-test_habit_2 = Habit "test" (Credits 2 2)
+test_habit = Habit (read "95bef3cf-9031-4f64-8458-884aa6781563") "name" (Credits 1 1)
+test_habit_2 = Habit UUID.nil "test" (Credits 2 2)
 
 originalFromSubParagraph ∷ SubParagraph → Text
 originalFromSubParagraph =
@@ -150,26 +151,35 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
         fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
         >>=
         liftIO ∘ (@?= Nothing)
-    , serverTestCase "Create and fetch a habit" $
-        createHabit test_habit
-        >>=
-        fetchHabit
-        >>=
-        liftIO ∘ (@?= Just test_habit)
+    , testGroup "Create and fetch a habit"
+      [ serverTestCase "With a non-blank UUID" $ do
+          habit_id ← postHabit test_habit
+          liftIO $ habit_id @?= (test_habit ^. uuid)
+          fetchHabit habit_id >>= liftIO ∘ (@?= Just test_habit)
+      , serverTestCase "With a blank UUID" $ do
+          habit_id ← postHabit test_habit_2
+          liftIO
+            ∘
+            assertBool "habit id was not nil"
+            $
+            habit_id /= test_habit_2 ^. uuid
+          fetchHabit habit_id >>= liftIO ∘ (@?= Just test_habit_2)
+      ]
     , serverTestCase "Create a habit and fetch all habits" $ do
-        uuid ← createHabit test_habit
-        fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit)
+        habit_id ← postHabit test_habit
+        fetchHabits >>= liftIO ∘ (@?= Map.singleton habit_id test_habit)
     , serverTestCase "Create a habit, delete it, and fetch all habits" $ do
-        uuid ← createHabit test_habit
+        uuid ← postHabit test_habit
         deleteHabit uuid
         fetchHabits >>= liftIO ∘ (@?= Map.empty)
     , serverTestCase "Create a habit, replace it, and fetch all habits" $ do
-        uuid ← createHabit test_habit
-        replaceHabit uuid test_habit_2
-        fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid test_habit_2)
+        uuid ← postHabit test_habit
+        let new_habit = test_habit & name .~ "new name"
+        postHabit new_habit
+        fetchHabits >>= liftIO ∘ (@?= Map.singleton uuid new_habit)
     , serverTestCase "Mark habits." $ do
-        uuid_1 ← createHabit test_habit
-        uuid_2 ← createHabit test_habit_2
+        uuid_1 ← postHabit test_habit
+        uuid_2 ← postHabit test_habit_2
         markHabits [uuid_1] [uuid_2]
         getCredits >>= liftIO ∘ (@?= Credits 1 2)
     ]

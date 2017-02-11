@@ -27,6 +27,7 @@ import qualified Data.ByteString as BS
 import Data.Char
 import qualified Data.Text.IO as S
 import Data.UUID (UUID)
+import qualified Data.UUID as UUID
 import Rainbow.Translate
 import System.IO
 import System.IO.Error (isEOFError)
@@ -215,13 +216,14 @@ mainLoop = loop [] $
   [Action 'h' "Edit habits." ∘ loop ["Habits"] $
     [Action 'a' "Add a habit." ∘ withCancel $ do
       Habit
-        <$> prompt "What is the name of the habit?"
+        <$> pure UUID.nil
+        <*> prompt "What is the name of the habit?"
         <*> (Credits
               <$> promptWithDefault' 1.0 "How many credits is a success worth?"
               <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
             )
       >>=
-      void ∘ liftC ∘ createHabit
+      void ∘ liftC ∘ postHabit
     ,Action 'e' "Edit a habit." ∘ withCancel $ do
       habit_id ← promptAndParse parseUUID "Which habit?"
       old_habit ←
@@ -231,13 +233,14 @@ mainLoop = loop [] $
           (printAndCancel "No such habit.")
           return
       Habit
-        <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
+        <$> pure (old_habit ^. uuid)
+        <*> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
         <*> (Credits
              <$> promptWithDefault' (old_habit ^. credits . success) "How many credits is a success worth?"
              <*> promptWithDefault' (old_habit ^. credits . failure) "How many credits is a failure worth?"
             )
        >>=
-       liftC ∘ replaceHabit habit_id
+       void ∘ liftC ∘ postHabit
     ,Action 'f' "Mark habits as failed." $
        withCancel $ promptAndParse parseUUIDs "Which habits failed?" >>= void ∘ liftC ∘ markHabits []
     ,Action 'p' "Print habits." $ printHabits

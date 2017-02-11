@@ -109,14 +109,15 @@ requestWithBody method path value = do
   expectSuccess response
   return response
 
-createHabit ∷ Habit → Client UUID
-createHabit habit = do
+postHabit ∷ Habit → Client UUID
+postHabit habit = do
   response ←
-    requestWithBody "PUT" "/habits"
+    requestWithBody "POST" "/habits"
     $
     runJSONCreator $ do
       addObject "data" $ do
         addText "type" "habit"
+        add "id" (habit ^. uuid)
         add "attributes" habit
   case getResponseHeader "Location" response of
     [] → failParse "No location returned for created habit."
@@ -174,17 +175,6 @@ markHabits success_habits failure_habits =
   requestWithBody "POST" "/mark" (toJSON $ HabitsToMark success_habits failure_habits)
   >>=
   (flip parseDoc $ Credits <$> retrieve "success" <*> retrieve "failure")
-
-replaceHabit ∷ UUID → Habit → Client ()
-replaceHabit uuid habit =
-  void
-  ∘
-  requestWithBody "PUT" (pathToHabit uuid)
-  $
-  runJSONCreator $ do
-    addObject "data" $ do
-      addText "type" "habit"
-      add "attributes" habit
 
 runGame ∷ Client Story
 runGame =

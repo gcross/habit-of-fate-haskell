@@ -24,6 +24,7 @@ import Control.Concurrent.STM
 import Control.DeepSeq
 import Data.Aeson hiding ((.=), json)
 import Data.UUID
+import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
@@ -148,52 +149,31 @@ makeApp filepath = do
             add "id" habit_id
             addText "type" "habit"
             add "attributes" habit
-    Scotty.put "/habits/:id" $ do
-      doc ← jsonData
-      HabitId habit_id ← param "id"
-      info $ "Replacing habit " ⊕ show habit_id
-      act' $
-        (runJSONParserAction doc ∘ retrieveObject "data" $ do
-          checkTypeIs "habit"
-          checkIdIfPresentIs habit_id
-          retrieve "attributes"
-        )
-        >>=
-        withHabit habit_id ∘ const ∘ Just
     Scotty.delete "/habits/:id" $ do
       HabitId habit_id ← param "id"
       act $ do
         withHabit habit_id ∘ const $ Nothing
         return $ status noContent204
-    Scotty.put "/habits" $ do
+    Scotty.post "/habits" $ do
       doc ← jsonData
       random_uuid ← liftIO randomIO
       act $ do
-        (maybe_uuid, habit) ← runJSONParserAction doc ∘ retrieveObject "data" $ do
+        habit ← runJSONParserAction doc ∘ retrieveObject "data" $ do
           checkTypeIs "habit"
-          (,) <$> retrieveMaybe "id" <*> retrieve "attributes"
-        d ← lift $ readTVar data_var
-        uuid ← case maybe_uuid of
-          Nothing → return random_uuid
-          Just uuid →
-            if member uuid (d ^. habits)
-              then
-                throwActionErrorWithMessage conflict409
-                ∘
-                pack
-                $
-                printf "A habit with id %s already exists" (show uuid)
-              else return uuid
+          retrieve "attributes"
+        let habit_id
+              | UUID.null (habit ^. uuid) = random_uuid
+              | otherwise = habit ^. uuid
         lift $ do
-          writeTVar data_var $ d & habits . at uuid .~ Just habit
+          modifyTVar' data_var $ habits . at habit_id .~ Just habit
           submitWriteDataRequest
         return $ do
-          info $ "Created habit " ⊕ show uuid
-          let url = url_prefix ⊕ "habit/" ⊕ toText uuid
+          info $ "Posted habit " ⊕ show habit_id
+          let url = url_prefix ⊕ "habit/" ⊕ toText habit_id
           addHeader "Location" ∘ (^. from strict) $ url
           status created201
           json ∘ runJSONCreator ∘ addObject "data" $ do
-            add "id" uuid
+            add "id" habit_id
             addText "type" "habit"
             add "attributes" habit
             addObject "links" ∘ add "self" $ url

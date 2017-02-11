@@ -6,13 +6,16 @@
 
 module HabitOfFate.Habit where
 
-import Control.Lens hiding ((.=))
+import Control.Lens
+import Data.UUID
 
 import HabitOfFate.Credits
+import HabitOfFate.JSON ()
 import HabitOfFate.TH
 
 data Habit = Habit
-  { _name ∷ String
+  { _uuid ∷ UUID
+  , _name ∷ String
   , __credits ∷ Credits
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
