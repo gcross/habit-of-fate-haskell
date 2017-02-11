@@ -58,9 +58,6 @@ expectSuccess response =
   where
     Status code message = getResponseStatus response
 
-failParse ∷ String → Client α
-failParse = fail ∘ ("Failed parse: " ⊕)
-
 pathToHabit ∷ UUID → Text
 pathToHabit = ("/habits/" ⊕) ∘ toText
 
@@ -79,11 +76,16 @@ makeRequest method path = do
     $
     defaultRequest
 
-parseDoc ∷ Response LBS.ByteString → JSONParser α → Client α
-parseDoc response parser =
+parseDoc ∷ FromJSON α ⇒ Response LBS.ByteString → Client α
+parseDoc response =
   case eitherDecode (getResponseBody response) of
-    Left error_message → failParse error_message
-    Right doc → either failParse return ∘ runJSONParser doc $ parser
+    Left error_message →
+      fail
+      $
+      printf "Failed parsing JSON with error message %s: %s"
+        error_message
+        (decodeUtf8Lazy ∘ getResponseBody $ response ∷ Text)
+    Right value → return value
 
 request ∷ Text → Text → Client (Response LBS.ByteString)
 request method path = do
@@ -110,26 +112,20 @@ requestWithBody method path value = do
   return response
 
 postHabit ∷ Habit → Client UUID
-postHabit habit = do
-  response ←
-    requestWithBody "POST" "/habits"
+postHabit habit =
+  requestWithBody "POST" "/habits" (toJSON habit)
+  >>=
+  (\body →
+    maybe
+      (fail $ printf "Error parsing UUID: %s" body)
+      return
     $
-    runJSONCreator $ do
-      addObject "data" $ do
-        addText "type" "habit"
-        add "id" (habit ^. uuid)
-        add "attributes" habit
-  case getResponseHeader "Location" response of
-    [] → failParse "No location returned for created habit."
-    [url] →
-      let url_as_text = decodeUtf8 url
-      in case fromText ∘ Text.takeWhileEnd (/= '/') $ url_as_text of
-        Nothing →
-          failParse
-          $
-          "Last part of location did not end with a UUID: " ⊕ (url_as_text ^. from packed)
-        Just uuid → return uuid
-    _ → failParse "Multiple locations returned for created habit."
+    fromText body
+  )
+  ∘
+  decodeUtf8Lazy
+  ∘
+  getResponseBody
 
 deleteHabit ∷ UUID → Client ()
 deleteHabit uuid =
@@ -143,38 +139,28 @@ fetchHabit uuid = do
     Nothing → return Nothing
     Just response → do
       debug $ "Result of fetch was " ⊕ (decodeUtf8Lazy ∘ getResponseBody $ response)
-      parseDoc response ∘ retrieveObject "data" $ do
-        checkTypeIs "habit"
-        checkIdIfPresentIs uuid
-        retrieve "attributes"
+      parseDoc response
 
 fetchHabits ∷ Client (Map UUID Habit)
 fetchHabits =
-  mapFromList
-  <$>
-  (
-    request "GET" "/habits"
-    >>=
-    (flip parseDoc
-      ∘
-      retrieveObjects "data"
-      $
-      do checkTypeIs "habit"
-         (,) <$> retrieve "id" <*> retrieve "attributes"
-    )
+  request "GET" "/habits"
+  >>=
+  fmap (
+    mapFromList
+    ∘
+    map (view uuid &&& identity)
   )
+  ∘
+  parseDoc
 
 getCredits ∷ Client Credits
-getCredits =
-  request "GET" "/mark"
-  >>=
-  (flip parseDoc $ Credits <$> retrieve "success" <*> retrieve "failure")
+getCredits = request "GET" "/mark" >>= parseDoc
 
 markHabits ∷ [UUID] → [UUID] → Client Credits
 markHabits success_habits failure_habits =
   requestWithBody "POST" "/mark" (toJSON $ HabitsToMark success_habits failure_habits)
   >>=
-  (flip parseDoc $ Credits <$> retrieve "success" <*> retrieve "failure")
+  parseDoc
 
 runGame ∷ Client Story
 runGame =

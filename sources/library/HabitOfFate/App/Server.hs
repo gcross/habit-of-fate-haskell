@@ -22,7 +22,6 @@ import HabitOfFate.Prelude
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
-import Data.Aeson hiding ((.=), json)
 import Data.UUID
 import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status
@@ -36,9 +35,8 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Credits
 import HabitOfFate.Data hiding (_habits)
-import qualified HabitOfFate.Game as Game
+import HabitOfFate.Game
 import HabitOfFate.Habit
-import HabitOfFate.JSON
 import HabitOfFate.Story
 
 newtype HabitId = HabitId UUID
@@ -75,14 +73,6 @@ throwActionErrorWithMessage code message = throwError $ ActionError code (Just m
 hasId ∷ Getter α UUID → UUID → α → Bool
 hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
 
-runJSONParserAction ∷ Value → JSONParser α → ServerAction α
-runJSONParserAction value action =
-  either
-    (throwActionErrorWithMessage badRequest400 ∘ pack)
-    return
-  $
-  runJSONParser value action
-
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
   let url_prefix = "http://localhost:8081/" ∷ Text
@@ -108,7 +98,7 @@ makeApp filepath = do
   let withHabit ∷ UUID → (Habit → Maybe Habit) → ServerAction ()
       withHabit habit_id f = do
         d ← lift $ readTVar data_var
-        case d ^. habits . at habit_id of
+        case lookup habit_id (d ^. habits) of
           Nothing → throwActionErrorWithMessage notFound404 ∘ toText $ habit_id
           Just habit → lift ∘ modifyTVar' data_var $ habits . at habit_id .~ f habit
       lookupHabit ∷ UUID → ServerAction Habit
@@ -122,45 +112,20 @@ makeApp filepath = do
     Scotty.get "/habits" $ do
       liftIO (readTVarIO data_var)
       >>=
-      json
-      ∘
-      (\hs → runJSONCreator $ do
-        addObject "links" ∘ add "self" $ url_prefix ⊕ "habits"
-        add "data" $
-          fmap
-           (\(uuid, habit) → runJSONCreator $ do
-             add "id" uuid
-             addText "type" "habit"
-             add "attributes" habit
-           )
-           (mapToList hs)
-      )
-      ∘
-      (^. habits)
+      json ∘ toList ∘ view habits
     Scotty.get "/habits/:id" $ do
       HabitId habit_id ← param "id"
       info $ "Fetching habit " ⊕ show habit_id
-      let url = url_prefix ⊕ "habits/" ⊕ toText habit_id
-      act $ do
-        habit ← lookupHabit habit_id
-        return ∘ json ∘ runJSONCreator $ do
-          addObject "links" ∘ add "self" $ url
-          addObject "data" $ do
-            add "id" habit_id
-            addText "type" "habit"
-            add "attributes" habit
+      act ∘ fmap json ∘ lookupHabit $ habit_id
     Scotty.delete "/habits/:id" $ do
       HabitId habit_id ← param "id"
       act $ do
         withHabit habit_id ∘ const $ Nothing
         return $ status noContent204
     Scotty.post "/habits" $ do
-      doc ← jsonData
+      habit ← jsonData
       random_uuid ← liftIO randomIO
       act $ do
-        habit ← runJSONParserAction doc ∘ retrieveObject "data" $ do
-          checkTypeIs "habit"
-          retrieve "attributes"
         let habit_id
               | UUID.null (habit ^. uuid) = random_uuid
               | otherwise = habit ^. uuid
@@ -172,11 +137,7 @@ makeApp filepath = do
           let url = url_prefix ⊕ "habit/" ⊕ toText habit_id
           addHeader "Location" ∘ (^. from strict) $ url
           status created201
-          json ∘ runJSONCreator ∘ addObject "data" $ do
-            add "id" habit_id
-            addText "type" "habit"
-            add "attributes" habit
-            addObject "links" ∘ add "self" $ url
+          Scotty.text ∘ view (from strict) ∘ UUID.toText $ habit_id
     Scotty.get "/mark" $ do
       d ← liftIO $ readTVarIO data_var
       json $ d ^. game . credits
