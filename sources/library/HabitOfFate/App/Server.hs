@@ -64,12 +64,16 @@ act =
   either throwError return
 
 type HabitAPI =
-       "habits" :> Get '[JSON] [Habit]
-  :<|> "habits" :> Capture "habit_id" UUID :> Get '[JSON] Habit
-  :<|> "habits" :> Capture "habit_id" UUID :> DeleteNoContent '[JSON] NoContent
-  :<|> "habits" :> ReqBody '[JSON] Habit :> Post '[PlainText] Text
-  :<|> "mark" :> Get '[JSON] Credits
-  :<|> "mark" :> ReqBody '[JSON] HabitsToMark :> Post '[JSON] Credits
+       "habits" :>
+  (      Get '[JSON] [Habit]
+    :<|> Capture "habit_id" UUID :> Get '[JSON] Habit
+    :<|> Capture "habit_id" UUID :> DeleteNoContent '[JSON] NoContent
+    :<|> ReqBody '[JSON] Habit :> Post '[PlainText] Text
+  )
+  :<|> "mark" :>
+  (      Get '[JSON] Credits
+    :<|> ReqBody '[JSON] HabitsToMark :> Post '[JSON] Credits
+  )
   :<|> "run" :> Post '[PlainText] LazyText.Text
 habitAPI ∷ Proxy HabitAPI
 habitAPI = Proxy
@@ -181,12 +185,8 @@ makeApp filepath = do
           s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
          )
   return ∘ serve habitAPI $
-         getHabits
-    :<|> getHabit
-    :<|> deleteHabit
-    :<|> postHabit
-    :<|> getCredits
-    :<|> markHabits
+         (getHabits :<|> getHabit :<|> deleteHabit :<|> postHabit)
+    :<|> (getCredits :<|> markHabits)
     :<|> runGame
 
 habitMain ∷ IO ()
