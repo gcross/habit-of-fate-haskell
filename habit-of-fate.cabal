@@ -24,7 +24,7 @@ library
                      , filepath
                      , hslogger
                      , http-api-data
-                     , http-conduit
+                     , http-client
                      , http-types
                      , labels
                      , monad-control

@@ -282,13 +282,14 @@ mainLoop = loop [] $
               (habit ^. credits . failure)
 
 habitMain ∷ IO ()
-habitMain =
+habitMain = do
+  server_info ← newServerInfo "localhost" 8081
   void
-  ∘
-  flip runReaderT (ServerInfo "localhost" 8081)
-  ∘
-  runExceptT
-  ∘
-  unwrapActionMonad
-  $
-  mainLoop
+    ∘
+    flip runReaderT server_info
+    ∘
+    runExceptT
+    ∘
+    unwrapActionMonad
+    $
+    mainLoop

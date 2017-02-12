@@ -108,7 +108,7 @@ serverTestCase name action = testCase name $ do
   debugM "Test" $ header name
   tempdir ← getTemporaryDirectory
   filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','z'))
-  withApplication (makeApp filepath) (runReaderT action ∘ ServerInfo "localhost")
+  withApplication (makeApp filepath) (\port → newServerInfo "localhost" port >>= runReaderT action)
 
 initialize = do
   doesFileExist "test.log" >>= flip when (removeFile "test.log")
