@@ -22,60 +22,60 @@ import HabitOfFate.Prelude
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
+import Data.Proxy
+import qualified Data.Text.Lazy as LazyText
 import Data.UUID
 import qualified Data.UUID as UUID
-import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
 import System.Directory
 import System.Log.Logger
 import System.Random
-import Web.Scotty
-import qualified Web.Scotty as Scotty
+import Web.HttpApiData
+
+import Servant.API hiding (addHeader)
+import Servant.Server
 
 import HabitOfFate.Credits
 import HabitOfFate.Data hiding (_habits)
-import HabitOfFate.Game
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
 newtype HabitId = HabitId UUID
 
-instance Parsable HabitId where
-  parseParam = fmap HabitId ∘ maybe (Left "badly formed UUID") Right ∘ fromText ∘ (^. strict)
+instance ToHttpApiData UUID.UUID where
+    toUrlPiece = UUID.toText
+    toHeader   = UUID.toASCIIBytes
+
+instance FromHttpApiData UUID.UUID where
+    parseUrlPiece = maybe (Left "invalid UUID") Right . UUID.fromText
+    parseHeader   = maybe (Left "invalid UUID") Right . UUID.fromASCIIBytes
 
 info, notice ∷ MonadIO m ⇒ String → m ()
 info = liftIO ∘ infoM "HabitOfFate.Server"
 notice = liftIO ∘ noticeM "HabitOfFate.Server"
 
-data ActionError = ActionError Status (Maybe Text)
-  deriving (Eq,Ord,Show)
+type ServerAction = ExceptT ServantErr STM
 
-type ServerAction = ExceptT ActionError STM
-
-act ∷ ServerAction (ActionM ()) → ActionM ()
+act ∷ ServerAction α → Handler α
 act =
   liftIO ∘ atomically ∘ runExceptT
   >=>
-  either
-    (\(ActionError code maybe_message) → do
-      status code
-      maybe (return ()) (Scotty.text ∘ (^. from strict)) maybe_message
-    )
-    identity
+  either throwError return
 
-act' ∷ ServerAction α → ActionM ()
-act' run = act (run >> return (return ()))
-
-throwActionError code = throwError $ ActionError code Nothing
-throwActionErrorWithMessage code message = throwError $ ActionError code (Just message)
-
-hasId ∷ Getter α UUID → UUID → α → Bool
-hasId uuid_lens uuid = (== uuid) ∘ (^. uuid_lens)
+type HabitAPI =
+       "habits" :> Get '[JSON] [Habit]
+  :<|> "habits" :> Capture "habit_id" UUID :> Get '[JSON] Habit
+  :<|> "habits" :> Capture "habit_id" UUID :> DeleteNoContent '[JSON] NoContent
+  :<|> "habits" :> ReqBody '[JSON] Habit :> Post '[PlainText] Text
+  :<|> "mark" :> Get '[JSON] Credits
+  :<|> "mark" :> ReqBody '[JSON] HabitsToMark :> Post '[JSON] Credits
+  :<|> "run" :> Post '[PlainText] LazyText.Text
+habitAPI ∷ Proxy HabitAPI
+habitAPI = Proxy
 
 makeApp ∷ FilePath → IO Application
 makeApp filepath = do
-  let url_prefix = "http://localhost:8081/" ∷ Text
   info $ "Data file is located at " ⊕ filepath
   data_var ←
     doesFileExist filepath
@@ -99,51 +99,39 @@ makeApp filepath = do
       withHabit habit_id f = do
         d ← lift $ readTVar data_var
         case lookup habit_id (d ^. habits) of
-          Nothing → throwActionErrorWithMessage notFound404 ∘ toText $ habit_id
+          Nothing → throwError err404
           Just habit → lift ∘ modifyTVar' data_var $ habits . at habit_id .~ f habit
       lookupHabit ∷ UUID → ServerAction Habit
       lookupHabit habit_id = do
         d ← lift $ readTVar data_var
         case d ^. habits . at habit_id of
-          Nothing → throwActionErrorWithMessage notFound404 ∘ toText $ habit_id
+          Nothing → throwError err404
           Just habit → return habit
       submitWriteDataRequest = void $ tryPutTMVar write_request ()
-  scottyApp $ do
-    Scotty.get "/habits" $ do
-      liftIO (readTVarIO data_var)
-      >>=
-      json ∘ toList ∘ view habits
-    Scotty.get "/habits/:id" $ do
-      HabitId habit_id ← param "id"
-      info $ "Fetching habit " ⊕ show habit_id
-      act ∘ fmap json ∘ lookupHabit $ habit_id
-    Scotty.delete "/habits/:id" $ do
-      HabitId habit_id ← param "id"
-      act $ do
-        withHabit habit_id ∘ const $ Nothing
-        return $ status noContent204
-    Scotty.post "/habits" $ do
-      habit ← jsonData
-      random_uuid ← liftIO randomIO
-      act $ do
-        let habit_id
-              | UUID.null (habit ^. uuid) = random_uuid
-              | otherwise = habit ^. uuid
-        lift $ do
-          modifyTVar' data_var $ habits . at habit_id .~ Just habit
-          submitWriteDataRequest
-        return $ do
-          info $ "Posted habit " ⊕ show habit_id
-          let url = url_prefix ⊕ "habit/" ⊕ toText habit_id
-          addHeader "Location" ∘ (^. from strict) $ url
-          status created201
-          Scotty.text ∘ view (from strict) ∘ UUID.toText $ habit_id
-    Scotty.get "/mark" $ do
-      d ← liftIO $ readTVarIO data_var
-      json $ d ^. game . credits
-    Scotty.post "/mark" $ do
-      marks ← jsonData
-      act $ do
+      getHabits = toList ∘ view habits <$> liftIO (readTVarIO data_var)
+      getHabit = act ∘ lookupHabit
+      deleteHabit habit_id =
+        fmap (const NoContent)
+        ∘
+        act
+        ∘
+        withHabit habit_id
+        ∘
+        const
+        $
+        Nothing
+      postHabit habit = do
+        random_uuid ← liftIO randomIO
+        act $ do
+          let habit_id
+                | UUID.null (habit ^. uuid) = random_uuid
+                | otherwise = habit ^. uuid
+          lift $ do
+            modifyTVar' data_var $ habits . at habit_id .~ Just habit
+            submitWriteDataRequest
+          return ∘ UUID.toText $ habit_id
+      getCredits = liftIO (readTVarIO data_var) <&> view (game . credits)
+      markHabits marks = act $ do
         let markHabits ∷ [UUID] → (Lens' Credits Double) → ServerAction Double
             markHabits uuids which_credits = do
               habits ← mapM lookupHabit uuids
@@ -161,10 +149,8 @@ makeApp filepath = do
             <$> markHabits (marks ^. successes) success
             <*> markHabits (marks ^. failures ) failure
         lift $ submitWriteDataRequest
-        return $ json new_credits
-    Scotty.post "/run" $
-      (liftIO ∘ atomically $ do
-        d ← readTVar data_var
+        return new_credits
+      runGame = liftIO ∘ atomically $ do
         let go d = do
               let r = runData d
               l_ #quest_events %= (|> r ^. story . to createEvent)
@@ -177,12 +163,14 @@ makeApp filepath = do
                   go (r ^. new_data)
                 else return (r ^. new_data)
         (new_d, s) ←
+          readTVar data_var
+          >>=
           flip runStateT
             ( #quests := (mempty ∷ Seq Quest)
             , #quest_events := (mempty ∷ Seq Event)
             )
-          $
-          go d
+          ∘
+          go
         writeTVar data_var new_d
         tryPutTMVar write_request ()
         return $!! (
@@ -191,8 +179,15 @@ makeApp filepath = do
           createStory
           $
           s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
-          )
-      ) >>= Scotty.text
+         )
+  return ∘ serve habitAPI $
+         getHabits
+    :<|> getHabit
+    :<|> deleteHabit
+    :<|> postHabit
+    :<|> getCredits
+    :<|> markHabits
+    :<|> runGame
 
 habitMain ∷ IO ()
 habitMain = getDataFilePath >>= makeApp >>= run 8081

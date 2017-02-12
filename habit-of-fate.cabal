@@ -23,6 +23,7 @@ library
                      , exceptions
                      , filepath
                      , hslogger
+                     , http-api-data
                      , http-conduit
                      , http-types
                      , labels
@@ -35,7 +36,8 @@ library
                      , parsec
                      , rainbow
                      , random
-                     , scotty
+                     , servant
+                     , servant-server
                      , stm
                      , text
                      , th-lift
