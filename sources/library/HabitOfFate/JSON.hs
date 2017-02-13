@@ -13,6 +13,7 @@ module HabitOfFate.JSON where
 import HabitOfFate.Prelude
 
 import Data.Aeson
+import Data.Aeson.Types
 import Data.UUID
 
 instance ToJSON UUID where
@@ -24,8 +25,13 @@ instance FromJSON UUID where
     $
     maybe (fail "invalid UUID") return ∘ fromText
 
-instance (Ord k, ToJSON k, ToJSON v) ⇒ ToJSON (Map k v) where
-  toJSON = toJSON ∘ mapToList
+instance ToJSON α ⇒ ToJSON (Map UUID α) where
+  toJSON = Object ∘ mapFromList ∘ map (toText *** toJSON) ∘ mapToList
 
-instance (Ord k, FromJSON k, FromJSON v) ⇒ FromJSON (Map k v) where
-  parseJSON = fmap mapFromList ∘ parseJSON
+instance FromJSON α ⇒ FromJSON (Map UUID α) where
+  parseJSON = withObject "uuid map" $
+    fmap mapFromList
+    ∘
+    traverse (\(k,v) → (,) <$> maybe (fail "bad UUID") return (fromText k) <*> parseJSON v)
+    ∘
+    mapToList
