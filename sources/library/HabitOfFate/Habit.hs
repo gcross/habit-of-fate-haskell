@@ -14,8 +14,7 @@ import HabitOfFate.JSON ()
 import HabitOfFate.TH
 
 data Habit = Habit
-  { _uuid ∷ UUID
-  , _name ∷ String
+  { _name ∷ String
   , __credits ∷ Credits
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit

@@ -67,10 +67,10 @@ act =
 
 type HabitAPI =
        "habits" :>
-  (      Get '[JSON] [Habit]
+  (      Get '[JSON] (Map UUID Habit)
     :<|> Capture "habit_id" UUID :> Get '[JSON] Habit
     :<|> Capture "habit_id" UUID :> DeleteNoContent '[JSON] NoContent
-    :<|> ReqBody '[JSON] Habit :> Post '[PlainText] Text
+    :<|> Capture "habit_id" UUID :> ReqBody '[JSON] Habit :> Put '[JSON] NoContent
   )
   :<|> "mark" :>
   (      Get '[JSON] Credits
@@ -116,7 +116,7 @@ makeApp dirpath = do
           Nothing → throwError err404
           Just habit → return habit
       submitWriteDataRequest = void $ tryPutTMVar write_request ()
-      getHabits = toList ∘ view habits <$> liftIO (readTVarIO data_var)
+      getHabits = view habits <$> liftIO (readTVarIO data_var)
       getHabit = act ∘ lookupHabit
       deleteHabit habit_id =
         fmap (const NoContent)
@@ -128,16 +128,10 @@ makeApp dirpath = do
         const
         $
         Nothing
-      postHabit habit = do
-        random_uuid ← liftIO randomIO
-        act $ do
-          let habit_id
-                | UUID.null (habit ^. uuid) = random_uuid
-                | otherwise = habit ^. uuid
-          lift $ do
-            modifyTVar' data_var $ habits . at habit_id .~ Just habit
-            submitWriteDataRequest
-          return ∘ UUID.toText $ habit_id
+      putHabit habit_id habit = act ∘ lift $ do
+        modifyTVar' data_var $ habits . at habit_id .~ Just habit
+        submitWriteDataRequest
+        return NoContent
       getCredits = liftIO (readTVarIO data_var) <&> view (game . credits)
       markHabits marks = act $ do
         let markHabits ∷ [UUID] → (Lens' Credits Double) → ServerAction Double
@@ -189,7 +183,7 @@ makeApp dirpath = do
           s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
          )
   return ∘ serve habitAPI $
-         (getHabits :<|> getHabit :<|> deleteHabit :<|> postHabit)
+         (getHabits :<|> getHabit :<|> deleteHabit :<|> putHabit)
     :<|> (getCredits :<|> markHabits)
     :<|> runGame
 

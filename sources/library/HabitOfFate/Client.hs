@@ -13,7 +13,7 @@ import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Typeable
-import Data.UUID (UUID, fromText, toText)
+import Data.UUID
 import qualified Data.UUID as UUID
 import Network.Connection
 import Network.HTTP.Client
@@ -52,7 +52,7 @@ decodeUtf8InResponse ∷ Response LBS.ByteString → Text
 decodeUtf8InResponse = decodeUtf8 ∘ LBS.toStrict ∘ responseBody
 
 pathToHabit ∷ UUID → Text
-pathToHabit = ("/habits/" ⊕) ∘ toText
+pathToHabit = ("/habits/" ⊕) ∘ UUID.toText
 
 makeRequest ∷ StdMethod → Text → Client Request
 makeRequest std_method path = do
@@ -112,16 +112,9 @@ requestWithJSON method path expected_codes value = do
   >>=
   sendRequest expected_codes
 
-postHabit ∷ Habit → Client UUID
-postHabit habit =
-  requestWithJSON POST "/habits" [200,201] habit
-  <&>
-  \response →
-    if UUID.null (habit ^. uuid)
-      then
-        let uuid_text = decodeUtf8InResponse response
-        in fromMaybe (error $ "Invalid UUID: " ⊕ show uuid_text) (fromText uuid_text)
-      else habit ^. uuid
+putHabit ∷ UUID → Habit → Client ()
+putHabit habit_id habit =
+  void $ requestWithJSON PUT (pathToHabit habit_id) [200,201] habit
 
 deleteHabit ∷ UUID → Client ()
 deleteHabit habit_id =
@@ -141,16 +134,7 @@ fetchHabit habit_id =
       else throwM e
 
 fetchHabits ∷ Client (Map UUID Habit)
-fetchHabits =
-  request GET "/habits" [200]
-  >>=
-  fmap (
-    mapFromList
-    ∘
-    map (view uuid &&& identity)
-  )
-  ∘
-  parseResponseBody
+fetchHabits = request GET "/habits" [200] >>= parseResponseBody
 
 getCredits ∷ Client Credits
 getCredits = request GET "/mark" [200] >>= parseResponseBody
