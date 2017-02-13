@@ -13,7 +13,6 @@ module HabitOfFate.JSON where
 import HabitOfFate.Prelude
 
 import Data.Aeson
-import Data.Aeson.Types
 import Data.UUID
 
 instance ToJSON UUID where

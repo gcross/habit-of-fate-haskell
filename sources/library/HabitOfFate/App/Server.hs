@@ -32,7 +32,6 @@ import Network.Wai.Handler.WarpTLS
 import System.Directory
 import System.FilePath
 import System.Log.Logger
-import System.Random
 import Web.HttpApiData
 
 import Servant.API hiding (addHeader)

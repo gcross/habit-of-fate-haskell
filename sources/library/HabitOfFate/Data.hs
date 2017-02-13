@@ -8,13 +8,9 @@ module HabitOfFate.Data where
 
 import HabitOfFate.Prelude
 
-import Control.Lens
-import Control.Monad
 import Control.Monad.Random
 import qualified Data.ByteString as BS
 import Data.Map (Map)
-import Data.Maybe
-import Data.Text (Text)
 import Data.UUID (UUID)
 import Data.Yaml hiding ((.=))
 import System.Directory
@@ -23,7 +19,6 @@ import System.FilePath
 
 import HabitOfFate.Credits
 import HabitOfFate.Game
-import qualified HabitOfFate.Game as Game
 import HabitOfFate.Habit
 import HabitOfFate.JSON ()
 import HabitOfFate.Quests
