@@ -15,7 +15,9 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Typeable
 import Data.UUID (UUID, fromText, toText)
 import qualified Data.UUID as UUID
+import Network.Connection
 import Network.HTTP.Client
+import Network.HTTP.Client.TLS
 import Network.HTTP.Types
 import Text.XML
 
@@ -24,18 +26,25 @@ import HabitOfFate.Data
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
+data SecureMode = Testing | Secure
+
 data ServerInfo = ServerInfo
   { _server_hostname ∷ ByteString
   , _server_port ∷ Int
+  , _secure_mode ∷ SecureMode
   , _manager ∷ Manager
   }
 makeLenses ''ServerInfo
 
-newServerInfo ∷ ByteString → Int → IO ServerInfo
-newServerInfo hostname port =
-  ServerInfo hostname port
-  <$>
-  newManager defaultManagerSettings
+newServerInfo ∷ SecureMode → ByteString → Int → IO ServerInfo
+newServerInfo secure_mode hostname port =
+  fmap (ServerInfo hostname port secure_mode)
+  ∘
+  newManager
+  $
+  case secure_mode of
+    Testing → defaultManagerSettings
+    Secure → mkManagerSettings (TLSSettingsSimple True False False) Nothing
 
 type Client = ReaderT ServerInfo IO
 
@@ -51,6 +60,9 @@ makeRequest std_method path = do
   return $ defaultRequest
     { method = renderStdMethod std_method
     , host = server ^. server_hostname
+    , secure = case server ^. secure_mode of
+        Testing → False
+        Secure → True
     , port = server ^. server_port
     , path = encodeUtf8 path
     }

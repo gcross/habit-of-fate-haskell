@@ -283,7 +283,7 @@ mainLoop = loop [] $
 
 habitMain ∷ IO ()
 habitMain = do
-  server_info ← newServerInfo "localhost" 8081
+  server_info ← newServerInfo Secure "localhost" 8081
   void
     ∘
     flip runReaderT server_info

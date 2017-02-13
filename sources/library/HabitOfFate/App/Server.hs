@@ -27,8 +27,10 @@ import qualified Data.Text.Lazy as LazyText
 import Data.UUID
 import qualified Data.UUID as UUID
 import Network.Wai
-import Network.Wai.Handler.Warp (run)
+import Network.Wai.Handler.Warp
+import Network.Wai.Handler.WarpTLS
 import System.Directory
+import System.FilePath
 import System.Log.Logger
 import System.Random
 import Web.HttpApiData
@@ -79,16 +81,18 @@ habitAPI ∷ Proxy HabitAPI
 habitAPI = Proxy
 
 makeApp ∷ FilePath → IO Application
-makeApp filepath = do
-  info $ "Data file is located at " ⊕ filepath
+makeApp dirpath = do
+  info $ "Data and configuration files are located at " ⊕ dirpath
+  createDirectoryIfMissing True dirpath
+  let data_filepath = dirpath </> "data"
   data_var ←
-    doesFileExist filepath
+    doesFileExist data_filepath
     >>=
     bool (do info "Creating new data file"
              newData
          )
          (do info "Reading existing data file"
-             readData filepath
+             readData data_filepath
          )
     >>=
     newTVarIO
@@ -97,7 +101,7 @@ makeApp filepath = do
     (atomically $ do
       takeTMVar write_request
       readTVar data_var
-    ) >>= writeData filepath
+    ) >>= writeData data_filepath
   notice $ "Starting server..."
   let withHabit ∷ UUID → (Habit → Maybe Habit) → ServerAction ()
       withHabit habit_id f = do
@@ -190,4 +194,10 @@ makeApp filepath = do
     :<|> runGame
 
 habitMain ∷ IO ()
-habitMain = getDataFilePath >>= makeApp >>= run 8081
+habitMain = do
+  dirpath ← getDataFilePath
+  makeApp dirpath
+    >>=
+    runTLS
+      (tlsSettings (dirpath </> "certificate.pem") (dirpath </> "key.pem"))
+      (setPort 8081 defaultSettings)

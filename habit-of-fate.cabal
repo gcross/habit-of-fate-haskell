@@ -16,6 +16,7 @@ library
                      , aeson
                      , ansi-terminal
                      , bytestring
+                     , connection
                      , containers
                      , data-default
                      , deepseq
@@ -25,6 +26,7 @@ library
                      , hslogger
                      , http-api-data
                      , http-client
+                     , http-client-tls
                      , http-types
                      , labels
                      , monad-control
@@ -53,6 +55,7 @@ library
                      , yaml
                      , wai
                      , warp
+                     , warp-tls
   exposed-modules:     HabitOfFate.App.Client
                      , HabitOfFate.App.Server
                      , HabitOfFate.Client
