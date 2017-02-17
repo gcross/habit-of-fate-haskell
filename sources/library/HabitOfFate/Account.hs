@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Data where
+module HabitOfFate.Account where
 
 import HabitOfFate.Prelude
 
@@ -31,34 +31,34 @@ instance ToJSON StdGen where
 instance FromJSON StdGen where
   parseJSON = fmap read ∘ parseJSON
 
-data Data = Data
+data Account = Account
   {   _habits ∷ Map UUID Habit
   ,   _game ∷ GameState
   ,   _quest ∷ Maybe CurrentQuestState
   ,   _rng :: StdGen
   } deriving (Read,Show)
-deriveJSON ''Data
-makeLenses ''Data
+deriveJSON ''Account
+makeLenses ''Account
 
-newData ∷ IO Data
-newData = Data mempty newGame Nothing <$> newStdGen
+newAccount ∷ IO Account
+newAccount = Account mempty newGame Nothing <$> newStdGen
 
-data RunDataResult = RunDataResult
+data RunAccountResult = RunAccountResult
   { _story ∷ Seq Paragraph
   , _quest_completed ∷ Bool
-  , _new_data ∷ Data
+  , _new_data ∷ Account
   }
-makeLenses ''RunDataResult
+makeLenses ''RunAccountResult
 
-runData ∷ Data → RunDataResult
-runData d =
+runAccount ∷ Account → RunAccountResult
+runAccount d =
   (flip runRand (d ^. rng)
    $
    runGame (d ^. game) (runCurrentQuest (d ^. quest))
   )
   &
   \(r, new_rng) →
-    RunDataResult
+    RunAccountResult
       (r ^. game_paragraphs)
       (isNothing (r ^. returned_value))
       (d & game .~ r ^. new_game
@@ -66,20 +66,20 @@ runData d =
          & rng .~ new_rng
       )
 
-readData ∷ FilePath → IO Data
-readData = BS.readFile >=> either error return . decodeEither
+readAccount ∷ FilePath → IO Account
+readAccount = BS.readFile >=> either error return . decodeEither
 
-writeData ∷ FilePath → Data → IO ()
-writeData = encodeFile
+writeAccount ∷ FilePath → Account → IO ()
+writeAccount = encodeFile
 
-getDataFilePath ∷ IO FilePath
-getDataFilePath =
+getAccountFilePath ∷ IO FilePath
+getAccountFilePath =
   getArgs >>= \case
     [] → getHomeDirectory <&> (</> ".habit")
     [filepath] → return filepath
     _ → error "Only one argument may be provided."
 
-stillHasCredits ∷ Data → Bool
+stillHasCredits ∷ Account → Bool
 stillHasCredits d = (||)
   (d ^. game . credits . success /= 0)
   (d ^. game . credits . failure /= 0)

@@ -56,11 +56,11 @@ library
                      , wai
                      , warp
                      , warp-tls
-  exposed-modules:     HabitOfFate.App.Client
+  exposed-modules:     HabitOfFate.Account
+                     , HabitOfFate.App.Client
                      , HabitOfFate.App.Server
                      , HabitOfFate.Client
                      , HabitOfFate.Credits
-                     , HabitOfFate.Data
                      , HabitOfFate.Game
                      , HabitOfFate.Habit
                      , HabitOfFate.JSON

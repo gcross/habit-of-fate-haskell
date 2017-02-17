@@ -22,7 +22,7 @@ import Network.HTTP.Types
 import Text.XML
 
 import HabitOfFate.Credits
-import HabitOfFate.Data
+import HabitOfFate.Account
 import HabitOfFate.Habit
 import HabitOfFate.Story
 

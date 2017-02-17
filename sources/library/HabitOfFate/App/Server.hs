@@ -38,7 +38,7 @@ import Servant.API hiding (addHeader)
 import Servant.Server
 
 import HabitOfFate.Credits
-import HabitOfFate.Data hiding (_habits)
+import HabitOfFate.Account hiding (_habits)
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
@@ -88,10 +88,10 @@ makeApp dirpath = do
     doesFileExist data_filepath
     >>=
     bool (do info "Creating new data file"
-             newData
+             newAccount
          )
          (do info "Reading existing data file"
-             readData data_filepath
+             readAccount data_filepath
          )
     >>=
     newTVarIO
@@ -100,7 +100,7 @@ makeApp dirpath = do
     (atomically $ do
       takeTMVar write_request
       readTVar data_var
-    ) >>= writeData data_filepath
+    ) >>= writeAccount data_filepath
   notice $ "Starting server..."
   let withHabit ∷ UUID → (Habit → Maybe Habit) → ServerAction ()
       withHabit habit_id f = do
@@ -153,7 +153,7 @@ makeApp dirpath = do
         return new_credits
       runGame = liftIO ∘ atomically $ do
         let go d = do
-              let r = runData d
+              let r = runAccount d
               l_ #quest_events %= (|> r ^. story . to createEvent)
               if stillHasCredits (r ^. new_data)
                 then do
@@ -188,7 +188,7 @@ makeApp dirpath = do
 
 habitMain ∷ IO ()
 habitMain = do
-  dirpath ← getDataFilePath
+  dirpath ← getAccountFilePath
   makeApp dirpath
     >>=
     runTLS
