@@ -9,13 +9,8 @@ module HabitOfFate.Account where
 import HabitOfFate.Prelude
 
 import Control.Monad.Random
-import qualified Data.ByteString as BS
-import Data.Map (Map)
 import Data.UUID (UUID)
 import Data.Yaml hiding ((.=))
-import System.Directory
-import System.Environment
-import System.FilePath
 
 import HabitOfFate.Credits
 import HabitOfFate.Game
@@ -65,19 +60,6 @@ runAccount d =
          & quest .~ r ^. returned_value
          & rng .~ new_rng
       )
-
-readAccount ∷ FilePath → IO Account
-readAccount = BS.readFile >=> either error return . decodeEither
-
-writeAccount ∷ FilePath → Account → IO ()
-writeAccount = encodeFile
-
-getAccountFilePath ∷ IO FilePath
-getAccountFilePath =
-  getArgs >>= \case
-    [] → getHomeDirectory <&> (</> ".habit")
-    [filepath] → return filepath
-    _ → error "Only one argument may be provided."
 
 stillHasCredits ∷ Account → Bool
 stillHasCredits d = (||)
