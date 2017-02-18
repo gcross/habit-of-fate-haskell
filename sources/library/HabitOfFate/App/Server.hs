@@ -10,6 +10,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -20,14 +21,13 @@ module HabitOfFate.App.Server where
 import HabitOfFate.Prelude
 
 import Control.Concurrent
-import Control.Concurrent.STM
 import Control.DeepSeq
 import Data.Proxy
 import qualified Data.Text.Lazy as LazyText
 import Data.UUID
 import qualified Data.UUID as UUID
 import Network.Wai
-import Network.Wai.Handler.Warp
+import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
 import System.Directory
 import System.FilePath
@@ -56,26 +56,23 @@ info, notice ∷ MonadIO m ⇒ String → m ()
 info = liftIO ∘ infoM "HabitOfFate.Server"
 notice = liftIO ∘ noticeM "HabitOfFate.Server"
 
-type ServerAction = ExceptT ServantErr STM
+type ServerAction = StateT Account (Either ServantErr)
 
-act ∷ ServerAction α → Handler α
-act =
-  liftIO ∘ atomically ∘ runExceptT
-  >=>
-  either throwError return
+type GetHabits = Get '[JSON] (Map UUID Habit)
+type GetHabit = Capture "habit_id" UUID :> Get '[JSON] Habit
+type DeleteHabit = Capture "habit_id" UUID :> DeleteNoContent '[JSON] NoContent
+type PutHabit = Capture "habit_id" UUID :> ReqBody '[JSON] Habit :> Put '[JSON] NoContent
+
+type GetCredits = Get '[JSON] Credits
+type MarkHabits = ReqBody '[JSON] HabitsToMark :> Post '[JSON] Credits
+
+type RunGame = Post '[PlainText] LazyText.Text
 
 type HabitAPI =
-       "habits" :>
-  (      Get '[JSON] (Map UUID Habit)
-    :<|> Capture "habit_id" UUID :> Get '[JSON] Habit
-    :<|> Capture "habit_id" UUID :> DeleteNoContent '[JSON] NoContent
-    :<|> Capture "habit_id" UUID :> ReqBody '[JSON] Habit :> Put '[JSON] NoContent
-  )
-  :<|> "mark" :>
-  (      Get '[JSON] Credits
-    :<|> ReqBody '[JSON] HabitsToMark :> Post '[JSON] Credits
-  )
-  :<|> "run" :> Post '[PlainText] LazyText.Text
+       "habits" :> (GetHabits :<|> GetHabit :<|> DeleteHabit :<|> PutHabit)
+  :<|> "mark" :> (GetCredits :<|> MarkHabits)
+  :<|> "run" :> RunGame
+
 habitAPI ∷ Proxy HabitAPI
 habitAPI = Proxy
 
@@ -84,7 +81,7 @@ makeApp dirpath = do
   info $ "Data and configuration files are located at " ⊕ dirpath
   createDirectoryIfMissing True dirpath
   let data_filepath = dirpath </> "data"
-  data_var ←
+  data_mvar ←
     doesFileExist data_filepath
     >>=
     bool (do info "Creating new data file"
@@ -94,64 +91,84 @@ makeApp dirpath = do
              readAccount data_filepath
          )
     >>=
-    newTVarIO
-  write_request ← newEmptyTMVarIO
-  liftIO ∘ forkIO ∘ forever $
-    (atomically $ do
-      takeTMVar write_request
-      readTVar data_var
-    ) >>= writeAccount data_filepath
+    newMVar
+  write_request ← newEmptyMVar
+  liftIO ∘ forkIO ∘ forever $ do
+    takeMVar write_request
+    readMVar data_mvar >>= writeAccount data_filepath
   notice $ "Starting server..."
-  let withHabit ∷ UUID → (Habit → Maybe Habit) → ServerAction ()
+  let run ∷ ServerAction α → Handler α
+      run action = join ∘ liftIO ∘ modifyMVar data_mvar $ \old_x →
+        case runStateT action old_x of
+          Left e → return (old_x, throwError e)
+          Right (result, new_x) → do
+            tryPutMVar write_request ()
+            return (new_x, return result)
+
+      withHabit ∷ UUID → (Habit → Maybe Habit) → ServerAction ()
       withHabit habit_id f = do
-        d ← lift $ readTVar data_var
-        case lookup habit_id (d ^. habits) of
-          Nothing → throwError err404
-          Just habit → lift ∘ modifyTVar' data_var $ habits . at habit_id .~ f habit
+        use habits
+        >>=
+        maybe (throwError err404) ((habits . at habit_id .=) ∘ f)
+        ∘
+        lookup habit_id
+
       lookupHabit ∷ UUID → ServerAction Habit
       lookupHabit habit_id = do
-        d ← lift $ readTVar data_var
-        case d ^. habits . at habit_id of
-          Nothing → throwError err404
-          Just habit → return habit
-      submitWriteDataRequest = void $ tryPutTMVar write_request ()
-      getHabits = view habits <$> liftIO (readTVarIO data_var)
-      getHabit = act ∘ lookupHabit
+        use (habits . at habit_id)
+        >>=
+        maybe (throwError err404) return
+
+      readData = liftIO $ readMVar data_mvar
+
+      getHabits ∷ Server GetHabits
+      getHabits = view habits <$> readData
+
+      getHabit ∷ Server GetHabit
+      getHabit habit_id =
+        readData
+        >>=
+        maybe (throwError err404) return ∘ view (habits . at habit_id)
+
+      deleteHabit ∷ Server DeleteHabit
       deleteHabit habit_id =
         fmap (const NoContent)
         ∘
-        act
+        run
         ∘
         withHabit habit_id
         ∘
         const
         $
         Nothing
-      putHabit habit_id habit = act ∘ lift $ do
-        modifyTVar' data_var $ habits . at habit_id .~ Just habit
-        submitWriteDataRequest
+
+      putHabit ∷ Server PutHabit
+      putHabit habit_id habit = run $ do
+        habits . at habit_id .= Just habit
         return NoContent
-      getCredits = liftIO (readTVarIO data_var) <&> view (game . credits)
-      markHabits marks = act $ do
+
+      getCredits ∷ Server GetCredits
+      getCredits = view (game . credits) <$> readData
+
+      markHabits ∷ Server MarkHabits
+      markHabits marks = run $ do
         let markHabits ∷ [UUID] → (Lens' Credits Double) → ServerAction Double
             markHabits uuids which_credits = do
               habits ← mapM lookupHabit uuids
-              lift $ do
-                new_credits ←
-                  (+ sum (map (view $ credits . which_credits) habits))
-                  ∘
-                  view (game . credits . which_credits)
-                  <$>
-                  readTVar data_var
-                modifyTVar' data_var $ game . credits . which_credits .~ new_credits
-                return new_credits
+              new_credits ←
+                (+ sum (map (view $ credits . which_credits) habits))
+                <$>
+                use (game . credits . which_credits)
+              game . credits . which_credits .= new_credits
+              return new_credits
         new_credits ←
           Credits
             <$> markHabits (marks ^. successes) success
             <*> markHabits (marks ^. failures ) failure
-        lift $ submitWriteDataRequest
         return new_credits
-      runGame = liftIO ∘ atomically $ do
+
+      runGame ∷ Server RunGame
+      runGame = run $ do
         let go d = do
               let r = runAccount d
               l_ #quest_events %= (|> r ^. story . to createEvent)
@@ -164,7 +181,7 @@ makeApp dirpath = do
                   go (r ^. new_data)
                 else return (r ^. new_data)
         (new_d, s) ←
-          readTVar data_var
+          get
           >>=
           flip runStateT
             ( #quests := (mempty ∷ Seq Quest)
@@ -172,8 +189,7 @@ makeApp dirpath = do
             )
           ∘
           go
-        writeTVar data_var new_d
-        tryPutTMVar write_request ()
+        put new_d
         return $!! (
           renderStoryToText
           ∘
@@ -181,6 +197,7 @@ makeApp dirpath = do
           $
           s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
          )
+
   return ∘ serve habitAPI $
          (getHabits :<|> getHabit :<|> deleteHabit :<|> putHabit)
     :<|> (getCredits :<|> markHabits)
