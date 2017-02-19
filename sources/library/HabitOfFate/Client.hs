@@ -88,9 +88,10 @@ parseResponseBody =
 
 responseStatusCode = statusCode ∘ responseStatus
 
-data UnexpectedStatus = UnexpectedStatus Status deriving (Typeable)
+data UnexpectedStatus = UnexpectedStatus [Int] Status deriving (Typeable)
 instance Show UnexpectedStatus where
-  show (UnexpectedStatus status) = "Unexpected status: " ⊕ show status
+  show (UnexpectedStatus expected_codes status) =
+    printf "Status code not one of %s: %s" (show expected_codes) (show status)
 instance Exception UnexpectedStatus where
 
 sendRequest ∷ [Int] → Request → Client (Response LBS.ByteString)
@@ -98,7 +99,7 @@ sendRequest expected_codes request = do
   response ← view manager >>= liftIO ∘ httpLbs request
   if responseStatusCode response ∈ expected_codes
     then return response
-    else throwM ∘ UnexpectedStatus ∘ responseStatus $ response
+    else throwM ∘ UnexpectedStatus expected_codes ∘ responseStatus $ response
 
 request ∷ StdMethod → Text → [Int] → Client (Response LBS.ByteString)
 request method path expected_codes = do
@@ -114,11 +115,11 @@ requestWithJSON method path expected_codes value = do
 
 putHabit ∷ UUID → Habit → Client ()
 putHabit habit_id habit =
-  void $ requestWithJSON PUT (pathToHabit habit_id) [200,201] habit
+  void $ requestWithJSON PUT (pathToHabit habit_id) [200,201,202] habit
 
 deleteHabit ∷ UUID → Client ()
 deleteHabit habit_id =
-  void $ request DELETE (pathToHabit habit_id) [204]
+  void $ request DELETE (pathToHabit habit_id) [204,404]
 
 fetchHabit ∷ UUID → Client (Maybe Habit)
 fetchHabit habit_id =
@@ -128,7 +129,7 @@ fetchHabit habit_id =
     parseResponseBody
   )
   `catch`
-  \e@(UnexpectedStatus status) →
+  \e@(UnexpectedStatus _ status) →
     if statusCode status == 404
       then return Nothing
       else throwM e
@@ -137,7 +138,7 @@ fetchHabits ∷ Client (Map UUID Habit)
 fetchHabits = request GET "/habits" [200] >>= parseResponseBody
 
 getCredits ∷ Client Credits
-getCredits = request GET "/mark" [200] >>= parseResponseBody
+getCredits = request GET "/credits" [200] >>= parseResponseBody
 
 markHabits ∷ [UUID] → [UUID] → Client Credits
 markHabits success_habits failure_habits =

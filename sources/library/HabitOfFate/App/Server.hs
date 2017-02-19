@@ -132,22 +132,24 @@ instance MonadState Account WriterProgram where
   get = WriterProgram $ Operational.singleton WriterGetAccountInstruction
   put = WriterProgram ∘ Operational.singleton ∘ WriterPutAccountInstruction
 
+data ProgramResult = ProgramResult Status Content
+
 data Content =
     NoContent
   | TextContent Lazy.Text
   | ∀ α. ToJSON α ⇒ JSONContent α
 
-returnNothing ∷ Monad m ⇒ m Content
-returnNothing = return NoContent
+returnNothing ∷ Monad m ⇒ Status → m ProgramResult
+returnNothing s = return $ ProgramResult s NoContent
 
-returnLazyText ∷ Monad m ⇒ Lazy.Text → m Content
-returnLazyText = return ∘ TextContent
+returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
+returnLazyText s = return ∘ ProgramResult s ∘ TextContent
 
-returnText ∷ Monad m ⇒ Text → m Content
-returnText = returnLazyText ∘ view (from strict)
+returnText ∷ Monad m ⇒ Status → Text → m ProgramResult
+returnText s = returnLazyText s ∘ view (from strict)
 
-returnJSON ∷ (ToJSON α, Monad m) ⇒ α → m Content
-returnJSON = return ∘ JSONContent
+returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
+returnJSON s = return ∘ ProgramResult s ∘ JSONContent
 
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
@@ -170,13 +172,24 @@ makeApp dirpath = do
     atomically $ takeTMVar write_request
     readTVarIO data_tvar >>= writeAccount data_filepath
   notice $ "Starting server..."
-  let postprocess ∷ Either Status Content → ActionM ()
+{-
+  let authorize = do
+        auth_header ← getHeader "Authorization"
+        cookie ← case words auth_header of
+          ["Basic",cookie] → return cookie
+          _ → throwError unauthorized401
+        jwt ← fromMaybe (throwError unauthorized401) (decodeAndVerifySignature secret cookie)
+-}
+  let postprocess ∷ Either Status ProgramResult → ActionM ()
       postprocess (Left s) = status s
-      postprocess (Right NoContent) = status noContent204
-      postprocess (Right (TextContent t)) = status ok200 >> Scotty.text t
-      postprocess (Right (JSONContent j)) = status ok200 >> Scotty.json j
+      postprocess (Right (ProgramResult s content)) = do
+        status s
+        case content of
+          NoContent → return ()
+          TextContent t → Scotty.text t
+          JSONContent j → Scotty.json j
 
-      reader ∷ ReaderProgram Content → ActionM ()
+      reader ∷ ReaderProgram ProgramResult → ActionM ()
       reader (ReaderProgram program) = do
         params_ ← params
         body_ ← body
@@ -190,7 +203,7 @@ makeApp dirpath = do
               ReaderViewInstruction → interpret (rest account)
         postprocess (interpret program)
 
-      writer ∷ WriterProgram Content → ActionM ()
+      writer ∷ WriterProgram ProgramResult → ActionM ()
       writer (WriterProgram program) = do
         params_ ← params
         body_ ← body
@@ -222,23 +235,31 @@ makeApp dirpath = do
         >>=
         maybe (raiseStatus notFound404) return
   scottyApp $ do
-    Scotty.get "/habits" ∘ reader  $ view habits >>= returnJSON
+    Scotty.get "/habits" ∘ reader $
+      view habits >>= returnJSON ok200
     Scotty.get "/habits/:habit_id" ∘ reader $ do
       habit_id ← getParam "habit_id"
       habits_ ← view habits
       case lookup habit_id habits_ of
         Nothing → raiseStatus notFound404
-        Just habit → returnJSON habit
+        Just habit → returnJSON ok200 habit
     Scotty.delete "/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
-      habits . at habit_id .= Nothing
-      returnNothing
+      habit_was_there ← isNothing <$> (habits . at habit_id <<.= Nothing)
+      returnNothing $
+        if habit_was_there
+          then ok200
+          else notFound404
     Scotty.put "/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
       habit ← getBodyJSON
-      habits . at habit_id .= Just habit
-      returnNothing
-    Scotty.get "/credits" ∘ reader $ view (game . credits) >>= returnJSON
+      habit_was_there ← isNothing <$> (habits . at habit_id <<.= Just habit)
+      returnNothing $
+        if habit_was_there
+          then accepted202
+          else created201
+    Scotty.get "/credits" ∘ reader $
+      view (game . credits) >>= returnJSON ok200
     Scotty.post "/mark" ∘ writer $ do
       let markHabits ∷ [UUID] → Lens' Credits Double → WriterProgram Double
           markHabits uuids which_credits = do
@@ -253,7 +274,7 @@ makeApp dirpath = do
       (Credits
           <$> markHabits (marks ^. successes) success
           <*> markHabits (marks ^. failures ) failure
-       ) >>= returnJSON
+       ) >>= returnJSON ok200
     Scotty.post "/run" ∘ writer $ do
       let go d = do
             let r = runAccount d
@@ -276,7 +297,7 @@ makeApp dirpath = do
         ∘
         go
       put new_d
-      returnLazyText $!! (
+      returnLazyText ok200 $!! (
         renderStoryToText
         ∘
         createStory
