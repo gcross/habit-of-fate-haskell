@@ -87,6 +87,6 @@ stillHasCredits d = (||)
 data HabitsToMark = HabitsToMark
   { _successes ∷ [UUID]
   , _failures ∷ [UUID]
-  }
+  } deriving (Eq, Ord, Read, Show)
 deriveJSON ''HabitsToMark
 makeLenses ''HabitsToMark
