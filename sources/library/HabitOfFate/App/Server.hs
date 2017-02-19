@@ -26,12 +26,10 @@ import Data.Proxy
 import qualified Data.Text.Lazy as LazyText
 import Data.UUID
 import qualified Data.UUID as UUID
-import Data.Yaml (decodeFileEither, encodeFile)
 import Network.Wai
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
 import System.Directory
-import System.Environment
 import System.FilePath
 import System.Log.Logger
 import Web.HttpApiData
@@ -58,10 +56,7 @@ info, notice ∷ MonadIO m ⇒ String → m ()
 info = liftIO ∘ infoM "HabitOfFate.Server"
 notice = liftIO ∘ noticeM "HabitOfFate.Server"
 
-type Accounts = Map String Account
-
-type ServerAction = StateT Accounts (Either ServantErr)
-type AccountAction = StateT Account (Either ServantErr)
+type ServerAction = StateT Account (Either ServantErr)
 
 type GetHabits = Get '[JSON] (Map UUID Habit)
 type GetHabit = Capture "habit_id" UUID :> Get '[JSON] Habit
@@ -81,13 +76,6 @@ type HabitAPI =
 habitAPI ∷ Proxy HabitAPI
 habitAPI = Proxy
 
-getDataFilePath ∷ IO FilePath
-getDataFilePath =
-  getArgs >>= \case
-    [] → getHomeDirectory <&> (</> ".habit")
-    [filepath] → return filepath
-    _ → error "Only one argument may be provided."
-
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
   info $ "Data and configuration files are located at " ⊕ dirpath
@@ -97,17 +85,17 @@ makeApp dirpath = do
     doesFileExist data_filepath
     >>=
     bool (do info "Creating new data file"
-             (singletonMap "bitslayer" <$> newAccount ∷ IO Accounts)
+             newAccount
          )
          (do info "Reading existing data file"
-             either (error ∘ show) identity <$> decodeFileEither data_filepath
+             readAccount data_filepath
          )
     >>=
     newMVar
   write_request ← newEmptyMVar
   liftIO ∘ forkIO ∘ forever $ do
     takeMVar write_request
-    readMVar data_mvar >>= encodeFile data_filepath
+    readMVar data_mvar >>= writeAccount data_filepath
   notice $ "Starting server..."
   let run ∷ ServerAction α → Handler α
       run action = join ∘ liftIO ∘ modifyMVar data_mvar $ \old_x →
@@ -117,18 +105,7 @@ makeApp dirpath = do
             tryPutMVar write_request ()
             return (new_x, return result)
 
-      runAsAccount ∷ String → AccountAction α → Handler α
-      runAsAccount username action = run $
-        (lookup username <$> get)
-        >>=
-        \case
-          Nothing → throwError err404
-          Just old_account → do
-            (result, new_account) ← lift $ runStateT action old_account
-            modify $ insertMap username new_account
-            return result
-
-      withHabit ∷ UUID → (Habit → Maybe Habit) → AccountAction ()
+      withHabit ∷ UUID → (Habit → Maybe Habit) → ServerAction ()
       withHabit habit_id f = do
         use habits
         >>=
@@ -136,26 +113,20 @@ makeApp dirpath = do
         ∘
         lookup habit_id
 
-      lookupHabit ∷ UUID → AccountAction Habit
+      lookupHabit ∷ UUID → ServerAction Habit
       lookupHabit habit_id = do
         use (habits . at habit_id)
         >>=
         maybe (throwError err404) return
 
-      readAccountData ∷ String → Handler Account
-      readAccountData username =
-        (liftIO $ readMVar data_mvar)
-        >>=
-        maybe (throwError err403) return
-        ∘
-        lookup username
+      readData = liftIO $ readMVar data_mvar
 
       getHabits ∷ Server GetHabits
-      getHabits = view habits <$> readAccountData "bitslayer"
+      getHabits = view habits <$> readData
 
       getHabit ∷ Server GetHabit
       getHabit habit_id =
-        readAccountData "bitslayer"
+        readData
         >>=
         maybe (throwError err404) return ∘ view (habits . at habit_id)
 
@@ -163,7 +134,7 @@ makeApp dirpath = do
       deleteHabit habit_id =
         fmap (const NoContent)
         ∘
-        runAsAccount "bitslayer"
+        run
         ∘
         withHabit habit_id
         ∘
@@ -172,16 +143,16 @@ makeApp dirpath = do
         Nothing
 
       putHabit ∷ Server PutHabit
-      putHabit habit_id habit = runAsAccount "bitslayer"$ do
+      putHabit habit_id habit = run $ do
         habits . at habit_id .= Just habit
         return NoContent
 
       getCredits ∷ Server GetCredits
-      getCredits = view (game . credits) <$> readAccountData "bitslayer"
+      getCredits = view (game . credits) <$> readData
 
       markHabits ∷ Server MarkHabits
-      markHabits marks = runAsAccount "bitslayer"$ do
-        let markHabits ∷ [UUID] → (Lens' Credits Double) → AccountAction Double
+      markHabits marks = run $ do
+        let markHabits ∷ [UUID] → (Lens' Credits Double) → ServerAction Double
             markHabits uuids which_credits = do
               habits ← mapM lookupHabit uuids
               new_credits ←
@@ -197,7 +168,7 @@ makeApp dirpath = do
         return new_credits
 
       runGame ∷ Server RunGame
-      runGame = runAsAccount "bitslayer"$ do
+      runGame = run $ do
         let go d = do
               let r = runAccount d
               l_ #quest_events %= (|> r ^. story . to createEvent)
@@ -234,7 +205,7 @@ makeApp dirpath = do
 
 habitMain ∷ IO ()
 habitMain = do
-  dirpath ← getDataFilePath
+  dirpath ← getAccountFilePath
   makeApp dirpath
     >>=
     runTLS
