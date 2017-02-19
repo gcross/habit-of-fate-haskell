@@ -38,8 +38,7 @@ library
                      , parsec
                      , rainbow
                      , random
-                     , servant
-                     , servant-server
+                     , scotty
                      , stm
                      , text
                      , th-lift
