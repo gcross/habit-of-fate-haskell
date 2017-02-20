@@ -23,6 +23,7 @@ library
                      , directory
                      , exceptions
                      , filepath
+                     , jwt
                      , hslogger
                      , http-api-data
                      , http-client

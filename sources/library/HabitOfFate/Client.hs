@@ -28,25 +28,40 @@ import HabitOfFate.Story
 
 data SecureMode = Testing | Secure
 
-data ServerInfo = ServerInfo
-  { _server_hostname ∷ ByteString
-  , _server_port ∷ Int
-  , _secure_mode ∷ SecureMode
+data SessionInfo = SessionInfo
+  { _request_template ∷ Request
   , _manager ∷ Manager
   }
-makeLenses ''ServerInfo
+makeLenses ''SessionInfo
 
-newServerInfo ∷ SecureMode → ByteString → Int → IO ServerInfo
-newServerInfo secure_mode hostname port =
-  fmap (ServerInfo hostname port secure_mode)
-  ∘
-  newManager
-  $
-  case secure_mode of
-    Testing → defaultManagerSettings
-    Secure → mkManagerSettings (TLSSettingsSimple True False False) Nothing
+login ∷ SecureMode → ByteString → Int → IO SessionInfo
+login secure_mode hostname port = do
+  manager ← newManager $
+    case secure_mode of
+      Testing → defaultManagerSettings
+      Secure → mkManagerSettings (TLSSettingsSimple True False False) Nothing
+  let request_template_without_authorization = defaultRequest
+        { method = renderStdMethod POST
+        , host = hostname
+        , secure = case secure_mode of
+            Testing → False
+            Secure → True
+        , port = port
+        }
+  response ←
+    flip httpLbs manager
+    $
+    request_template_without_authorization { path = encodeUtf8 "/login" }
+  return $
+    SessionInfo
+      (request_template_without_authorization
+        { requestHeaders =
+            [("Authorization", ("Bearer " ⊕) ∘ view strict ∘ responseBody $ response)]
+        }
+      )
+      manager
 
-type Client = ReaderT ServerInfo IO
+type Client = ReaderT SessionInfo IO
 
 decodeUtf8InResponse ∷ Response LBS.ByteString → Text
 decodeUtf8InResponse = decodeUtf8 ∘ LBS.toStrict ∘ responseBody
@@ -56,20 +71,13 @@ pathToHabit = ("/habits/" ⊕) ∘ UUID.toText
 
 makeRequest ∷ StdMethod → Text → Client Request
 makeRequest std_method path = do
-  server ← ask
-  return $ defaultRequest
-    { method = renderStdMethod std_method
-    , host = server ^. server_hostname
-    , secure = case server ^. secure_mode of
-        Testing → False
-        Secure → True
-    , port = server ^. server_port
-    , path = encodeUtf8 path
-    }
+  view request_template
+  <&>
+  \template → template { method = renderStdMethod std_method, path = encodeUtf8 path }
 
 addJSONBody ∷ ToJSON α ⇒ α → Request → Request
 addJSONBody x request = request
-  { requestHeaders = [(hContentType, "application/json; charset=utf-8")]
+  { requestHeaders = (hContentType, "application/json; charset=utf-8"):requestHeaders request
   , requestBody = RequestBodyLBS ∘ encode $ x
   }
 

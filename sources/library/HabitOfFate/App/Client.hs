@@ -281,10 +281,10 @@ mainLoop = loop [] $
 
 habitMain ∷ IO ()
 habitMain = do
-  server_info ← newServerInfo Secure "localhost" 8081
+  session_info ← login Secure "localhost" 8081
   void
     ∘
-    flip runReaderT server_info
+    flip runReaderT session_info
     ∘
     runExceptT
     ∘

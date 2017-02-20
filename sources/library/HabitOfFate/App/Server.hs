@@ -36,6 +36,7 @@ import qualified Control.Monad.State as S
 import Data.Aeson hiding ((.=), json)
 import qualified Data.ByteString.Lazy as Lazy
 import Data.Proxy
+import Data.Text.IO
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID
 import qualified Data.UUID as UUID
@@ -47,6 +48,8 @@ import System.Environment
 import System.Directory
 import System.FilePath
 import System.Log.Logger
+import System.Random
+import Web.JWT hiding (decode, header)
 import Web.Scotty hiding (delete, get, post, put)
 import qualified Web.Scotty as Scotty
 
@@ -76,6 +79,12 @@ data CommonInstructionInstruction α where
 
 class Monad m ⇒ ActionMonad m where
   singletonCommon ∷ CommonInstructionInstruction α → m α
+
+finishWithStatus ∷ Status → ActionM α
+finishWithStatus s = status s >> finish
+
+finishWithStatusMessage ∷ Int → String → ActionM α
+finishWithStatusMessage code = finishWithStatus ∘ Status code ∘ encodeUtf8 ∘ pack
 
 getBody ∷ ActionMonad m ⇒ m Lazy.ByteString
 getBody = singletonCommon GetBodyInstruction
@@ -167,10 +176,24 @@ makeApp dirpath = do
          )
     >>=
     newTVarIO
+  let secret_filepath = dirpath </> "secret"
+  key ←
+    doesFileExist secret_filepath
+    >>=
+    bool (do info "Creating new secret"
+             key ← toText <$> randomIO
+             writeFile secret_filepath key
+             return $ secret key
+         )
+         (do info "Reading existing secret"
+             secret <$> readFile secret_filepath
+         )
   write_request ← newEmptyTMVarIO
   liftIO ∘ forkIO ∘ forever $ do
     atomically $ takeTMVar write_request
     readTVarIO data_tvar >>= writeAccount data_filepath
+
+  key ← secret ∘ toText <$> randomIO
   notice $ "Starting server..."
 {-
   let authorize = do
@@ -189,8 +212,37 @@ makeApp dirpath = do
           TextContent t → Scotty.text t
           JSONContent j → Scotty.json j
 
+      expected_iss = fromJust $ stringOrURI "habit-of-fate"
+
+      authorize ∷ ActionM String
+      authorize =
+        header "Authorization"
+        >>=
+        maybe
+          (finishWithStatusMessage 403 "Forbidden: No authorization token.")
+          return
+        >>=
+        \case
+          (words → ["Bearer", token]) → return token
+          header → finishWithStatusMessage 403 (printf "Forbidden: Unrecognized authorization header: %s" header)
+        >>=
+        maybe
+          (finishWithStatusMessage 403 "Forbidden: Unable to verify key")
+          return
+        ∘
+        decodeAndVerifySignature key
+        ∘
+        view strict
+        >>=
+        (\case
+          (claims → JWTClaimsSet { iss = Just observed_iss, sub = Just username })
+            | observed_iss == expected_iss → return $ show username
+          _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
+        )
+
       reader ∷ ReaderProgram ProgramResult → ActionM ()
       reader (ReaderProgram program) = do
+        authorize
         params_ ← params
         body_ ← body
         account ← liftIO ∘ readTVarIO $ data_tvar
@@ -205,6 +257,7 @@ makeApp dirpath = do
 
       writer ∷ WriterProgram ProgramResult → ActionM ()
       writer (WriterProgram program) = do
+        authorize
         params_ ← params
         body_ ← body
         let interpret (Operational.view → Return result) account = return (result, account)
@@ -235,6 +288,10 @@ makeApp dirpath = do
         >>=
         maybe (raiseStatus notFound404) return
   scottyApp $ do
+    Scotty.post "/login" ∘ Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
+      { iss = Just expected_iss
+      , sub = Just (fromJust $ stringOrURI "bitslayer")
+      }
     Scotty.get "/habits" ∘ reader $
       view habits >>= returnJSON ok200
     Scotty.get "/habits/:habit_id" ∘ reader $ do
