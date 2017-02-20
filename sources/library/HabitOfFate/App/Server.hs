@@ -195,14 +195,6 @@ makeApp dirpath = do
 
   key ← secret ∘ toText <$> randomIO
   notice $ "Starting server..."
-{-
-  let authorize = do
-        auth_header ← getHeader "Authorization"
-        cookie ← case words auth_header of
-          ["Basic",cookie] → return cookie
-          _ → throwError unauthorized401
-        jwt ← fromMaybe (throwError unauthorized401) (decodeAndVerifySignature secret cookie)
--}
   let postprocess ∷ Either Status ProgramResult → ActionM ()
       postprocess (Left s) = status s
       postprocess (Right (ProgramResult s content)) = do
