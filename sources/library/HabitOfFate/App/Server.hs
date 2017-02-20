@@ -25,21 +25,14 @@ import HabitOfFate.Prelude
 
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TMVar
-import Control.Concurrent.STM.TVar
 import Control.DeepSeq
-import Control.Monad.Catch
-import qualified Control.Monad.Reader as R
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import qualified Control.Monad.Operational as Operational
-import qualified Control.Monad.State as S
 import Data.Aeson hiding ((.=), json)
 import qualified Data.ByteString.Lazy as Lazy
-import Data.Proxy
 import Data.Text.IO
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID
-import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp hiding (run)
@@ -55,7 +48,6 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Credits
 import HabitOfFate.Account hiding (_habits)
-import HabitOfFate.Habit
 import HabitOfFate.Story
 
 instance Parsable UUID where
