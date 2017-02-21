@@ -161,7 +161,7 @@ makeApp dirpath = do
     doesFileExist data_filepath
     >>=
     bool (do info "Creating new data file"
-             newAccount
+             newAccount "password"
          )
          (do info "Reading existing data file"
              readAccount data_filepath
@@ -272,10 +272,15 @@ makeApp dirpath = do
         >>=
         maybe (raiseStatus notFound404) return
   scottyApp $ do
-    Scotty.post "/login" ∘ Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
-      { iss = Just expected_iss
-      , sub = Just (fromJust $ stringOrURI "bitslayer")
-      }
+    Scotty.post "/login" $ do
+      account ← liftIO $ readTVarIO data_tvar
+      password_ ← param "password"
+      unless (password_ == account ^. password) $
+        finishWithStatusMessage 403 "Forbidden: Invalid password"
+      Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
+        { iss = Just expected_iss
+        , sub = Just (fromJust $ stringOrURI "bitslayer")
+        }
     Scotty.get "/habits" ∘ reader $
       view habits >>= returnJSON ok200
     Scotty.get "/habits/:habit_id" ∘ reader $ do

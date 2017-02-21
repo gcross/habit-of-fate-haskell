@@ -32,7 +32,8 @@ instance FromJSON StdGen where
   parseJSON = fmap read ∘ parseJSON
 
 data Account = Account
-  {   _habits ∷ Map UUID Habit
+  {   _password ∷ String
+  ,   _habits ∷ Map UUID Habit
   ,   _game ∷ GameState
   ,   _quest ∷ Maybe CurrentQuestState
   ,   _rng :: StdGen
@@ -40,8 +41,8 @@ data Account = Account
 deriveJSON ''Account
 makeLenses ''Account
 
-newAccount ∷ IO Account
-newAccount = Account mempty newGame Nothing <$> newStdGen
+newAccount ∷ String → IO Account
+newAccount password = Account password mempty newGame Nothing <$> newStdGen
 
 data RunAccountResult = RunAccountResult
   { _story ∷ Seq Paragraph
