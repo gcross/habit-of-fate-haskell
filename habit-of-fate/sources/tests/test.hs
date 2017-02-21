@@ -7,6 +7,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+module Main where
+
 import HabitOfFate.Prelude hiding (elements)
 
 import Control.Concurrent
