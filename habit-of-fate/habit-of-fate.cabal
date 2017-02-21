@@ -14,7 +14,6 @@ library
   hs-source-dirs:      sources/library
   build-depends:       base
                      , aeson
-                     , ansi-terminal
                      , bytestring
                      , connection
                      , containers
@@ -30,7 +29,6 @@ library
                      , http-client-tls
                      , http-types
                      , labels
-                     , monad-control
                      , MonadRandom
                      , lens
                      , mono-traversable
@@ -51,13 +49,12 @@ library
                      , unordered-containers
                      , uuid
                      , vector
-                     , xml-conduit
-                     , yaml
                      , wai
                      , warp
                      , warp-tls
+                     , xml-conduit
+                     , yaml
   exposed-modules:     HabitOfFate.Account
-                     , HabitOfFate.App.Client
                      , HabitOfFate.App.Server
                      , HabitOfFate.Client
                      , HabitOfFate.Credits
