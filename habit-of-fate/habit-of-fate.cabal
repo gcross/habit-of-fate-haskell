@@ -55,7 +55,6 @@ library
                      , xml-conduit
                      , yaml
   exposed-modules:     HabitOfFate.Account
-                     , HabitOfFate.App.Server
                      , HabitOfFate.Client
                      , HabitOfFate.Credits
                      , HabitOfFate.Game
@@ -65,6 +64,7 @@ library
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
+                     , HabitOfFate.Server
                      , HabitOfFate.Story
                      , HabitOfFate.Trial
                      , HabitOfFate.TH

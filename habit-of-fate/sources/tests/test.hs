@@ -30,10 +30,10 @@ import qualified Test.Tasty.SmallCheck as S
 import Test.QuickCheck
 import Test.SmallCheck.Series
 
-import HabitOfFate.App.Server
 import HabitOfFate.Client
 import HabitOfFate.Credits
 import HabitOfFate.Habit
+import HabitOfFate.Server
 import HabitOfFate.Story
 
 instance Arbitrary Text where
