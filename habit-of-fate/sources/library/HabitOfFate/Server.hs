@@ -274,8 +274,8 @@ makeApp dirpath = do
   scottyApp $ do
     Scotty.post "/login" $ do
       account ← liftIO $ readTVarIO data_tvar
-      password_ ← param "password"
-      unless (password_ == account ^. password) $
+      password ← param "password"
+      unless (passwordIsValid password account) $
         finishWithStatusMessage 403 "Forbidden: Invalid password"
       Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
         { iss = Just expected_iss

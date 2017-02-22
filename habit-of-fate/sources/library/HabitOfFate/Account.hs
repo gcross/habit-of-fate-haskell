@@ -8,7 +8,9 @@ module HabitOfFate.Account where
 
 import HabitOfFate.Prelude
 
+import Control.Exception
 import Control.Monad.Random
+import Crypto.PasswordStore
 import qualified Data.ByteString as BS
 import Data.Map (Map)
 import Data.UUID (UUID)
@@ -32,7 +34,7 @@ instance FromJSON StdGen where
   parseJSON = fmap read ∘ parseJSON
 
 data Account = Account
-  {   _password ∷ String
+  {   _password ∷ Text
   ,   _habits ∷ Map UUID Habit
   ,   _game ∷ GameState
   ,   _quest ∷ Maybe CurrentQuestState
@@ -42,7 +44,21 @@ deriveJSON ''Account
 makeLenses ''Account
 
 newAccount ∷ String → IO Account
-newAccount password = Account password mempty newGame Nothing <$> newStdGen
+newAccount password =
+  Account
+    <$> (
+          makePassword (encodeUtf8 "password") 17
+          >>=
+          evaluate ∘ decodeUtf8
+        )
+    <*> pure mempty
+    <*> pure newGame
+    <*> pure Nothing
+    <*> newStdGen
+
+passwordIsValid ∷ Text → Account → Bool
+passwordIsValid password_ account =
+  verifyPassword (encodeUtf8 password_) (encodeUtf8 $ account ^. password)
 
 data RunAccountResult = RunAccountResult
   { _story ∷ Seq Paragraph
