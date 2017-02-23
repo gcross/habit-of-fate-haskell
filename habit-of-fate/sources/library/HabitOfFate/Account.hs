@@ -11,10 +11,9 @@ import HabitOfFate.Prelude
 import Control.Exception
 import Control.Monad.Random
 import Crypto.PasswordStore
-import qualified Data.ByteString as BS
+import Data.Aeson
 import Data.Map (Map)
 import Data.UUID (UUID)
-import Data.Yaml hiding ((.=))
 import System.Directory
 import System.Environment
 import System.FilePath
@@ -43,11 +42,11 @@ data Account = Account
 deriveJSON ''Account
 makeLenses ''Account
 
-newAccount ∷ String → IO Account
+newAccount ∷ Text → IO Account
 newAccount password =
   Account
     <$> (
-          makePassword (encodeUtf8 "password") 17
+          makePassword (encodeUtf8 (pack "password")) 17
           >>=
           evaluate ∘ decodeUtf8
         )
@@ -82,12 +81,6 @@ runAccount d =
          & quest .~ r ^. returned_value
          & rng .~ new_rng
       )
-
-readAccount ∷ FilePath → IO Account
-readAccount = BS.readFile >=> either error return . decodeEither
-
-writeAccount ∷ FilePath → Account → IO ()
-writeAccount = encodeFile
 
 getAccountFilePath ∷ IO FilePath
 getAccountFilePath =

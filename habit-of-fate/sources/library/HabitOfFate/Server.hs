@@ -28,11 +28,12 @@ import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import qualified Control.Monad.Operational as Operational
-import Data.Aeson hiding ((.=), json)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as Lazy
 import Data.Text.IO
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID
+import Data.Yaml hiding ((.=))
 import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp hiding (run)
@@ -85,7 +86,7 @@ getBodyJSON ∷ (FromJSON α, ActionMonad m) ⇒ m α
 getBodyJSON =
   getBody
   >>=
-  maybe (raiseStatus badRequest400) return ∘ decode
+  maybe (raiseStatus badRequest400) return ∘ decode ∘ view strict
 
 getParams ∷ ActionMonad m ⇒ m [Param]
 getParams = singletonCommon GetParamsInstruction
@@ -152,19 +153,33 @@ returnText s = returnLazyText s ∘ view (from strict)
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = return ∘ ProgramResult s ∘ JSONContent
 
+loadAccounts ∷ FilePath → IO (Map Text (TVar Account))
+loadAccounts =
+  liftIO ∘ BS.readFile
+  >=>
+  either error return . decodeEither
+  >=>
+  traverse newTVarIO
+
+saveAccounts ∷ FilePath → Map Text (TVar Account) → IO ()
+saveAccounts filepath =
+  traverse readTVarIO
+  >=>
+  encodeFile filepath
+
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
   info $ "Data and configuration files are located at " ⊕ dirpath
   createDirectoryIfMissing True dirpath
   let data_filepath = dirpath </> "data"
-  data_tvar ←
+  accounts_tvar ∷ TVar (Map Text (TVar Account)) ←
     doesFileExist data_filepath
     >>=
     bool (do info "Creating new data file"
-             newAccount "password"
+             singletonMap "bitslayer" <$> (newAccount "password" >>= newTVarIO)
          )
          (do info "Reading existing data file"
-             readAccount data_filepath
+             loadAccounts data_filepath
          )
     >>=
     newTVarIO
@@ -183,7 +198,7 @@ makeApp dirpath = do
   write_request ← newEmptyTMVarIO
   liftIO ∘ forkIO ∘ forever $ do
     atomically $ takeTMVar write_request
-    readTVarIO data_tvar >>= writeAccount data_filepath
+    readTVarIO accounts_tvar >>= saveAccounts data_filepath
 
   key ← secret ∘ toText <$> randomIO
   notice $ "Starting server..."
@@ -198,7 +213,7 @@ makeApp dirpath = do
 
       expected_iss = fromJust $ stringOrURI "habit-of-fate"
 
-      authorize ∷ ActionM String
+      authorize ∷ ActionM (TVar Account)
       authorize =
         header "Authorization"
         >>=
@@ -220,16 +235,19 @@ makeApp dirpath = do
         >>=
         (\case
           (claims → JWTClaimsSet { iss = Just observed_iss, sub = Just username })
-            | observed_iss == expected_iss → return $ show username
+            | observed_iss == expected_iss →
+                ((fmap ∘ lookup ∘ pack ∘ show $ username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
+                >>=
+                maybe (finishWithStatusMessage 404 "Not Found: No such account") return
           _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
         )
 
       reader ∷ ReaderProgram ProgramResult → ActionM ()
       reader (ReaderProgram program) = do
-        authorize
+        account_tvar ← authorize
         params_ ← params
         body_ ← body
-        account ← liftIO ∘ readTVarIO $ data_tvar
+        account ← liftIO ∘ readTVarIO $ account_tvar
         let interpret (Operational.view → Return result) = return result
             interpret (Operational.view → instruction :>>= rest) = case instruction of
               ReaderCommonInstruction common_instruction → case common_instruction of
@@ -241,7 +259,7 @@ makeApp dirpath = do
 
       writer ∷ WriterProgram ProgramResult → ActionM ()
       writer (WriterProgram program) = do
-        authorize
+        account_tvar ← authorize
         params_ ← params
         body_ ← body
         let interpret (Operational.view → Return result) account = return (result, account)
@@ -253,11 +271,11 @@ makeApp dirpath = do
               WriterGetAccountInstruction → interpret (rest account) account
               WriterPutAccountInstruction new_account → interpret (rest ()) new_account
         (liftIO ∘ atomically $ do
-          old_account ← readTVar data_tvar
+          old_account ← readTVar account_tvar
           case interpret program old_account of
             Left s → return $ Left s
             Right (result, new_account) → do
-              writeTVar data_tvar new_account
+              writeTVar account_tvar new_account
               return (Right result)
          ) >>= postprocess
 
@@ -273,13 +291,22 @@ makeApp dirpath = do
         maybe (raiseStatus notFound404) return
   scottyApp $ do
     Scotty.post "/login" $ do
-      account ← liftIO $ readTVarIO data_tvar
+      username ← param "username"
       password ← param "password"
-      unless (passwordIsValid password account) $
-        finishWithStatusMessage 403 "Forbidden: Invalid password"
+      (
+        (fmap (lookup username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
+        >>=
+        maybe (finishWithStatusMessage 404 "Not Found: No such account") return
+        >>=
+        liftIO ∘ readTVarIO
+        >>=
+        bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (return ())
+        ∘
+        passwordIsValid password
+       )
       Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
         { iss = Just expected_iss
-        , sub = Just (fromJust $ stringOrURI "bitslayer")
+        , sub = Just (fromJust $ stringOrURI username)
         }
     Scotty.get "/habits" ∘ reader $
       view habits >>= returnJSON ok200

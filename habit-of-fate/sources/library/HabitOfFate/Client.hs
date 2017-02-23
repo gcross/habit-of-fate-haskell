@@ -34,8 +34,8 @@ data SessionInfo = SessionInfo
   }
 makeLenses ''SessionInfo
 
-login ∷ String → SecureMode → ByteString → Int → IO SessionInfo
-login password secure_mode hostname port = do
+login ∷ String → String → SecureMode → ByteString → Int → IO SessionInfo
+login username password secure_mode hostname port = do
   manager ← newManager $
     case secure_mode of
       Testing → defaultManagerSettings
@@ -51,7 +51,8 @@ login password secure_mode hostname port = do
   response ←
     flip httpLbs manager
     $
-    request_template_without_authorization { path = encodeUtf8 (pack $ "/login?password=" ⊕ password) }
+    request_template_without_authorization
+      { path = encodeUtf8 (pack $ printf "/login?username=%s&password=%s" username password) }
   return $
     SessionInfo
       (request_template_without_authorization

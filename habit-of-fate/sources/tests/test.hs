@@ -112,7 +112,7 @@ serverTestCase name action = testCase name $ do
   filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','z'))
   withApplication
     (makeApp filepath)
-    (\port → login "password" Testing "localhost" port >>= runReaderT action)
+    (\port → login "bitslayer" "password" Testing "localhost" port >>= runReaderT action)
 
 initialize = do
   doesFileExist "test.log" >>= flip when (removeFile "test.log")
