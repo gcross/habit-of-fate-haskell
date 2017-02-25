@@ -83,13 +83,27 @@ test-suite test
                      , hslogger
                      , lens
                      , mtl
+                     , random
+                     , tasty
+                     , tasty-hunit
+                     , uuid
+                     , warp
+  default-language:    Haskell2010
+
+test-suite test-story-roundtrip
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      sources/tests
+  main-is:             test-story-roundtrip.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , directory
+                     , filepath
+                     , hslogger
+                     , lens
                      , QuickCheck
                      , random
                      , smallcheck
                      , tasty
-                     , tasty-hunit
                      , tasty-quickcheck
                      , tasty-smallcheck
-                     , uuid
-                     , warp
   default-language:    Haskell2010
