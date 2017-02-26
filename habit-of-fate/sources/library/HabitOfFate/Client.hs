@@ -34,8 +34,8 @@ data SessionInfo = SessionInfo
   }
 makeLenses ''SessionInfo
 
-login ∷ String → String → SecureMode → ByteString → Int → IO SessionInfo
-login username password secure_mode hostname port = do
+loginOrCreateAccount ∷ String → String → String → SecureMode → ByteString → Int → IO (Either Status SessionInfo)
+loginOrCreateAccount route username password secure_mode hostname port = do
   manager ← newManager $
     case secure_mode of
       Testing → defaultManagerSettings
@@ -52,15 +52,39 @@ login username password secure_mode hostname port = do
     flip httpLbs manager
     $
     request_template_without_authorization
-      { path = encodeUtf8 (pack $ printf "/login?username=%s&password=%s" username password) }
-  return $
-    SessionInfo
-      (request_template_without_authorization
-        { requestHeaders =
-            [("Authorization", ("Bearer " ⊕) ∘ view strict ∘ responseBody $ response)]
-        }
-      )
-      manager
+      { path = encodeUtf8 (pack $ printf "/%s?username=%s&password=%s" route username password) }
+  let code = responseStatusCode response
+  if code >= 200 && code <= 299
+    then return ∘ Right $
+      SessionInfo
+        (request_template_without_authorization
+          { requestHeaders =
+              [("Authorization", ("Bearer " ⊕) ∘ view strict ∘ responseBody $ response)]
+          }
+        )
+        manager
+    else return ∘ Left $ responseStatus response
+
+createAccount ∷ String → String → SecureMode → ByteString → Int → IO (Maybe SessionInfo)
+createAccount username password secure_mode hostname port =
+  either (const Nothing) Just
+  <$>
+  loginOrCreateAccount "create" username password secure_mode hostname port
+
+data LoginError = NoSuchAccount | InvalidPassword deriving (Eq, Ord, Show)
+
+login ∷ String → String → SecureMode → ByteString → Int → IO (Either LoginError SessionInfo)
+login username password secure_mode hostname port =
+  (_Left %~
+    (\case
+      403 → InvalidPassword
+      404 → NoSuchAccount
+    )
+    ∘
+    statusCode
+  )
+  <$>
+  loginOrCreateAccount "login" username password secure_mode hostname port
 
 type Client = ReaderT SessionInfo IO
 

@@ -295,13 +295,26 @@ mainLoop = loop [] $
 
 doMain ∷ IO ()
 doMain = do
-  session_info ← login "bitslayer" "password" Secure "localhost" 8081
-  void
-    ∘
-    flip runReaderT session_info
-    ∘
-    runExceptT
-    ∘
-    unwrapActionMonad
-    $
-    mainLoop
+  putStr "Username: "
+  hFlush stdout
+  username ← getLine
+  putStr "Password: "
+  hFlush stdout
+  hSetEcho stdout False
+  password ← getLine
+  hSetEcho stdout True
+  putStrLn ""
+  error_or_session_info ← login username password Secure "localhost" 8081
+  case error_or_session_info of
+    Left NoSuchAccount → putStrLn "No such account."
+    Left InvalidPassword → putStrLn "Invalid password."
+    Right session_info →
+      void
+      ∘
+      flip runReaderT session_info
+      ∘
+      runExceptT
+      ∘
+      unwrapActionMonad
+      $
+      mainLoop

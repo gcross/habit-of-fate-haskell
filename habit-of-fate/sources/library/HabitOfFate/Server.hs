@@ -167,8 +167,6 @@ saveAccounts filepath =
   >=>
   encodeFile filepath
 
-data AccountStatus = AccountExists | AccountCreated
-
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
   info $ "Data and configuration files are located at " ⊕ dirpath
@@ -178,7 +176,7 @@ makeApp dirpath = do
     doesFileExist data_filepath
     >>=
     bool (do info "Creating new data file"
-             mempty
+             singletonMap "bitslayer" <$> (newAccount "password" >>= newTVarIO)
          )
          (do info "Reading existing data file"
              loadAccounts data_filepath
@@ -292,27 +290,6 @@ makeApp dirpath = do
         >>=
         maybe (raiseStatus notFound404) return
   scottyApp $ do
-    Scotty.post "/create" $ do
-      username ← param "username"
-      password ← param "password"
-      account_status ← liftIO $ do
-        new_account ← newAccount password
-        atomically $ do
-          accounts ← readTVar accounts_tvar
-          if member username accounts
-            then return AccountExists
-            else do
-              account_tvar ← newTVar new_account
-              modifyTVar accounts_tvar $ insertMap username account_tvar
-              return AccountCreated
-      case account_status of
-        AccountExists → status conflict409
-        AccountCreated → do
-          status created201
-          Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
-            { iss = Just expected_iss
-            , sub = Just (fromJust $ stringOrURI username)
-            }
     Scotty.post "/login" $ do
       username ← param "username"
       password ← param "password"

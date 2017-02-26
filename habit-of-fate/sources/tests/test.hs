@@ -46,7 +46,11 @@ serverTestCase name action = testCase name $ do
   filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','z'))
   withApplication
     (makeApp filepath)
-    (\port → login "bitslayer" "password" Testing "localhost" port >>= runReaderT action)
+    (\port →
+      createAccount "bitslayer" "password" Testing "localhost" port
+      >>=
+      runReaderT action ∘ fromMaybe (error "Unable to create account.")
+    )
 
 initialize = do
   doesFileExist "test.log" >>= flip when (removeFile "test.log")
