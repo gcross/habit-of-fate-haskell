@@ -35,6 +35,7 @@ library
                      , monad-control
                      , mtl
                      , operational
+                     , optparse-applicative
                      , parsec
                      , pwstore-fast
                      , rainbow

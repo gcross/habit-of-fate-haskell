@@ -8,6 +8,7 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -17,7 +18,7 @@
 
 module HabitOfFate.App.Client where
 
-import HabitOfFate.Prelude
+import HabitOfFate.Prelude hiding (argument)
 
 import Control.Exception (AsyncException(UserInterrupt))
 import Control.Monad.Base
@@ -29,6 +30,7 @@ import Data.Char
 import qualified Data.Text.IO as S
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
+import Options.Applicative
 import Rainbow.Translate
 import System.IO
 import System.IO.Error (isEOFError)
@@ -79,8 +81,8 @@ data Action = Action
   }
 makeLenses ''Action
 
-help ∷ MonadIO m ⇒ [Action] → m ()
-help actions = liftIO $ do
+printHelp ∷ MonadIO m ⇒ [Action] → m ()
+printHelp actions = liftIO $ do
   putStrLn "Actions:"
   forM_ actions $
     printf "  %c: %s\n" <$> (^. key) <*> (^. description)
@@ -208,7 +210,7 @@ loop labels actions = void ∘ runExceptT $ do
         [(chr 4, lift quit)
         ,(chr 27, throwError Escape)
         ,('q', throwError Escape)
-        ,('?',help actions)
+        ,('?',printHelp actions)
         ]
         ⊕
         (map ((^. key) &&& (^. code . to lift)) actions)
@@ -293,8 +295,50 @@ mainLoop = loop [] $
               (habit ^. credits . success)
               (habit ^. credits . failure)
 
+data Configuration = Configuration
+  { hostname ∷ String
+  , port ∷ Int
+  , create_account_mode ∷ Bool
+  }
+
+configuration_parser ∷ Parser Configuration
+configuration_parser = Configuration
+  <$> strArgument (mconcat
+        [ metavar "HOSTNAME"
+        , help "Name of the host to connect to."
+        , value "localhost"
+        ])
+  <*> argument auto (mconcat
+        [ metavar "PORT"
+        , help "Port to connect to."
+        , value 8081
+        ])
+  <*> switch (mconcat
+        [ help "Create a new account."
+        , long "create"
+        , short 'c'
+        ])
+
+runSession ∷ SessionInfo → IO ()
+runSession session_info =
+  void
+  ∘
+  flip runReaderT session_info
+  ∘
+  runExceptT
+  ∘
+  unwrapActionMonad
+  $
+  mainLoop
+
 doMain ∷ IO ()
 doMain = do
+  Configuration{..} ←
+    execParser $ info
+      (configuration_parser <**> helper)
+      (   fullDesc
+       <> header "habit-client - a client program for habit-of-fate"
+      )
   putStr "Username: "
   hFlush stdout
   username ← getLine
@@ -304,17 +348,20 @@ doMain = do
   password ← getLine
   hSetEcho stdout True
   putStrLn ""
-  error_or_session_info ← login username password Secure "localhost" 8081
-  case error_or_session_info of
-    Left NoSuchAccount → putStrLn "No such account."
-    Left InvalidPassword → putStrLn "Invalid password."
-    Right session_info →
-      void
-      ∘
-      flip runReaderT session_info
-      ∘
-      runExceptT
-      ∘
-      unwrapActionMonad
-      $
-      mainLoop
+  let doLogin =
+        login username password Secure "localhost" 8081
+        >>=
+        either
+          (\case
+            NoSuchAccount → putStrLn "No such account."
+            InvalidPassword → putStrLn "Invalid password."
+          )
+          runSession
+  if create_account_mode
+    then
+      createAccount username password Secure "localhost" 8081
+      >>=
+      maybe
+        (putStrLn "Account already exists. Logging in..." >> doLogin)
+        runSession
+    else doLogin
