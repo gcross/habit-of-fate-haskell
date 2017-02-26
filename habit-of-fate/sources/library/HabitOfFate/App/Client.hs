@@ -1,3 +1,4 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -97,57 +98,86 @@ instance MonadClient ActionMonadWithCancel where
 cancel ∷ ActionMonadWithCancel α
 cancel = liftIO (putStrLn "") >> throwError Cancel
 
-prompt ∷  String → ActionMonadWithCancel String
-prompt p = join ∘ liftIO $ do
-    putStr p
-    putChar ' '
-    hFlush stdout
-    handleJust
-      (\e →
-         (
-          case fromException e of
-            Just UserInterrupt → Just cancel
-            _ → Nothing
-         )
-         <|>
-         (
-          isEOFError <$> fromException e
-          >>=
-          bool Nothing (Just $ liftIO (putStrLn "") >> lift quit)
-         )
-      )
-      return
-      (return <$> getLine)
+class EditableValue α where
+  showValue ∷ α → String
+  default showValue ∷ Show α ⇒ α → String
+  showValue = show
 
-parseUUID ∷ String → Maybe UUID
-parseUUID = readMaybe
+  parseValue ∷ String → Maybe α
+  default parseValue ∷ Read α ⇒ String → Maybe α
+  parseValue = readMaybe
 
-parseUUIDs ∷ String → Maybe [UUID]
-parseUUIDs =
+instance EditableValue String where
+  showValue = identity
+  parseValue = Just
+
+instance EditableValue Double where
+
+instance EditableValue UUID where
+
+instance EditableValue [UUID] where
+  showValue = intercalate "," ∘ map showValue
+  parseValue =
     sequence
     ∘
-    map parseUUID
+    map parseValue
     ∘
     split1
-  where
-    isSep = flip elem (" ," :: String)
+    where
+      isSep = flip elem (" ," :: String)
 
-    split1 = split2 ∘ dropWhile isSep
+      split1 = split2 ∘ dropWhile isSep
 
-    split2 [] = []
-    split2 x = entry:split1 rest
-      where
-        (entry,rest) = break isSep x
+      split2 [] = []
+      split2 x = entry:split1 rest
+        where
+          (entry,rest) = break isSep x
 
-promptAndParse ∷ (String → Maybe α) → String → ActionMonadWithCancel α
-promptAndParse parse p =
-  prompt p
+prompt ∷ EditableValue α ⇒ String → ActionMonadWithCancel α
+prompt p =
+  promptForString
   >>=
   maybe
-    (liftIO (putStrLn "Bad input.") >> promptAndParse parse p)
+    (liftIO (putStrLn "Bad input.") >> prompt p)
     return
   ∘
-  parse
+  parseValue
+  where
+    promptForString =
+      join ∘ liftIO $ do
+        putStr p
+        putChar ' '
+        hFlush stdout
+        handleJust
+          (\e →
+            (
+              case fromException e of
+                Just UserInterrupt → Just cancel
+                _ → Nothing
+            )
+            <|>
+            (
+              isEOFError <$> fromException e
+              >>=
+              bool Nothing (Just $ liftIO (putStrLn "") >> lift quit)
+            )
+          )
+          return
+          (return <$> getLine)
+
+promptWithDefault ∷ EditableValue α ⇒ α → String → ActionMonadWithCancel α
+promptWithDefault def p = doPrompt
+  where
+    doPrompt =
+      prompt (printf "%s [%s]" p (showValue def))
+      >>=
+      (\input →
+        if null input
+          then return def
+          else case parseValue input of
+            Nothing → doPrompt
+            Just value → return value
+      )
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =
@@ -163,22 +193,6 @@ promptForCommand p =
   command ← getChar
   putStrLn ""
   return command
-
-promptWithDefault ∷  String → String → ActionMonadWithCancel String
-promptWithDefault def p =
-  prompt (printf "%s [%s]" p def)
-  <&>
-  (\input → if null input then def else input)
-
-promptWithDefault' ∷ (Read α, Show α) ⇒ α → String → ActionMonadWithCancel α
-promptWithDefault' def p = doPrompt
-  where
-    doPrompt =
-      promptWithDefault (show def) p
-      >>=
-      handleParseResult . readEither
-    handleParseResult (Left e) = liftIO (putStrLn e) >> doPrompt
-    handleParseResult (Right x) = return x
 
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
@@ -220,12 +234,12 @@ mainLoop = loop [] $
       habit ← Habit
         <$> prompt "What is the name of the habit?"
         <*> (Credits
-              <$> promptWithDefault' 1.0 "How many credits is a success worth?"
-              <*> promptWithDefault' 0.0 "How many credits is a failure worth?"
+              <$> promptWithDefault 1.0 "How many credits is a success worth?"
+              <*> promptWithDefault 0.0 "How many credits is a failure worth?"
             )
       void ∘ liftC $ putHabit habit_id habit
     ,Action 'e' "Edit a habit." ∘ withCancel $ do
-      habit_id ← promptAndParse parseUUID "Which habit?"
+      habit_id ← prompt "Which habit?"
       old_habit ←
         liftC (fetchHabit habit_id)
         >>=
@@ -235,15 +249,15 @@ mainLoop = loop [] $
       habit ← Habit
         <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
         <*> (Credits
-             <$> promptWithDefault' (old_habit ^. credits . success) "How many credits is a success worth?"
-             <*> promptWithDefault' (old_habit ^. credits . failure) "How many credits is a failure worth?"
+             <$> promptWithDefault (old_habit ^. credits . success) "How many credits is a success worth?"
+             <*> promptWithDefault (old_habit ^. credits . failure) "How many credits is a failure worth?"
             )
       void ∘ liftC $ putHabit habit_id habit
     ,Action 'f' "Mark habits as failed." $
-       withCancel $ promptAndParse parseUUIDs "Which habits failed?" >>= void ∘ liftC ∘ markHabits []
+       withCancel $ prompt "Which habits failed?" >>= void ∘ liftC ∘ markHabits []
     ,Action 'p' "Print habits." $ printHabits
     ,Action 's' "Mark habits as successful." $
-       withCancel $ promptAndParse parseUUIDs "Which habits succeeded?" >>= void ∘ liftC ∘ flip markHabits []
+       withCancel $ prompt "Which habits succeeded?" >>= void ∘ liftC ∘ flip markHabits []
     ]
   ,Action 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"

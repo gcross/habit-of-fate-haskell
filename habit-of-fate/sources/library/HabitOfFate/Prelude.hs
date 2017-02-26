@@ -155,7 +155,7 @@ import Data.Functor
 
 import Data.HashMap.Strict (HashMap)
 
-import Data.List (intersperse)
+import Data.List (intercalate, intersperse, reverse)
 
 import Data.Map.Strict (Map)
 
