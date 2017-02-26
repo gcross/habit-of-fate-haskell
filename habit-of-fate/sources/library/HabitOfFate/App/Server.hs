@@ -19,7 +19,7 @@
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module HabitOfFate.Server where
+module HabitOfFate.App.Server where
 
 import HabitOfFate.Prelude
 
