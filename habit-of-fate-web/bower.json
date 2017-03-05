@@ -1,0 +1,19 @@
+{
+  "name": "habit-of-fate-web",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-aff": "^2.0.1",
+    "purescript-affjax": "^3.0.2",
+    "purescript-prelude": "^2.5.0",
+      "purescript-console": "^2.0.0",
+    "purescript-test-unit": "^10.1.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^2.0.0"
+  }
+}
