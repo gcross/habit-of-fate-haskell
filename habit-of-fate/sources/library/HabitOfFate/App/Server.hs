@@ -10,6 +10,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -33,12 +34,12 @@ import qualified Data.ByteString.Lazy as Lazy
 import Data.Text.IO
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID
-import Data.Yaml hiding ((.=))
+import Data.Yaml hiding (Parser, (.=))
 import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
-import System.Environment
+import Options.Applicative
 import System.Directory
 import System.FilePath
 import System.Log.Logger
@@ -178,17 +179,17 @@ data AccountStatus = AccountExists | AccountCreated
 
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
-  logInfo $ "Data and configuration files are located at " ⊕ dirpath
+  logInfo $ printf "Using data directory at %s" dirpath
   createDirectoryIfMissing True dirpath
-  let data_filepath = dirpath </> "data"
+  let data_dirpath = dirpath </> "data"
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ←
-    doesFileExist data_filepath
+    doesFileExist data_dirpath
     >>=
     bool (do logInfo "Creating new data file"
              mempty
          )
          (do logInfo "Reading existing data file"
-             loadAccounts data_filepath
+             loadAccounts data_dirpath
          )
     >>=
     newTVarIO
@@ -207,7 +208,7 @@ makeApp dirpath = do
   write_request ← newEmptyTMVarIO
   liftIO ∘ forkIO ∘ forever $ do
     atomically $ takeTMVar write_request
-    readTVarIO accounts_tvar >>= saveAccounts data_filepath
+    readTVarIO accounts_tvar >>= saveAccounts data_dirpath
 
   key ← secret ∘ toText <$> randomIO
   logNotice $ "Starting server..."
@@ -408,13 +409,77 @@ makeApp dirpath = do
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
 
+data Configuration = Configuration
+  { port ∷ Int
+  , maybe_data_path ∷ Maybe FilePath
+  , maybe_certificate_path ∷ Maybe FilePath
+  , maybe_key_path ∷ Maybe FilePath
+  , log_level ∷ Priority
+  }
+
 habitMain ∷ IO ()
 habitMain = do
-  dirpath ← getAccountFilePath
-  certificate_path ← getDataFileName $ "data" </> "testing_certificate.pem"
-  key_path ← getDataFileName $ "data" </> "testing_key.pem"
-  app ← makeApp dirpath
-  runTLS
-    (tlsSettings certificate_path key_path)
-    (setPort 8081 defaultSettings)
-    app
+  let configuration_parser ∷ Parser Configuration
+      configuration_parser = Configuration
+        <$> option auto (mconcat
+              [ metavar "PORT"
+              , help "Port to listen on."
+              , long "port"
+              , short 'p'
+              , value 8081
+              ])
+        <*> option auto (mconcat
+              [ metavar "DIRECTORY"
+              , help "Path to game and server data."
+              , long "data"
+              , action "directory"
+              , value Nothing
+              ])
+        <*> option auto (mconcat
+              [ metavar "FILE"
+              , help "Path to the certificate file."
+              , long "cert"
+              , long "certificate"
+              , action "file"
+              , value Nothing
+              ])
+        <*> option auto (mconcat
+              [ metavar "FILE"
+              , help "Path to the key file."
+              , long "key"
+              , action "file"
+              , value Nothing
+              ])
+        <*> option auto (mconcat
+              [ metavar "LEVEL"
+              , help "Log level."
+              , long "log-level"
+              , short 'l'
+              , value NOTICE
+              ])
+  Configuration{..} ←
+    execParser $ info
+      (configuration_parser <**> helper)
+      (   fullDesc
+       <> header "habit-server - server program for habit-of-fate"
+      )
+  updateGlobalLogger rootLoggerName (setLevel log_level)
+  logInfo $ printf "Listening on port %i" port
+  certificate_path ←
+    maybe
+      (getDataFileName $ "data" </> "testing_certificate.pem")
+      pure
+      maybe_certificate_path
+  logInfo $ printf "Using certificate file located at %s" certificate_path
+  key_path ←
+    maybe
+      (getDataFileName $ "data" </> "testing_key.pem")
+      pure
+      maybe_key_path
+  logInfo $ printf "Using key file located at %s" key_path
+  let data_path = fromMaybe "/tmp/habit" maybe_data_path
+  makeApp data_path
+    >>=
+    runTLS
+      (tlsSettings certificate_path key_path)
+      (setPort port defaultSettings)

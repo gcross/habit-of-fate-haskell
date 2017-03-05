@@ -15,7 +15,6 @@ import Data.Aeson
 import Data.Map (Map)
 import Data.UUID (UUID)
 import System.Directory
-import System.Environment
 import System.FilePath
 
 import HabitOfFate.Credits
@@ -81,13 +80,6 @@ runAccount d =
          & quest .~ r ^. returned_value
          & rng .~ new_rng
       )
-
-getAccountFilePath ∷ IO FilePath
-getAccountFilePath =
-  getArgs >>= \case
-    [] → getHomeDirectory <&> (</> ".habit")
-    [filepath] → return filepath
-    _ → error "Only one argument may be provided."
 
 stillHasCredits ∷ Account → Bool
 stillHasCredits d = (||)
