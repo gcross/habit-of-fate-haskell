@@ -44,7 +44,18 @@ import System.FilePath
 import System.Log.Logger
 import System.Random
 import Web.JWT hiding (decode, header)
-import Web.Scotty hiding (delete, get, post, put)
+import Web.Scotty
+  ( ActionM
+  , Param
+  , Parsable
+  , body
+  , param
+  , params
+  , parseParam
+  , finish
+  , scottyApp
+  , status
+  )
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Credits
@@ -56,9 +67,10 @@ import Paths_habit_of_fate
 instance Parsable UUID where
   parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ view strict
 
-info, notice ∷ MonadIO m ⇒ String → m ()
-info = liftIO ∘ infoM "HabitOfFate.Server"
-notice = liftIO ∘ noticeM "HabitOfFate.Server"
+logInfo, logNotice, logWarning ∷ MonadIO m ⇒ String → m ()
+logInfo = liftIO ∘ infoM "HabitOfFate.Server"
+logNotice = liftIO ∘ noticeM "HabitOfFate.Server"
+logWarning = liftIO ∘ warningM "HabitOfFate.Server"
 
 data CommonInstructionInstruction α where
   GetBodyInstruction ∷ CommonInstructionInstruction Lazy.ByteString
@@ -166,16 +178,16 @@ data AccountStatus = AccountExists | AccountCreated
 
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
-  info $ "Data and configuration files are located at " ⊕ dirpath
+  logInfo $ "Data and configuration files are located at " ⊕ dirpath
   createDirectoryIfMissing True dirpath
   let data_filepath = dirpath </> "data"
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ←
     doesFileExist data_filepath
     >>=
-    bool (do info "Creating new data file"
+    bool (do logInfo "Creating new data file"
              mempty
          )
-         (do info "Reading existing data file"
+         (do logInfo "Reading existing data file"
              loadAccounts data_filepath
          )
     >>=
@@ -184,12 +196,12 @@ makeApp dirpath = do
   key ←
     doesFileExist secret_filepath
     >>=
-    bool (do info "Creating new secret"
+    bool (do logInfo "Creating new secret"
              key ← toText <$> randomIO
              writeFile secret_filepath key
              return $ secret key
          )
-         (do info "Reading existing secret"
+         (do logInfo "Reading existing secret"
              secret <$> readFile secret_filepath
          )
   write_request ← newEmptyTMVarIO
@@ -198,7 +210,7 @@ makeApp dirpath = do
     readTVarIO accounts_tvar >>= saveAccounts data_filepath
 
   key ← secret ∘ toText <$> randomIO
-  notice $ "Starting server..."
+  logNotice $ "Starting server..."
   let postprocess ∷ Either Status ProgramResult → ActionM ()
       postprocess (Left s) = status s
       postprocess (Right (ProgramResult s content)) = do
@@ -212,7 +224,7 @@ makeApp dirpath = do
 
       authorize ∷ ActionM (TVar Account)
       authorize =
-        header "Authorization"
+        Scotty.header "Authorization"
         >>=
         maybe
           (finishWithStatusMessage 403 "Forbidden: No authorization token.")
