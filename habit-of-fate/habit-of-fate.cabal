@@ -7,7 +7,6 @@ author:              Gregory Crosswhite
 maintainer:          gcrosswhite@gmail.com
 copyright:           2016 Gregory Crosswhite
 build-type:          Simple
--- extra-source-files:
 cabal-version:       >=1.10
 
 library
