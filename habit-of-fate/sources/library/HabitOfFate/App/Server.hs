@@ -58,13 +58,6 @@ info, notice ∷ MonadIO m ⇒ String → m ()
 info = liftIO ∘ infoM "HabitOfFate.Server"
 notice = liftIO ∘ noticeM "HabitOfFate.Server"
 
-getDataFilePath ∷ IO FilePath
-getDataFilePath =
-  getArgs >>= \case
-    [] → getHomeDirectory <&> (</> ".habit")
-    [filepath] → return filepath
-    _ → error "Only one argument may be provided."
-
 data CommonInstructionInstruction α where
   GetBodyInstruction ∷ CommonInstructionInstruction Lazy.ByteString
   GetParamsInstruction ∷ CommonInstructionInstruction [Param]
