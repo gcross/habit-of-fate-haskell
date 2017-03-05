@@ -51,6 +51,8 @@ import HabitOfFate.Credits
 import HabitOfFate.Account hiding (_habits)
 import HabitOfFate.Story
 
+import Paths_habit_of_fate
+
 instance Parsable UUID where
   parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ view strict
 
@@ -397,8 +399,10 @@ makeApp dirpath = do
 habitMain ∷ IO ()
 habitMain = do
   dirpath ← getAccountFilePath
-  makeApp dirpath
-    >>=
-    runTLS
-      (tlsSettings (dirpath </> "certificate.pem") (dirpath </> "key.pem"))
-      (setPort 8081 defaultSettings)
+  certificate_path ← getDataFileName $ "data" </> "testing_certificate.pem"
+  key_path ← getDataFileName $ "data" </> "testing_key.pem"
+  app ← makeApp dirpath
+  runTLS
+    (tlsSettings certificate_path key_path)
+    (setPort 8081 defaultSettings)
+    app
