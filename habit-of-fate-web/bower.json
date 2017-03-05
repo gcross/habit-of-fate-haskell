@@ -9,11 +9,14 @@
   "dependencies": {
     "purescript-aff": "^2.0.1",
     "purescript-affjax": "^3.0.2",
-    "purescript-prelude": "^2.5.0",
-      "purescript-console": "^2.0.0",
-    "purescript-test-unit": "^10.1.0"
+    "purescript-generics": "^3.0.0",
+    "purescript-prelude": "^2.5.0"
   },
   "devDependencies": {
-    "purescript-psci-support": "^2.0.0"
+    "purescript-console": "^2.0.0",
+    "purescript-psci-support": "^2.0.0",
+    "purescript-random": "^2.0.0",
+    "purescript-test-unit": "^10.1.0",
+    "purescript-unfoldable": "^2.0.0"
   }
 }
