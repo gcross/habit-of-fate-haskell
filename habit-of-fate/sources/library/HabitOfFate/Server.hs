@@ -42,10 +42,10 @@ import Web.Scotty
   , Param
   , Parsable
   , body
-  , param
   , params
   , parseParam
   , finish
+  , rescue
   , scottyApp
   , status
   )
@@ -95,7 +95,7 @@ getParam ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m α
 getParam param_name = do
   params_ ← getParams
   case lookup param_name params_ of
-    Nothing → raiseStatus internalServerError500
+    Nothing → raiseStatus badRequest400
     Just value → case parseParam value of
       Left _ → raiseStatus badRequest400
       Right x → return x
@@ -168,6 +168,17 @@ saveAccounts filepath =
   encodeFile filepath
 
 data AccountStatus = AccountExists | AccountCreated
+
+param ∷ Parsable α ⇒ Lazy.Text → ActionM α
+param name =
+  Scotty.param name
+  `rescue`
+  (const
+   $
+   do Scotty.text $ "Missing parameter: \"" ⊕ name ⊕ "\""
+      status badRequest400
+      finish
+  )
 
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do

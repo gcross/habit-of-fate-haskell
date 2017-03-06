@@ -15,6 +15,8 @@ import Control.Concurrent
 import Control.Lens.Extras
 import qualified Data.Map as Map
 import qualified Data.UUID as UUID
+import Network.HTTP.Client
+import Network.HTTP.Types
 import Network.Wai.Handler.Warp
 import System.Directory
 import System.FilePath
@@ -39,18 +41,20 @@ header header = replicate left_dash_count '-' ⊕ " " ⊕ header ⊕ " " ⊕ rep
     right_dash_count = dash_count `div` 2
     left_dash_count = dash_count - right_dash_count
 
-serverTestCase ∷ String → (Client ()) → TestTree
-serverTestCase name action = testCase name $ do
+serverTestCaseWithoutAccount ∷ String → (Int → IO ()) → TestTree
+serverTestCaseWithoutAccount name action = testCase name $ do
   debugM "Test" $ header name
   tempdir ← getTemporaryDirectory
   filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','z'))
   withApplication
     (makeApp filepath)
-    (\port →
-      createAccount "bitslayer" "password" Testing "localhost" port
-      >>=
-      runReaderT action ∘ fromMaybe (error "Unable to create account.")
-    )
+    action
+
+serverTestCase ∷ String → (Client ()) → TestTree
+serverTestCase name action = serverTestCaseWithoutAccount name $ \port →
+  createAccount "bitslayer" "password" Testing "localhost" port
+  >>=
+  runReaderT action ∘ fromMaybe (error "Unable to create account.")
 
 initialize = do
   doesFileExist "test.log" >>= flip when (removeFile "test.log")
@@ -87,8 +91,29 @@ originalFromSubEvent =
   unwrapGenEvent
 
 main = initialize >> (defaultMain $ testGroup "All Tests"
-  [ testGroup "HabitOfFate.App.Server"
-    [ serverTestCase "Get all habits when none exist" $
+  [ testGroup "HabitOfFate.Server"
+    [ testGroup "Missing username/password" $
+        let testMissing test_name path =
+              serverTestCaseWithoutAccount test_name $ \port → do
+                manager ← newManager defaultManagerSettings
+                response ← flip httpNoBody manager $ defaultRequest
+                  { method = renderStdMethod POST
+                  , host = "localhost"
+                  , port = port
+                  , path = path
+                  }
+                400 @=? responseStatusCode response
+        in
+        [ testGroup "Create account"
+            [ testMissing "Missing username" "create?password=foobar"
+            , testMissing "Missing password" "create?username=foobar"
+            ]
+        , testGroup "Log in"
+            [ testMissing "Missing username" "login?password=foobar"
+            , testMissing "Missing password" "login?username=foobar"
+            ]
+        ]
+    , serverTestCase "Get all habits when none exist" $
         fetchHabits
         >>=
         liftIO ∘ (@?= Map.empty)

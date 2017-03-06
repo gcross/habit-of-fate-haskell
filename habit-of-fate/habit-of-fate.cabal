@@ -87,6 +87,8 @@ test-suite test
                      , directory
                      , filepath
                      , hslogger
+                     , http-client
+                     , http-types
                      , lens
                      , mtl
                      , random
