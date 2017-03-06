@@ -306,6 +306,7 @@ makeApp dirpath = do
     Scotty.post "/create" $ do
       username ← param "username"
       password ← param "password"
+      logNotice $ printf "Request to create an account for \"%s\"" username
       account_status ← liftIO $ do
         new_account ← newAccount password
         atomically $ do
@@ -317,8 +318,11 @@ makeApp dirpath = do
               modifyTVar accounts_tvar $ insertMap username account_tvar
               return AccountCreated
       case account_status of
-        AccountExists → status conflict409
+        AccountExists → do
+          logNotice $ printf "Account \"%s\" already exists!" username
+          status conflict409
         AccountCreated → do
+          logNotice $ printf "Account \"%s\" successfully created!" username
           status created201
           Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
             { iss = Just expected_iss
