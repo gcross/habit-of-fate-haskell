@@ -26,10 +26,10 @@ import System.Random
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import HabitOfFate.App.Server
 import HabitOfFate.Client
 import HabitOfFate.Credits
 import HabitOfFate.Habit
+import HabitOfFate.Server
 import HabitOfFate.Story
 
 header ∷ String → String

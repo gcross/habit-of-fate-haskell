@@ -1,25 +1,18 @@
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module HabitOfFate.App.Server where
+module HabitOfFate.Server (makeApp) where
 
 import HabitOfFate.Prelude
 
@@ -33,37 +26,44 @@ import qualified Data.ByteString.Lazy as Lazy
 import Data.Text.IO
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID
-import Data.Yaml hiding ((.=))
+import Data.Yaml hiding (Parser, (.=))
 import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
-import System.Environment
+import Options.Applicative
 import System.Directory
 import System.FilePath
 import System.Log.Logger
 import System.Random
 import Web.JWT hiding (decode, header)
-import Web.Scotty hiding (delete, get, post, put)
+import Web.Scotty
+  ( ActionM
+  , Param
+  , Parsable
+  , body
+  , param
+  , params
+  , parseParam
+  , finish
+  , scottyApp
+  , status
+  )
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Credits
 import HabitOfFate.Account hiding (_habits)
 import HabitOfFate.Story
 
+import Paths_habit_of_fate
+
 instance Parsable UUID where
   parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ view strict
 
-info, notice ∷ MonadIO m ⇒ String → m ()
-info = liftIO ∘ infoM "HabitOfFate.Server"
-notice = liftIO ∘ noticeM "HabitOfFate.Server"
-
-getDataFilePath ∷ IO FilePath
-getDataFilePath =
-  getArgs >>= \case
-    [] → getHomeDirectory <&> (</> ".habit")
-    [filepath] → return filepath
-    _ → error "Only one argument may be provided."
+logInfo, logNotice, logWarning ∷ MonadIO m ⇒ String → m ()
+logInfo = liftIO ∘ infoM "HabitOfFate.Server"
+logNotice = liftIO ∘ noticeM "HabitOfFate.Server"
+logWarning = liftIO ∘ warningM "HabitOfFate.Server"
 
 data CommonInstructionInstruction α where
   GetBodyInstruction ∷ CommonInstructionInstruction Lazy.ByteString
@@ -167,19 +167,21 @@ saveAccounts filepath =
   >=>
   encodeFile filepath
 
+data AccountStatus = AccountExists | AccountCreated
+
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
-  info $ "Data and configuration files are located at " ⊕ dirpath
+  logInfo $ printf "Using data directory at %s" dirpath
   createDirectoryIfMissing True dirpath
-  let data_filepath = dirpath </> "data"
+  let data_dirpath = dirpath </> "data"
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ←
-    doesFileExist data_filepath
+    doesFileExist data_dirpath
     >>=
-    bool (do info "Creating new data file"
-             singletonMap "bitslayer" <$> (newAccount "password" >>= newTVarIO)
+    bool (do logInfo "Creating new data file"
+             mempty
          )
-         (do info "Reading existing data file"
-             loadAccounts data_filepath
+         (do logInfo "Reading existing data file"
+             loadAccounts data_dirpath
          )
     >>=
     newTVarIO
@@ -187,21 +189,21 @@ makeApp dirpath = do
   key ←
     doesFileExist secret_filepath
     >>=
-    bool (do info "Creating new secret"
+    bool (do logInfo "Creating new secret"
              key ← toText <$> randomIO
              writeFile secret_filepath key
              return $ secret key
          )
-         (do info "Reading existing secret"
+         (do logInfo "Reading existing secret"
              secret <$> readFile secret_filepath
          )
   write_request ← newEmptyTMVarIO
   liftIO ∘ forkIO ∘ forever $ do
     atomically $ takeTMVar write_request
-    readTVarIO accounts_tvar >>= saveAccounts data_filepath
+    readTVarIO accounts_tvar >>= saveAccounts data_dirpath
 
   key ← secret ∘ toText <$> randomIO
-  notice $ "Starting server..."
+  logNotice $ "Starting server..."
   let postprocess ∷ Either Status ProgramResult → ActionM ()
       postprocess (Left s) = status s
       postprocess (Right (ProgramResult s content)) = do
@@ -215,7 +217,7 @@ makeApp dirpath = do
 
       authorize ∷ ActionM (TVar Account)
       authorize =
-        header "Authorization"
+        Scotty.header "Authorization"
         >>=
         maybe
           (finishWithStatusMessage 403 "Forbidden: No authorization token.")
@@ -290,6 +292,27 @@ makeApp dirpath = do
         >>=
         maybe (raiseStatus notFound404) return
   scottyApp $ do
+    Scotty.post "/create" $ do
+      username ← param "username"
+      password ← param "password"
+      account_status ← liftIO $ do
+        new_account ← newAccount password
+        atomically $ do
+          accounts ← readTVar accounts_tvar
+          if member username accounts
+            then return AccountExists
+            else do
+              account_tvar ← newTVar new_account
+              modifyTVar accounts_tvar $ insertMap username account_tvar
+              return AccountCreated
+      case account_status of
+        AccountExists → status conflict409
+        AccountCreated → do
+          status created201
+          Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
+            { iss = Just expected_iss
+            , sub = Just (fromJust $ stringOrURI username)
+            }
     Scotty.post "/login" $ do
       username ← param "username"
       password ← param "password"
@@ -377,12 +400,3 @@ makeApp dirpath = do
         $
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
-
-habitMain ∷ IO ()
-habitMain = do
-  dirpath ← getAccountFilePath
-  makeApp dirpath
-    >>=
-    runTLS
-      (tlsSettings (dirpath </> "certificate.pem") (dirpath </> "key.pem"))
-      (setPort 8081 defaultSettings)
