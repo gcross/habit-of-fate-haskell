@@ -55,8 +55,6 @@ import HabitOfFate.Credits
 import HabitOfFate.Account hiding (_habits)
 import HabitOfFate.Story
 
-import Paths_habit_of_fate
-
 instance Parsable UUID where
   parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ view strict
 
