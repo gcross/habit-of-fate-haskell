@@ -1,28 +1,29 @@
 module Test.Main where
 
 import Prelude
-
 import Control.Alternative
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Aff
 import Control.Monad.Eff
 import Control.Monad.Eff.Class
-import Control.Monad.Eff.Exception (Error, EXCEPTION, throwException, error)
+import Control.Monad.Eff.Console
 import Control.Monad.Eff.Random
+import Control.Monad.Free
 import Data.Char
 import Data.Either
-import Data.String (fromCharArray)
 import Data.Unfoldable
-import Test.Unit.Assert (assert)
-import Test.Unit (failure, success, suite, test, timeout)
-import Test.Unit.Main (runTest)
-
+import Network.HTTP.Affjax
+import Test.Unit
+import Test.Unit.Assert
 import Client
+import Control.Monad.Eff.Exception (Error, EXCEPTION, throwException, error)
+import Data.String (fromCharArray)
+import Test.Unit.Main (runTest)
 
 randomAlphaChar ∷ ∀ ε. Eff (random ∷ RANDOM | ε) Char
 randomAlphaChar = do
-  char ← fromCharCode <$> randomInt (toCharCode 'A') (toCharCode 'B')
+  char ← fromCharCode <$> randomInt (toCharCode 'A') (toCharCode 'Z')
   make_lowercase ← randomBool
   pure $
     if make_lowercase
@@ -35,7 +36,7 @@ randomAlphaString =
   <$>
   replicateA 10 randomAlphaChar
 
-randomAccount ∷ ∀ ε. Aff (random ∷ RANDOM | ε) LoginInformation
+randomAccount ∷ ∀ r. Aff (random ∷ RANDOM | r) LoginInformation
 randomAccount = liftEff do
   username ← randomAlphaString
   pure $
@@ -45,11 +46,19 @@ randomAccount = liftEff do
     , port: 8081
     }
 
-assertFails ∷ ∀ ε α. Aff ε α → Aff ε Unit
+assertFails ∷ ∀ ε α. Aff ε α → Test ε
 assertFails action =
   attempt action
   >>=
   assert "should have failed" <<< isLeft
+
+withinSession ∷
+  ∀ r.
+  Client Unit →
+  Test (ajax ∷ AJAX, console ∷ CONSOLE, exception ∷ EXCEPTION, random ∷ RANDOM | r)
+withinSession action = do
+  login_information ← randomAccount
+  createAccount login_information >>= runClient action
 
 main = runTest do
   suite "create account" do
@@ -72,3 +81,5 @@ main = runTest do
       createAccount login_information
       login login_information
       pure unit
+  test "fetching habits from new account returns empty array" $ withinSession do
+      void fetchHabits
