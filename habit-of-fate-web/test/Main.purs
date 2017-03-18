@@ -52,13 +52,7 @@ assertFails action =
   >>=
   assert "should have failed" <<< isLeft
 
-withinSession ∷
-  ∀ r.
-  Client Unit →
-  Test (ajax ∷ AJAX, console ∷ CONSOLE, exception ∷ EXCEPTION, random ∷ RANDOM | r)
-withinSession action = do
-  login_information ← randomAccount
-  createAccount login_information >>= runClient action
+createRandomAccount = randomAccount >>= createAccount
 
 main = runTest do
   suite "create account" do
@@ -81,5 +75,5 @@ main = runTest do
       createAccount login_information
       login login_information
       pure unit
-  test "fetching habits from new account returns empty array" $ withinSession do
-      void fetchHabits
+  test "fetching habits from new account returns empty array" $ do
+    void $ createRandomAccount >>= fetchHabits

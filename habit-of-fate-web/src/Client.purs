@@ -24,7 +24,6 @@ import Network.HTTP.Affjax.Request
 import Network.HTTP.Affjax.Response
 import Network.HTTP.RequestHeader
 import Network.HTTP.StatusCode
-
 import Unicode
 
 type LoginInformation =
@@ -56,14 +55,15 @@ createURL server route =
   $
   url_template
 
-type AffLoginOrCreateResult e = Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | e) SessionInformation
-
 responseStatusCode ∷ ∀ a. AffjaxResponse a → Int
 responseStatusCode response =
   case response.status of
     StatusCode code → code
 
-loginOrCreateAccount ∷ ∀ e. String → LoginInformation → AffLoginOrCreateResult e
+loginOrCreateAccount ∷
+  ∀ e.
+  String → LoginInformation →
+  Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | e) SessionInformation
 loginOrCreateAccount route login_info = do
   response ∷ AffjaxResponse String ← post
     (createURL login_info (route ⊕ "?username=" ⊕ login_info.username ⊕ "&password=" ⊕ login_info.password))
@@ -79,45 +79,43 @@ loginOrCreateAccount route login_info = do
     , token: response.response
     }
 
-createAccount ∷ ∀ e. LoginInformation → AffLoginOrCreateResult e
+createAccount ∷
+  ∀ r.
+  LoginInformation →
+  Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | r) SessionInformation
 createAccount = loginOrCreateAccount "create"
 
-login ∷ ∀ e. LoginInformation → AffLoginOrCreateResult e
+login ∷
+  ∀ r.
+  LoginInformation →
+  Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | r) SessionInformation
 login = loginOrCreateAccount "login"
 
-type ClientAff r = Aff (ajax ∷ AJAX, console ∷ CONSOLE, exception ∷ EXCEPTION | r)
-
-type Client α = ∀ r. ReaderT SessionInformation (ClientAff r) α
-
-runClient ∷ ∀ r α. Client α → SessionInformation → ClientAff r α
-runClient action session_information = runReaderT action session_information
-
-sendRequest ∷ ∀ α β. (Requestable α, Respondable β) ⇒ Method → String → Array Int → α → Client β
-sendRequest method path expected_codes content = do
-  request ←
-    (\session_info →
-      (defaultRequest
-        { method = Left method
-        , url = createURL session_info path
-        , content = Just content
-        , headers = [RequestHeader "Authorization" ("Bearer " ⊕ session_info.token)]
-        }
-      )
-    )
-    <$>
-    ask
-  response ← liftAff $ affjax request
+sendRequest ∷
+  ∀ r α β.
+  (Requestable α, Respondable β) ⇒
+  SessionInformation → Method → String → Array Int → α →
+  Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | r) β
+sendRequest session_info method path expected_codes content = do
+  response ← affjax $
+    defaultRequest
+      { method = Left method
+      , url = createURL session_info path
+      , content = Just content
+      , headers = [RequestHeader "Authorization" ("Bearer " ⊕ session_info.token)]
+      }
   case response.status of
     StatusCode code | not (code ∈ expected_codes) → throwError <<< error $
       "Status code not one of " ⊕ show expected_codes ⊕ ": " ⊕ show code
     _ → pure response.response
 
 sendRequestAndReceiveJson ∷
-  ∀ α β.
+  ∀ r α β.
   (Requestable α, DecodeJson β) ⇒
-  Method → String → Array Int → α → Client β
-sendRequestAndReceiveJson method path expected_codes content = do
-  string ← sendRequest method path expected_codes content
+  SessionInformation → Method → String → Array Int → α →
+  Aff (ajax ∷ AJAX, console ∷ CONSOLE, exception ∷ EXCEPTION | r) β
+sendRequestAndReceiveJson session_info method path expected_codes content = do
+  string ← sendRequest session_info method path expected_codes content
   case jsonParser string >>= decodeJson of
     Left message → do
       liftEff $ log string
@@ -143,5 +141,8 @@ instance decodeJsonHabit :: DecodeJson Habit where
 type HabitId = String
 type Habits = StrMap Habit
 
-fetchHabits ∷ Client Habits
-fetchHabits = sendRequestAndReceiveJson GET "habits" [200] unit
+fetchHabits ∷
+  ∀ r.
+  SessionInformation →
+  Aff (ajax ∷ AJAX, console ∷ CONSOLE, exception ∷ EXCEPTION | r) Habits
+fetchHabits session_info = sendRequestAndReceiveJson session_info GET "habits" [200] unit
