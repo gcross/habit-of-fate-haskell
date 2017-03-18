@@ -9,10 +9,12 @@ import Control.Monad.Eff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Console
 import Control.Monad.Eff.Random
+import Control.Monad.Error.Class
 import Control.Monad.Free
 import Data.Char
 import Data.Either
-import Data.Unfoldable
+import Data.Maybe
+import Data.Unfoldable hiding (fromMaybe)
 import Network.HTTP.Affjax
 import Test.Unit
 import Test.Unit.Assert
@@ -52,28 +54,34 @@ assertFails action =
   >>=
   assert "should have failed" <<< isLeft
 
-createRandomAccount = randomAccount >>= createAccount
+createRandomAccount ∷ ∀ r. Aff (ajax ∷ AJAX, random ∷ RANDOM | r) SessionInformation
+createRandomAccount =
+  randomAccount
+  >>=
+  createAccount
+  >>=
+  maybe (throwError <<< error $ "Account was not created.") pure
 
 main = runTest do
   suite "create account" do
-    test "not present" do
+    test "succeeds when not present" do
+      login_information ← randomAccount
+      createAccount login_information >>=
+        assert "Account should have been created but was not." <<< isJust
+    test "fails when already present" do
       login_information ← randomAccount
       createAccount login_information
-      pure unit
-    test "already present" do
-      login_information ← randomAccount
-      createAccount login_information
-      assertFails $ createAccount login_information
-      pure unit
+      createAccount login_information >>=
+        assert "Account should have not been created but was." <<< isNothing
   suite "login" do
-    test "not present" do
+    test "fails when not present" do
       login_information ← randomAccount
-      assertFails $ login login_information
-      pure unit
-    test "already present" do
+      login login_information >>=
+        assert "Login should have failed but did not." <<< isNothing
+    test "succeeds when present" do
       login_information ← randomAccount
       createAccount login_information
-      login login_information
-      pure unit
+      login login_information >>=
+        assert "Login should have suceeded but did not." <<< isJust
   test "fetching habits from new account returns empty array" $ do
     void $ createRandomAccount >>= fetchHabits

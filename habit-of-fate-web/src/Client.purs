@@ -4,7 +4,6 @@ import Prelude
 import Control.Monad.Aff
 import Control.Monad.Aff.Class
 import Control.Monad.Eff.Class
-import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception
 import Control.Monad.Error.Class
 import Control.Monad.Reader
@@ -25,6 +24,7 @@ import Network.HTTP.Affjax.Response
 import Network.HTTP.RequestHeader
 import Network.HTTP.StatusCode
 import Unicode
+import Control.Monad.Eff.Console (CONSOLE, log)
 
 type LoginInformation =
   { username ∷ String
@@ -63,32 +63,34 @@ responseStatusCode response =
 loginOrCreateAccount ∷
   ∀ e.
   String → LoginInformation →
-  Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | e) SessionInformation
-loginOrCreateAccount route login_info = do
-  response ∷ AffjaxResponse String ← post
-    (createURL login_info (route ⊕ "?username=" ⊕ login_info.username ⊕ "&password=" ⊕ login_info.password))
-    (gEncodeJson (LoginAccount { username: login_info.username, password: login_info.password }))
-  let code = responseStatusCode response
-  when (code == 409) <<< throwError <<< error $
-    "Account \"" ⊕ login_info.username ⊕ "\" already exists!"
-  when (code < 200 || code >= 300) <<< throwError <<< error $
-    "Unexpected status code: " ⊕ show code
-  pure
-    { hostname: login_info.hostname
-    , port: login_info.port
-    , token: response.response
-    }
+  Aff (ajax ∷ AJAX | e) (Maybe SessionInformation)
+loginOrCreateAccount route login_info =
+    do  response ∷ AffjaxResponse String ← post
+          (createURL login_info (route ⊕ "?username=" ⊕ login_info.username ⊕ "&password=" ⊕ login_info.password))
+          (gEncodeJson (LoginAccount { username: login_info.username, password: login_info.password }))
+        let code = responseStatusCode response
+        when (code == 409) <<< throwError <<< error $
+          "Account \"" ⊕ login_info.username ⊕ "\" already exists!"
+        when (code < 200 || code >= 300) <<< throwError <<< error $
+          "Unexpected status code: " ⊕ show code
+        pure $ Just
+          { hostname: login_info.hostname
+          , port: login_info.port
+          , token: response.response
+          }
+    `catchError`
+    (const $ pure Nothing)
 
 createAccount ∷
   ∀ r.
   LoginInformation →
-  Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | r) SessionInformation
+  Aff (ajax ∷ AJAX | r) (Maybe SessionInformation)
 createAccount = loginOrCreateAccount "create"
 
 login ∷
   ∀ r.
   LoginInformation →
-  Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | r) SessionInformation
+  Aff (ajax ∷ AJAX | r) (Maybe SessionInformation)
 login = loginOrCreateAccount "login"
 
 sendRequest ∷

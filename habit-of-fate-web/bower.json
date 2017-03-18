@@ -13,6 +13,7 @@
     "purescript-argonaut-codecs": "^2.1.0",
     "purescript-generics": "^3.0.0",
     "purescript-http-methods": "^2.0.0",
+    "purescript-maybe": "^2.1.1",
     "purescript-maps": "^2.1.0",
     "purescript-prelude": "^2.5.0"
   },
