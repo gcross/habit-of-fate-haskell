@@ -1,26 +1,16 @@
 module Test.Main where
 
 import Prelude
-import Control.Alternative
-import Control.Applicative
-import Control.Monad
 import Control.Monad.Aff
-import Control.Monad.Eff
 import Control.Monad.Eff.Class
-import Control.Monad.Eff.Console
 import Control.Monad.Eff.Random
-import Control.Monad.Error.Class
-import Control.Monad.Free
 import Data.Char
 import Data.Either
-import Data.Maybe
-import Data.Unfoldable hiding (fromMaybe)
-import Network.HTTP.Affjax
 import Test.Unit
 import Test.Unit.Assert
 import Client
-import Control.Monad.Eff.Exception (Error, EXCEPTION, throwException, error)
 import Data.String (fromCharArray)
+import Data.Unfoldable (replicateA)
 import Test.Unit.Main (runTest)
 
 randomAlphaChar = do
