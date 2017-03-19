@@ -28,7 +28,6 @@ import Network.HTTP.Affjax.Response
 import Network.HTTP.RequestHeader
 import Network.HTTP.StatusCode
 import Unicode
-import Control.Monad.Eff.Console (CONSOLE, log)
 
 type LoginInformation =
   { username ∷ String
