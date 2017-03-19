@@ -24,7 +24,6 @@ library
                      , exceptions
                      , filepath
                      , jwt
-                     , hslogger
                      , http-api-data
                      , http-client
                      , http-client-tls
@@ -66,6 +65,7 @@ library
                      , HabitOfFate.Game
                      , HabitOfFate.Habit
                      , HabitOfFate.JSON
+                     , HabitOfFate.Logging
                      , HabitOfFate.Prelude
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests

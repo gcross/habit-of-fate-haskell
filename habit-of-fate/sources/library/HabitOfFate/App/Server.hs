@@ -8,24 +8,18 @@ import HabitOfFate.Prelude
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
 import Options.Applicative
-import System.Log.Logger
 import System.FilePath
 
+import HabitOfFate.Logging
 import HabitOfFate.Server
 
 import Paths_habit_of_fate
-
-logInfo, logNotice, logWarning ∷ MonadIO m ⇒ String → m ()
-logInfo = liftIO ∘ infoM "HabitOfFate.App.Server"
-logNotice = liftIO ∘ noticeM "HabitOfFate.App.Server"
-logWarning = liftIO ∘ warningM "HabitOfFate.App.Server"
 
 data Configuration = Configuration
   { port ∷ Int
   , data_path ∷ FilePath
   , certificate_path ∷ FilePath
   , key_path ∷ FilePath
-  , log_level ∷ Priority
   , allow_insecure ∷ Bool
   }
 
@@ -65,13 +59,6 @@ habitMain = do
               , action "file"
               , value default_key_path
               ])
-        <*> option auto (mconcat
-              [ metavar "LEVEL"
-              , help "Log level."
-              , long "log-level"
-              , short 'l'
-              , value NOTICE
-              ])
         <*> switch (mconcat
               [ help "Allow insecure connections."
               , long "allow-insecure"
@@ -81,10 +68,9 @@ habitMain = do
       (configuration_parser <**> helper)
       (   fullDesc       <> header "habit-server - server program for habit-of-fate"
       )
-  updateGlobalLogger rootLoggerName (setLevel log_level)
-  logInfo $ printf "Listening on port %i" port
-  logInfo $ printf "Using certificate file located at %s" certificate_path
-  logInfo $ printf "Using key file located at %s" key_path
+  logIO $ printf "Listening on port %i" port
+  logIO $ printf "Using certificate file located at %s" certificate_path
+  logIO $ printf "Using key file located at %s" key_path
   app ← makeApp data_path
   let tls_settings =
         (tlsSettings certificate_path key_path)

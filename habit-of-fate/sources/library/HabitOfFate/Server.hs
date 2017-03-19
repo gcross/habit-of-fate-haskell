@@ -1,20 +1,23 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module HabitOfFate.Server (makeApp) where
 
-import HabitOfFate.Prelude
+import HabitOfFate.Prelude hiding (log)
 
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -34,7 +37,6 @@ import Network.Wai.Handler.WarpTLS
 import Options.Applicative
 import System.Directory
 import System.FilePath
-import System.Log.Logger
 import System.Random
 import Web.JWT hiding (decode, header)
 import Web.Scotty
@@ -51,22 +53,19 @@ import Web.Scotty
   )
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Credits
 import HabitOfFate.Account hiding (_habits)
+import HabitOfFate.Credits
+import HabitOfFate.Logging
 import HabitOfFate.Story
 
 instance Parsable UUID where
   parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ view strict
 
-logInfo, logNotice, logWarning ∷ MonadIO m ⇒ String → m ()
-logInfo = liftIO ∘ infoM "HabitOfFate.Server"
-logNotice = liftIO ∘ noticeM "HabitOfFate.Server"
-logWarning = liftIO ∘ warningM "HabitOfFate.Server"
-
 data CommonInstructionInstruction α where
   GetBodyInstruction ∷ CommonInstructionInstruction Lazy.ByteString
   GetParamsInstruction ∷ CommonInstructionInstruction [Param]
   RaiseStatusInstruction ∷ Status → CommonInstructionInstruction α
+  LogInstruction ∷ String → CommonInstructionInstruction ()
 
 class Monad m ⇒ ActionMonad m where
   singletonCommon ∷ CommonInstructionInstruction α → m α
@@ -81,10 +80,13 @@ getBody ∷ ActionMonad m ⇒ m Lazy.ByteString
 getBody = singletonCommon GetBodyInstruction
 
 getBodyJSON ∷ (FromJSON α, ActionMonad m) ⇒ m α
-getBodyJSON =
-  getBody
-  >>=
-  maybe (raiseStatus badRequest400) return ∘ decode ∘ view strict
+getBodyJSON = do
+  body ← getBody
+  case decode ∘ view strict $ body of
+    Nothing → do
+      log $ printf "Error parsing JSON:\n%s" (decodeUtf8 body)
+      raiseStatus 400 "Bad request: Invalid JSON"
+    Just json → pure json
 
 getParams ∷ ActionMonad m ⇒ m [Param]
 getParams = singletonCommon GetParamsInstruction
@@ -93,13 +95,27 @@ getParam ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m α
 getParam param_name = do
   params_ ← getParams
   case lookup param_name params_ of
-    Nothing → raiseStatus badRequest400
+    Nothing → raiseStatus 400 (printf "Bad request: Missing parameter %s" param_name)
     Just value → case parseParam value of
-      Left _ → raiseStatus badRequest400
+      Left _ → raiseStatus 400 (printf "Bad request: Parameter %s has invalid format" param_name)
       Right x → return x
 
-raiseStatus ∷ ActionMonad m ⇒ Status → m α
-raiseStatus = singletonCommon ∘ RaiseStatusInstruction
+raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
+raiseStatus code =
+  singletonCommon
+  ∘
+  RaiseStatusInstruction
+  ∘
+  Status code
+  ∘
+  encodeUtf8
+  ∘
+  pack
+
+raiseNoSuchHabit = raiseStatus 404 "Not found: No such habit"
+
+log ∷ ActionMonad m ⇒ String → m ()
+log = singletonCommon ∘ LogInstruction
 
 data ReaderInstruction α where
   ReaderCommonInstruction ∷ CommonInstructionInstruction α → ReaderInstruction α
@@ -178,18 +194,31 @@ param name =
       finish
   )
 
+setContent ∷ Content → ActionM ()
+setContent NoContent = pure ()
+setContent (TextContent t) = Scotty.text t
+setContent (JSONContent j) = Scotty.json j
+
+setStatusAndLog ∷ Status → ActionM ()
+setStatusAndLog status_@(Status code message) = do
+  status status_
+  let template
+        | code < 200 || code >= 300 = "Request failed - %i %s"
+        | otherwise = "Request succeeded - %i %s"
+  logIO $ printf template code (unpack ∘ decodeUtf8 $ message)
+
 makeApp ∷ FilePath → IO Application
 makeApp dirpath = do
-  logInfo $ printf "Using data directory at %s" dirpath
+  logIO $ printf "Using data directory at %s" dirpath
   createDirectoryIfMissing True dirpath
   let data_dirpath = dirpath </> "data"
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ←
     doesFileExist data_dirpath
     >>=
-    bool (do logInfo "Creating new data file"
+    bool (do logIO "Creating new data file"
              mempty
          )
-         (do logInfo "Reading existing data file"
+         (do logIO "Reading existing data file"
              loadAccounts data_dirpath
          )
     >>=
@@ -198,12 +227,12 @@ makeApp dirpath = do
   key ←
     doesFileExist secret_filepath
     >>=
-    bool (do logInfo "Creating new secret"
+    bool (do logIO "Creating new secret"
              key ← toText <$> randomIO
              writeFile secret_filepath key
              return $ secret key
          )
-         (do logInfo "Reading existing secret"
+         (do logIO "Reading existing secret"
              secret <$> readFile secret_filepath
          )
   write_request ← newEmptyTMVarIO
@@ -212,19 +241,10 @@ makeApp dirpath = do
     readTVarIO accounts_tvar >>= saveAccounts data_dirpath
 
   key ← secret ∘ toText <$> randomIO
-  logNotice $ "Starting server..."
-  let postprocess ∷ Either Status ProgramResult → ActionM ()
-      postprocess (Left s) = status s
-      postprocess (Right (ProgramResult s content)) = do
-        status s
-        case content of
-          NoContent → return ()
-          TextContent t → Scotty.text t
-          JSONContent j → Scotty.json j
+  logIO $ "Starting server..."
+  let expected_iss = fromJust $ stringOrURI "habit-of-fate"
 
-      expected_iss = fromJust $ stringOrURI "habit-of-fate"
-
-      authorize ∷ ActionM (TVar Account)
+      authorize ∷ ActionM (String, TVar Account)
       authorize =
         Scotty.header "Authorization"
         >>=
@@ -249,62 +269,100 @@ makeApp dirpath = do
             | observed_iss == expected_iss →
                 ((fmap ∘ lookup ∘ pack ∘ show $ username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
                 >>=
-                maybe (finishWithStatusMessage 404 "Not Found: No such account") return
+                maybe
+                  (finishWithStatusMessage 404 "Not Found: No such account")
+                  (pure ∘ (show username,))
           _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
         )
 
       reader ∷ ReaderProgram ProgramResult → ActionM ()
       reader (ReaderProgram program) = do
-        account_tvar ← authorize
+        (username, account_tvar) ← authorize
         params_ ← params
         body_ ← body
         account ← liftIO ∘ readTVarIO $ account_tvar
-        let interpret (Operational.view → Return result) = return result
+        let interpret ∷
+              Program ReaderInstruction α →
+              ExceptT Status (Writer (Seq String)) α
+            interpret (Operational.view → Return result) = pure result
             interpret (Operational.view → instruction :>>= rest) = case instruction of
               ReaderCommonInstruction common_instruction → case common_instruction of
                 GetBodyInstruction → interpret (rest body_)
                 GetParamsInstruction → interpret (rest params_)
                 RaiseStatusInstruction s → throwError s
+                LogInstruction message → do
+                  tell ∘ singleton $ printf "(%s) %s" username message
+                  interpret (rest ())
               ReaderViewInstruction → interpret (rest account)
-        postprocess (interpret program)
+            (error_or_result, logs) = runWriter ∘ runExceptT ∘ interpret $ program
+        traverse_ logIO logs
+        case error_or_result of
+          Left status_ →
+            setStatusAndLog status_
+          Right (ProgramResult status_ content) → do
+            setStatusAndLog status_
+            setContent content
 
       writer ∷ WriterProgram ProgramResult → ActionM ()
       writer (WriterProgram program) = do
-        account_tvar ← authorize
+        (username, account_tvar) ← authorize
         params_ ← params
         body_ ← body
-        let interpret (Operational.view → Return result) account = return (result, account)
-            interpret (Operational.view → instruction :>>= rest) account = case instruction of
+        let interpret ∷
+              Program WriterInstruction α →
+              StateT Account (ExceptT Status (Writer (Seq String))) α
+            interpret (Operational.view → Return result) = pure result
+            interpret (Operational.view → instruction :>>= rest) = case instruction of
               WriterCommonInstruction common_instruction → case common_instruction of
-                GetBodyInstruction → interpret (rest body_) account
-                GetParamsInstruction → interpret (rest params_) account
+                GetBodyInstruction → interpret (rest body_)
+                GetParamsInstruction → interpret (rest params_)
                 RaiseStatusInstruction s → throwError s
-              WriterGetAccountInstruction → interpret (rest account) account
-              WriterPutAccountInstruction new_account → interpret (rest ()) new_account
-        (liftIO ∘ atomically $ do
+                LogInstruction message → do
+                  tell ∘ singleton $ printf "(%s) %s" username message
+                  interpret (rest ())
+              WriterGetAccountInstruction → get >>= interpret ∘ rest
+              WriterPutAccountInstruction new_account → put new_account >> interpret (rest ())
+        (status_, maybe_content, logs) ← liftIO ∘ atomically $ do
           old_account ← readTVar account_tvar
-          case interpret program old_account of
-            Left s → return $ Left s
-            Right (result, new_account) → do
+          let (error_or_result, logs) =
+                runWriter
+                ∘
+                runExceptT
+                ∘
+                flip runStateT old_account
+                $
+                interpret program
+          case error_or_result of
+            Left status_ → pure (status_, Nothing, logs)
+            Right (ProgramResult status_ content, new_account) → do
               writeTVar account_tvar new_account
-              return (Right result)
-         ) >>= postprocess
+              pure (status_, Just content, logs)
+        traverse_ logIO logs
+        setStatusAndLog status_
+        maybe (pure ()) setContent maybe_content
 
       withHabit habit_id f = do
         use habits
         >>=
-        maybe (raiseStatus notFound404) ((habits . at habit_id .=) ∘ f)
+        maybe raiseNoSuchHabit ((habits . at habit_id .=) ∘ f)
         ∘
         lookup habit_id
       lookupHabit habit_id = do
         use (habits . at habit_id)
         >>=
-        maybe (raiseStatus notFound404) return
+        maybe raiseNoSuchHabit return
   scottyApp $ do
+    Scotty.notFound $ do
+      r ← Scotty.request
+      logIO $ printf "URL requested: %s %s%s"
+        (unpack ∘ decodeUtf8 $ requestMethod r ∷ String)
+        (unpack ∘ decodeUtf8 $ rawPathInfo r ∷ String)
+        (unpack ∘ decodeUtf8 $ rawQueryString r ∷ String)
+      Scotty.next
     Scotty.post "/create" $ do
       username ← param "username"
       password ← param "password"
-      logNotice $ printf "Request to create an account for \"%s\"" username
+      logIO $ printf "Request to create an account for \"%s\"" username
       account_status ← liftIO $ do
         new_account ← newAccount password
         atomically $ do
@@ -317,10 +375,10 @@ makeApp dirpath = do
               return AccountCreated
       case account_status of
         AccountExists → do
-          logNotice $ printf "Account \"%s\" already exists!" username
+          logIO $ printf "Account \"%s\" already exists!" username
           status conflict409
         AccountCreated → do
-          logNotice $ printf "Account \"%s\" successfully created!" username
+          logIO $ printf "Account \"%s\" successfully created!" username
           status created201
           Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
             { iss = Just expected_iss
@@ -344,16 +402,19 @@ makeApp dirpath = do
         { iss = Just expected_iss
         , sub = Just (fromJust $ stringOrURI username)
         }
-    Scotty.get "/habits" ∘ reader $
+    Scotty.get "/habits" ∘ reader $ do
+      log "Requested all habits."
       view habits >>= returnJSON ok200
     Scotty.get "/habits/:habit_id" ∘ reader $ do
       habit_id ← getParam "habit_id"
+      log $ printf "Requested habit with id %s." (show habit_id)
       habits_ ← view habits
       case lookup habit_id habits_ of
-        Nothing → raiseStatus notFound404
+        Nothing → raiseNoSuchHabit
         Just habit → returnJSON ok200 habit
     Scotty.delete "/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
+      log $ printf "Requested to delete habit with id %s." (show habit_id)
       habit_was_there ← isNothing <$> (habits . at habit_id <<.= Nothing)
       returnNothing $
         if habit_was_there
@@ -361,13 +422,15 @@ makeApp dirpath = do
           else notFound404
     Scotty.put "/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
+      log $ printf "Requested to put habit with id %s." (show habit_id)
       habit ← getBodyJSON
       habit_was_there ← isNothing <$> (habits . at habit_id <<.= Just habit)
       returnNothing $
         if habit_was_there
           then accepted202
           else created201
-    Scotty.get "/credits" ∘ reader $
+    Scotty.get "/credits" ∘ reader $ do
+      log $ "Requested credits."
       view (game . credits) >>= returnJSON ok200
     Scotty.post "/mark" ∘ writer $ do
       let markHabits ∷ [UUID] → Lens' Credits Double → WriterProgram Double
@@ -380,6 +443,11 @@ makeApp dirpath = do
             game . credits . which_credits .= new_credits
             return new_credits
       marks ← getBodyJSON
+      log $
+        printf
+          "Marked %s successes and %s failures."
+          (show $ marks ^. successes)
+          (show $ marks ^. failures)
       (Credits
           <$> markHabits (marks ^. successes) success
           <*> markHabits (marks ^. failures ) failure
@@ -413,3 +481,10 @@ makeApp dirpath = do
         $
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
+    Scotty.notFound $ do
+      r ← Scotty.request
+      logIO $ printf "URL not found! %s %s%s"
+        (unpack ∘ decodeUtf8 $ requestMethod r ∷ String)
+        (unpack ∘ decodeUtf8 $ rawPathInfo r ∷ String)
+        (unpack ∘ decodeUtf8 $ rawQueryString r ∷ String)
+      Scotty.next
