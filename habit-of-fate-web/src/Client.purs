@@ -213,17 +213,33 @@ newtype Credits = Credits { success ∷ Number, failure ∷ Number }
 derive instance eqCredits ∷ Eq Credits
 derive instance genericCredits ∷ Generic Credits
 derive instance ordCredits ∷ Ord Credits
-
-instance decodeJsonCredits :: DecodeJson Credits where
+instance showCredits ∷ Show Credits where
+  show (Credits credits) =
+      "Credits { success = "
+    ⊕ show credits.success
+    ⊕ ", failure = "
+    ⊕ show credits.failure
+    ⊕ " } "
+instance decodeJsonCredits ∷ DecodeJson Credits where
   decodeJson = gDecodeJson
+instance encodeJsonCredits ∷ EncodeJson Credits where
+  encodeJson = gEncodeJson
 
 newtype Habit = Habit { name ∷ String, credits ∷ Credits }
 derive instance eqHabit ∷ Eq Habit
 derive instance genericHabit ∷ Generic Habit
 derive instance ordHabit ∷ Ord Habit
-
-instance decodeJsonHabit :: DecodeJson Habit where
+instance showHabit ∷ Show Habit where
+  show (Habit habit) =
+      "Habit { name = "
+    ⊕ show habit.name
+    ⊕ ", credits = "
+    ⊕ show habit.credits
+    ⊕ " } "
+instance decodeJsonHabit ∷ DecodeJson Habit where
   decodeJson = gDecodeJson
+instance encodeJsonHabit ∷ EncodeJson Habit where
+  encodeJson = gEncodeJson
 
 type HabitId = String
 type Habits = StrMap Habit
