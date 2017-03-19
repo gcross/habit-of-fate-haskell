@@ -23,7 +23,6 @@ import Control.Monad.Eff.Exception (Error, EXCEPTION, throwException, error)
 import Data.String (fromCharArray)
 import Test.Unit.Main (runTest)
 
-randomAlphaChar ∷ ∀ ε. Eff (random ∷ RANDOM | ε) Char
 randomAlphaChar = do
   char ← fromCharCode <$> randomInt (toCharCode 'A') (toCharCode 'Z')
   make_lowercase ← randomBool
@@ -32,13 +31,11 @@ randomAlphaChar = do
       then toLower char
       else char
 
-randomAlphaString ∷ ∀ ε. Eff (random ∷ RANDOM | ε) String
 randomAlphaString =
   fromCharArray
   <$>
   replicateA 10 randomAlphaChar
 
-randomAccount ∷ ∀ r. Aff (random ∷ RANDOM | r) LoginInformation
 randomAccount = liftEff do
   username ← randomAlphaString
   pure $
@@ -48,13 +45,11 @@ randomAccount = liftEff do
     , port: 8081
     }
 
-assertFails ∷ ∀ ε α. Aff ε α → Test ε
 assertFails action =
   attempt action
   >>=
   assert "should have failed" <<< isLeft
 
-createRandomAccount ∷ ∀ r. Aff (ajax ∷ AJAX, random ∷ RANDOM | r) SessionInformation
 createRandomAccount =
   randomAccount
   >>=
