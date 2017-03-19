@@ -228,5 +228,5 @@ instance decodeJsonHabit :: DecodeJson Habit where
 type HabitId = String
 type Habits = StrMap Habit
 
-fetchHabits ∷ ∀ r. SessionInformation → Client r Habits
-fetchHabits session_info = sendRequestAndReceiveJson session_info GET "habits" [200] unit
+getHabits ∷ ∀ r. SessionInformation → Client r Habits
+getHabits session_info = sendRequestAndReceiveJson session_info GET "habits" [200] unit

@@ -63,4 +63,4 @@ main = runTest do
         createAccount login_information
         login login_information
   test "fetching habits from new account returns empty array" $ do
-    void $ createRandomAccount >>= runClient <<< fetchHabits
+    void $ createRandomAccount >>= runClient <<< getHabits
