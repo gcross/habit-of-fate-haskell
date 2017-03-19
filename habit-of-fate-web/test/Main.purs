@@ -50,33 +50,27 @@ assertFails action =
   >>=
   assert "should have failed" <<< isLeft
 
-createRandomAccount =
-  randomAccount
-  >>=
-  createAccount
-  >>=
-  maybe (throwError <<< error $ "Account was not created.") pure
+createRandomAccount = randomAccount >>= (runClient <<< createAccount)
 
 main = runTest do
   suite "create account" do
     test "succeeds when not present" do
       login_information ← randomAccount
-      createAccount login_information >>=
-        assert "Account should have been created but was not." <<< isJust
+      void <<< runClient $ createAccount login_information
     test "fails when already present" do
       login_information ← randomAccount
-      createAccount login_information
-      createAccount login_information >>=
-        assert "Account should have not been created but was." <<< isNothing
+      runClient $ createAccount login_information
+      expectFailure "Second createAccount should have failed." $
+        void <<< runClient $ createAccount login_information
   suite "login" do
     test "fails when not present" do
       login_information ← randomAccount
-      login login_information >>=
-        assert "Login should have failed but did not." <<< isNothing
+      expectFailure "Login before createAccount should have failed." $
+        void <<< runClient $ login login_information
     test "succeeds when present" do
       login_information ← randomAccount
-      createAccount login_information
-      login login_information >>=
-        assert "Login should have suceeded but did not." <<< isJust
+      void <<< runClient $ do
+        createAccount login_information
+        login login_information
   test "fetching habits from new account returns empty array" $ do
-    void $ createRandomAccount >>= fetchHabits
+    void $ createRandomAccount >>= runClient <<< fetchHabits
