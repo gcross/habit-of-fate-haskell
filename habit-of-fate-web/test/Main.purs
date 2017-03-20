@@ -46,8 +46,8 @@ createRandomAccount = randomAccount >>= (runClient <<< createAccount)
 test_habit = Habit { name: "name", credits: Credits { success: 1.0, failure: 2.0 } }
 test_habit_2 = Habit { name: "name", credits: Credits { success: 2.0, failure: 1.0 } }
 
-test_habit_id = UUID "95bef3cf-9031-4f64-8458-884aa6781563"
-test_habit_id_2 = UUID "9e801a68-4288-4a23-8779-aa68f94991f9"
+test_habit_id = "95bef3cf-9031-4f64-8458-884aa6781563"
+test_habit_id_2 = "9e801a68-4288-4a23-8779-aa68f94991f9"
 
 main = runTest do
   suite "create account" do

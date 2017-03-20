@@ -304,9 +304,9 @@ getHabit session_info uuid =
           | code == 404 → Just $ throwDynamicException NoSuchHabit
           | otherwise → Nothing
     )
-    (sendRequestAndReceiveJson session_info GET ("habits/" ⊕ show uuid) 200 unit)
+    (sendRequestAndReceiveJson session_info GET ("habits/" ⊕ uuid) 200 unit)
     id
 
 putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r Unit
 putHabit session_info uuid habit =
-  sendRequest session_info PUT ("habits/" ⊕ show uuid) 202 (encodeJson habit)
+  sendRequest session_info PUT ("habits/" ⊕ uuid) 202 (encodeJson habit)
