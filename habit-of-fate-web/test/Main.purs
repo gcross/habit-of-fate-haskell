@@ -1,12 +1,14 @@
 module Test.Main where
 
 import Prelude
+
 import Control.Monad.Aff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Random
 import Data.Char
 import Data.Either
 import Data.String (fromCharArray)
+import Data.StrMap
 import Data.Unfoldable (replicateA)
 import Test.Unit
 import Test.Unit.Assert
@@ -78,3 +80,9 @@ main = runTest do
       putHabit session_info test_habit_id test_habit
       getHabit session_info test_habit_id
     equal test_habit retrieved_habit
+  test "fetching all habits after putting one returns a singleton map" $ do
+    session_info ← createRandomAccount
+    retrieved_habits ← runClient $ do
+      putHabit session_info test_habit_id test_habit
+      getHabits session_info
+    equal (singleton test_habit_id test_habit) retrieved_habits
