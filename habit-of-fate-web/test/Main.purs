@@ -9,6 +9,7 @@ import Data.Either
 import Test.Unit
 import Test.Unit.Assert
 import Client
+import UUID
 import Data.String (fromCharArray)
 import Data.Unfoldable (replicateA)
 import Test.Unit.Main (runTest)
@@ -42,6 +43,12 @@ assertFails action =
 
 createRandomAccount = randomAccount >>= (runClient <<< createAccount)
 
+test_habit = Habit { name: "name", credits: Credits { success: 1.0, failure: 2.0 } }
+test_habit_2 = Habit { name: "name", credits: Credits { success: 2.0, failure: 1.0 } }
+
+test_habit_id = UUID "95bef3cf-9031-4f64-8458-884aa6781563"
+test_habit_id_2 = UUID "9e801a68-4288-4a23-8779-aa68f94991f9"
+
 main = runTest do
   suite "create account" do
     test "succeeds when not present" do
@@ -64,3 +71,9 @@ main = runTest do
         login login_information
   test "fetching habits from new account returns empty array" $ do
     void $ createRandomAccount >>= runClient <<< getHabits
+  test "fetching a habit after putting it returns the habit" $ do
+    session_info ← createRandomAccount
+    retrieved_habit ← runClient $ do
+      putHabit session_info test_habit_id test_habit
+      getHabit session_info test_habit_id
+    equal test_habit retrieved_habit

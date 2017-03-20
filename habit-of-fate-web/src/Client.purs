@@ -8,26 +8,31 @@ import Control.Monad.Eff.Exception
 import Control.Monad.Error.Class
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.MonadZero
+import Data.Argonaut.Core
 import Data.Argonaut.Decode
 import Data.Argonaut.Encode
 import Data.Argonaut.Parser
 import Data.Argonaut.Printer
-import Data.Array
+import Data.Array hiding (fromFoldable)
 import Data.Dynamic
 import Data.Either
 import Data.Generic
-import Data.HTTP.Method
+import Data.HTTP.Method hiding (fromString)
 import Data.Maybe
 import Data.Monoid
-import Data.String
+import Data.String hiding (null)
 import Data.StrMap
+import Data.Tuple
 import Data.Typeable
 import Network.HTTP.Affjax
 import Network.HTTP.Affjax.Request
 import Network.HTTP.Affjax.Response
 import Network.HTTP.RequestHeader
 import Network.HTTP.StatusCode
+
 import Unicode
+import UUID
 
 type LoginInformation =
   { username ∷ String
@@ -100,8 +105,11 @@ attemptRequest request =
   >>=
   either (const $ throwDynamicException UnableToContactServer) pure
 
-loginOrCreateAccount ∷ ∀ r. String → LoginInformation → Client r SessionInformation
-loginOrCreateAccount route login_info = do
+loginOrCreateAccount ∷
+  ∀ r.
+  String → LoginInformation → Int →
+  Client r SessionInformation
+loginOrCreateAccount route login_info expected_code = do
   response ∷ AffjaxResponse String ← attemptRequest $
     defaultRequest
       { method = Left POST
@@ -118,7 +126,7 @@ loginOrCreateAccount route login_info = do
             }
       }
   let code = responseStatusCode response
-  when (code < 200 || code >= 300) $
+  when (code /= expected_code) $
     throwDynamicException $ UnexpectedStatusCode code
   pure $
     { hostname: login_info.hostname
@@ -142,7 +150,7 @@ createAccount login_info =
           | code == 409 → Just $ throwDynamicException AccountAlreadyExists
           | otherwise → Nothing
     )
-    (loginOrCreateAccount "create" login_info)
+    (loginOrCreateAccount "create" login_info 201)
     id
 
 data NoSuchUser = NoSuchUser
@@ -168,15 +176,15 @@ login login_info =
           | code == 404 → Just $ throwDynamicException NoSuchUser
           | otherwise → Nothing
     )
-    (loginOrCreateAccount "login" login_info)
+    (loginOrCreateAccount "login" login_info 200)
     id
 
 sendRequest ∷
   ∀ r α β.
   (Requestable α, Respondable β) ⇒
-  SessionInformation → Method → String → Array Int → α →
+  SessionInformation → Method → String → Int → α →
   Client r β
-sendRequest session_info method path expected_codes content = do
+sendRequest session_info method path expected_code content = do
   response ← attemptRequest $
     defaultRequest
       { method = Left method
@@ -185,7 +193,7 @@ sendRequest session_info method path expected_codes content = do
       , headers = [RequestHeader "Authorization" ("Bearer " ⊕ session_info.token)]
       }
   case response.status of
-    StatusCode code | not (code ∈ expected_codes) →
+    StatusCode code | code /= expected_code →
       throwDynamicException $ UnexpectedStatusCode code
     _ → pure response.response
 
@@ -199,14 +207,22 @@ instance typeableInvalidJson ∷ Typeable InvalidJson where
 sendRequestAndReceiveJson ∷
   ∀ r α β.
   (Requestable α, DecodeJson β) ⇒
-  SessionInformation → Method → String → Array Int → α →
+  SessionInformation → Method → String → Int → α →
   Client r β
-sendRequestAndReceiveJson session_info method path expected_codes content = do
-  string ← sendRequest session_info method path expected_codes content
+sendRequestAndReceiveJson session_info method path expected_code content = do
+  string ← sendRequest session_info method path expected_code content
   case jsonParser string >>= decodeJson of
     Left message →
       throwDynamicException $ InvalidJson { message: message, string: string }
     Right value → pure value
+
+assertNoExtraKeys ∷ JObject → Array String → Either String Unit
+assertNoExtraKeys jobject expected_keys =
+  when (not <<< null $ extra_keys) <<< Left $ "extra keys: " ⊕ show extra_keys
+  where
+    extra_keys = do
+      key ← keys jobject
+      guard $ key ∉ expected_keys
 
 newtype Credits = Credits { success ∷ Number, failure ∷ Number }
 derive instance eqCredits ∷ Eq Credits
@@ -220,9 +236,22 @@ instance showCredits ∷ Show Credits where
     ⊕ show credits.failure
     ⊕ " } "
 instance decodeJsonCredits ∷ DecodeJson Credits where
-  decodeJson = gDecodeJson
+  decodeJson json =
+    case toObject json of
+      Nothing → Left "expected an object"
+      Just jobject → do
+        failure ← jobject .? "failure"
+        success ← jobject .? "success"
+        assertNoExtraKeys jobject ["failure", "success"]
+        pure $ Credits { failure: failure, success: success }
 instance encodeJsonCredits ∷ EncodeJson Credits where
-  encodeJson = gEncodeJson
+  encodeJson (Credits credits) =
+    fromObject
+    $
+    fromFoldable
+      [Tuple "success" $ fromNumber credits.success
+      ,Tuple "failure" $ fromNumber credits.failure
+      ]
 
 newtype Habit = Habit { name ∷ String, credits ∷ Credits }
 derive instance eqHabit ∷ Eq Habit
@@ -236,12 +265,48 @@ instance showHabit ∷ Show Habit where
     ⊕ show habit.credits
     ⊕ " } "
 instance decodeJsonHabit ∷ DecodeJson Habit where
-  decodeJson = gDecodeJson
+  decodeJson json =
+    case toObject json of
+      Nothing → Left "expected an object"
+      Just jobject → do
+        name ← jobject .? "name"
+        credits ← jobject .? "credits" >>= decodeJson
+        assertNoExtraKeys jobject ["name", "credits"]
+        pure $ Habit { name: name, credits: credits }
 instance encodeJsonHabit ∷ EncodeJson Habit where
-  encodeJson = gEncodeJson
+  encodeJson (Habit habit) =
+    fromObject
+    $
+    fromFoldable
+      [Tuple "name" $ fromString habit.name
+      ,Tuple "credits" $ encodeJson habit.credits
+      ]
 
 type HabitId = String
 type Habits = StrMap Habit
 
 getHabits ∷ ∀ r. SessionInformation → Client r Habits
-getHabits session_info = sendRequestAndReceiveJson session_info GET "habits" [200] unit
+getHabits session_info = sendRequestAndReceiveJson session_info GET "habits" 200 unit
+
+data NoSuchHabit = NoSuchHabit
+instance showNoSuchHabit ∷ Show NoSuchHabit where
+  show _ = "No such habit."
+instance typeableNoSuchHabit ∷ Typeable NoSuchHabit where
+  typeOf _ = mkTyRep "Client" "NoSuchHabit"
+
+getHabit ∷ ∀ r. SessionInformation → UUID → Client r Habit
+getHabit session_info uuid =
+  catchJust
+    (\exc →
+      case fromException exc of
+        Nothing → Nothing
+        Just (UnexpectedStatusCode code)
+          | code == 404 → Just $ throwDynamicException NoSuchHabit
+          | otherwise → Nothing
+    )
+    (sendRequestAndReceiveJson session_info GET ("habits/" ⊕ show uuid) 200 unit)
+    id
+
+putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r Unit
+putHabit session_info uuid habit =
+  sendRequest session_info PUT ("habits/" ⊕ show uuid) 202 (encodeJson habit)
