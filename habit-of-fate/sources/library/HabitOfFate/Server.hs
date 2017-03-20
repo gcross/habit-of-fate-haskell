@@ -97,7 +97,13 @@ getParam param_name = do
   case lookup param_name params_ of
     Nothing → raiseStatus 400 (printf "Bad request: Missing parameter %s" param_name)
     Just value → case parseParam value of
-      Left _ → raiseStatus 400 (printf "Bad request: Parameter %s has invalid format" param_name)
+      Left _ →
+        raiseStatus
+          400
+          (printf "Bad request: Parameter %s has invalid format (%s)"
+             param_name
+             value
+          )
       Right x → return x
 
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
