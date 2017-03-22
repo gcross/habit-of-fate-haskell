@@ -148,7 +148,7 @@ requestWithJSON method path expected_codes value = do
 
 putHabit ∷ UUID → Habit → Client ()
 putHabit habit_id habit =
-  void $ requestWithJSON PUT (pathToHabit habit_id) [200,201,202] habit
+  void $ requestWithJSON PUT (pathToHabit habit_id) [201,204] habit
 
 deleteHabit ∷ UUID → Client ()
 deleteHabit habit_id =

@@ -424,7 +424,7 @@ makeApp dirpath = do
       habit_was_there ← isNothing <$> (habits . at habit_id <<.= Nothing)
       returnNothing $
         if habit_was_there
-          then ok200
+          then noContent204
           else notFound404
     Scotty.put "/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
@@ -433,7 +433,7 @@ makeApp dirpath = do
       habit_was_there ← isNothing <$> (habits . at habit_id <<.= Just habit)
       returnNothing $
         if habit_was_there
-          then accepted202
+          then noContent204
           else created201
     Scotty.get "/credits" ∘ reader $ do
       log $ "Requested credits."

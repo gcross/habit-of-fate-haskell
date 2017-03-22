@@ -309,4 +309,4 @@ getHabit session_info uuid =
 
 putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r Unit
 putHabit session_info uuid habit =
-  sendRequest session_info PUT ("habits/" ⊕ uuid) 202 (encodeJson habit)
+  sendRequest session_info PUT ("habits/" ⊕ uuid) 204 (encodeJson habit)
