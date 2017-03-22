@@ -150,9 +150,16 @@ putHabit ∷ UUID → Habit → Client ()
 putHabit habit_id habit =
   void $ requestWithJSON PUT (pathToHabit habit_id) [201,204] habit
 
-deleteHabit ∷ UUID → Client ()
+data DeleteResult = HabitDeleted | NoHabitToDelete deriving (Eq, Ord, Read, Show)
+
+deleteHabit ∷ UUID → Client DeleteResult
 deleteHabit habit_id =
-  void $ request DELETE (pathToHabit habit_id) [204,404]
+  (HabitDeleted <$ request DELETE (pathToHabit habit_id) [204])
+  `catch`
+  \e@(UnexpectedStatus _ status) →
+    if statusCode status == 404
+      then pure NoHabitToDelete
+      else throwM e
 
 fetchHabit ∷ UUID → Client (Maybe Habit)
 fetchHabit habit_id =

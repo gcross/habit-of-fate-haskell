@@ -421,7 +421,7 @@ makeApp dirpath = do
     Scotty.delete "/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
       log $ printf "Requested to delete habit with id %s." (show habit_id)
-      habit_was_there ← isNothing <$> (habits . at habit_id <<.= Nothing)
+      habit_was_there ← isJust <$> (habits . at habit_id <<.= Nothing)
       returnNothing $
         if habit_was_there
           then noContent204

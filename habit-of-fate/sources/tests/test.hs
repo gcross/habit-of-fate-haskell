@@ -129,10 +129,19 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
             putHabit test_habit_id test_habit
             fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
         ]
-    , serverTestCase "Create a habit, delete it, and fetch all habits" $ do
-        putHabit test_habit_id test_habit
-        deleteHabit test_habit_id
-        fetchHabits >>= liftIO ∘ (@?= Map.empty)
+    , testGroup "Deleting a habit..."
+        [ serverTestCase "...that does not exist, returns NoHabitToDelete" $ do
+            deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
+        , testGroup "...that exists..."
+            [ serverTestCase "...returns HabitDeleted" $ do
+                putHabit test_habit_id test_habit
+                deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
+            , serverTestCase "...causes no habits to show up when all are fetched" $ do
+                putHabit test_habit_id test_habit
+                void $ deleteHabit test_habit_id
+                fetchHabits >>= liftIO ∘ (@?= Map.empty)
+            ]
+        ]
     , serverTestCase "Create a habit, replace it, and fetch all habits" $ do
         putHabit test_habit_id test_habit
         putHabit test_habit_id test_habit_2
