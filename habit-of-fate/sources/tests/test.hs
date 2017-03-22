@@ -121,12 +121,14 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
         fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
         >>=
         liftIO ∘ (@?= Nothing)
-    , serverTestCase "Create and fetch a habit" $ do
-        putHabit test_habit_id test_habit
-        fetchHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
-    , serverTestCase "Create a habit and fetch all habits" $ do
-        putHabit test_habit_id test_habit
-        fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
+    , testGroup "Putting a habit..."
+        [ serverTestCase "...then fetching it, returns the habit" $ do
+            putHabit test_habit_id test_habit
+            fetchHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
+        , serverTestCase "...then fetching all habits, returns just the habit" $ do
+            putHabit test_habit_id test_habit
+            fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
+        ]
     , serverTestCase "Create a habit, delete it, and fetch all habits" $ do
         putHabit test_habit_id test_habit
         deleteHabit test_habit_id
