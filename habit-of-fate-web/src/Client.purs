@@ -179,17 +179,20 @@ login login_info =
     (loginOrCreateAccount "login" login_info 200)
     id
 
+noContent ∷ Maybe Unit
+noContent = Nothing
+
 sendRequest ∷
   ∀ r α β.
   (Requestable α, Respondable β) ⇒
-  SessionInformation → Method → String → Int → α →
+  SessionInformation → Method → String → Int → Maybe α →
   Client r β
-sendRequest session_info method path expected_code content = do
+sendRequest session_info method path expected_code maybe_content = do
   response ← attemptRequest $
     defaultRequest
       { method = Left method
       , url = createURL session_info path
-      , content = Just content
+      , content = maybe_content
       , headers = [RequestHeader "Authorization" ("Bearer " ⊕ session_info.token)]
       }
   case response.status of
@@ -207,10 +210,10 @@ instance typeableInvalidJson ∷ Typeable InvalidJson where
 sendRequestAndReceiveJson ∷
   ∀ r α β.
   (Requestable α, DecodeJson β) ⇒
-  SessionInformation → Method → String → Int → α →
+  SessionInformation → Method → String → Int → Maybe α →
   Client r β
-sendRequestAndReceiveJson session_info method path expected_code content = do
-  string ← sendRequest session_info method path expected_code content
+sendRequestAndReceiveJson session_info method path expected_code maybe_content = do
+  string ← sendRequest session_info method path expected_code maybe_content
   case jsonParser string >>= decodeJson of
     Left message →
       throwDynamicException $ InvalidJson { message: message, string: string }
@@ -286,7 +289,8 @@ type HabitId = String
 type Habits = StrMap Habit
 
 getHabits ∷ ∀ r. SessionInformation → Client r Habits
-getHabits session_info = sendRequestAndReceiveJson session_info GET "habits" 200 unit
+getHabits session_info =
+  sendRequestAndReceiveJson session_info GET "habits" 200 noContent
 
 data NoSuchHabit = NoSuchHabit
 instance showNoSuchHabit ∷ Show NoSuchHabit where
@@ -304,9 +308,9 @@ getHabit session_info uuid =
           | code == 404 → Just $ throwDynamicException NoSuchHabit
           | otherwise → Nothing
     )
-    (sendRequestAndReceiveJson session_info GET ("habits/" ⊕ uuid) 200 unit)
+    (sendRequestAndReceiveJson session_info GET ("habits/" ⊕ uuid) 200 noContent)
     id
 
 putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r Unit
 putHabit session_info uuid habit =
-  sendRequest session_info PUT ("habits/" ⊕ uuid) 204 (encodeJson habit)
+  sendRequest session_info PUT ("habits/" ⊕ uuid) 204 (Just $ encodeJson habit)
