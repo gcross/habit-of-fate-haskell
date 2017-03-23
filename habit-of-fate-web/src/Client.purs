@@ -110,7 +110,7 @@ loginOrCreateAccount ∷
   String → LoginInformation → Int →
   Client r SessionInformation
 loginOrCreateAccount route login_info expected_code = do
-  response ∷ AffjaxResponse String ← attemptRequest $
+  response ← attemptRequest $
     defaultRequest
       { method = Left POST
       , url = createURL login_info $
