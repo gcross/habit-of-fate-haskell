@@ -48,7 +48,6 @@ type SessionInformation =
   }
 
 newtype LoginAccount = LoginAccount { username ∷ String, password ∷ String }
-derive instance genericLoginAccount ∷ Generic LoginAccount
 
 url_template ∷ String
 url_template = "http://<HOSTNAME>:<PORT>/<ROUTE>"
@@ -119,11 +118,6 @@ loginOrCreateAccount route login_info expected_code = do
           <> login_info.username
           <> "&password="
           <> login_info.password
-      , content = Just <<< gEncodeJson $
-          LoginAccount
-            { username: login_info.username
-            , password: login_info.password
-            }
       }
   let code = responseStatusCode response
   when (code /= expected_code) $
