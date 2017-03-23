@@ -86,3 +86,10 @@ main = runTest do
       putHabit session_info test_habit_id test_habit
       getHabits session_info
     equal (singleton test_habit_id test_habit) retrieved_habits
+  test "fetching all habits after putting then deleting one returns an empty map" $ do
+    session_info ← createRandomAccount
+    retrieved_habits ← runClient $ do
+      putHabit session_info test_habit_id test_habit
+      void $ deleteHabit session_info test_habit_id
+      getHabits session_info
+    equal empty retrieved_habits

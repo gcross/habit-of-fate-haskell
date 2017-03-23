@@ -314,3 +314,26 @@ getHabit session_info uuid =
 putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r Unit
 putHabit session_info uuid habit =
   sendRequest session_info PUT ("habits/" ⊕ uuid) 204 (Just $ encodeJson habit)
+
+data DeleteResult = HabitDeleted | NoHabitToDelete
+derive instance eqDeleteResult ∷ Eq DeleteResult
+derive instance ordDeleteResult ∷ Ord DeleteResult
+instance showDeleteResult ∷ Show DeleteResult where
+  show HabitDeleted = "HabitDeleted"
+  show NoHabitToDelete = "NoHabitToDelete"
+
+deleteHabit ∷ ∀ r. SessionInformation → UUID → Client r DeleteResult
+deleteHabit session_info uuid =
+  catchJust
+    (\exc →
+      case fromException exc of
+        Nothing → Nothing
+        Just (UnexpectedStatusCode code)
+          | code == 404 → Just $ pure NoHabitToDelete
+          | otherwise → Nothing
+    )
+    (sendRequest session_info DELETE ("habits/" ⊕ uuid) 204 noContent
+     <#>
+     \(_ ∷ Unit) → HabitDeleted
+    )
+    id
