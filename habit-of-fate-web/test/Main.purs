@@ -1,21 +1,19 @@
 module Test.Main where
 
 import Prelude
-
 import Control.Monad.Aff
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Random
 import Data.Char
 import Data.Either
-import Data.String (fromCharArray)
 import Data.StrMap
-import Data.Unfoldable (replicateA)
 import Test.Unit
 import Test.Unit.Assert
-import Test.Unit.Main (runTest)
-
 import Client
 import UUID
+import Data.String (fromCharArray)
+import Data.Unfoldable (replicateA)
+import Test.Unit.Main (runTest)
 
 randomAlphaChar = do
   char ← fromCharCode <$> randomInt (toCharCode 'A') (toCharCode 'Z')
