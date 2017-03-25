@@ -1,8 +1,8 @@
 module Test.Main where
 
 import Prelude
-
 import Control.Monad.Aff
+import Control.Monad.Aff.Class
 import Control.Monad.Eff.Class
 import Control.Monad.Eff.Random
 import Data.Char
@@ -82,14 +82,12 @@ main = runTest do
     equal test_habit retrieved_habit
   test "putting a habit causes fetching all habits to return a singleton map" $ do
     session_info ← createRandomAccount
-    retrieved_habits ← runClient $ do
+    runClient $ do
       putHabit session_info test_habit_id test_habit
-      getHabits session_info
-    equal (singleton test_habit_id test_habit) retrieved_habits
+      getHabits session_info >>= liftAff <<< equal (singleton test_habit_id test_habit)
   test "putting a habit then deleting it causes fetching all habits to return an empty map" $ do
     session_info ← createRandomAccount
-    retrieved_habits ← runClient $ do
+    runClient $ do
       putHabit session_info test_habit_id test_habit
-      void $ deleteHabit session_info test_habit_id
-      getHabits session_info
-    equal empty retrieved_habits
+      deleteHabit session_info test_habit_id >>= liftAff <<< equal HabitDeleted
+      getHabits session_info >>= liftAff <<< equal empty
