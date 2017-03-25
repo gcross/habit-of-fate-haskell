@@ -67,6 +67,12 @@ main = runTest do
       login_information ← randomAccount
       expectFailure "Login before createAccount should have failed." $
         void <<< runClient $ login login_information
+    test "...fails when the account is present but the password is wrong" do
+      login_information ← randomAccount
+      expectFailure "Login with the wrong password should have failed" $
+        runClient $ do
+            createAccount login_information
+            void <<< login $ login_information { password = "the wrong password" }
     test "...succeeds when the account is present" do
       login_information ← randomAccount
       void <<< runClient $ do
