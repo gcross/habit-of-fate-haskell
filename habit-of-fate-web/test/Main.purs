@@ -127,4 +127,5 @@ main = runTest do
                 , failures: [test_habit_id_2]
                 }
         markHabits session_info marks >>= liftAff <<< equal expected_credits
+        getCredits session_info >>= liftAff <<< equal expected_credits
 

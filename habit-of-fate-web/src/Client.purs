@@ -399,3 +399,9 @@ markHabits session_info marks =
   sendRequestAndReceiveJson session_info POST "mark" (Just $ encodeJson marks)
   <#>
   (_.body)
+
+getCredits ∷ ∀ r. SessionInformation → Client r Credits
+getCredits session_info =
+  sendRequestAndReceiveJson session_info GET "credits" noContent
+  <#>
+  (_.body)
