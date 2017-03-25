@@ -21,6 +21,7 @@ import Data.Generic
 import Data.HTTP.Method hiding (fromString)
 import Data.Maybe
 import Data.Monoid
+import Data.Newtype
 import Data.String hiding (null)
 import Data.StrMap
 import Data.Tuple
@@ -226,6 +227,7 @@ assertNoExtraKeys jobject expected_keys =
 newtype Credits = Credits { success ∷ Number, failure ∷ Number }
 derive instance eqCredits ∷ Eq Credits
 derive instance genericCredits ∷ Generic Credits
+derive instance newtypeCredits ∷ Newtype Credits _
 derive instance ordCredits ∷ Ord Credits
 instance showCredits ∷ Show Credits where
   show (Credits credits) =
@@ -255,6 +257,7 @@ instance encodeJsonCredits ∷ EncodeJson Credits where
 newtype Habit = Habit { name ∷ String, credits ∷ Credits }
 derive instance eqHabit ∷ Eq Habit
 derive instance genericHabit ∷ Generic Habit
+derive instance newtypeHabits ∷ Newtype Habit _
 derive instance ordHabit ∷ Ord Habit
 instance showHabit ∷ Show Habit where
   show (Habit habit) =
@@ -349,3 +352,37 @@ deleteHabit session_info uuid =
      \(_ ∷ Response Unit) → HabitDeleted
     )
     id
+
+newtype HabitsToMark = HabitsToMark
+  { successes ∷ Array UUID
+  , failures ∷ Array UUID
+  }
+derive instance eqHabitsToMark ∷ Eq HabitsToMark
+derive instance newtypeHabitsToMark ∷ Newtype HabitsToMark _
+derive instance ordHabitsToMark ∷ Ord HabitsToMark
+instance showHabitsToMark ∷ Show HabitsToMark where
+  show (HabitsToMark marks) =
+    "{ successes: " ⊕ show marks.successes ⊕ ", failures: " ⊕ show marks.failures ⊕ " }"
+instance decodeJsonHabitsToMark ∷ DecodeJson HabitsToMark where
+  decodeJson json =
+    case toObject json of
+      Nothing → Left "expected an object"
+      Just jobject → do
+        successes ← jobject .? "successes" >>= decodeJson
+        failures ← jobject .? "failures" >>= decodeJson
+        assertNoExtraKeys jobject ["name", "credits"]
+        pure $ HabitsToMark { successes: successes, failures: failures }
+instance encodeJsonHabitsToMark ∷ EncodeJson HabitsToMark where
+  encodeJson (HabitsToMark marks) =
+    fromObject
+    $
+    fromFoldable
+      [Tuple "successes" $ encodeJson marks.successes
+      ,Tuple "failures" $ encodeJson marks.failures
+      ]
+
+markHabits ∷ ∀ r. SessionInformation → HabitsToMark → Client r Credits
+markHabits session_info marks =
+  sendRequestAndReceiveJson session_info POST "mark" (Just $ encodeJson marks)
+  <#>
+  (_.body)

@@ -7,6 +7,7 @@ import Control.Monad.Eff.Class
 import Control.Monad.Eff.Random
 import Data.Char
 import Data.Either
+import Data.Newtype
 import Data.StrMap
 import Data.String (fromCharArray)
 import Data.Unfoldable (replicateA)
@@ -109,4 +110,20 @@ main = runTest do
         putHabit session_info test_habit_id test_habit
         deleteHabit session_info test_habit_id >>= liftAff <<< equal HabitDeleted
         getHabits session_info >>= liftAff <<< equal empty
+  test "marking habits should return the correct credits" $ do
+      session_info ← createRandomAccount
+      runClient $ do
+        putHabit session_info test_habit_id test_habit >>= liftAff <<< equal HabitCreated
+        putHabit session_info test_habit_id_2 test_habit_2 >>= liftAff <<< equal HabitCreated
+        let expected_credits =
+              Credits
+                { success: (unwrap (unwrap test_habit).credits).success
+                , failure: (unwrap (unwrap test_habit_2).credits).failure
+                }
+            marks =
+              HabitsToMark
+                { successes: [test_habit_id]
+                , failures: [test_habit_id_2]
+                }
+        markHabits session_info marks >>= liftAff <<< equal expected_credits
 
