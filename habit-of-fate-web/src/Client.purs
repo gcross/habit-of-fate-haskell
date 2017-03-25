@@ -312,11 +312,20 @@ getHabit session_info uuid =
     )
     id
 
-putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r Unit
-putHabit session_info uuid habit =
-  sendRequest session_info PUT ("habits/" ⊕ uuid) (Just $ encodeJson habit)
-  <#>
-  (_.body)
+data PutResult = HabitCreated | HabitReplaced
+derive instance eqPutResult ∷ Eq PutResult
+derive instance ordPutResult ∷ Ord PutResult
+instance showPutResult ∷ Show PutResult where
+  show HabitCreated = "HabitCreated"
+  show HabitReplaced = "HabitReplaced"
+
+putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r PutResult
+putHabit session_info uuid habit = do
+  (response ∷ Response Unit) ←
+    sendRequest session_info PUT ("habits/" ⊕ uuid) (Just $ encodeJson habit)
+  pure $ case spy (response.status) of
+    201 → HabitCreated
+    _ → HabitReplaced
 
 data DeleteResult = HabitDeleted | NoHabitToDelete
 derive instance eqDeleteResult ∷ Eq DeleteResult

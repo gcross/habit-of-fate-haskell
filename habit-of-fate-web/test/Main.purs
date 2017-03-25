@@ -78,14 +78,20 @@ main = runTest do
     test "putting a habit and then fetching it returns the habit" $ do
       session_info ← createRandomAccount
       retrieved_habit ← runClient $ do
-        putHabit session_info test_habit_id test_habit
+        putHabit session_info test_habit_id test_habit >>= liftAff <<< equal HabitCreated
         getHabit session_info test_habit_id
       equal test_habit retrieved_habit
     test "putting a habit causes fetching all habits to return a singleton map" $ do
       session_info ← createRandomAccount
       runClient $ do
-        putHabit session_info test_habit_id test_habit
+        putHabit session_info test_habit_id test_habit >>= liftAff <<< equal HabitCreated
         getHabits session_info >>= liftAff <<< equal (singleton test_habit_id test_habit)
+    test "putting a habit, replacing it, and then fetching all habits returns the replaced habit" do
+      session_info ← createRandomAccount
+      runClient $ do
+        putHabit session_info test_habit_id test_habit >>= liftAff <<< equal HabitCreated
+        putHabit session_info test_habit_id test_habit_2 >>= liftAff <<< equal HabitReplaced
+        getHabits session_info >>= liftAff <<< equal (singleton test_habit_id test_habit_2)
   suite "deleteHabit" $ do
     test "deleting a non-existing habit returns NoHabitToDelete" $ do
       session_info ← createRandomAccount
@@ -97,3 +103,4 @@ main = runTest do
         putHabit session_info test_habit_id test_habit
         deleteHabit session_info test_habit_id >>= liftAff <<< equal HabitDeleted
         getHabits session_info >>= liftAff <<< equal empty
+
