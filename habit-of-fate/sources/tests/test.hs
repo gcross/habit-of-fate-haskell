@@ -113,40 +113,35 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
             , testMissing "Missing password" "login?username=foobar"
             ]
         ]
-    , serverTestCase "Get all habits when none exist" $
+    , serverTestCase "fetching all habits from a new account returns an empty array" $
         fetchHabits
         >>=
         liftIO ∘ (@?= Map.empty)
-    , serverTestCase "Get a particular habit when none exist" $
+    , serverTestCase "fetching a habit when none exist returns Nothing" $
         fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
         >>=
         liftIO ∘ (@?= Nothing)
-    , testGroup "Putting a habit..."
-        [ serverTestCase "...then fetching it, returns the habit" $ do
+    , testGroup "putHabit"
+        [ serverTestCase "putting a habit and then fetching it returns the habit" $ do
             putHabit test_habit_id test_habit
             fetchHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
-        , serverTestCase "...then fetching all habits, returns just the habit" $ do
+        , serverTestCase "putting a habit causes fetching all habits to return a singleton map" $ do
             putHabit test_habit_id test_habit
             fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
+        , serverTestCase "putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
+            putHabit test_habit_id test_habit
+            putHabit test_habit_id test_habit_2
+            fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
         ]
-    , testGroup "Deleting a habit..."
-        [ serverTestCase "...that does not exist, returns NoHabitToDelete" $ do
+    , testGroup "deleteHabit"
+        [ serverTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
             deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
-        , testGroup "...that exists..."
-            [ serverTestCase "...returns HabitDeleted" $ do
-                putHabit test_habit_id test_habit
-                deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
-            , serverTestCase "...causes no habits to show up when all are fetched" $ do
-                putHabit test_habit_id test_habit
-                void $ deleteHabit test_habit_id
-                fetchHabits >>= liftIO ∘ (@?= Map.empty)
-            ]
+        , serverTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
+            putHabit test_habit_id test_habit
+            deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
+            fetchHabits >>= liftIO ∘ (@?= Map.empty)
         ]
-    , serverTestCase "Create a habit, replace it, and fetch all habits" $ do
-        putHabit test_habit_id test_habit
-        putHabit test_habit_id test_habit_2
-        fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
-    , serverTestCase "Mark habits." $ do
+    , serverTestCase "markHabits" $ do
         putHabit test_habit_id test_habit
         putHabit test_habit_id_2 test_habit_2
         markHabits [test_habit_id] [test_habit_id_2]

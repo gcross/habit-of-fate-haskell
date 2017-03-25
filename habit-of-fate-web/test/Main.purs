@@ -53,44 +53,47 @@ test_habit_id = "95bef3cf-9031-4f64-8458-884aa6781563"
 test_habit_id_2 = "9e801a68-4288-4a23-8779-aa68f94991f9"
 
 main = runTest do
-  suite "create account" do
-    test "succeeds when the account is not already present" do
+  suite "create account..." do
+    test "...succeeds when the account is not already present" do
       login_information ← randomAccount
       void <<< runClient $ createAccount login_information
-    test "fails when the account is already present" do
+    test "...fails when the account is already present" do
       login_information ← randomAccount
       runClient $ createAccount login_information
       expectFailure "Second createAccount should have failed." $
         void <<< runClient $ createAccount login_information
-  suite "login" do
-    test "fails when the account is not present" do
+  suite "login..." do
+    test "...fails when the account is not present" do
       login_information ← randomAccount
       expectFailure "Login before createAccount should have failed." $
         void <<< runClient $ login login_information
-    test "succeeds when the account is present" do
+    test "...succeeds when the account is present" do
       login_information ← randomAccount
       void <<< runClient $ do
         createAccount login_information
         login login_information
   test "fetching all habits from a new account returns an empty array" $ do
     void $ createRandomAccount >>= runClient <<< getHabits
-  test "putting a habit and then fetching it returns the habit" $ do
-    session_info ← createRandomAccount
-    retrieved_habit ← runClient $ do
-      putHabit session_info test_habit_id test_habit
-      getHabit session_info test_habit_id
-    equal test_habit retrieved_habit
-  test "putting a habit causes fetching all habits to return a singleton map" $ do
-    session_info ← createRandomAccount
-    runClient $ do
-      putHabit session_info test_habit_id test_habit
-      getHabits session_info >>= liftAff <<< equal (singleton test_habit_id test_habit)
-  test "putting a habit then deleting it causes fetching all habits to return an empty map" $ do
-    session_info ← createRandomAccount
-    runClient $ do
-      putHabit session_info test_habit_id test_habit
-      deleteHabit session_info test_habit_id >>= liftAff <<< equal HabitDeleted
-      getHabits session_info >>= liftAff <<< equal empty
-  test "deleting a non-existing habit returns NoHabitToDelete" $ do
-    session_info ← createRandomAccount
-    runClient $ deleteHabit session_info test_habit_id >>= liftAff <<< equal NoHabitToDelete
+  suite "putHabit" $ do
+    test "putting a habit and then fetching it returns the habit" $ do
+      session_info ← createRandomAccount
+      retrieved_habit ← runClient $ do
+        putHabit session_info test_habit_id test_habit
+        getHabit session_info test_habit_id
+      equal test_habit retrieved_habit
+    test "putting a habit causes fetching all habits to return a singleton map" $ do
+      session_info ← createRandomAccount
+      runClient $ do
+        putHabit session_info test_habit_id test_habit
+        getHabits session_info >>= liftAff <<< equal (singleton test_habit_id test_habit)
+  suite "deleteHabit" $ do
+    test "deleting a non-existing habit returns NoHabitToDelete" $ do
+      session_info ← createRandomAccount
+      runClient $
+        deleteHabit session_info test_habit_id >>= liftAff <<< equal NoHabitToDelete
+    test "putting a habit then deleting it causes fetching all habits to return an empty map" $ do
+      session_info ← createRandomAccount
+      runClient $ do
+        putHabit session_info test_habit_id test_habit
+        deleteHabit session_info test_habit_id >>= liftAff <<< equal HabitDeleted
+        getHabits session_info >>= liftAff <<< equal empty
