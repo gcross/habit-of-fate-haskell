@@ -106,9 +106,9 @@ attemptRequest request =
 
 loginOrCreateAccount ∷
   ∀ r.
-  String → LoginInformation → Int →
+  String → LoginInformation →
   Client r SessionInformation
-loginOrCreateAccount route login_info expected_code = do
+loginOrCreateAccount route login_info = do
   response ← attemptRequest $
     defaultRequest
       { method = Left POST
@@ -120,13 +120,13 @@ loginOrCreateAccount route login_info expected_code = do
           <> login_info.password
       }
   let code = responseStatusCode response
-  when (code /= expected_code) $
-    throwDynamicException $ UnexpectedStatusCode code
-  pure $
-    { hostname: login_info.hostname
-    , port: login_info.port
-    , token: response.response
-    }
+  if (code < 200 || code >= 300)
+    then throwDynamicException $ UnexpectedStatusCode code
+    else pure $
+      { hostname: login_info.hostname
+      , port: login_info.port
+      , token: response.response
+      }
 
 data AccountAlreadyExists = AccountAlreadyExists
 instance showAccountAlreadyExists ∷ Show AccountAlreadyExists where
@@ -144,7 +144,7 @@ createAccount login_info =
           | code == 409 → Just $ throwDynamicException AccountAlreadyExists
           | otherwise → Nothing
     )
-    (loginOrCreateAccount "create" login_info 201)
+    (loginOrCreateAccount "create" login_info)
     id
 
 data NoSuchUser = NoSuchUser
@@ -170,7 +170,7 @@ login login_info =
           | code == 404 → Just $ throwDynamicException NoSuchUser
           | otherwise → Nothing
     )
-    (loginOrCreateAccount "login" login_info 200)
+    (loginOrCreateAccount "login" login_info)
     id
 
 noContent ∷ Maybe Unit
