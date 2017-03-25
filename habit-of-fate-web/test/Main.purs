@@ -91,3 +91,6 @@ main = runTest do
       putHabit session_info test_habit_id test_habit
       deleteHabit session_info test_habit_id >>= liftAff <<< equal HabitDeleted
       getHabits session_info >>= liftAff <<< equal empty
+  test "deleting a non-existing habit returns NoHabitToDelete" $ do
+    session_info ← createRandomAccount
+    runClient $ deleteHabit session_info test_habit_id >>= liftAff <<< equal NoHabitToDelete
