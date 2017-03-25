@@ -176,12 +176,14 @@ login login_info =
 noContent ∷ Maybe Unit
 noContent = Nothing
 
+type Response α = { status ∷ Int, body ∷ α }
+
 sendRequest ∷
   ∀ r α β.
   (Requestable α, Respondable β) ⇒
-  SessionInformation → Method → String → Int → Maybe α →
-  Client r β
-sendRequest session_info method path expected_code maybe_content = do
+  SessionInformation → Method → String → Maybe α →
+  Client r (Response β)
+sendRequest session_info method path maybe_content = do
   response ← attemptRequest $
     defaultRequest
       { method = Left method
@@ -190,9 +192,9 @@ sendRequest session_info method path expected_code maybe_content = do
       , headers = [RequestHeader "Authorization" ("Bearer " ⊕ session_info.token)]
       }
   case response.status of
-    StatusCode code | code /= expected_code →
-      throwDynamicException $ UnexpectedStatusCode code
-    _ → pure response.response
+    StatusCode code
+      | code < 200 || code >= 300 → throwDynamicException $ UnexpectedStatusCode code
+      | otherwise → pure $ { status: code, body: response.response }
 
 data InvalidJson = InvalidJson { string ∷ String, message ∷ String }
 instance showInvalidJson ∷ Show InvalidJson where
@@ -204,14 +206,14 @@ instance typeableInvalidJson ∷ Typeable InvalidJson where
 sendRequestAndReceiveJson ∷
   ∀ r α β.
   (Requestable α, DecodeJson β) ⇒
-  SessionInformation → Method → String → Int → Maybe α →
-  Client r β
-sendRequestAndReceiveJson session_info method path expected_code maybe_content = do
-  string ← sendRequest session_info method path expected_code maybe_content
-  case jsonParser string >>= decodeJson of
+  SessionInformation → Method → String → Maybe α →
+  Client r (Response β)
+sendRequestAndReceiveJson session_info method path maybe_content = do
+  response ← sendRequest session_info method path maybe_content
+  case jsonParser response.body >>= decodeJson of
     Left message →
-      throwDynamicException $ InvalidJson { message: message, string: string }
-    Right value → pure value
+      throwDynamicException $ InvalidJson { message: message, string: response.body }
+    Right value → pure $ response { body = value }
 
 assertNoExtraKeys ∷ JObject → Array String → Either String Unit
 assertNoExtraKeys jobject expected_keys =
@@ -284,7 +286,9 @@ type Habits = StrMap Habit
 
 getHabits ∷ ∀ r. SessionInformation → Client r Habits
 getHabits session_info =
-  sendRequestAndReceiveJson session_info GET "habits" 200 noContent
+  sendRequestAndReceiveJson session_info GET "habits" noContent
+  <#>
+  (_.body)
 
 data NoSuchHabit = NoSuchHabit
 instance showNoSuchHabit ∷ Show NoSuchHabit where
@@ -302,12 +306,17 @@ getHabit session_info uuid =
           | code == 404 → Just $ throwDynamicException NoSuchHabit
           | otherwise → Nothing
     )
-    (sendRequestAndReceiveJson session_info GET ("habits/" ⊕ uuid) 200 noContent)
+    (sendRequestAndReceiveJson session_info GET ("habits/" ⊕ uuid) noContent
+     <#>
+     (_.body)
+    )
     id
 
 putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r Unit
 putHabit session_info uuid habit =
-  sendRequest session_info PUT ("habits/" ⊕ uuid) 204 (Just $ encodeJson habit)
+  sendRequest session_info PUT ("habits/" ⊕ uuid) (Just $ encodeJson habit)
+  <#>
+  (_.body)
 
 data DeleteResult = HabitDeleted | NoHabitToDelete
 derive instance eqDeleteResult ∷ Eq DeleteResult
@@ -326,8 +335,8 @@ deleteHabit session_info uuid =
           | code == 404 → Just $ pure NoHabitToDelete
           | otherwise → Nothing
     )
-    (sendRequest session_info DELETE ("habits/" ⊕ uuid) 204 noContent
+    (sendRequest session_info DELETE ("habits/" ⊕ uuid) noContent
      <#>
-     \(_ ∷ Unit) → HabitDeleted
+     \(_ ∷ Response Unit) → HabitDeleted
     )
     id
