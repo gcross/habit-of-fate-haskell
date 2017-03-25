@@ -430,7 +430,7 @@ makeApp dirpath = do
       habit_id ← getParam "habit_id"
       log $ printf "Requested to put habit with id %s." (show habit_id)
       habit ← getBodyJSON
-      habit_was_there ← isNothing <$> (habits . at habit_id <<.= Just habit)
+      habit_was_there ← isJust <$> (habits . at habit_id <<.= Just habit)
       returnNothing $
         if habit_was_there
           then noContent204

@@ -90,6 +90,9 @@ originalFromSubEvent =
   ∘
   unwrapGenEvent
 
+createHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitCreated)
+replaceHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitReplaced)
+
 main = initialize >> (defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Server"
     [ testGroup "Missing username/password" $
@@ -123,27 +126,27 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
         liftIO ∘ (@?= Nothing)
     , testGroup "putHabit"
         [ serverTestCase "putting a habit and then fetching it returns the habit" $ do
-            putHabit test_habit_id test_habit
+            createHabit test_habit_id test_habit
             fetchHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
         , serverTestCase "putting a habit causes fetching all habits to return a singleton map" $ do
-            putHabit test_habit_id test_habit
+            createHabit test_habit_id test_habit
             fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
         , serverTestCase "putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
-            putHabit test_habit_id test_habit
-            putHabit test_habit_id test_habit_2
+            createHabit test_habit_id test_habit
+            replaceHabit test_habit_id test_habit_2
             fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
         ]
     , testGroup "deleteHabit"
         [ serverTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
             deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
         , serverTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
-            putHabit test_habit_id test_habit
+            createHabit test_habit_id test_habit
             deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
             fetchHabits >>= liftIO ∘ (@?= Map.empty)
         ]
     , serverTestCase "markHabits" $ do
-        putHabit test_habit_id test_habit
-        putHabit test_habit_id_2 test_habit_2
+        createHabit test_habit_id test_habit
+        createHabit test_habit_id_2 test_habit_2
         markHabits [test_habit_id] [test_habit_id_2]
         getCredits >>= liftIO ∘ (@?= Credits 1 2)
     ]

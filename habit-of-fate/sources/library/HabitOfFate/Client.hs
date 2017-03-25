@@ -121,75 +121,85 @@ parseResponseBody =
 
 responseStatusCode = statusCode ∘ responseStatus
 
-data UnexpectedStatus = UnexpectedStatus [Int] Status deriving (Typeable)
+data UnexpectedStatus = UnexpectedStatus [Int] Int deriving (Typeable)
 instance Show UnexpectedStatus where
   show (UnexpectedStatus expected_codes status) =
     printf "Status code not one of %s: %s" (show expected_codes) (show status)
 instance Exception UnexpectedStatus where
 
-sendRequest ∷ [Int] → Request → Client (Response LBS.ByteString)
-sendRequest expected_codes request = do
-  response ← view manager >>= liftIO ∘ httpLbs request
-  if responseStatusCode response ∈ expected_codes
-    then return response
-    else throwM ∘ UnexpectedStatus expected_codes ∘ responseStatus $ response
+sendRequest ∷ Request → Client (Response LBS.ByteString)
+sendRequest request =
+  view manager
+  >>=
+  liftIO ∘ httpLbs request
 
-request ∷ StdMethod → Text → [Int] → Client (Response LBS.ByteString)
-request method path expected_codes = do
+request ∷ StdMethod → Text → Client (Response LBS.ByteString)
+request method path =
   makeRequest method path
   >>=
-  sendRequest expected_codes
+  sendRequest
 
-requestWithJSON ∷ ToJSON α ⇒ StdMethod → Text → [Int] → α → Client (Response LBS.ByteString)
-requestWithJSON method path expected_codes value = do
+requestWithJSON ∷ ToJSON α ⇒ StdMethod → Text → α → Client (Response LBS.ByteString)
+requestWithJSON method path value = do
   (makeRequest method path <&> addJSONBody value)
   >>=
-  sendRequest expected_codes
+  sendRequest
 
-putHabit ∷ UUID → Habit → Client ()
-putHabit habit_id habit =
-  void $ requestWithJSON PUT (pathToHabit habit_id) [201,204] habit
+data PutResult = HabitCreated | HabitReplaced deriving (Eq, Ord, Read, Show)
+
+putHabit ∷ UUID → Habit → Client PutResult
+putHabit habit_id habit = do
+  response ← requestWithJSON PUT (pathToHabit habit_id) habit
+  case responseStatusCode response of
+    201 → pure HabitCreated
+    204 → pure HabitReplaced
+    code → throwM $ UnexpectedStatus [201,204] code
 
 data DeleteResult = HabitDeleted | NoHabitToDelete deriving (Eq, Ord, Read, Show)
 
 deleteHabit ∷ UUID → Client DeleteResult
-deleteHabit habit_id =
-  (HabitDeleted <$ request DELETE (pathToHabit habit_id) [204])
-  `catch`
-  \e@(UnexpectedStatus _ status) →
-    if statusCode status == 404
-      then pure NoHabitToDelete
-      else throwM e
+deleteHabit habit_id = do
+  response ← request DELETE $ pathToHabit habit_id
+  case responseStatusCode response of
+    204 → pure HabitDeleted
+    404 → pure NoHabitToDelete
+    code → throwM $ UnexpectedStatus [204,404] code
 
 fetchHabit ∷ UUID → Client (Maybe Habit)
-fetchHabit habit_id =
-  (
-    request GET (pathToHabit habit_id) [200]
-    >>=
-    parseResponseBody
-  )
-  `catch`
-  \e@(UnexpectedStatus _ status) →
-    if statusCode status == 404
-      then return Nothing
-      else throwM e
+fetchHabit habit_id = do
+  response ← request GET $ pathToHabit habit_id
+  case responseStatusCode response of
+    200 → parseResponseBody response
+    404 → pure Nothing
+    code → throwM $ UnexpectedStatus [200,404] code
 
 fetchHabits ∷ Client (Map UUID Habit)
-fetchHabits = request GET "/habits" [200] >>= parseResponseBody
+fetchHabits = do
+  response ← request GET "/habits"
+  case responseStatusCode response of
+    200 → parseResponseBody response
+    code → throwM $ UnexpectedStatus [200] code
 
 getCredits ∷ Client Credits
-getCredits = request GET "/credits" [200] >>= parseResponseBody
+getCredits = do
+  response ← request GET "/credits"
+  case responseStatusCode response of
+    200 → parseResponseBody response
+    code → throwM $ UnexpectedStatus [200] code
 
 markHabits ∷ [UUID] → [UUID] → Client Credits
-markHabits success_habits failure_habits =
-  requestWithJSON POST "/mark" [200] (HabitsToMark success_habits failure_habits)
-  >>=
-  parseResponseBody
+markHabits success_habits failure_habits = do
+  response ← requestWithJSON POST "/mark" (HabitsToMark success_habits failure_habits)
+  case responseStatusCode response of
+    200 → parseResponseBody response
+    code → throwM $ UnexpectedStatus [200] code
 
 runGame ∷ Client Story
-runGame =
-  request POST "/run" [200]
-  >>=
-  either throwM return ∘ parseText def ∘ decodeUtf8 ∘ responseBody
-  >>=
-  either error return ∘ parseStoryFromDocument
+runGame = do
+  response ← request POST "/run"
+  case responseStatusCode response of
+    200 →
+      (either throwM return ∘ parseText def ∘ decodeUtf8 ∘ responseBody $ response)
+      >>=
+      (either error return ∘ parseStoryFromDocument)
+    code → throwM $ UnexpectedStatus [200] code
