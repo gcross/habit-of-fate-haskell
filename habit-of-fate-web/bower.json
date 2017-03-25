@@ -14,6 +14,7 @@
     "purescript-dynamic": "^0.9.1",
     "purescript-generics": "^3.0.0",
     "purescript-http-methods": "^2.0.0",
+    "purescript-lens": "^2.0.0",
     "purescript-maybe": "^2.1.1",
     "purescript-maps": "^2.1.0",
     "purescript-newtype": "^1.3.0",

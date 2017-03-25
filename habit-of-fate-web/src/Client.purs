@@ -21,7 +21,7 @@ import Data.Generic
 import Data.HTTP.Method hiding (fromString)
 import Data.Maybe
 import Data.Monoid
-import Data.Newtype
+import Data.Newtype hiding (over)
 import Data.String hiding (null)
 import Data.StrMap
 import Data.Tuple
@@ -31,6 +31,7 @@ import Network.HTTP.Affjax.Request
 import Network.HTTP.Affjax.Response
 import Network.HTTP.RequestHeader
 import Network.HTTP.StatusCode
+import Optic.Core
 
 import Unicode
 import UUID
@@ -254,6 +255,12 @@ instance encodeJsonCredits ∷ EncodeJson Credits where
       ,Tuple "failure" $ fromNumber credits.failure
       ]
 
+success ∷ Lens' Credits Number
+success = lens (\(Credits h)→ h.success) (\(Credits h) success → Credits (h { success = success }))
+
+failure ∷ Lens' Credits Number
+failure = lens (\(Credits h)→ h.failure) (\(Credits h) failure → Credits (h { failure = failure }))
+
 newtype Habit = Habit { name ∷ String, credits ∷ Credits }
 derive instance eqHabit ∷ Eq Habit
 derive instance genericHabit ∷ Generic Habit
@@ -283,6 +290,12 @@ instance encodeJsonHabit ∷ EncodeJson Habit where
       [Tuple "name" $ fromString habit.name
       ,Tuple "credits" $ encodeJson habit.credits
       ]
+
+name ∷ Lens' Habit String
+name = lens (\(Habit h)→ h.name) (\(Habit h) name → Habit (h { name = name }))
+
+credits ∷ Lens' Habit Credits
+credits = lens (\(Habit h)→ h.credits) (\(Habit h) credits → Habit (h { credits = credits }))
 
 type HabitId = String
 type Habits = StrMap Habit

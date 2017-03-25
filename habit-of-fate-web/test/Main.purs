@@ -11,7 +11,8 @@ import Data.Newtype
 import Data.StrMap
 import Data.String (fromCharArray)
 import Data.Unfoldable (replicateA)
-import Test.Unit
+import Optic.Core
+import Test.Unit hiding (failure, success)
 import Test.Unit.Assert
 import Test.Unit.Main (runTest)
 
@@ -117,8 +118,8 @@ main = runTest do
         putHabit session_info test_habit_id_2 test_habit_2 >>= liftAff <<< equal HabitCreated
         let expected_credits =
               Credits
-                { success: (unwrap (unwrap test_habit).credits).success
-                , failure: (unwrap (unwrap test_habit_2).credits).failure
+                { success: test_habit ^. credits .. success
+                , failure: test_habit_2 ^. credits .. failure
                 }
             marks =
               HabitsToMark
