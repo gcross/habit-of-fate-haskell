@@ -365,7 +365,7 @@ makeApp dirpath = do
         (unpack ∘ decodeUtf8 $ rawPathInfo r ∷ String)
         (unpack ∘ decodeUtf8 $ rawQueryString r ∷ String)
       Scotty.next
-    Scotty.post "/create" $ do
+    Scotty.post "/api/create" $ do
       username ← param "username"
       password ← param "password"
       logIO $ printf "Request to create an account for \"%s\"" username
@@ -390,7 +390,7 @@ makeApp dirpath = do
             { iss = Just expected_iss
             , sub = Just (fromJust $ stringOrURI username)
             }
-    Scotty.post "/login" $ do
+    Scotty.post "/api/login" $ do
       username ← param "username"
       password ← param "password"
       (
@@ -408,17 +408,17 @@ makeApp dirpath = do
         { iss = Just expected_iss
         , sub = Just (fromJust $ stringOrURI username)
         }
-    Scotty.get "/habits" ∘ reader $ do
+    Scotty.get "/api/habits" ∘ reader $ do
       log "Requested all habits."
       view habits >>= returnJSON ok200
-    Scotty.get "/habits/:habit_id" ∘ reader $ do
+    Scotty.get "/api/habits/:habit_id" ∘ reader $ do
       habit_id ← getParam "habit_id"
       log $ printf "Requested habit with id %s." (show habit_id)
       habits_ ← view habits
       case lookup habit_id habits_ of
         Nothing → raiseNoSuchHabit
         Just habit → returnJSON ok200 habit
-    Scotty.delete "/habits/:habit_id" ∘ writer $ do
+    Scotty.delete "/api/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
       log $ printf "Requested to delete habit with id %s." (show habit_id)
       habit_was_there ← isJust <$> (habits . at habit_id <<.= Nothing)
@@ -426,7 +426,7 @@ makeApp dirpath = do
         if habit_was_there
           then noContent204
           else notFound404
-    Scotty.put "/habits/:habit_id" ∘ writer $ do
+    Scotty.put "/api/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
       log $ printf "Requested to put habit with id %s." (show habit_id)
       habit ← getBodyJSON
@@ -435,10 +435,10 @@ makeApp dirpath = do
         if habit_was_there
           then noContent204
           else created201
-    Scotty.get "/credits" ∘ reader $ do
+    Scotty.get "/api/credits" ∘ reader $ do
       log $ "Requested credits."
       view (game . credits) >>= returnJSON ok200
-    Scotty.post "/mark" ∘ writer $ do
+    Scotty.post "/api/mark" ∘ writer $ do
       let markHabits ∷ [UUID] → Lens' Credits Double → WriterProgram Double
           markHabits uuids which_credits = do
             habits ← mapM lookupHabit uuids
@@ -458,7 +458,7 @@ makeApp dirpath = do
           <$> markHabits (marks ^. successes) success
           <*> markHabits (marks ^. failures ) failure
        ) >>= returnJSON ok200
-    Scotty.post "/run" ∘ writer $ do
+    Scotty.post "/api/run" ∘ writer $ do
       let go d = do
             let r = runAccount d
             l_ #quest_events %= (|> r ^. story . to createEvent)

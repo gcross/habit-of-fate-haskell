@@ -52,7 +52,7 @@ loginOrCreateAccount route username password secure_mode hostname port = do
     flip httpLbs manager
     $
     request_template_without_authorization
-      { path = encodeUtf8 (pack $ printf "/%s?username=%s&password=%s" route username password) }
+      { path = encodeUtf8 (pack $ printf "/api/%s?username=%s&password=%s" route username password) }
   let code = responseStatusCode response
   if code >= 200 && code <= 299
     then return ∘ Right $
@@ -92,13 +92,13 @@ decodeUtf8InResponse ∷ Response LBS.ByteString → Text
 decodeUtf8InResponse = decodeUtf8 ∘ LBS.toStrict ∘ responseBody
 
 pathToHabit ∷ UUID → Text
-pathToHabit = ("/habits/" ⊕) ∘ UUID.toText
+pathToHabit = ("habits/" ⊕) ∘ UUID.toText
 
 makeRequest ∷ StdMethod → Text → Client Request
 makeRequest std_method path = do
   view request_template
   <&>
-  \template → template { method = renderStdMethod std_method, path = encodeUtf8 path }
+  \template → template { method = renderStdMethod std_method, path = encodeUtf8 $ "/api/" ⊕ path }
 
 addJSONBody ∷ ToJSON α ⇒ α → Request → Request
 addJSONBody x request = request
@@ -175,28 +175,28 @@ fetchHabit habit_id = do
 
 fetchHabits ∷ Client (Map UUID Habit)
 fetchHabits = do
-  response ← request GET "/habits"
+  response ← request GET "habits"
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
 getCredits ∷ Client Credits
 getCredits = do
-  response ← request GET "/credits"
+  response ← request GET "credits"
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
 markHabits ∷ [UUID] → [UUID] → Client Credits
 markHabits success_habits failure_habits = do
-  response ← requestWithJSON POST "/mark" (HabitsToMark success_habits failure_habits)
+  response ← requestWithJSON POST "mark" (HabitsToMark success_habits failure_habits)
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
 runGame ∷ Client Story
 runGame = do
-  response ← request POST "/run"
+  response ← request POST "run"
   case responseStatusCode response of
     200 →
       (either throwM return ∘ parseText def ∘ decodeUtf8 ∘ responseBody $ response)

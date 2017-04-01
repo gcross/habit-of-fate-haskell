@@ -52,7 +52,7 @@ type SessionInformation =
 newtype LoginAccount = LoginAccount { username ∷ String, password ∷ String }
 
 url_template ∷ String
-url_template = "http://<HOSTNAME>:<PORT>/<ROUTE>"
+url_template = "http://<HOSTNAME>:<PORT>/api/<ROUTE>"
 
 createURL ∷ ∀ r. { hostname ∷ String, port ∷ Int | r } → String → URL
 createURL server route =

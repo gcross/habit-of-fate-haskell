@@ -103,7 +103,7 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
                   { method = renderStdMethod POST
                   , host = "localhost"
                   , port = port
-                  , path = path
+                  , path = "/api/" ⊕ path
                   }
                 400 @=? responseStatusCode response
         in
