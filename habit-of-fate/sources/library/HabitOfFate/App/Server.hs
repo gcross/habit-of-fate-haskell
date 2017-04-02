@@ -8,6 +8,7 @@ import HabitOfFate.Prelude
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
 import Options.Applicative
+import System.Exit
 import System.FilePath
 
 import HabitOfFate.Logging
@@ -17,10 +18,10 @@ import Paths_habit_of_fate
 
 data Configuration = Configuration
   { port ∷ Int
-  , data_path ∷ FilePath
-  , certificate_path ∷ FilePath
-  , key_path ∷ FilePath
-  , allow_insecure ∷ Bool
+  , maybe_data_path ∷ Maybe FilePath
+  , maybe_certificate_path ∷ Maybe FilePath
+  , maybe_key_path ∷ Maybe FilePath
+  , test_mode ∷ Bool
   }
 
 habitMain ∷ IO ()
@@ -37,37 +38,68 @@ habitMain = do
               , short 'p'
               , value 8081
               ])
-        <*> strOption (mconcat
+        <*> (optional ∘ strOption $ mconcat
               [ metavar "DIRECTORY"
               , help "Path to game and server data."
               , long "data"
               , action "directory"
-              , value default_data_path
-              ])
-        <*> strOption (mconcat
+              ]
+            )
+        <*> (optional ∘ strOption $ mconcat
               [ metavar "FILE"
               , help "Path to the certificate file."
               , long "cert"
               , long "certificate"
               , action "file"
-              , value default_certificate_path
-              ])
-        <*> strOption (mconcat
+              ]
+            )
+        <*> (optional ∘ strOption $ mconcat
               [ metavar "FILE"
               , help "Path to the key file."
               , long "key"
               , action "file"
-              , value default_key_path
-              ])
+              ]
+            )
         <*> switch (mconcat
-              [ help "Allow insecure connections."
-              , long "allow-insecure"
+              [ help "Enable test mode."
+              , long "test-mode"
+              , internal
               ])
   Configuration{..} ←
     execParser $ info
       (configuration_parser <**> helper)
       (   fullDesc       <> header "habit-server - server program for habit-of-fate"
       )
+  data_path ←
+    case maybe_data_path of
+      Just data_path → pure data_path
+      Nothing
+        | test_mode → pure "/tmp/habit"
+        | otherwise → do
+            putStrLn "Must specify the data path via. --data"
+            exitFailure
+  (certificate_path, key_path) ←
+    if test_mode
+     then
+       case (maybe_certificate_path, maybe_key_path) of
+         (Just certificate_path, Just key_path) → pure (certificate_path, key_path)
+         (Nothing, Nothing) → pure (default_certificate_path, default_key_path)
+         _ → do
+           putStrLn "When in test mode you must specify either both a certificate file and a key file or neither."
+           exitFailure
+     else
+       case (maybe_certificate_path, maybe_key_path) of
+         (Just certificate_path, Just key_path) → pure (certificate_path, key_path)
+         (Just _, Nothing) → do
+           putStrLn "You need to specify a key file via. --key"
+           exitFailure
+         (Nothing, Just _) → do
+           putStrLn "You need to specify a certificate file via. --cert"
+           exitFailure
+         _ → do
+           putStrLn "You need to specify both a certificate file via. --cert and a key file via. --key."
+           exitFailure
+  when test_mode $ logIO "Running in test mode.  DO NOT DO THIS IN PRODUCTION!!!"
   logIO $ printf "Listening on port %i" port
   logIO $ printf "Using certificate file located at %s" certificate_path
   logIO $ printf "Using key file located at %s" key_path
@@ -75,7 +107,7 @@ habitMain = do
   let tls_settings =
         (tlsSettings certificate_path key_path)
         { onInsecure =
-            if allow_insecure
+            if test_mode
               then AllowInsecure
               else DenyInsecure ∘ encodeUtf8 ∘ pack $
                      "Insecure connections are not supported."
