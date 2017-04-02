@@ -6,4 +6,4 @@ tags
 *.hof
 *~
 .#*
-test.log
+*.log
