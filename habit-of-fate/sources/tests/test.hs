@@ -45,9 +45,10 @@ serverTestCaseWithoutAccount ∷ String → (Int → IO ()) → TestTree
 serverTestCaseWithoutAccount name action = testCase name $ do
   debugM "Test" $ header name
   tempdir ← getTemporaryDirectory
-  filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','z'))
+  filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','Z'))
+  createDirectoryIfMissing True filepath
   withApplication
-    (makeApp filepath)
+    (makeApp filepath mempty (const $ pure ()))
     action
 
 serverTestCase ∷ String → (Client ()) → TestTree

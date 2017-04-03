@@ -24,7 +24,6 @@ import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import qualified Control.Monad.Operational as Operational
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as Lazy
 import Data.Text.IO
 import qualified Data.Text.Lazy as Lazy
@@ -34,7 +33,6 @@ import Network.HTTP.Types.Status
 import Network.Wai
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
-import Options.Applicative
 import System.Directory
 import System.FilePath
 import System.Random
@@ -173,20 +171,6 @@ returnText s = returnLazyText s ∘ view (from strict)
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = return ∘ ProgramResult s ∘ JSONContent
 
-loadAccounts ∷ FilePath → IO (Map Text (TVar Account))
-loadAccounts =
-  liftIO ∘ BS.readFile
-  >=>
-  either error return . decodeEither
-  >=>
-  traverse newTVarIO
-
-saveAccounts ∷ FilePath → Map Text (TVar Account) → IO ()
-saveAccounts filepath =
-  traverse readTVarIO
-  >=>
-  encodeFile filepath
-
 data AccountStatus = AccountExists | AccountCreated
 
 param ∷ Parsable α ⇒ Lazy.Text → ActionM α
@@ -213,22 +197,18 @@ setStatusAndLog status_@(Status code message) = do
         | otherwise = "Request succeeded - %i %s"
   logIO $ printf template code (unpack ∘ decodeUtf8 $ message)
 
-makeApp ∷ FilePath → IO Application
-makeApp dirpath = do
-  logIO $ printf "Using data directory at %s" dirpath
-  createDirectoryIfMissing True dirpath
-  let data_dirpath = dirpath </> "data"
-  accounts_tvar ∷ TVar (Map Text (TVar Account)) ←
-    doesFileExist data_dirpath
+makeApp ∷ FilePath → Map Text Account → (Map Text Account → IO ()) → IO Application
+makeApp dirpath initial_accounts saveAccounts = do
+  accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
+    traverse newTVar initial_accounts >>= newTVar
+  write_request ← newEmptyTMVarIO
+  liftIO ∘ forkIO ∘ forever $
+    (atomically $ do
+      takeTMVar write_request
+      readTVar accounts_tvar >>= traverse readTVar
+    )
     >>=
-    bool (do logIO "Creating new data file"
-             mempty
-         )
-         (do logIO "Reading existing data file"
-             loadAccounts data_dirpath
-         )
-    >>=
-    newTVarIO
+    saveAccounts
   let secret_filepath = dirpath </> "secret"
   key ←
     doesFileExist secret_filepath
@@ -241,11 +221,6 @@ makeApp dirpath = do
          (do logIO "Reading existing secret"
              secret <$> readFile secret_filepath
          )
-  write_request ← newEmptyTMVarIO
-  liftIO ∘ forkIO ∘ forever $ do
-    atomically $ takeTMVar write_request
-    readTVarIO accounts_tvar >>= saveAccounts data_dirpath
-
   key ← secret ∘ toText <$> randomIO
   logIO $ "Starting server..."
   let expected_iss = fromJust $ stringOrURI "habit-of-fate"

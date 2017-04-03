@@ -5,9 +5,12 @@ module HabitOfFate.App.Server where
 
 import HabitOfFate.Prelude
 
+import qualified Data.ByteString as BS
+import Data.Yaml hiding (Parser, (.=))
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
 import Options.Applicative
+import System.Directory
 import System.Exit
 import System.FilePath
 
@@ -70,7 +73,7 @@ habitMain = do
       (configuration_parser <**> helper)
       (   fullDesc       <> header "habit-server - server program for habit-of-fate"
       )
-  data_path ←
+  data_dir ←
     case maybe_data_path of
       Just data_path → pure data_path
       Nothing
@@ -103,7 +106,23 @@ habitMain = do
   logIO $ printf "Listening on port %i" port
   logIO $ printf "Using certificate file located at %s" certificate_path
   logIO $ printf "Using key file located at %s" key_path
-  app ← makeApp data_path
+  logIO $ printf "Using data directory at %s" data_dir
+  createDirectoryIfMissing True data_dir
+
+  -- Set up data file
+  let data_path = data_dir </> "data"
+  initial_accounts ←
+    doesFileExist data_path
+    >>=
+    bool
+      (do logIO "Creating new data file"
+          pure mempty
+      )
+      (do logIO "Reading existing data file"
+          BS.readFile data_path >>= either error pure ∘ decodeEither
+      )
+
+  app ← makeApp data_dir initial_accounts (encodeFile data_path)
   let tls_settings =
         (tlsSettings certificate_path key_path)
         { onInsecure =
