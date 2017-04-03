@@ -27,6 +27,7 @@ import System.Log.Logger
 import System.Random
 import Test.Tasty
 import Test.Tasty.HUnit
+import Web.JWT hiding (header)
 
 import HabitOfFate.Client
 import HabitOfFate.Credits
@@ -48,7 +49,7 @@ serverTestCaseWithoutAccount name action = testCase name $ do
   filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','Z'))
   createDirectoryIfMissing True filepath
   withApplication
-    (makeApp filepath mempty (const $ pure ()))
+    (makeApp (secret "test secret") mempty (const $ pure ()))
     action
 
 serverTestCase ∷ String → (Client ()) → TestTree

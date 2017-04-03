@@ -25,7 +25,6 @@ import Control.DeepSeq
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Lazy as Lazy
-import Data.Text.IO
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID
 import Data.Yaml hiding (Parser, (.=))
@@ -197,8 +196,8 @@ setStatusAndLog status_@(Status code message) = do
         | otherwise = "Request succeeded - %i %s"
   logIO $ printf template code (unpack ∘ decodeUtf8 $ message)
 
-makeApp ∷ FilePath → Map Text Account → (Map Text Account → IO ()) → IO Application
-makeApp dirpath initial_accounts saveAccounts = do
+makeApp ∷ Secret → Map Text Account → (Map Text Account → IO ()) → IO Application
+makeApp password_secret initial_accounts saveAccounts = do
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
     traverse newTVar initial_accounts >>= newTVar
   write_request ← newEmptyTMVarIO
@@ -209,19 +208,6 @@ makeApp dirpath initial_accounts saveAccounts = do
     )
     >>=
     saveAccounts
-  let secret_filepath = dirpath </> "secret"
-  key ←
-    doesFileExist secret_filepath
-    >>=
-    bool (do logIO "Creating new secret"
-             key ← toText <$> randomIO
-             writeFile secret_filepath key
-             return $ secret key
-         )
-         (do logIO "Reading existing secret"
-             secret <$> readFile secret_filepath
-         )
-  key ← secret ∘ toText <$> randomIO
   logIO $ "Starting server..."
   let expected_iss = fromJust $ stringOrURI "habit-of-fate"
 
@@ -241,7 +227,7 @@ makeApp dirpath initial_accounts saveAccounts = do
           (finishWithStatusMessage 403 "Forbidden: Unable to verify key")
           return
         ∘
-        decodeAndVerifySignature key
+        decodeAndVerifySignature password_secret
         ∘
         view strict
         >>=
@@ -361,7 +347,7 @@ makeApp dirpath initial_accounts saveAccounts = do
         AccountCreated → do
           logIO $ printf "Account \"%s\" successfully created!" username
           status created201
-          Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
+          Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
             { iss = Just expected_iss
             , sub = Just (fromJust $ stringOrURI username)
             }
@@ -379,7 +365,7 @@ makeApp dirpath initial_accounts saveAccounts = do
         ∘
         passwordIsValid password
        )
-      Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 key $ def
+      Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
         { iss = Just expected_iss
         , sub = Just (fromJust $ stringOrURI username)
         }

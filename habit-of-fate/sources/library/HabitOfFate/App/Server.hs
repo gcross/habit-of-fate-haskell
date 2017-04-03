@@ -1,3 +1,5 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -6,6 +8,8 @@ module HabitOfFate.App.Server where
 import HabitOfFate.Prelude
 
 import qualified Data.ByteString as BS
+import Data.Text.IO
+import Data.UUID
 import Data.Yaml hiding (Parser, (.=))
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
@@ -13,6 +17,8 @@ import Options.Applicative
 import System.Directory
 import System.Exit
 import System.FilePath
+import System.Random
+import Web.JWT hiding (header)
 
 import HabitOfFate.Logging
 import HabitOfFate.Server
@@ -122,7 +128,21 @@ habitMain = do
           BS.readFile data_path >>= either error pure ∘ decodeEither
       )
 
-  app ← makeApp data_dir initial_accounts (encodeFile data_path)
+  -- Set up secret file
+  let password_secret_path = data_dir </> "secret"
+  password_secret ←
+    doesFileExist password_secret_path
+    >>=
+    bool (do logIO "Creating new secret"
+             secret_uuid ← toText <$> randomIO
+             writeFile password_secret_path secret_uuid
+             return $ secret secret_uuid
+         )
+         (do logIO "Reading existing secret"
+             secret <$> readFile password_secret_path
+         )
+
+  app ← makeApp password_secret initial_accounts (encodeFile data_path)
   let tls_settings =
         (tlsSettings certificate_path key_path)
         { onInsecure =

@@ -89,6 +89,7 @@ test-suite test
                      , hslogger
                      , http-client
                      , http-types
+                     , jwt
                      , lens
                      , mtl
                      , random
