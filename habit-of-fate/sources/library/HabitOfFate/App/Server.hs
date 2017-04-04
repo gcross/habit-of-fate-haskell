@@ -79,14 +79,6 @@ habitMain = do
       (configuration_parser <**> helper)
       (   fullDesc       <> header "habit-server - server program for habit-of-fate"
       )
-  data_dir ←
-    case maybe_data_path of
-      Just data_path → pure data_path
-      Nothing
-        | test_mode → pure "/tmp/habit"
-        | otherwise → do
-            putStrLn "Must specify the data path via. --data"
-            exitFailure
   (certificate_path, key_path) ←
     if test_mode
      then
@@ -112,42 +104,52 @@ habitMain = do
   logIO $ printf "Listening on port %i" port
   logIO $ printf "Using certificate file located at %s" certificate_path
   logIO $ printf "Using key file located at %s" key_path
-  logIO $ printf "Using data directory at %s" data_dir
-  createDirectoryIfMissing True data_dir
 
-  -- Set up data file
-  let data_path = data_dir </> "data"
-  initial_accounts ←
-    doesFileExist data_path
-    >>=
-    bool
-      (do logIO "Creating new data file"
-          pure mempty
-      )
-      (do logIO "Reading existing data file"
-          BS.readFile data_path >>= either error pure ∘ decodeEither
-      )
+  (initial_accounts, saveAccounts, password_secret) ←
+    case maybe_data_path of
+      Nothing → do
+        unless test_mode $ do
+          putStrLn "data directory was not specified in test mode"
+          exitFailure
+        password_secret ← secret ∘ toText <$> randomIO
+        pure (mempty, const $ pure (), password_secret)
+      Just data_dir → do
+        logIO $ printf "Using data directory at %s" data_dir
+        createDirectoryIfMissing True data_dir
 
-  -- Set up secret file
-  let password_secret_path = data_dir </> "secret"
-  password_secret ←
-    if test_mode
-      then
-        secret ∘ toText <$> randomIO
-      else
-        doesFileExist password_secret_path
-        >>=
-        bool
-          (do logIO "Creating new secret"
-              secret_uuid ← toText <$> randomIO
-              writeFile password_secret_path secret_uuid
-              return $ secret secret_uuid
-          )
-          (do logIO "Reading existing secret"
-              secret <$> readFile password_secret_path
-          )
+        let data_path = data_dir </> "data"
+        initial_accounts ←
+          doesFileExist data_path
+          >>=
+          bool
+            (do logIO "Creating new data file"
+                pure mempty
+            )
+            (do logIO "Reading existing data file"
+                BS.readFile data_path >>= either error pure ∘ decodeEither
+            )
 
-  app ← makeApp password_secret initial_accounts (encodeFile data_path)
+        let password_secret_path = data_dir </> "secret"
+        password_secret ←
+          if test_mode
+            then
+              secret ∘ toText <$> randomIO
+            else
+              doesFileExist password_secret_path
+              >>=
+              bool
+                (do logIO "Creating new secret"
+                    secret_uuid ← toText <$> randomIO
+                    writeFile password_secret_path secret_uuid
+                    return $ secret secret_uuid
+                )
+                (do logIO "Reading existing secret"
+                    secret <$> readFile password_secret_path
+                )
+
+        pure (initial_accounts, encodeFile data_path, password_secret)
+
+  app ← makeApp password_secret initial_accounts saveAccounts
   let tls_settings =
         (tlsSettings certificate_path key_path)
         { onInsecure =
