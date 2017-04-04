@@ -34,8 +34,8 @@ data Configuration = Configuration
   , test_mode ∷ Bool
   }
 
-exitWithMessage ∷ Text → IO α
-exitWithMessage message = do
+exitFailureWithMessage ∷ Text → IO α
+exitFailureWithMessage message = do
   putStrLn message
   exitFailure
 
@@ -98,21 +98,21 @@ habitMain = do
        case (maybe_certificate_path, maybe_key_path) of
          (Just certificate_path, Just key_path) → pure (certificate_path, key_path)
          (Nothing, Nothing) → pure (default_certificate_path, default_key_path)
-         _ → do
-           putStrLn "When in test mode you must specify either both a certificate file and a key file or neither."
-           exitFailure
+         _ →
+           exitFailureWithMessage
+             "When in test mode you must specify either both a certificate file and a key file or neither."
      else
        case (maybe_certificate_path, maybe_key_path) of
          (Just certificate_path, Just key_path) → pure (certificate_path, key_path)
-         (Just _, Nothing) → do
-           putStrLn "You need to specify a key file via. --key"
-           exitFailure
-         (Nothing, Just _) → do
-           putStrLn "You need to specify a certificate file via. --cert"
-           exitFailure
-         _ → do
-           putStrLn "You need to specify both a certificate file via. --cert and a key file via. --key."
-           exitFailure
+         (Just _, Nothing) →
+           exitFailureWithMessage
+             "You need to specify a key file via. --key"
+         (Nothing, Just _) →
+           exitFailureWithMessage
+             "You need to specify a certificate file via. --cert"
+         _ →
+           exitFailureWithMessage
+             "You need to specify both a certificate file via. --cert and a key file via. --key."
   when test_mode $ logIO "Running in test mode.  DO NOT DO THIS IN PRODUCTION!!!"
   logIO $ printf "Listening on port %i" port
   logIO $ printf "Using certificate file located at %s" certificate_path
@@ -125,7 +125,7 @@ habitMain = do
           then do
             logIO "No data file specified; all game data will lost on exit."
             pure (mempty, const $ pure ())
-          else exitWithMessage "You need to specify the path to the data file."
+          else exitFailureWithMessage "You need to specify the path to the data file."
       Just data_path → do
         logIO $ printf "Using data file located at %s" data_path
         initial_accounts ←
@@ -147,7 +147,7 @@ habitMain = do
           then do
             logIO "No password secret file specified; generating a random secret."
             secret ∘ toText <$> randomIO
-          else exitWithMessage "You need to specify the path to the data file."
+          else exitFailureWithMessage "You need to specify the path to the data file."
       Just password_secret_path → do
         doesFileExist password_secret_path
         >>=
