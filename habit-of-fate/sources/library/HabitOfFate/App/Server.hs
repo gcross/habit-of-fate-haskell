@@ -28,10 +28,16 @@ import Paths_habit_of_fate
 data Configuration = Configuration
   { port ∷ Int
   , maybe_data_path ∷ Maybe FilePath
+  , maybe_password_secret_path ∷ Maybe FilePath
   , maybe_certificate_path ∷ Maybe FilePath
   , maybe_key_path ∷ Maybe FilePath
   , test_mode ∷ Bool
   }
+
+exitWithMessage ∷ Text → IO α
+exitWithMessage message = do
+  putStrLn message
+  exitFailure
 
 habitMain ∷ IO ()
 habitMain = do
@@ -48,10 +54,17 @@ habitMain = do
               , value 8081
               ])
         <*> (optional ∘ strOption $ mconcat
-              [ metavar "DIRECTORY"
-              , help "Path to game and server data."
+              [ metavar "FILE"
+              , help "Path to the game data."
               , long "data"
-              , action "directory"
+              , action "file"
+              ]
+            )
+        <*> (optional ∘ strOption $ mconcat
+              [ metavar "FILE"
+              , help "Path to the password secret file."
+              , long "data"
+              , action "file"
               ]
             )
         <*> (optional ∘ strOption $ mconcat
@@ -105,19 +118,16 @@ habitMain = do
   logIO $ printf "Using certificate file located at %s" certificate_path
   logIO $ printf "Using key file located at %s" key_path
 
-  (initial_accounts, saveAccounts, password_secret) ←
+  (initial_accounts, saveAccounts) ←
     case maybe_data_path of
       Nothing → do
-        unless test_mode $ do
-          putStrLn "data directory was not specified in test mode"
-          exitFailure
-        password_secret ← secret ∘ toText <$> randomIO
-        pure (mempty, const $ pure (), password_secret)
-      Just data_dir → do
-        logIO $ printf "Using data directory at %s" data_dir
-        createDirectoryIfMissing True data_dir
-
-        let data_path = data_dir </> "data"
+        if test_mode
+          then do
+            logIO "No data file specified; all game data will lost on exit."
+            pure (mempty, const $ pure ())
+          else exitWithMessage "You need to specify the path to the data file."
+      Just data_path → do
+        logIO $ printf "Using data file located at %s" data_path
         initial_accounts ←
           doesFileExist data_path
           >>=
@@ -128,26 +138,28 @@ habitMain = do
             (do logIO "Reading existing data file"
                 BS.readFile data_path >>= either error pure ∘ decodeEither
             )
+        pure (initial_accounts, encodeFile data_path)
 
-        let password_secret_path = data_dir </> "secret"
-        password_secret ←
-          if test_mode
-            then
-              secret ∘ toText <$> randomIO
-            else
-              doesFileExist password_secret_path
-              >>=
-              bool
-                (do logIO "Creating new secret"
-                    secret_uuid ← toText <$> randomIO
-                    writeFile password_secret_path secret_uuid
-                    return $ secret secret_uuid
-                )
-                (do logIO "Reading existing secret"
-                    secret <$> readFile password_secret_path
-                )
-
-        pure (initial_accounts, encodeFile data_path, password_secret)
+  password_secret ←
+    case maybe_password_secret_path of
+      Nothing → do
+        if test_mode
+          then do
+            logIO "No password secret file specified; generating a random secret."
+            secret ∘ toText <$> randomIO
+          else exitWithMessage "You need to specify the path to the data file."
+      Just password_secret_path → do
+        doesFileExist password_secret_path
+        >>=
+        bool
+          (do logIO "Creating new secret"
+              secret_uuid ← toText <$> randomIO
+              writeFile password_secret_path secret_uuid
+              return $ secret secret_uuid
+          )
+          (do logIO "Reading existing secret"
+              secret <$> readFile password_secret_path
+          )
 
   app ← makeApp password_secret initial_accounts saveAccounts
   let tls_settings =
