@@ -131,16 +131,21 @@ habitMain = do
   -- Set up secret file
   let password_secret_path = data_dir </> "secret"
   password_secret ←
-    doesFileExist password_secret_path
-    >>=
-    bool (do logIO "Creating new secret"
-             secret_uuid ← toText <$> randomIO
-             writeFile password_secret_path secret_uuid
-             return $ secret secret_uuid
-         )
-         (do logIO "Reading existing secret"
-             secret <$> readFile password_secret_path
-         )
+    if test_mode
+      then
+        secret ∘ toText <$> randomIO
+      else
+        doesFileExist password_secret_path
+        >>=
+        bool
+          (do logIO "Creating new secret"
+              secret_uuid ← toText <$> randomIO
+              writeFile password_secret_path secret_uuid
+              return $ secret secret_uuid
+          )
+          (do logIO "Reading existing secret"
+              secret <$> readFile password_secret_path
+          )
 
   app ← makeApp password_secret initial_accounts (encodeFile data_path)
   let tls_settings =
