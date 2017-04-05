@@ -7,8 +7,6 @@ author:              Gregory Crosswhite
 maintainer:          gcrosswhite@gmail.com
 copyright:           2016 Gregory Crosswhite
 build-type:          Simple
-data-files:          data/testing_certificate.pem
-                   , data/testing_key.pem
 cabal-version:       >=1.10
 
 library
