@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.App.Server where
@@ -78,6 +79,7 @@ HCkX84dkDHTBizEpVcdZp1gVf/5+hUmFgG/w9EWGrRe2UxhwHJvtkA==
 data Configuration = Configuration
   { port ∷ Int
   , maybe_data_path ∷ Maybe FilePath
+  , maybe_webapp_path ∷ Maybe FilePath
   , maybe_password_secret_path ∷ Maybe FilePath
   , maybe_certificate_path ∷ Maybe FilePath
   , maybe_key_path ∷ Maybe FilePath
@@ -103,6 +105,13 @@ habitMain = do
         <*> (optional ∘ strOption $ mconcat
               [ metavar "FILE"
               , help "Path to the game data."
+              , long "data"
+              , action "file"
+              ]
+            )
+        <*> (optional ∘ strOption $ mconcat
+              [ metavar "FILE"
+              , help "Path to the web app content."
               , long "data"
               , action "file"
               ]
@@ -173,12 +182,12 @@ habitMain = do
 
   (initial_accounts, saveAccounts) ←
     case maybe_data_path of
-      Nothing → do
-        if test_mode
-          then do
+      Nothing
+        | test_mode → do
             logIO "No data file specified; all game data will lost on exit."
             pure (mempty, const $ pure ())
-          else exitFailureWithMessage "You need to specify the path to the data file."
+        | otherwise →
+            exitFailureWithMessage "You need to specify the path to the data file."
       Just data_path → do
         logIO $ printf "Using data file located at %s" data_path
         initial_accounts ←
@@ -195,12 +204,12 @@ habitMain = do
 
   password_secret ←
     case maybe_password_secret_path of
-      Nothing → do
-        if test_mode
-          then do
+      Nothing
+        | test_mode → do
             logIO "No password secret file specified; generating a random secret."
             secret ∘ toText <$> randomIO
-          else exitFailureWithMessage "You need to specify the path to the data file."
+        | otherwise →
+            exitFailureWithMessage "You need to specify the path to the data file."
       Just password_secret_path → do
         doesFileExist password_secret_path
         >>=
@@ -214,7 +223,22 @@ habitMain = do
               secret <$> readFile password_secret_path
           )
 
-  app ← makeApp password_secret initial_accounts saveAccounts
+  locateWebAppFile ∷ FilePath → IO (Maybe FilePath) ←
+    case maybe_webapp_path of
+      Nothing
+        | test_mode → do
+            logIO "No path to the web app files specified; all requests will result in not found."
+            pure ∘ const ∘ pure $ Nothing
+        | otherwise →
+            exitFailureWithMessage "You need to specify the path to the web app files."
+      Just webapp_path → pure $ \filename →
+        if all (∈ ['a'..'z'] ⊕ ['A'..'Z'] ⊕ ['0'..'9'] ⊕ ['_','-']) filename
+          then
+            let filepath = webapp_path </> filename
+            in doesFileExist filepath <&> bool Nothing (Just filepath)
+          else pure Nothing
+
+  app ← makeApp locateWebAppFile password_secret initial_accounts saveAccounts
   let tls_settings =
         (tlsSettingsMemory certificate key)
         { onInsecure =

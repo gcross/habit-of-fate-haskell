@@ -49,7 +49,7 @@ serverTestCaseWithoutAccount name action = testCase name $ do
   filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','Z'))
   createDirectoryIfMissing True filepath
   withApplication
-    (makeApp (secret "test secret") mempty (const $ pure ()))
+    (makeApp (const $ pure Nothing) (secret "test secret") mempty (const $ pure ()))
     action
 
 serverTestCase ∷ String → (Client ()) → TestTree

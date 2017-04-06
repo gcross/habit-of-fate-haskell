@@ -196,8 +196,13 @@ setStatusAndLog status_@(Status code message) = do
         | otherwise = "Request succeeded - %i %s"
   logIO $ printf template code (unpack ∘ decodeUtf8 $ message)
 
-makeApp ∷ Secret → Map Text Account → (Map Text Account → IO ()) → IO Application
-makeApp password_secret initial_accounts saveAccounts = do
+makeApp ∷
+  (FilePath → IO (Maybe FilePath)) →
+  Secret →
+  Map Text Account →
+  (Map Text Account → IO ()) →
+  IO Application
+makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
     traverse newTVar initial_accounts >>= newTVar
   write_request ← newEmptyTMVarIO
@@ -318,6 +323,12 @@ makeApp password_secret initial_accounts saveAccounts = do
         use (habits . at habit_id)
         >>=
         maybe raiseNoSuchHabit return
+
+      getContent filename = do
+        logIO $ printf "Requested file %s" (show filename)
+        liftIO (locateWebAppFile filename)
+          >>= maybe (setStatusAndLog notFound404) Scotty.file
+
   scottyApp $ do
     Scotty.notFound $ do
       r ← Scotty.request
@@ -448,6 +459,9 @@ makeApp password_secret initial_accounts saveAccounts = do
         $
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
+    Scotty.get "/app/:filename" $ param "filename" >>= getContent
+    Scotty.get "/" $ getContent "index.html"
+    Scotty.get "/index.html" $ getContent "index.html"
     Scotty.notFound $ do
       r ← Scotty.request
       logIO $ printf "URL not found! %s %s%s"
