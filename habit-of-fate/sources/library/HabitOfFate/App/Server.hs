@@ -153,11 +153,11 @@ habitMain = do
      then
        case (maybe_certificate_path, maybe_key_path) of
          (Just certificate_path, Just key_path) → do
-           logIO $ printf "Using certificate file located at %s" certificate_path
-           logIO $ printf "Using key file located at %s" key_path
+           logIO $ "Using certificate file located at " ⊕ certificate_path
+           logIO $ "Using key file located at " ⊕ key_path
            (,) <$> BS8.readFile certificate_path <*> BS8.readFile key_path
          (Nothing, Nothing) → do
-           logIO $ printf "Using testing certificate and key"
+           logIO $ "Using testing certificate and key"
            pure (testing_certificate, testing_key)
          _ →
            exitFailureWithMessage
@@ -165,8 +165,8 @@ habitMain = do
      else
        case (maybe_certificate_path, maybe_key_path) of
          (Just certificate_path, Just key_path) → do
-           logIO $ printf "Using certificate file located at %s" certificate_path
-           logIO $ printf "Using key file located at %s" key_path
+           logIO $ "Using certificate file located at " ⊕ certificate_path
+           logIO $ "Using key file located at " ⊕ key_path
            (,) <$> BS8.readFile certificate_path <*> BS8.readFile key_path
          (Just _, Nothing) →
            exitFailureWithMessage
@@ -178,7 +178,7 @@ habitMain = do
            exitFailureWithMessage
              "You need to specify both a certificate file via. --cert and a key file via. --key."
   when test_mode $ logIO "Running in test mode.  DO NOT DO THIS IN PRODUCTION!!!"
-  logIO $ printf "Listening on port %i" port
+  logIO $ "Listening on port " ⊕ show port
 
   (initial_accounts, saveAccounts) ←
     case maybe_data_path of
@@ -189,7 +189,7 @@ habitMain = do
         | otherwise →
             exitFailureWithMessage "You need to specify the path to the data file."
       Just data_path → do
-        logIO $ printf "Using data file located at %s" data_path
+        logIO $ "Using data file located at " ⊕ data_path
         initial_accounts ←
           doesFileExist data_path
           >>=

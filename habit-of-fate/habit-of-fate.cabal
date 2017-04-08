@@ -21,6 +21,7 @@ library
                      , directory
                      , exceptions
                      , filepath
+                     , interpolate
                      , jwt
                      , http-api-data
                      , http-client

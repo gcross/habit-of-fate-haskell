@@ -33,6 +33,7 @@ module HabitOfFate.Prelude
   , module Data.Sequence
   , module Data.Sequences
   , module Data.Set
+  , module Data.String.Interpolate
   , module Data.Text
   , module Data.Text.Lens
   , module Debug.Trace
@@ -188,6 +189,8 @@ import Data.Sequences
   )
 
 import Data.Set (Set)
+
+import Data.String.Interpolate
 
 import Data.Text (Text)
 

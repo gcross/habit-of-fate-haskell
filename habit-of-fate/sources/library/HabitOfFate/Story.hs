@@ -11,6 +11,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -173,9 +174,9 @@ parseContainer expected_tag parseChildren node =
       | otherwise → fail $ "unexpected non-whitespace text outside of <p>"
     NodeElement (Element (Name tag _ _) attrs children)
       | tag /= expected_tag →
-          fail $ printf "expected <%s> but got <%s>" expected_tag tag
+          fail [i|expected <#{expected_tag}> but got <#{tag}>|]
       | not ∘ null $ attrs →
-          fail $ printf "expected no attributes in <%s>"  tag
+          fail [i|expected no attributes in <#{tag}>"|]
       | otherwise → parseChildren children
 
 parseStoryFromNodes ∷ [Node] → Either String Story
@@ -205,9 +206,9 @@ parseParagraphFromNodes = fmap mconcat ∘ mapM parseParagraphChild
     parseParagraphChild (NodeContent t) = return $ Text_ t
     parseParagraphChild (NodeElement (Element (Name tag _ _) attrs children)) =
       case lookup tag tags of
-        Nothing → fail $ printf "unexpected tag <%s>" tag
+        Nothing → fail [i|unexpected tag <#{tag}>|]
         Just style
-          | not ∘ null $ attrs → fail $ printf "<%s> had unexpected attributes" tag
+          | not ∘ null $ attrs → fail [i|<#{tag}> had unexpected attributes|]
           | otherwise → Style style <$> parseParagraphFromNodes children
       where
         tags ∷ Map Text Style
@@ -236,17 +237,11 @@ parseSubstitutions =
   replaceTextM parseSubstitutionsIn
   where
     parseSubstitutionsIn ∷ Text → WriterT (Set Text) (Either String) SubParagraph
-    parseSubstitutionsIn t =
-      runParserT parser () "" t
+    parseSubstitutionsIn chunk =
+      runParserT parser () "" chunk
       >>=
       either
-        (
-          fail
-          ∘
-          printf "Error parsing substitutions for text chunk \"%s\": %s" t
-          ∘
-          show
-        )
+        (\msg → fail [i|Error parsing substitutions for text chunk "%{chunk}": #{msg}|])
         return
 
     parser =
@@ -280,8 +275,7 @@ instance FromJSON Gender where
     where
       parseGender "male" = return Male
       parseGender "female" = return Female
-      parseGender t = fail $
-        printf "gender must be \"male\" or \"female\", not \"%s\"" t
+      parseGender wrong = fail [i|gender must be "male" or "female", not "#{wrong}"|]
 
 data Gendered = Gendered
   { _gendered_name ∷ Text
@@ -350,7 +344,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
           neutered_name ← pack ∘ rewords <$> many1 letter
           name ←
             maybe
-              (fail $ printf "unable to find neuter entity with name \"%s\"" neutered_name)
+              (fail [i|"unable to find neuter entity with name "#{neutered_name}"|])
               return
             $
             lookupNeutered neutered_name
@@ -371,8 +365,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
               (pack ∘ rewords <$> many (letter <|> space))
           case findNounConverter word of
             Nothing →
-              maybe (fail $ printf "unrecognized word \"%s\"" word)
-                    return
+              maybe (fail [i|unrecognized word "#{word}"|]) return
               $
               (view gendered_name <$> lookupGendered word) <|> lookupNeutered word
             Just convertNoun → do
@@ -392,7 +385,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
                 Nothing →
                   tryName "" "no default entity provided"
                 Just name →
-                  tryName name (printf "unable to find entity with name \"%s\"" name)
+                  tryName name [i|unable to find entity with name "#{name}"|]
       )
 
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
@@ -425,7 +418,7 @@ parseQuote =
       >=>
       (\case
         GenStory [quest] → return $ unwrapGenQuest quest
-        GenStory xs → fail $ printf "saw %i quests instead of 1" (olength xs)
+        GenStory xs → fail [i|saw #{olength xs} quests instead of 1|]
       )
       ∘
       dropEmptyThingsFromStory
@@ -455,7 +448,7 @@ s_fixed = QuasiQuoter
       [x1,x2,x3,x4,x5,x6,x7,x8] → [|(x1,x2,x3,x4,x5,x6,x7,x8)|]
       [x1,x2,x3,x4,x5,x6,x7,x8,x9] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9)|]
       [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)|]
-      xs → error $ printf "saw %i events, which is too many (> 10)" (olength xs)
+      xs → error [i|saw #{olength xs} events, which is too many (> 10)|]
     )
     ∘
     parseQuote

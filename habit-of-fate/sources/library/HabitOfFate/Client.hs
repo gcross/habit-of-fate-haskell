@@ -1,6 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -52,7 +53,7 @@ loginOrCreateAccount route username password secure_mode hostname port = do
     flip httpLbs manager
     $
     request_template_without_authorization
-      { path = encodeUtf8 (pack $ printf "/api/%s?username=%s&password=%s" route username password) }
+      { path = encodeUtf8 ∘ pack $ [i|/api/#{route}?username=#{username}&password=#{password}|] }
   let code = responseStatusCode response
   if code >= 200 && code <= 299
     then return ∘ Right $
@@ -124,7 +125,7 @@ responseStatusCode = statusCode ∘ responseStatus
 data UnexpectedStatus = UnexpectedStatus [Int] Int deriving (Typeable)
 instance Show UnexpectedStatus where
   show (UnexpectedStatus expected_codes status) =
-    printf "Status code not one of %s: %s" (show expected_codes) (show status)
+    [i|Status code not one of #{expected_codes}: #{status}|]
 instance Exception UnexpectedStatus where
 
 sendRequest ∷ Request → Client (Response LBS.ByteString)

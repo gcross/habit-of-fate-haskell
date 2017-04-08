@@ -7,6 +7,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -84,8 +85,8 @@ makeLenses ''Action
 printHelp ∷ MonadIO m ⇒ [Action] → m ()
 printHelp actions = liftIO $ do
   putStrLn "Actions:"
-  forM_ actions $
-    printf "  %c: %s\n" <$> (^. key) <*> (^. description)
+  forM_ actions $ \action →
+    putStrLn [i|  #{action ^. key}: #{action ^. description}|]
   putStrLn "  --"
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
@@ -167,11 +168,11 @@ prompt p =
           return
           (return <$> getLine)
 
-promptWithDefault ∷ EditableValue α ⇒ α → String → ActionMonadWithCancel α
+promptWithDefault ∷ (EditableValue α, Show α) ⇒ α → String → ActionMonadWithCancel α
 promptWithDefault def p = doPrompt
   where
     doPrompt =
-      prompt (printf "%s [%s]" p (showValue def))
+      prompt [i|#{p} [#{def}]|]
       >>=
       (\input →
         if null input
@@ -200,7 +201,7 @@ unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
   | not (isAlpha command) = return ()
   | otherwise = liftIO $
-      printf "Unrecognized command '%c'.  Press ? for help.\n" command
+      putStrLn [i|Unrecognized command '#{command}'.  Press ? for help.\n|]
 
 data Escape = Escape
 
@@ -216,9 +217,9 @@ loop labels actions = void ∘ runExceptT $ do
         (map ((^. key) &&& (^. code . to lift)) actions)
   forever $ do
     command ← promptForCommand $
-      printf "%s[%sq?]>"
-        (ointercalate "|" ("HoF":labels))
-        (map (^. key) actions)
+      let location = ointercalate "|" $ "HoF":labels
+          action_keys = map (^. key) actions
+      in [i|#{location}[#{action_keys}q?]>|]
     case lookup command action_map of
       Nothing → unrecognizedCommand command
       Just code → code `catchAll` (liftIO ∘ putStrLn ∘ show)
@@ -267,8 +268,8 @@ mainLoop = loop [] $
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
       credits ← liftC getCredits
-      liftIO $ printf "    Success credits: %f\n" (credits ^. success)
-      liftIO $ printf "    Failure credits: %f\n" (credits ^. failure)
+      liftIO $ putStrLn [i|    Success credits: #{credits ^. success}|]
+      liftIO $ putStrLn [i|    Failure credits: #{credits ^. failure}|]
   ,Action 'r' "Run game." $ do
       story ← liftC runGame
       printer ← liftIO byteStringMakerFromEnvironment
