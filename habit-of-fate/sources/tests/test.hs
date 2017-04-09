@@ -27,7 +27,7 @@ import System.Log.Logger
 import System.Random
 import Test.Tasty
 import Test.Tasty.HUnit
-import Web.JWT hiding (header)
+import Web.JWT
 
 import HabitOfFate.Client
 import HabitOfFate.Credits
@@ -35,27 +35,15 @@ import HabitOfFate.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
 
-header ∷ String → String
-header header = replicate left_dash_count '-' ⊕ " " ⊕ header ⊕ " " ⊕ replicate right_dash_count '-'
-  where
-    dash_count = 80 - 2 - olength header
-    right_dash_count = dash_count `div` 2
-    left_dash_count = dash_count - right_dash_count
-
-serverTestCaseWithoutAccount ∷ String → (Int → IO ()) → TestTree
-serverTestCaseWithoutAccount name action = testCase name $ do
-  debugM "Test" $ header name
-  tempdir ← getTemporaryDirectory
-  filepath ← (tempdir </>) ∘ ("test-" ⊕) <$> replicateM 8 (randomRIO ('A','Z'))
-  createDirectoryIfMissing True filepath
+serverTestCase ∷ String → (Client ()) → TestTree
+serverTestCase name action =
+  testCase name
+  ∘
   withApplication
     (makeApp (const $ pure Nothing) (secret "test secret") mempty (const $ pure ()))
-    action
-
-serverTestCase ∷ String → (Client ()) → TestTree
-serverTestCase name action = serverTestCaseWithoutAccount name $ \port →
-  createAccount "bitslayer" "password" Testing "localhost" port
-  >>=
+  $
+  createAccount "bitslayer" "password" Testing "localhost"
+  >=>
   runReaderT action ∘ fromMaybe (error "Unable to create account.")
 
 initialize = do
@@ -99,15 +87,17 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Server"
     [ testGroup "Missing username/password" $
         let testMissing test_name path =
-              serverTestCaseWithoutAccount test_name $ \port → do
-                manager ← newManager defaultManagerSettings
-                response ← flip httpNoBody manager $ defaultRequest
-                  { method = renderStdMethod POST
-                  , host = "localhost"
-                  , port = port
-                  , path = "/api/" ⊕ path
-                  }
-                400 @=? responseStatusCode response
+              testCase test_name $ do
+                withApplication
+                  (makeApp (const $ pure Nothing) (secret "test secret") mempty (const $ pure ())) $ \port → do
+                    manager ← newManager defaultManagerSettings
+                    response ← flip httpNoBody manager $ defaultRequest
+                      { method = renderStdMethod POST
+                      , host = "localhost"
+                      , port = port
+                      , path = "/api/" ⊕ path
+                      }
+                    400 @=? responseStatusCode response
         in
         [ testGroup "Create account"
             [ testMissing "Missing username" "create?password=foobar"
