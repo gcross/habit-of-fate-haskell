@@ -36,6 +36,7 @@ module HabitOfFate.Prelude
   , module Data.String.Interpolate
   , module Data.Text
   , module Data.Text.Lens
+  , module Data.Traversable
   , module Debug.Trace
   , module Labels
   , module Text.Printf
@@ -195,6 +196,8 @@ import Data.String.Interpolate
 import Data.Text (Text)
 
 import Data.Text.Lens
+
+import Data.Traversable
 
 import Debug.Trace
 

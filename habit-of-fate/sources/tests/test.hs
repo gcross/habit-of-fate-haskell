@@ -123,6 +123,19 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
             , testMissing "Missing password" "login?username=foobar"
             ]
         ]
+    , testGroup "Files"
+        [ testGroup "Missing" $
+            flip map ["/", "/app/index.html", "dummy"] $ \path →
+              serverTestCaseNoFiles path $ \port → do
+                  manager ← newManager defaultManagerSettings
+                  response ← flip httpNoBody manager $ defaultRequest
+                    { method = renderStdMethod POST
+                    , host = "localhost"
+                    , port = port
+                    , path = encodeUtf8 ∘ pack $ path
+                    }
+                  404 @=? responseStatusCode response
+        ]
     , apiTestCase "fetching all habits from a new account returns an empty array" $
         fetchHabits
         >>=
