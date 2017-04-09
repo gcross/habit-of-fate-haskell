@@ -21,6 +21,7 @@ import Network.Wai.Handler.Warp
 import System.Directory
 import System.FilePath
 import System.IO
+import System.IO.Temp
 import System.Log
 import System.Log.Handler.Simple
 import System.Log.Logger
@@ -133,6 +134,28 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
               , path = "/"
               }
             404 @=? responseStatusCode response
+        , testGroup "Existing file" $
+            flip map
+              [ ("/app/test","test")
+              , ("/","index.html")
+              , ("/index.html","index.html")
+              ]
+            $
+            \(request_path, recognized_filename) → do
+              testCase [i|#{request_path} -> #{recognized_filename}|] $
+                withSystemTempFile "hoftest" $ \temp_filepath handle → do
+                  hPutStr handle "testdata"
+                  hFlush handle
+                  withTestApp (pure ∘ flip lookup [(recognized_filename, temp_filepath)]) $ \port → do
+                    manager ← newManager defaultManagerSettings
+                    response ← flip httpLbs manager $ defaultRequest
+                      { method = renderStdMethod GET
+                      , host = "localhost"
+                      , port = port
+                      , path = request_path
+                      }
+                    200 @=? responseStatusCode response
+                    "testdata" @=? responseBody response
         ]
     , apiTestCase "fetching all habits from a new account returns an empty array" $
         fetchHabits
