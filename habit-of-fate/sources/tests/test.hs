@@ -125,14 +125,14 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
         ]
     , testGroup "Files"
         [ serverTestCaseNoFiles "Missing root" $ \port → do
-              manager ← newManager defaultManagerSettings
-              response ← flip httpNoBody manager $ defaultRequest
-                { method = renderStdMethod POST
-                , host = "localhost"
-                , port = port
-                , path = "/"
-                }
-              404 @=? responseStatusCode response
+            manager ← newManager defaultManagerSettings
+            response ← flip httpNoBody manager $ defaultRequest
+              { method = renderStdMethod GET
+              , host = "localhost"
+              , port = port
+              , path = "/"
+              }
+            404 @=? responseStatusCode response
         ]
     , apiTestCase "fetching all habits from a new account returns an empty array" $
         fetchHabits
