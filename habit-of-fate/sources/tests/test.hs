@@ -35,12 +35,29 @@ import HabitOfFate.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
 
-apiTestCase ∷ String → (Client ()) → TestTree
-apiTestCase name action =
-  testCase name
-  ∘
+no_files ∷ FileLocator
+no_files = const $ pure Nothing
+
+withTestApp ∷ FileLocator → (Int → IO ()) → IO ()
+withTestApp locateWebAppFile =
   withApplication
-    (makeApp (const $ pure Nothing) (secret "test secret") mempty (const $ pure ()))
+    (makeApp locateWebAppFile (secret "test secret") mempty (const $ pure ()))
+
+withTestAppNoFiles ∷ (Int → IO ()) → IO ()
+withTestAppNoFiles = withTestApp $ no_files
+
+serverTestCase ∷ String → FileLocator → (Int → IO ()) → TestTree
+serverTestCase test_name locateWebAppFile =
+  testCase test_name
+  ∘
+  withTestAppNoFiles
+
+serverTestCaseNoFiles ∷ String → (Int → IO ()) → TestTree
+serverTestCaseNoFiles test_name = serverTestCase test_name no_files
+
+apiTestCase ∷ String → (Client ()) → TestTree
+apiTestCase test_name action =
+  serverTestCaseNoFiles test_name
   $
   createAccount "bitslayer" "password" Testing "localhost"
   >=>
@@ -87,17 +104,15 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Server"
     [ testGroup "Missing username/password" $
         let testMissing test_name path =
-              testCase test_name $ do
-                withApplication
-                  (makeApp (const $ pure Nothing) (secret "test secret") mempty (const $ pure ())) $ \port → do
-                    manager ← newManager defaultManagerSettings
-                    response ← flip httpNoBody manager $ defaultRequest
-                      { method = renderStdMethod POST
-                      , host = "localhost"
-                      , port = port
-                      , path = "/api/" ⊕ path
-                      }
-                    400 @=? responseStatusCode response
+              serverTestCaseNoFiles test_name $ \port → do
+                manager ← newManager defaultManagerSettings
+                response ← flip httpNoBody manager $ defaultRequest
+                  { method = renderStdMethod POST
+                  , host = "localhost"
+                  , port = port
+                  , path = "/api/" ⊕ path
+                  }
+                400 @=? responseStatusCode response
         in
         [ testGroup "Create account"
             [ testMissing "Missing username" "create?password=foobar"

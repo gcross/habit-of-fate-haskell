@@ -16,7 +16,7 @@
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module HabitOfFate.Server (makeApp) where
+module HabitOfFate.Server (FileLocator, makeApp) where
 
 import HabitOfFate.Prelude hiding (log)
 
@@ -194,8 +194,10 @@ setStatusAndLog status_@(Status code message) = do
         | otherwise = "succeeded"
   logIO $ [i|"Request #{result} - #{code} #{unpack ∘ decodeUtf8 $ message}"|]
 
+type FileLocator = FilePath → IO (Maybe FilePath)
+
 makeApp ∷
-  (FilePath → IO (Maybe FilePath)) →
+  FileLocator →
   Secret →
   Map Text Account →
   (Map Text Account → IO ()) →
