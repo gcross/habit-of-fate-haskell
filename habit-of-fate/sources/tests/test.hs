@@ -35,8 +35,8 @@ import HabitOfFate.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
 
-serverTestCase ∷ String → (Client ()) → TestTree
-serverTestCase name action =
+apiTestCase ∷ String → (Client ()) → TestTree
+apiTestCase name action =
   testCase name
   ∘
   withApplication
@@ -108,35 +108,35 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
             , testMissing "Missing password" "login?username=foobar"
             ]
         ]
-    , serverTestCase "fetching all habits from a new account returns an empty array" $
+    , apiTestCase "fetching all habits from a new account returns an empty array" $
         fetchHabits
         >>=
         liftIO ∘ (@?= Map.empty)
-    , serverTestCase "fetching a habit when none exist returns Nothing" $
+    , apiTestCase "fetching a habit when none exist returns Nothing" $
         fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
         >>=
         liftIO ∘ (@?= Nothing)
     , testGroup "putHabit"
-        [ serverTestCase "putting a habit and then fetching it returns the habit" $ do
+        [ apiTestCase "putting a habit and then fetching it returns the habit" $ do
             createHabit test_habit_id test_habit
             fetchHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
-        , serverTestCase "putting a habit causes fetching all habits to return a singleton map" $ do
+        , apiTestCase "putting a habit causes fetching all habits to return a singleton map" $ do
             createHabit test_habit_id test_habit
             fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
-        , serverTestCase "putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
+        , apiTestCase "putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
             createHabit test_habit_id test_habit
             replaceHabit test_habit_id test_habit_2
             fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
         ]
     , testGroup "deleteHabit"
-        [ serverTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
+        [ apiTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
             deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
-        , serverTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
+        , apiTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
             createHabit test_habit_id test_habit
             deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
             fetchHabits >>= liftIO ∘ (@?= Map.empty)
         ]
-    , serverTestCase "markHabits" $ do
+    , apiTestCase "markHabits" $ do
         createHabit test_habit_id test_habit
         createHabit test_habit_id_2 test_habit_2
         markHabits [test_habit_id] [test_habit_id_2]
