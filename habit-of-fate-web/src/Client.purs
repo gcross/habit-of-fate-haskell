@@ -339,7 +339,7 @@ putHabit ∷ ∀ r. SessionInformation → UUID → Habit → Client r PutResult
 putHabit session_info uuid habit = do
   (response ∷ Response Unit) ←
     sendRequest session_info PUT ("habits/" ⊕ uuid) (Just $ encodeJson habit)
-  pure $ case spy (response.status) of
+  pure $ case response.status of
     201 → HabitCreated
     _ → HabitReplaced
 
