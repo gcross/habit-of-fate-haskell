@@ -82,7 +82,7 @@ getBodyJSON = do
   body ← getBody
   case decode ∘ view strict $ body of
     Nothing → do
-      log [i|"Error parsing JSON:\n#{decodeUtf8 body}"|]
+      log [i|Error parsing JSON:\n#{decodeUtf8 body}|]
       raiseStatus 400 "Bad request: Invalid JSON"
     Just json → pure json
 
@@ -93,12 +93,12 @@ getParam ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m α
 getParam param_name = do
   params_ ← getParams
   case lookup param_name params_ of
-    Nothing → raiseStatus 400 [i|"Bad request: Missing parameter %{param_name}"|]
+    Nothing → raiseStatus 400 [i|Bad request: Missing parameter %{param_name}|]
     Just value → case parseParam value of
       Left _ →
         raiseStatus
           400
-          [i|"Bad request: Parameter ${param_name} has invalid format #{value}"|]
+          [i|Bad request: Parameter ${param_name} has invalid format #{value}|]
       Right x → return x
 
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
@@ -192,7 +192,7 @@ setStatusAndLog status_@(Status code message) = do
   let result
         | code < 200 || code >= 300 = "failed"
         | otherwise = "succeeded"
-  logIO $ [i|"Request #{result} - #{code} #{unpack ∘ decodeUtf8 $ message}"|]
+  logIO $ [i|Request #{result} - #{code} #{unpack ∘ decodeUtf8 $ message}|]
 
 type FileLocator = FilePath → IO (Maybe FilePath)
 
@@ -229,7 +229,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
           header →
             finishWithStatusMessage
               403
-              [i|"Forbidden: Unrecognized authorization header: #{header}"|]
+              [i|Forbidden: Unrecognized authorization header: #{header}|]
         >>=
         maybe
           (finishWithStatusMessage 403 "Forbidden: Unable to verify key")
@@ -266,7 +266,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
                 GetParamsInstruction → interpret (rest params_)
                 RaiseStatusInstruction s → throwError s
                 LogInstruction message → do
-                  tell ∘ singleton $ [i|"#{username} #{message}"|]
+                  tell ∘ singleton $ [i|#{username} #{message}|]
                   interpret (rest ())
               ReaderViewInstruction → interpret (rest account)
             (error_or_result, logs) = runWriter ∘ runExceptT ∘ interpret $ program
@@ -293,7 +293,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
                 GetParamsInstruction → interpret (rest params_)
                 RaiseStatusInstruction s → throwError s
                 LogInstruction message → do
-                  tell ∘ singleton $ [i|"#{username} #{message}"|]
+                  tell ∘ singleton $ [i|#{username} #{message}|]
                   interpret (rest ())
               WriterGetAccountInstruction → get >>= interpret ∘ rest
               WriterPutAccountInstruction new_account → put new_account >> interpret (rest ())
@@ -335,12 +335,12 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
   scottyApp $ do
     Scotty.notFound $ do
       r ← Scotty.request
-      logIO $ [i|"URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}"|]
+      logIO $ [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next
     Scotty.post "/api/create" $ do
       username ← param "username"
       password ← param "password"
-      logIO $ [i|Request to create an account for "#{username}|]
+      logIO $ [i|Request to create an account for "#{username}"|]
       account_status ← liftIO $ do
         new_account ← newAccount password
         atomically $ do
@@ -353,10 +353,10 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
               return AccountCreated
       case account_status of
         AccountExists → do
-          logIO $ [i|Account "#{username}" already exists!"|]
+          logIO $ [i|Account "#{username}" already exists!|]
           status conflict409
         AccountCreated → do
-          logIO $ [i|"Account "#{username}" successfully created!"|]
+          logIO $ [i|Account "#{username}" successfully created!|]
           status created201
           Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
             { iss = Just expected_iss
@@ -400,7 +400,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
           else notFound404
     Scotty.put "/api/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
-      log $ [i|"Requested to put habit with id #{habit_id}."|]
+      log $ [i|Requested to put habit with id #{habit_id}.|]
       habit ← getBodyJSON
       habit_was_there ← isJust <$> (habits . at habit_id <<.= Just habit)
       returnNothing $
@@ -460,5 +460,5 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
     Scotty.get "/index.html" $ getContent "index.html"
     Scotty.notFound $ do
       r ← Scotty.request
-      logIO $ [i|"URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}"|]
+      logIO $ [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next

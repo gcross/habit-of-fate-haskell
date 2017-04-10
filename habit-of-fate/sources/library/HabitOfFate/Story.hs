@@ -344,7 +344,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
           neutered_name ← pack ∘ rewords <$> many1 letter
           name ←
             maybe
-              (fail [i|"unable to find neuter entity with name "#{neutered_name}"|])
+              (fail [i|Unable to find neuter entity with name "#{neutered_name}".|])
               return
             $
             lookupNeutered neutered_name
