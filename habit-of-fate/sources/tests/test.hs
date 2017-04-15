@@ -136,9 +136,9 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
             404 @=? responseStatusCode response
         , testGroup "Existing file" $
             flip map
-              [ ("/app/test","test")
-              , ("/","index.html")
+              [ ("/","index.html")
               , ("/index.html","index.html")
+              , ("/habit-of-fate.js","habit-of-fate.js")
               ]
             $
             \(request_path, recognized_filename) → do

@@ -149,7 +149,7 @@ import Data.Default
 
 import Data.Either
 
-import Data.Foldable hiding (length)
+import Data.Foldable
 
 import Data.Function
 
@@ -157,7 +157,15 @@ import Data.Functor
 
 import Data.HashMap.Strict (HashMap)
 
-import Data.List (intercalate, intersperse, reverse)
+import Data.List
+  ( findIndex
+  , findIndices
+  , intercalate
+  , intersperse
+  , length
+  , nub
+  , reverse
+  )
 
 import Data.Map.Strict (Map)
 

@@ -327,10 +327,16 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
         >>=
         maybe raiseNoSuchHabit return
 
-      getContent filename = do
-        logIO $ [i|Requested file #{show filename}|]
-        liftIO (locateWebAppFile filename)
-          >>= maybe (setStatusAndLog notFound404) Scotty.file
+      getContent filename =
+        (liftIO $ locateWebAppFile filename)
+        >>=
+        \case
+          Nothing → do
+            logIO "File not found."
+            setStatusAndLog notFound404
+          Just filepath → do
+            logIO [i|File found at "${filepath}".|]
+            Scotty.file filepath
 
   scottyApp $ do
     Scotty.notFound $ do
@@ -455,9 +461,13 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
         $
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
-    Scotty.get "/app/:filename" $ param "filename" >>= getContent
-    Scotty.get "/" $ getContent "index.html"
-    Scotty.get "/index.html" $ getContent "index.html"
+    Scotty.get "/" $ do
+      logIO "Requested root"
+      getContent "index.html"
+    Scotty.get "/:filename" $ do
+      filename ← param "filename"
+      logIO [i|Requested "#{filename}"|]
+      getContent filename
     Scotty.notFound $ do
       r ← Scotty.request
       logIO $ [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
