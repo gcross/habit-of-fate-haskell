@@ -4,6 +4,7 @@ import Prelude
 import Control.Monad.Aff
 import Control.Monad.Aff.Class
 import Control.Monad.Eff.Class
+import Control.Monad.Eff.Console hiding (error)
 import Control.Monad.Eff.Exception
 import Control.Monad.Error.Class
 import Control.Monad.Except
@@ -75,7 +76,7 @@ instance showException ∷ Show Exception where
 
 type Client r = ExceptT Exception (Aff (ajax ∷ AJAX | r))
 
-runClient ∷ ∀ r α. Client (exception ∷ EXCEPTION | r) α → Aff (ajax ∷ AJAX, exception ∷ EXCEPTION | r) α
+runClient ∷ ∀ r α. Client (err ∷ EXCEPTION | r) α → Aff (ajax ∷ AJAX, err ∷ EXCEPTION | r) α
 runClient client = runExceptT client >>= either (throwError <<< error <<< show) pure
 
 throwDynamicException ∷ ∀ e m α. (MonadError Exception m, Show e, Typeable e) ⇒ e → m α

@@ -7,12 +7,14 @@
     "output"
   ],
   "dependencies": {
-    "purescript-aff": "^2.0.1",
+    "purescript-aff": "^3.0.0",
     "purescript-affjax": "^3.0.2",
     "purescript-argonaut": "^2.0.0",
     "purescript-argonaut-codecs": "^2.1.0",
+    "purescript-datetime": "^3.0.0",
     "purescript-dynamic": "^0.9.1",
     "purescript-generics": "^3.0.0",
+    "purescript-halogen": "^1.2.1",
     "purescript-http-methods": "^2.0.0",
     "purescript-lens": "^2.0.0",
     "purescript-maybe": "^2.1.1",
