@@ -34,7 +34,7 @@ makeLoginUrl =
 
 type CreateAccountError =
     AccountAlreadyExists
-  | UnexceptedCreateAccountError Http.Error
+  | UnexpectedCreateAccountError Http.Error
 
 
 createAccount : String -> String -> Task CreateAccountError Token
@@ -55,8 +55,8 @@ createAccount username password =
       Http.BadStatus response ->
         if response.status.code == 409
           then AccountAlreadyExists
-          else UnexceptedCreateAccountError error
-      _ -> UnexceptedCreateAccountError error
+          else UnexpectedCreateAccountError error
+      _ -> UnexpectedCreateAccountError error
      )
 
 type TestOutcome = TestPassed | TestFailed String
