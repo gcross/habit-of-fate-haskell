@@ -7,3 +7,5 @@ tags
 *~
 .#*
 *.log
+elm-stuff
+dist
