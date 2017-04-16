@@ -64,27 +64,26 @@ createAccount username password =
     )
 
 
-type alias Model = String
-type Msg = MakeRequest | NewContent String
+type alias Model = List String
+type Msg = NewTestResult String
 
 
 init : ( Model, Cmd Msg )
-init = ( "Hello", Cmd.none )
+init = ( [], startTests )
 
 
-update message old_content =
-  case message of
-    MakeRequest ->
-      ( old_content
-      , createAccount "username1" "password1" |> Cmd.map (toString >> NewContent)
-      )
-    NewContent content -> ( content, Cmd.none )
+startTests : Cmd Msg
+startTests =
+  createAccount "username2" "password2"
+  |> Cmd.map (toString >> NewTestResult)
+
+
+update (NewTestResult result) old_results = (result::old_results, Cmd.none)
 
 
 view content =
   div []
-    [ div [ ] [ text content ]
-    , button [ onClick MakeRequest ] [ text "-" ]
+    [ div [ ] (List.map text (List.reverse content))
     ]
 
 
