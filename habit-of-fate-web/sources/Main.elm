@@ -10,19 +10,20 @@ import Html exposing
   , text
   )
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
 import Http
+import List exposing (foldr)
 import Random exposing (Generator)
 import String
+import Task exposing (Task)
+import Tuple
 
 
-account_info_generator : Generator String
-account_info_generator =
+username_generator : Generator String
+username_generator =
   Random.list 20 (Random.int (toCode 'a') (toCode 'z') |> Random.map fromCode)
   |> Random.map String.fromList
 
 
-type alias ErrorMessage = String
 type alias Token = String
 
 
@@ -31,59 +32,100 @@ makeLoginUrl =
   print (string <> s "?username=" <> string <> s "&password=" <> string)
 
 
-type CreateAccountResult =
-    UnexceptedCreateAccountError Http.Error
-  | AccountExists
-  | AccountCreated Token
+type CreateAccountError =
+    AccountAlreadyExists
+  | UnexceptedCreateAccountError Http.Error
 
 
-createAccount : String -> String -> Cmd CreateAccountResult
+createAccount : String -> String -> Task CreateAccountError Token
 createAccount username password =
-  Http.send
-    (\result ->
-       case result of
-          Err err ->
-            case err of
-              Http.BadStatus response ->
-                if response.status.code == 409
-                  then AccountExists
-                  else UnexceptedCreateAccountError err
-              _ -> UnexceptedCreateAccountError err
-          Ok token -> AccountCreated token
-    )
-    (
-      Http.request
-        { method = "POST"
-        , headers = []
-        , url = makeLoginUrl "api/create" username password
-        , body = Http.emptyBody
-        , expect = Http.expectString
-        , timeout = Nothing
-        , withCredentials = False
-        }
-    )
+  (
+    Http.request
+      { method = "POST"
+      , headers = []
+      , url = makeLoginUrl "api/create" username password
+      , body = Http.emptyBody
+      , expect = Http.expectString
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask
+  |> Task.mapError (\error -> case error of
+      Http.BadStatus response ->
+        if response.status.code == 409
+          then AccountAlreadyExists
+          else UnexceptedCreateAccountError error
+      _ -> UnexceptedCreateAccountError error
+     )
+
+type TestOutcome = TestPassed | TestFailed String
+type TestResult = TestResult String TestOutcome
+
+type alias Model = List TestResult
+type Msg = Seed Random.Seed | NewTestResult TestResult
 
 
-type alias Model = List String
-type Msg = NewTestResult String
+seed_generator =
+  Random.int Random.minInt Random.maxInt |> Random.map Random.initialSeed
 
 
 init : ( Model, Cmd Msg )
-init = ( [], startTests )
+init = ( [], seed_generator |> Random.generate Seed )
 
 
-startTests : Cmd Msg
-startTests =
-  createAccount "username2" "password2"
-  |> Cmd.map (toString >> NewTestResult)
+type Test = Test String (Random.Seed -> Cmd TestOutcome)
+
+tests : List Test
+tests =
+  [ Test "Creating a new account succeeds." (\seed ->
+      let (username, _) = Random.step username_generator seed
+      in
+        createAccount username username
+        |> Task.attempt (
+            \result ->
+              case result of
+                Ok _ -> TestPassed
+                Err error -> TestFailed (toString error)
+           )
+    )
+  ]
 
 
-update (NewTestResult result) old_results = (result::old_results, Cmd.none)
+startTests : Random.Seed -> Cmd Msg
+startTests initial_seed =
+  tests
+  |> foldr
+      (\(Test name makeCmd) (seed, rest_cmds) ->
+        let (test_seed, next_seed) = Random.step seed_generator seed
+        in
+          ( next_seed
+          , (makeCmd seed |> Cmd.map (TestResult name >> NewTestResult))::rest_cmds
+          )
+      )
+      (initial_seed, [])
+  |> Tuple.second
+  |> Cmd.batch
 
 
-view content =
+update msg old_results =
+  case msg of
+    Seed seed -> (old_results, startTests seed)
+    NewTestResult result -> (result::old_results, Cmd.none)
+
+
+view : Model -> Html Msg
+view results =
   div []
-    [ div [ ] (List.map text (List.reverse content))
+    [ div [ ] (
+        results
+        |> List.map (\(TestResult name outcome) ->
+            case outcome of
+              TestPassed -> text ("Test \"" ++ name ++ "\" passed.")
+              TestFailed reason -> text ("Test \"" ++ name ++ "\" failed: " ++ reason)
+           )
+        |> List.reverse
+      )
     ]
 
 
@@ -93,9 +135,9 @@ subscriptions model = Sub.none
 
 main : Program Never Model Msg
 main =
-    program
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
+  program
+      { init = init
+      , view = view
+      , update = update
+      , subscriptions = subscriptions
+      }
