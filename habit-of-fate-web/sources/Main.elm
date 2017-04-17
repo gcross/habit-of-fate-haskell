@@ -14,7 +14,7 @@ import Http
 import List exposing (foldr)
 import Random exposing (Generator)
 import String
-import Task exposing (Task)
+import Task exposing (Task, mapError, succeed)
 import Tuple
 
 
@@ -76,18 +76,30 @@ init = ( [], seed_generator |> Random.generate Seed )
 
 type Test = Test String (Random.Seed -> Cmd TestOutcome)
 
+
+toTestOutcome : Task String () -> Cmd TestOutcome
+toTestOutcome =
+  Task.attempt (
+    \result ->
+      case result of
+        Ok () -> TestPassed
+        Err reason -> TestFailed reason
+  )
+
+
+swallowResult : Task x a -> Task x ()
+swallowResult = Task.map (\_ -> ())
+
+
 tests : List Test
 tests =
   [ Test "Creating a new account succeeds." (\seed ->
       let (username, _) = Random.step username_generator seed
       in
         createAccount username username
-        |> Task.attempt (
-            \result ->
-              case result of
-                Ok _ -> TestPassed
-                Err error -> TestFailed (toString error)
-           )
+        |> swallowResult
+        |> mapError toString
+        |> toTestOutcome
     )
   ]
 
