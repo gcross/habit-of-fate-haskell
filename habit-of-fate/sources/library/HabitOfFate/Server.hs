@@ -101,7 +101,7 @@ getParam param_name = do
       Left _ →
         raiseStatus
           400
-          [i|Bad request: Parameter ${param_name} has invalid format #{value}|]
+          [i|Bad request: Parameter #{param_name} has invalid format #{value}|]
       Right x → return x
 
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
@@ -338,7 +338,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
             logIO "File not found."
             setStatusAndLog notFound404
           Just filepath → do
-            logIO [i|File found at "${filepath}".|]
+            logIO [i|File found at "#{filepath}".|]
             Scotty.file filepath
 
   scottyApp $ do
