@@ -166,16 +166,16 @@ deleteHabit habit_id = do
     404 → pure NoHabitToDelete
     code → throwM $ UnexpectedStatus [204,404] code
 
-fetchHabit ∷ UUID → Client (Maybe Habit)
-fetchHabit habit_id = do
+getHabit ∷ UUID → Client (Maybe Habit)
+getHabit habit_id = do
   response ← request GET $ pathToHabit habit_id
   case responseStatusCode response of
     200 → parseResponseBody response
     404 → pure Nothing
     code → throwM $ UnexpectedStatus [200,404] code
 
-fetchHabits ∷ Client (Map UUID Habit)
-fetchHabits = do
+getHabits ∷ Client (Map UUID Habit)
+getHabits = do
   response ← request GET "habits"
   case responseStatusCode response of
     200 → parseResponseBody response

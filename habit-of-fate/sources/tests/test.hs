@@ -158,24 +158,24 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
                     "testdata" @=? responseBody response
         ]
     , apiTestCase "fetching all habits from a new account returns an empty array" $
-        fetchHabits
+        getHabits
         >>=
         liftIO ∘ (@?= Map.empty)
     , apiTestCase "fetching a habit when none exist returns Nothing" $
-        fetchHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
+        getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
         >>=
         liftIO ∘ (@?= Nothing)
     , testGroup "putHabit"
         [ apiTestCase "putting a habit and then fetching it returns the habit" $ do
             createHabit test_habit_id test_habit
-            fetchHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
+            getHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
         , apiTestCase "putting a habit causes fetching all habits to return a singleton map" $ do
             createHabit test_habit_id test_habit
-            fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
+            getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
         , apiTestCase "putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
             createHabit test_habit_id test_habit
             replaceHabit test_habit_id test_habit_2
-            fetchHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
+            getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
         ]
     , testGroup "deleteHabit"
         [ apiTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
@@ -183,7 +183,7 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
         , apiTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
             createHabit test_habit_id test_habit
             deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
-            fetchHabits >>= liftIO ∘ (@?= Map.empty)
+            getHabits >>= liftIO ∘ (@?= Map.empty)
         ]
     , apiTestCase "markHabits" $ do
         createHabit test_habit_id test_habit

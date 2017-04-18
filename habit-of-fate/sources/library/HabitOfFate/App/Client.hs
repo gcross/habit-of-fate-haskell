@@ -244,7 +244,7 @@ mainLoop = loop [] $
     ,Action 'e' "Edit a habit." ∘ withCancel $ do
       habit_id ← prompt "Which habit?"
       old_habit ←
-        liftC (fetchHabit habit_id)
+        liftC (getHabit habit_id)
         >>=
         maybe
           (printAndCancel "No such habit.")
@@ -285,7 +285,7 @@ mainLoop = loop [] $
   ]
   where
     printHabits = do
-      habits ← liftC fetchHabits
+      habits ← liftC getHabits
       liftIO $
         if null habits
           then putStrLn "There are no habits."
