@@ -85,7 +85,7 @@ expectSuccess =
     \result ->
       case result of
         Ok _ -> TestPassed
-        Err err -> TestFailed (toString err)
+        Err error -> TestFailed (toString error)
   )
 
 
