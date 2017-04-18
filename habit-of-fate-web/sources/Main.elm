@@ -37,7 +37,7 @@ type CreateAccountError =
   | UnexpectedCreateAccountError Http.Error
 
 
-createAccount : String -> String -> Task CreateAccountError Token
+createAccount : String -> String -> Task Never (Result CreateAccountError Token)
 createAccount username password =
   (
     Http.request
@@ -51,13 +51,15 @@ createAccount username password =
       }
   )
   |> Http.toTask
-  |> Task.mapError (\error -> case error of
-      Http.BadStatus response ->
-        if response.status.code == 409
-          then AccountAlreadyExists
-          else UnexpectedCreateAccountError error
-      _ -> UnexpectedCreateAccountError error
-     )
+  |> Task.map Ok
+  |> Task.onError (\error -> succeed (Err (
+      case error of
+        Http.BadStatus response ->
+          if response.status.code == 409
+            then AccountAlreadyExists
+            else UnexpectedCreateAccountError error
+        _ -> UnexpectedCreateAccountError error
+     )))
 
 type TestOutcome = TestPassed | TestFailed String
 type TestResult = TestResult String TestOutcome
@@ -77,13 +79,13 @@ init = ( [], seed_generator |> Random.generate Seed )
 type Test = Test String (Random.Seed -> Cmd TestOutcome)
 
 
-toTestOutcome : Task String () -> Cmd TestOutcome
+toTestOutcome : Task Never (Result err ok) -> Cmd TestOutcome
 toTestOutcome =
-  Task.attempt (
+  Task.perform (
     \result ->
       case result of
-        Ok () -> TestPassed
-        Err reason -> TestFailed reason
+        Ok _ -> TestPassed
+        Err err -> TestFailed (toString err)
   )
 
 
@@ -97,8 +99,6 @@ tests =
       let (username, _) = Random.step username_generator seed
       in
         createAccount username username
-        |> swallowResult
-        |> mapError toString
         |> toTestOutcome
     )
   ]
