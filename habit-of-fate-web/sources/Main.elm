@@ -14,7 +14,7 @@ import Http
 import List exposing (foldr)
 import Random exposing (Generator)
 import String
-import Task exposing (Task, mapError, succeed)
+import Task exposing (Task, andThen, mapError, succeed)
 import Tuple
 
 
@@ -30,6 +30,9 @@ type alias Token = String
 makeLoginUrl : String -> String -> String -> String
 makeLoginUrl =
   print (string <> s "?username=" <> string <> s "&password=" <> string)
+
+
+-------------------------------- Create Account --------------------------------
 
 
 type CreateAccountError =
@@ -59,6 +62,41 @@ createAccount username password =
             then AccountAlreadyExists
             else UnexpectedCreateAccountError error
         _ -> UnexpectedCreateAccountError error
+     )))
+
+
+------------------------------------ Login -------------------------------------
+
+
+type LoginError =
+    NoSuchAccount
+  | InvalidPassword
+  | UnexpectedLoginError Http.Error
+
+
+login : String -> String -> Task Never (Result LoginError Token)
+login username password =
+  (
+    Http.request
+      { method = "POST"
+      , headers = []
+      , url = makeLoginUrl "api/login" username password
+      , body = Http.emptyBody
+      , expect = Http.expectString
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask
+  |> Task.map Ok
+  |> Task.onError (\error -> succeed (Err (
+      case error of
+        Http.BadStatus response ->
+          case response.status.code of
+            403 -> InvalidPassword
+            404 -> NoSuchAccount
+            _ -> UnexpectedLoginError error
+        _ -> UnexpectedLoginError error
      )))
 
 type TestOutcome = TestPassed | TestFailed String
@@ -100,6 +138,16 @@ tests =
       in
         createAccount username username
         |> expectSuccess
+    )
+  , Test "Logging in to a missing account fails." (\seed ->
+      let (username, _) = Random.step username_generator seed
+      in
+        login username username
+        |> Task.perform (\result ->
+            case result of
+              Err NoSuchAccount -> TestPassed
+              _ -> TestFailed ("Unexpected result: " ++ toString result)
+           )
     )
   ]
 
