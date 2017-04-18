@@ -45,7 +45,7 @@ newAccount ∷ Text → IO Account
 newAccount password =
   Account
     <$> (
-          makePassword (encodeUtf8 (pack "password")) 17
+          makePassword (encodeUtf8 password) 17
           >>=
           evaluate ∘ decodeUtf8
         )

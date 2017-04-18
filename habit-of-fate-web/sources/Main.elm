@@ -160,6 +160,13 @@ tests =
               _ -> TestFailed ("Unexpected result: " ++ toString result)
            )
     )
+  , Test "Logging into an existing account with the correct password." (\seed ->
+      let (username, _) = Random.step username_generator seed
+      in
+        createAccount username username
+        |> andThen (\_ -> login username username)
+        |> expectSuccess
+    )
   ]
 
 

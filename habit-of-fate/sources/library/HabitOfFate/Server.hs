@@ -69,7 +69,10 @@ class Monad m ⇒ ActionMonad m where
   singletonCommon ∷ CommonInstructionInstruction α → m α
 
 finishWithStatus ∷ Status → ActionM α
-finishWithStatus s = status s >> finish
+finishWithStatus s = do
+  logIO $ "Finished with status: " ⊕ show s
+  status s
+  finish
 
 finishWithStatusMessage ∷ Int → String → ActionM α
 finishWithStatusMessage code = finishWithStatus ∘ Status code ∘ encodeUtf8 ∘ pack
@@ -346,7 +349,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
     Scotty.post "/api/create" $ do
       username ← param "username"
       password ← param "password"
-      logIO $ [i|Request to create an account for "#{username}"|]
+      logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
       account_status ← liftIO $ do
         new_account ← newAccount password
         atomically $ do
@@ -371,6 +374,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
     Scotty.post "/api/login" $ do
       username ← param "username"
       password ← param "password"
+      logIO $ [i|Request to log into an account with "#{username}" with password "#{password}"|]
       (
         (fmap (lookup username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
         >>=
@@ -378,7 +382,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
         >>=
         liftIO ∘ readTVarIO
         >>=
-        bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (return ())
+        bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
         ∘
         passwordIsValid password
        )
