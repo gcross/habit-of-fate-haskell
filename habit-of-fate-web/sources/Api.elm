@@ -17,6 +17,7 @@ makeLoginUrl =
 type Error error = Expected error | Unexpected Http.Error
 
 type alias ApiResult error result = Result (Error error) result
+type alias ApiTask error result = Task Never (ApiResult error result)
 
 
 --------------------------------------------------------------------------------
@@ -27,7 +28,7 @@ type alias ApiResult error result = Result (Error error) result
 type CreateAccountError = AccountAlreadyExists
 
 
-createAccount : String -> String -> Task Never (ApiResult CreateAccountError Token)
+createAccount : String -> String -> ApiTask CreateAccountError Token
 createAccount username password =
   (
     Http.request
@@ -60,7 +61,7 @@ createAccount username password =
 type LoginError = NoSuchAccount | InvalidPassword
 
 
-login : String -> String -> Task Never (ApiResult LoginError Token)
+login : String -> String -> ApiTask LoginError Token
 login username password =
   (
     Http.request
