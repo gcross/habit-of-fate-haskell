@@ -195,15 +195,20 @@ update msg old_results =
 view : Model -> Html Msg
 view results =
   div []
-    [ div [ ] (
+    [ div [ ] [Html.ul [] (
         results
         |> List.map (\(TestResult name outcome) ->
-            case outcome of
-              TestPassed -> text ("Test \"" ++ name ++ "\" passed.")
-              TestFailed reason -> text ("Test \"" ++ name ++ "\" failed: " ++ reason)
+            let (color, txt) =
+                  case outcome of
+                    TestPassed ->
+                      ("green", "Test \"" ++ name ++ "\" passed.")
+                    TestFailed reason ->
+                      ("red", "Test \"" ++ name ++ "\" failed: " ++ reason)
+            in Html.li [style [("color", color)]] [text txt]
            )
+        |> List.map (\result -> Html.li [] [result])
         |> List.reverse
-      )
+      )]
     ]
 
 
