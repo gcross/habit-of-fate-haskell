@@ -149,6 +149,17 @@ tests =
               _ -> TestFailed ("Unexpected result: " ++ toString result)
            )
     )
+  , Test "Logging into an existing account but with the wrong password." (\seed ->
+      let (username, _) = Random.step username_generator seed
+      in
+        createAccount username username
+        |> andThen (\_ -> login username "wrong password")
+        |> Task.perform (\result ->
+            case result of
+              Err InvalidPassword -> TestPassed
+              _ -> TestFailed ("Unexpected result: " ++ toString result)
+           )
+    )
   ]
 
 
