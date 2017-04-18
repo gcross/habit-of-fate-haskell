@@ -79,8 +79,8 @@ init = ( [], seed_generator |> Random.generate Seed )
 type Test = Test String (Random.Seed -> Cmd TestOutcome)
 
 
-toTestOutcome : Task Never (Result err ok) -> Cmd TestOutcome
-toTestOutcome =
+expectSuccess : Task Never (Result err ok) -> Cmd TestOutcome
+expectSuccess =
   Task.perform (
     \result ->
       case result of
@@ -99,7 +99,7 @@ tests =
       let (username, _) = Random.step username_generator seed
       in
         createAccount username username
-        |> toTestOutcome
+        |> expectSuccess
     )
   ]
 
