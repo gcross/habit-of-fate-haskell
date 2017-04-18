@@ -32,15 +32,18 @@ makeLoginUrl =
   print (string <> s "?username=" <> string <> s "&password=" <> string)
 
 
+type Error error = Expected error | Unexpected Http.Error
+
+type alias ApiResult error result = Result (Error error) result
+
+
 -------------------------------- Create Account --------------------------------
 
 
-type CreateAccountError =
-    AccountAlreadyExists
-  | UnexpectedCreateAccountError Http.Error
+type CreateAccountError = AccountAlreadyExists
 
 
-createAccount : String -> String -> Task Never (Result CreateAccountError Token)
+createAccount : String -> String -> Task Never (ApiResult CreateAccountError Token)
 createAccount username password =
   (
     Http.request
@@ -59,22 +62,19 @@ createAccount username password =
       case error of
         Http.BadStatus response ->
           if response.status.code == 409
-            then AccountAlreadyExists
-            else UnexpectedCreateAccountError error
-        _ -> UnexpectedCreateAccountError error
+            then Expected AccountAlreadyExists
+            else Unexpected error
+        _ -> Unexpected error
      )))
 
 
 ------------------------------------ Login -------------------------------------
 
 
-type LoginError =
-    NoSuchAccount
-  | InvalidPassword
-  | UnexpectedLoginError Http.Error
+type LoginError = NoSuchAccount | InvalidPassword
 
 
-login : String -> String -> Task Never (Result LoginError Token)
+login : String -> String -> Task Never (ApiResult LoginError Token)
 login username password =
   (
     Http.request
@@ -93,10 +93,10 @@ login username password =
       case error of
         Http.BadStatus response ->
           case response.status.code of
-            403 -> InvalidPassword
-            404 -> NoSuchAccount
-            _ -> UnexpectedLoginError error
-        _ -> UnexpectedLoginError error
+            403 -> Expected InvalidPassword
+            404 -> Expected NoSuchAccount
+            _ -> Unexpected error
+        _ -> Unexpected error
      )))
 
 type TestOutcome = TestPassed | TestFailed String
@@ -145,7 +145,7 @@ tests =
         login username username
         |> Task.perform (\result ->
             case result of
-              Err NoSuchAccount -> TestPassed
+              Err (Expected NoSuchAccount) -> TestPassed
               _ -> TestFailed ("Unexpected result: " ++ toString result)
            )
     )
@@ -156,7 +156,7 @@ tests =
         |> andThen (\_ -> login username "wrong password")
         |> Task.perform (\result ->
             case result of
-              Err InvalidPassword -> TestPassed
+              Err (Expected InvalidPassword) -> TestPassed
               _ -> TestFailed ("Unexpected result: " ++ toString result)
            )
     )
