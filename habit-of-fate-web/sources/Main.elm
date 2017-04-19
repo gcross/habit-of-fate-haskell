@@ -10,7 +10,7 @@ import Html exposing
   )
 import Html.Attributes exposing (..)
 import List exposing (foldr)
-import Random exposing (Generator)
+import Random.Pcg as Random exposing (Generator)
 import String
 import Task exposing (Task, andThen, mapError, succeed)
 import Tuple
