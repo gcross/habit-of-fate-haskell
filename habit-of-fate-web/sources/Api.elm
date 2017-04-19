@@ -175,3 +175,41 @@ putHabit token uuid habit =
   |> Http.toTask
   |> Task.map Ok
   |> Task.onError (HttpError >> Unexpected >> Err >> succeed)
+
+
+---------------------------------- Get Habit -----------------------------------
+
+
+getHabit : Token -> Uuid -> ApiTask Never (Maybe Habit)
+getHabit token uuid =
+  (
+    Http.request
+      { method = "GET"
+      , headers = [Http.header "Authorization" ("Bearer " ++ token)]
+      , url = makeHabitUrl uuid
+      , body = Http.emptyBody
+      , expect = Http.expectStringResponse
+          (\response ->
+             case response.status.code of
+               200 ->
+                 response.body
+                 |> Decode.decodeString habit_decoder
+                 |> Result.map Just
+               _ -> Err ("Unexpected response: " ++ toString response.status)
+          )
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask
+  |> Task.map Ok
+  |> Task.onError (\error ->
+      let wrapped_error = error |> HttpError |> Unexpected |> Err
+      in succeed (
+        case error of
+          Http.BadStatus response ->
+            if response.status.code == 404
+              then Ok Nothing
+              else wrapped_error
+          _ -> wrapped_error
+      ))

@@ -136,6 +136,44 @@ tests =
               )))
         ) |> Task.perform identity
     )
+  , Test "Getting a non-existent habit returns Nothing." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              getHabit token habit_id |> andThen (\result -> succeed (
+                case result of
+                  Ok Nothing -> TestPassed
+                  Ok (Just habit) -> TestFailed ("Unexpectedly received: " ++ toString habit)
+                  Err error -> TestFailed ("Failed getting habit: " ++ toString error)
+              ))
+        ) |> Task.perform identity
+    )
+  , Test "Putting an existing habit results followed by getting it gets the right value." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              putHabit token habit_id test_habit |> andThen (\_ ->
+              getHabit token habit_id |> andThen (\result -> succeed (
+                case result of
+                  Ok Nothing -> TestFailed "Could not find the habit."
+                  Ok (Just habit) ->
+                    if habit == test_habit
+                      then TestPassed
+                      else TestFailed ("Expected " ++ toString test_habit ++ " but got " ++ toString habit)
+                  Err error -> TestFailed ("Failed getting habit: " ++ toString error)
+              )))
+        ) |> Task.perform identity
+    )
   ]
 
 
