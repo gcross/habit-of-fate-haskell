@@ -14,6 +14,7 @@ import Random.Pcg as Random exposing (Generator)
 import String
 import Task exposing (Task, andThen, mapError, succeed)
 import Tuple
+import Uuid
 
 import Api exposing (..)
 
@@ -60,6 +61,10 @@ swallowResult : Task x a -> Task x ()
 swallowResult = Task.map (\_ -> ())
 
 
+test_habit : Habit
+test_habit = { name = "name", credits = { success = 1, failure = 0 } }
+
+
 tests : List Test
 tests =
   [ Test "Creating a new account succeeds." (\seed ->
@@ -95,6 +100,41 @@ tests =
         createAccount username username
         |> andThen (\_ -> login username username)
         |> expectSuccess
+    )
+  , Test "Putting an new habit results in HabitCreated." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              putHabit token habit_id test_habit |> andThen (\result -> succeed (
+                case result of
+                  Ok HabitCreated -> TestPassed
+                  Ok HabitReplaced -> TestFailed "Got HabitReplaced"
+                  Err error -> TestFailed ("Failed putting habit: " ++ toString error)
+              ))
+        ) |> Task.perform identity
+    )
+  , Test "Putting an existing habit results in HabitReplaced." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              putHabit token habit_id test_habit |> andThen (\_ ->
+              putHabit token habit_id test_habit |> andThen (\result -> succeed (
+                case result of
+                  Ok HabitCreated -> TestFailed "Got HabitCreated"
+                  Ok HabitReplaced -> TestPassed
+                  Err error -> TestFailed ("Failed putting habit: " ++ toString error)
+              )))
+        ) |> Task.perform identity
     )
   ]
 

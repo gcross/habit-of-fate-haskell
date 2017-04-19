@@ -3,7 +3,15 @@ module Api exposing (..)
 
 import Formatting exposing ((<>), print, s, string)
 import Http
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode exposing (Value)
 import Task exposing (Task, succeed)
+import Uuid exposing (Uuid)
+
+
+--------------------------------------------------------------------------------
+-------------------------------- Login-related ---------------------------------
+--------------------------------------------------------------------------------
 
 
 type alias Token = String
@@ -14,15 +22,14 @@ makeLoginUrl =
   print (string <> s "?username=" <> string <> s "&password=" <> string)
 
 
-type Error error = Expected error | Unexpected Http.Error
+type UnexpectedError = HttpError Http.Error | UnexpectedStatus Int
+type Error error = Expected error | Unexpected UnexpectedError
 
 type alias ApiResult error result = Result (Error error) result
 type alias ApiTask error result = Task Never (ApiResult error result)
 
 
---------------------------------------------------------------------------------
 -------------------------------- Create Account --------------------------------
---------------------------------------------------------------------------------
 
 
 type CreateAccountError = AccountAlreadyExists
@@ -48,14 +55,12 @@ createAccount username password =
         Http.BadStatus response ->
           if response.status.code == 409
             then Expected AccountAlreadyExists
-            else Unexpected error
-        _ -> Unexpected error
+            else Unexpected (HttpError error)
+        _ -> Unexpected (HttpError error)
      )))
 
 
---------------------------------------------------------------------------------
 ------------------------------------ Login -------------------------------------
---------------------------------------------------------------------------------
 
 
 type LoginError = NoSuchAccount | InvalidPassword
@@ -82,6 +87,91 @@ login username password =
           case response.status.code of
             403 -> Expected InvalidPassword
             404 -> Expected NoSuchAccount
-            _ -> Unexpected error
-        _ -> Unexpected error
+            _ -> Unexpected (HttpError error)
+        _ -> Unexpected (HttpError error)
      )))
+
+
+--------------------------------------------------------------------------------
+-------------------------------- Habit-related ---------------------------------
+--------------------------------------------------------------------------------
+
+
+type alias Credits = { success: Float, failure: Float }
+type alias Habit = { name: String, credits: Credits }
+
+
+makeHabitUrl : Uuid -> String
+makeHabitUrl = Uuid.toString >> print (s "/api/habits/" <> string)
+
+
+uuid_decoder : Decoder Uuid
+uuid_decoder =
+  Decode.string
+  |> Decode.andThen (\s ->
+      case Uuid.fromString s of
+        Nothing -> Decode.fail "invalid UUID"
+        Just uuid -> Decode.succeed uuid
+     )
+
+
+credit_decoder : Decoder Credits
+credit_decoder =
+  Decode.map2
+    (\success failure -> { success = success, failure = failure })
+    (Decode.field "success" Decode.float)
+    (Decode.field "failure" Decode.float)
+
+
+habit_decoder : Decoder Habit
+habit_decoder =
+  Decode.map2
+    (\name credits -> { name = name, credits = credits })
+    (Decode.field "name" Decode.string)
+    (Decode.field "credits" credit_decoder)
+
+
+encodeCredits : Credits -> Value
+encodeCredits credits =
+  Encode.object
+  [ ("success", Encode.float credits.success)
+  , ("failure", Encode.float credits.failure)
+  ]
+
+
+encodeHabit : Habit -> Value
+encodeHabit habit =
+  Encode.object
+  [ ("name", Encode.string habit.name)
+  , ("credits", encodeCredits habit.credits)
+  ]
+
+
+---------------------------------- Put Habit -----------------------------------
+
+
+type PutHabitResult = HabitCreated | HabitReplaced
+
+
+putHabit : Token -> Uuid -> Habit -> ApiTask Never PutHabitResult
+putHabit token uuid habit =
+  (
+    Http.request
+      { method = "PUT"
+      , headers = [Http.header "Authorization" ("Bearer " ++ token)]
+      , url = makeHabitUrl uuid
+      , body = Http.jsonBody (encodeHabit habit)
+      , expect = Http.expectStringResponse
+          (\response ->
+             case response.status.code of
+               201 -> Ok HabitCreated
+               204 -> Ok HabitReplaced
+               _ -> Err ("Unexpected response: " ++ toString response.status)
+          )
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask
+  |> Task.map Ok
+  |> Task.onError (HttpError >> Unexpected >> Err >> succeed)
