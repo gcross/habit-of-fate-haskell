@@ -1,10 +1,12 @@
 module Api exposing (..)
 
 
+import EveryDict exposing (EveryDict)
 import Formatting exposing ((<>), print, s, string)
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
+import List exposing (foldr)
 import Task exposing (Task, succeed)
 import Uuid exposing (Uuid)
 
@@ -131,6 +133,22 @@ habit_decoder =
     (Decode.field "credits" credit_decoder)
 
 
+habits_decoder : Decoder (EveryDict Uuid Habit)
+habits_decoder =
+  Decode.keyValuePairs habit_decoder
+  |> Decode.andThen (
+      foldr
+        (\(uuid_string, habit) decoded ->
+          case Uuid.fromString uuid_string of
+            Nothing -> Decode.fail ("Invalid UUID: " ++ uuid_string)
+            Just uuid -> Decode.map (\pairs -> (uuid, habit)::pairs) decoded
+        )
+        (Decode.succeed [])
+     )
+  |> Decode.map EveryDict.fromList
+
+
+
 encodeCredits : Credits -> Value
 encodeCredits credits =
   Encode.object
@@ -213,3 +231,24 @@ getHabit token uuid =
               else wrapped_error
           _ -> wrapped_error
       ))
+
+
+---------------------------------- Get Habits ----------------------------------
+
+
+getHabits : Token -> ApiTask Never (EveryDict Uuid Habit)
+getHabits token =
+  (
+    Http.request
+      { method = "GET"
+      , headers = [Http.header "Authorization" ("Bearer " ++ token)]
+      , url = "/api/habits"
+      , body = Http.emptyBody
+      , expect = Http.expectJson habits_decoder
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask
+  |> Task.map Ok
+  |> Task.onError (HttpError >> Unexpected >> Err >> succeed)

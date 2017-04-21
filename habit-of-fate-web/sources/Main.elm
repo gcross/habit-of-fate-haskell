@@ -1,4 +1,5 @@
 import Char exposing (fromCode, toCode)
+import EveryDict
 import Html exposing
   ( Attribute
   , Html
@@ -171,6 +172,44 @@ tests =
                       then TestPassed
                       else TestFailed ("Expected " ++ toString test_habit ++ " but got " ++ toString habit)
                   Err error -> TestFailed ("Failed getting habit: " ++ toString error)
+              )))
+        ) |> Task.perform identity
+    )
+  , Test "Getting all habits when none exist returns the empty list." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              getHabits token |> andThen (\result -> succeed (
+                case result of
+                  Ok habits ->
+                    if EveryDict.isEmpty habits
+                      then TestPassed
+                      else TestFailed ("Unexpectedly received habits: " ++ toString habits)
+                  Err error -> TestFailed ("Failed getting habits: " ++ toString error)
+              ))
+        ) |> Task.perform identity
+    )
+  , Test "Putting a habit followed by getting all habits returns a singleton list with the habit." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              putHabit token habit_id test_habit |> andThen (\_ ->
+              getHabits token |> andThen (\result -> succeed (
+                case result of
+                  Ok habits ->
+                    if habits == EveryDict.singleton habit_id test_habit
+                      then TestPassed
+                      else TestFailed ("Expected " ++ toString [test_habit] ++ " but got " ++ toString habits)
+                  Err error -> TestFailed ("Failed getting habits: " ++ toString error)
               )))
         ) |> Task.perform identity
     )
