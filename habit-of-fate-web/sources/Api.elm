@@ -11,6 +11,18 @@ import Task exposing (Task, fail, succeed)
 import Uuid exposing (Uuid)
 
 
+handleErrorStatusCode : Int -> α -> Task Http.Error α -> Task Http.Error α
+handleErrorStatusCode code value =
+  Task.onError (\error ->
+    case error of
+      Http.BadStatus response ->
+        if response.status.code == code
+          then succeed value
+          else fail error
+      _ -> fail error
+  )
+
+
 --------------------------------------------------------------------------------
 -------------------------------- Login-related ---------------------------------
 --------------------------------------------------------------------------------
@@ -45,14 +57,7 @@ createAccount username password =
   )
   |> Http.toTask
   |> Task.map AccountCreated
-  |> Task.onError (\error ->
-      case error of
-        Http.BadStatus response ->
-          if response.status.code == 409
-            then succeed AccountAlreadyExists
-            else fail error
-        _ -> fail error
-     )
+  |> handleErrorStatusCode 409 AccountAlreadyExists
 
 
 ------------------------------------ Login -------------------------------------
@@ -76,15 +81,8 @@ login username password =
   )
   |> Http.toTask
   |> Task.map LoginSuccessful
-  |> Task.onError (\error ->
-      case error of
-        Http.BadStatus response ->
-          case response.status.code of
-            403 -> succeed InvalidPassword
-            404 -> succeed NoSuchAccount
-            _ -> fail error
-        _ -> fail error
-     )
+  |> handleErrorStatusCode 403 InvalidPassword
+  |> handleErrorStatusCode 404 NoSuchAccount
 
 
 --------------------------------------------------------------------------------
@@ -211,14 +209,7 @@ getHabit token uuid =
       }
   )
   |> Http.toTask
-  |> Task.onError (\error ->
-      case error of
-        Http.BadStatus response ->
-          if response.status.code == 404
-            then succeed Nothing
-            else fail error
-        _ -> fail error
-     )
+  |> handleErrorStatusCode 404 Nothing
 
 
 ---------------------------------- Get Habits ----------------------------------
@@ -265,11 +256,4 @@ deleteHabit token uuid =
       }
   )
   |> Http.toTask
-  |> Task.onError (\error ->
-      case error of
-        Http.BadStatus response ->
-          if response.status.code == 404
-            then succeed NoHabitToDelete
-            else fail error
-        _ -> fail error
-      )
+  |> handleErrorStatusCode 404 NoHabitToDelete
