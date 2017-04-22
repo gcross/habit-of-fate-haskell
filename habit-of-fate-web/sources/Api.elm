@@ -252,3 +252,41 @@ getHabits token =
   |> Http.toTask
   |> Task.map Ok
   |> Task.onError (HttpError >> Unexpected >> Err >> succeed)
+
+
+--------------------------------- Delete Habit ---------------------------------
+
+
+type DeleteHabitResult = HabitDeleted | NoHabitToDelete
+
+
+deleteHabit : Token -> Uuid -> ApiTask Never DeleteHabitResult
+deleteHabit token uuid =
+  (
+    Http.request
+      { method = "DELETE"
+      , headers = [Http.header "Authorization" ("Bearer " ++ token)]
+      , url = makeHabitUrl uuid
+      , body = Http.emptyBody
+      , expect = Http.expectStringResponse
+          (\response ->
+             case response.status.code of
+               204 -> Ok HabitDeleted
+               _ -> Err ("Unexpected response: " ++ toString response.status)
+          )
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask
+  |> Task.map Ok
+  |> Task.onError (\error ->
+      let wrapped_error = error |> HttpError |> Unexpected |> Err
+      in succeed (
+        case error of
+          Http.BadStatus response ->
+            if response.status.code == 404
+              then Ok NoHabitToDelete
+              else wrapped_error
+          _ -> wrapped_error
+      ))

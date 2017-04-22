@@ -213,6 +213,60 @@ tests =
               )))
         ) |> Task.perform identity
     )
+  , Test "Deleting a non-existent habit returns NoHabitToDelete." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              deleteHabit token habit_id |> andThen (\result -> succeed (
+                case result of
+                  Ok NoHabitToDelete -> TestPassed
+                  Ok HabitDeleted -> TestFailed "Unexpected success."
+                  Err error -> TestFailed ("Unexpected failure: " ++ toString error)
+              ))
+        ) |> Task.perform identity
+    )
+  , Test "Deleting an existing habit returns HabitDeleted." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              putHabit token habit_id test_habit |> andThen (\_ ->
+              deleteHabit token habit_id |> andThen (\result -> succeed (
+                case result of
+                  Ok HabitDeleted -> TestPassed
+                  Ok NoHabitToDelete -> TestFailed "The habit was not found when being deleted."
+                  Err error -> TestFailed ("Unexpected failure: " ++ toString error)
+              )))
+        ) |> Task.perform identity
+    )
+  , Test "Deleting an existing habit causes it to no longer be found by getHabit." (\seed ->
+      let (username, seed2) = Random.step username_generator seed
+          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
+      in
+        createAccount username username |> andThen (\result ->
+          case result of
+            Err error ->
+              succeed (TestFailed ("Failed creating account: " ++ toString error))
+            Ok token ->
+              putHabit token habit_id test_habit |> andThen (\_ ->
+              deleteHabit token habit_id |> andThen (\_ ->
+              getHabit token habit_id |> andThen (\result -> succeed (
+                case result of
+                  Ok Nothing -> TestPassed
+                  Ok (Just _) -> TestFailed ("The habit was found after being deleted.")
+                  Err error -> TestFailed ("Unexpected failure: " ++ toString error)
+              ))))
+        ) |> Task.perform identity
+    )
   ]
 
 
