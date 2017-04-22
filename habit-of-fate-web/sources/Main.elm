@@ -15,7 +15,7 @@ import Random.Pcg as Random exposing (Generator)
 import String
 import Task exposing (Task, andThen, mapError, succeed)
 import Tuple
-import Uuid
+import Uuid exposing (Uuid)
 
 import Api exposing (..)
 
@@ -66,6 +66,28 @@ test_habit : Habit
 test_habit = { name = "name", credits = { success = 1, failure = 0 } }
 
 
+testWithAccount : String -> (Token -> Random.Seed -> Task Never TestOutcome) -> Test
+testWithAccount name constructTestTask =
+  Test name (\seed ->
+    let (username, seed2) = Random.step username_generator seed
+    in
+      createAccount username username |> andThen (\result ->
+        case result of
+          Err error -> succeed (TestFailed ("Failed creating account: " ++ toString error))
+          Ok token -> constructTestTask token seed2
+      ) |> Task.perform identity
+  )
+
+
+testWithAccountAndHabitId :
+  String -> (Token -> Uuid -> Task Never TestOutcome) -> Test
+testWithAccountAndHabitId name constructTestTask =
+  testWithAccount name (\token seed ->
+    let (habit_id, _) = Random.step Uuid.uuidGenerator seed
+    in constructTestTask token habit_id
+  )
+
+
 tests : List Test
 tests =
   [ Test "Creating a new account succeeds." (\seed ->
@@ -102,171 +124,83 @@ tests =
         |> andThen (\_ -> login username username)
         |> expectSuccess
     )
-  , Test "Putting an new habit results in HabitCreated." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              putHabit token habit_id test_habit |> andThen (\result -> succeed (
-                case result of
-                  Ok HabitCreated -> TestPassed
-                  Ok HabitReplaced -> TestFailed "Got HabitReplaced"
-                  Err error -> TestFailed ("Failed putting habit: " ++ toString error)
-              ))
-        ) |> Task.perform identity
+  , testWithAccountAndHabitId "Putting an new habit results in HabitCreated." (\token habit_id ->
+      putHabit token habit_id test_habit |> andThen (\result -> succeed (
+        case result of
+          Ok HabitCreated -> TestPassed
+          Ok HabitReplaced -> TestFailed "Got HabitReplaced"
+          Err error -> TestFailed ("Failed putting habit: " ++ toString error)
+      ))
     )
-  , Test "Putting an existing habit results in HabitReplaced." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              putHabit token habit_id test_habit |> andThen (\_ ->
-              putHabit token habit_id test_habit |> andThen (\result -> succeed (
-                case result of
-                  Ok HabitCreated -> TestFailed "Got HabitCreated"
-                  Ok HabitReplaced -> TestPassed
-                  Err error -> TestFailed ("Failed putting habit: " ++ toString error)
-              )))
-        ) |> Task.perform identity
-    )
-  , Test "Getting a non-existent habit returns Nothing." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              getHabit token habit_id |> andThen (\result -> succeed (
-                case result of
-                  Ok Nothing -> TestPassed
-                  Ok (Just habit) -> TestFailed ("Unexpectedly received: " ++ toString habit)
-                  Err error -> TestFailed ("Failed getting habit: " ++ toString error)
-              ))
-        ) |> Task.perform identity
-    )
-  , Test "Putting an existing habit results followed by getting it gets the right value." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              putHabit token habit_id test_habit |> andThen (\_ ->
-              getHabit token habit_id |> andThen (\result -> succeed (
-                case result of
-                  Ok Nothing -> TestFailed "Could not find the habit."
-                  Ok (Just habit) ->
-                    if habit == test_habit
-                      then TestPassed
-                      else TestFailed ("Expected " ++ toString test_habit ++ " but got " ++ toString habit)
-                  Err error -> TestFailed ("Failed getting habit: " ++ toString error)
-              )))
-        ) |> Task.perform identity
-    )
-  , Test "Getting all habits when none exist returns the empty list." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              getHabits token |> andThen (\result -> succeed (
-                case result of
-                  Ok habits ->
-                    if EveryDict.isEmpty habits
-                      then TestPassed
-                      else TestFailed ("Unexpectedly received habits: " ++ toString habits)
-                  Err error -> TestFailed ("Failed getting habits: " ++ toString error)
-              ))
-        ) |> Task.perform identity
-    )
-  , Test "Putting a habit followed by getting all habits returns a singleton list with the habit." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              putHabit token habit_id test_habit |> andThen (\_ ->
-              getHabits token |> andThen (\result -> succeed (
-                case result of
-                  Ok habits ->
-                    if habits == EveryDict.singleton habit_id test_habit
-                      then TestPassed
-                      else TestFailed ("Expected " ++ toString [test_habit] ++ " but got " ++ toString habits)
-                  Err error -> TestFailed ("Failed getting habits: " ++ toString error)
-              )))
-        ) |> Task.perform identity
-    )
-  , Test "Deleting a non-existent habit returns NoHabitToDelete." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              deleteHabit token habit_id |> andThen (\result -> succeed (
-                case result of
-                  Ok NoHabitToDelete -> TestPassed
-                  Ok HabitDeleted -> TestFailed "Unexpected success."
-                  Err error -> TestFailed ("Unexpected failure: " ++ toString error)
-              ))
-        ) |> Task.perform identity
-    )
-  , Test "Deleting an existing habit returns HabitDeleted." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              putHabit token habit_id test_habit |> andThen (\_ ->
-              deleteHabit token habit_id |> andThen (\result -> succeed (
-                case result of
-                  Ok HabitDeleted -> TestPassed
-                  Ok NoHabitToDelete -> TestFailed "The habit was not found when being deleted."
-                  Err error -> TestFailed ("Unexpected failure: " ++ toString error)
-              )))
-        ) |> Task.perform identity
-    )
-  , Test "Deleting an existing habit causes it to no longer be found by getHabit." (\seed ->
-      let (username, seed2) = Random.step username_generator seed
-          (habit_id, _) = Random.step Uuid.uuidGenerator seed2
-      in
-        createAccount username username |> andThen (\result ->
-          case result of
-            Err error ->
-              succeed (TestFailed ("Failed creating account: " ++ toString error))
-            Ok token ->
-              putHabit token habit_id test_habit |> andThen (\_ ->
-              deleteHabit token habit_id |> andThen (\_ ->
-              getHabit token habit_id |> andThen (\result -> succeed (
-                case result of
-                  Ok Nothing -> TestPassed
-                  Ok (Just _) -> TestFailed ("The habit was found after being deleted.")
-                  Err error -> TestFailed ("Unexpected failure: " ++ toString error)
-              ))))
-        ) |> Task.perform identity
-    )
+  , testWithAccountAndHabitId "Putting an existing habit results in HabitReplaced." (\token habit_id ->
+      putHabit token habit_id test_habit |> andThen (\_ ->
+      putHabit token habit_id test_habit |> andThen (\result -> succeed (
+        case result of
+          Ok HabitCreated -> TestFailed "Got HabitCreated"
+          Ok HabitReplaced -> TestPassed
+          Err error -> TestFailed ("Failed putting habit: " ++ toString error)
+      ))))
+  , testWithAccountAndHabitId "Getting a non-existent habit returns Nothing." (\token habit_id ->
+      getHabit token habit_id |> andThen (\result -> succeed (
+        case result of
+          Ok Nothing -> TestPassed
+          Ok (Just habit) -> TestFailed ("Unexpectedly received: " ++ toString habit)
+          Err error -> TestFailed ("Failed getting habit: " ++ toString error)
+      )))
+  , testWithAccountAndHabitId "Putting an existing habit results followed by getting it gets the right value." (\token habit_id ->
+      putHabit token habit_id test_habit |> andThen (\_ ->
+      getHabit token habit_id |> andThen (\result -> succeed (
+        case result of
+          Ok Nothing -> TestFailed "Could not find the habit."
+          Ok (Just habit) ->
+            if habit == test_habit
+              then TestPassed
+              else TestFailed ("Expected " ++ toString test_habit ++ " but got " ++ toString habit)
+          Err error -> TestFailed ("Failed getting habit: " ++ toString error)
+      ))))
+  , testWithAccount "Getting all habits when none exist returns the empty list." (\token _ ->
+      getHabits token |> andThen (\result -> succeed (
+        case result of
+          Ok habits ->
+            if EveryDict.isEmpty habits
+              then TestPassed
+              else TestFailed ("Unexpectedly received habits: " ++ toString habits)
+          Err error -> TestFailed ("Failed getting habits: " ++ toString error)
+      )))
+  , testWithAccountAndHabitId "Putting a habit followed by getting all habits returns a singleton list with the habit." (\token habit_id ->
+      putHabit token habit_id test_habit |> andThen (\_ ->
+      getHabits token |> andThen (\result -> succeed (
+        case result of
+          Ok habits ->
+            if habits == EveryDict.singleton habit_id test_habit
+              then TestPassed
+              else TestFailed ("Expected " ++ toString [test_habit] ++ " but got " ++ toString habits)
+          Err error -> TestFailed ("Failed getting habits: " ++ toString error)
+      ))))
+  , testWithAccountAndHabitId "Deleting a non-existent habit returns NoHabitToDelete." (\token habit_id ->
+      deleteHabit token habit_id |> andThen (\result -> succeed (
+        case result of
+          Ok NoHabitToDelete -> TestPassed
+          Ok HabitDeleted -> TestFailed "Unexpected success."
+          Err error -> TestFailed ("Unexpected failure: " ++ toString error)
+      )))
+  , testWithAccountAndHabitId  "Deleting an existing habit returns HabitDeleted." (\token habit_id ->
+      putHabit token habit_id test_habit |> andThen (\_ ->
+      deleteHabit token habit_id |> andThen (\result -> succeed (
+        case result of
+          Ok HabitDeleted -> TestPassed
+          Ok NoHabitToDelete -> TestFailed "The habit was not found when being deleted."
+          Err error -> TestFailed ("Unexpected failure: " ++ toString error)
+      ))))
+  , testWithAccountAndHabitId "Deleting an existing habit causes it to no longer be found by getHabit." (\token habit_id ->
+      putHabit token habit_id test_habit |> andThen (\_ ->
+      deleteHabit token habit_id |> andThen (\_ ->
+      getHabit token habit_id |> andThen (\result -> succeed (
+        case result of
+          Ok Nothing -> TestPassed
+          Ok (Just _) -> TestFailed ("The habit was found after being deleted.")
+          Err error -> TestFailed ("Unexpected failure: " ++ toString error)
+      )))))
   ]
 
 
