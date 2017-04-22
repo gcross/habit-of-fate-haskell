@@ -7,7 +7,7 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
 import List exposing (foldr)
-import Task exposing (Task, succeed)
+import Task exposing (Task, fail, succeed)
 import Uuid exposing (Uuid)
 
 
@@ -24,20 +24,13 @@ makeLoginUrl =
   print (string <> s "?username=" <> string <> s "&password=" <> string)
 
 
-type UnexpectedError = HttpError Http.Error | UnexpectedStatus Int
-type Error error = Expected error | Unexpected UnexpectedError
-
-type alias ApiResult error result = Result (Error error) result
-type alias ApiTask error result = Task Never (ApiResult error result)
-
-
 -------------------------------- Create Account --------------------------------
 
 
-type CreateAccountError = AccountAlreadyExists
+type CreateAccountResult = AccountAlreadyExists | AccountCreated Token
 
 
-createAccount : String -> String -> ApiTask CreateAccountError Token
+createAccount : String -> String -> Task Http.Error CreateAccountResult
 createAccount username password =
   (
     Http.request
@@ -51,24 +44,24 @@ createAccount username password =
       }
   )
   |> Http.toTask
-  |> Task.map Ok
-  |> Task.onError (\error -> succeed (Err (
+  |> Task.map AccountCreated
+  |> Task.onError (\error ->
       case error of
         Http.BadStatus response ->
           if response.status.code == 409
-            then Expected AccountAlreadyExists
-            else Unexpected (HttpError error)
-        _ -> Unexpected (HttpError error)
-     )))
+            then succeed AccountAlreadyExists
+            else fail error
+        _ -> fail error
+     )
 
 
 ------------------------------------ Login -------------------------------------
 
 
-type LoginError = NoSuchAccount | InvalidPassword
+type LoginResult = NoSuchAccount | InvalidPassword | LoginSuccessful Token
 
 
-login : String -> String -> ApiTask LoginError Token
+login : String -> String -> Task Http.Error LoginResult
 login username password =
   (
     Http.request
@@ -82,16 +75,16 @@ login username password =
       }
   )
   |> Http.toTask
-  |> Task.map Ok
-  |> Task.onError (\error -> succeed (Err (
+  |> Task.map LoginSuccessful
+  |> Task.onError (\error ->
       case error of
         Http.BadStatus response ->
           case response.status.code of
-            403 -> Expected InvalidPassword
-            404 -> Expected NoSuchAccount
-            _ -> Unexpected (HttpError error)
-        _ -> Unexpected (HttpError error)
-     )))
+            403 -> succeed InvalidPassword
+            404 -> succeed NoSuchAccount
+            _ -> fail error
+        _ -> fail error
+     )
 
 
 --------------------------------------------------------------------------------
@@ -171,7 +164,7 @@ encodeHabit habit =
 type PutHabitResult = HabitCreated | HabitReplaced
 
 
-putHabit : Token -> Uuid -> Habit -> ApiTask Never PutHabitResult
+putHabit : Token -> Uuid -> Habit -> Task Http.Error PutHabitResult
 putHabit token uuid habit =
   (
     Http.request
@@ -191,14 +184,12 @@ putHabit token uuid habit =
       }
   )
   |> Http.toTask
-  |> Task.map Ok
-  |> Task.onError (HttpError >> Unexpected >> Err >> succeed)
 
 
 ---------------------------------- Get Habit -----------------------------------
 
 
-getHabit : Token -> Uuid -> ApiTask Never (Maybe Habit)
+getHabit : Token -> Uuid -> Task Http.Error (Maybe Habit)
 getHabit token uuid =
   (
     Http.request
@@ -220,23 +211,20 @@ getHabit token uuid =
       }
   )
   |> Http.toTask
-  |> Task.map Ok
   |> Task.onError (\error ->
-      let wrapped_error = error |> HttpError |> Unexpected |> Err
-      in succeed (
-        case error of
-          Http.BadStatus response ->
-            if response.status.code == 404
-              then Ok Nothing
-              else wrapped_error
-          _ -> wrapped_error
-      ))
+      case error of
+        Http.BadStatus response ->
+          if response.status.code == 404
+            then succeed Nothing
+            else fail error
+        _ -> fail error
+     )
 
 
 ---------------------------------- Get Habits ----------------------------------
 
 
-getHabits : Token -> ApiTask Never (EveryDict Uuid Habit)
+getHabits : Token -> Task Http.Error (EveryDict Uuid Habit)
 getHabits token =
   (
     Http.request
@@ -250,8 +238,6 @@ getHabits token =
       }
   )
   |> Http.toTask
-  |> Task.map Ok
-  |> Task.onError (HttpError >> Unexpected >> Err >> succeed)
 
 
 --------------------------------- Delete Habit ---------------------------------
@@ -260,7 +246,7 @@ getHabits token =
 type DeleteHabitResult = HabitDeleted | NoHabitToDelete
 
 
-deleteHabit : Token -> Uuid -> ApiTask Never DeleteHabitResult
+deleteHabit : Token -> Uuid -> Task Http.Error DeleteHabitResult
 deleteHabit token uuid =
   (
     Http.request
@@ -279,14 +265,11 @@ deleteHabit token uuid =
       }
   )
   |> Http.toTask
-  |> Task.map Ok
   |> Task.onError (\error ->
-      let wrapped_error = error |> HttpError |> Unexpected |> Err
-      in succeed (
-        case error of
-          Http.BadStatus response ->
-            if response.status.code == 404
-              then Ok NoHabitToDelete
-              else wrapped_error
-          _ -> wrapped_error
-      ))
+      case error of
+        Http.BadStatus response ->
+          if response.status.code == 404
+            then succeed NoHabitToDelete
+            else fail error
+        _ -> fail error
+      )
