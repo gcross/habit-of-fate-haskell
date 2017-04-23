@@ -32,7 +32,6 @@ username_generator =
   |> Random.map String.fromList
 
 type TestOutcome = TestPassed | TestFailed String
-type TestResult = TestResult String TestOutcome
 
 
 type Test = Test String (Random.Seed -> Task Http.Error TestOutcome)
@@ -213,8 +212,8 @@ tests =
 --------------------------------------------------------------------------------
 
 
-type alias Model = List TestResult
-type Msg = Seed Random.Seed | NewTestResult TestResult
+type alias Model = List (String, TestOutcome)
+type Msg = Seed Random.Seed | NewTestResult String TestOutcome
 
 
 seed_generator : Generator Random.Seed
@@ -240,7 +239,7 @@ startTests initial_seed =
                    Ok outcome -> outcome
                    Err error -> TestFailed ("Unexpected error: " ++ toString error)
                 )
-             |> Cmd.map (TestResult name >> NewTestResult)
+             |> Cmd.map (NewTestResult name)
             )::rest_cmds
           )
       )
@@ -253,7 +252,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg old_results =
   case msg of
     Seed seed -> (old_results, startTests seed)
-    NewTestResult result -> (result::old_results, Cmd.none)
+    NewTestResult name outcome -> ((name, outcome)::old_results, Cmd.none)
 
 
 view : Model -> Html Msg
@@ -261,7 +260,7 @@ view results =
   div []
     [ div [ ] [Html.ul [] (
         results
-        |> List.map (\(TestResult name outcome) ->
+        |> List.map (\(name, outcome) ->
             let (color, txt) =
                   case outcome of
                     TestPassed ->
