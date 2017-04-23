@@ -38,6 +38,7 @@ type alias Model = List TestResult
 type Msg = Seed Random.Seed | NewTestResult TestResult
 
 
+seed_generator : Generator Random.Seed
 seed_generator =
   Random.int Random.minInt Random.maxInt |> Random.map Random.initialSeed
 
@@ -242,6 +243,7 @@ startTests initial_seed =
   |> Cmd.batch
 
 
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg old_results =
   case msg of
     Seed seed -> (old_results, startTests seed)
