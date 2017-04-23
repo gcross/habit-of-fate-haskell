@@ -48,13 +48,13 @@ testWithAccount :
   String -> (Token -> Random.Seed -> Task Http.Error TestOutcome) -> Test
 testWithAccount name constructTestTask =
   Test name (\seed ->
-    let (username, seed2) = Random.step username_generator seed
+    let (username, next_seed) = Random.step username_generator seed
     in
       createAccount username username
-      |> Task.map (\result ->
+      |> andThen (\result ->
           case result of
-            AccountCreated _ -> TestPassed
-            AccountAlreadyExists -> TestFailed "Account already exists."
+            AccountCreated token -> constructTestTask token next_seed
+            AccountAlreadyExists -> succeed (TestFailed "Account already exists.")
          )
   )
 

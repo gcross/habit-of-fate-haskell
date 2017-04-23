@@ -139,10 +139,6 @@ habits_decoder =
   |> Decode.map EveryDict.fromList
 
 
-encodeUuid : Uuid -> Value
-encodeUuid = toString >> Encode.string
-
-
 encodeCredits : Credits -> Value
 encodeCredits credits =
   Encode.object
@@ -276,7 +272,7 @@ getCredits token =
     Http.request
       { method = "GET"
       , headers = [Http.header "Authorization" ("Bearer " ++ token)]
-      , url = "/credits"
+      , url = "/api/credits"
       , body = Http.emptyBody
       , expect = Http.expectJson credit_decoder
       , timeout = Nothing
@@ -289,6 +285,10 @@ getCredits token =
 --------------------------------- Mark Habits ----------------------------------
 
 type alias Marks = { successes: List Uuid, failures: List Uuid }
+
+
+encodeUuid : Uuid -> Value
+encodeUuid = Uuid.toString >> Encode.string
 
 
 encodeMarks : Marks -> Value
@@ -305,7 +305,7 @@ markHabits token marks =
     Http.request
       { method = "POST"
       , headers = [Http.header "Authorization" ("Bearer " ++ token)]
-      , url = "/mark"
+      , url = "/api/mark"
       , body = Http.jsonBody (encodeMarks marks)
       , expect = Http.expectJson credit_decoder
       , timeout = Nothing
