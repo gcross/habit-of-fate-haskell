@@ -7,7 +7,6 @@
 module HabitOfFate.Habit where
 
 import Control.Lens
-import Data.UUID
 
 import HabitOfFate.Credits
 import HabitOfFate.JSON ()

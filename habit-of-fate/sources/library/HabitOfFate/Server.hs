@@ -31,11 +31,6 @@ import Data.UUID
 import Data.Yaml hiding (Parser, (.=))
 import Network.HTTP.Types.Status
 import Network.Wai
-import Network.Wai.Handler.Warp hiding (run)
-import Network.Wai.Handler.WarpTLS
-import System.Directory
-import System.FilePath
-import System.Random
 import Web.JWT hiding (decode, header)
 import Web.Scotty
   ( ActionM
