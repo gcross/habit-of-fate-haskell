@@ -22,7 +22,7 @@ import Api exposing (..)
 
 
 --------------------------------------------------------------------------------
-------------------------------------- API --------------------------------------
+------------------------------------ Tests -------------------------------------
 --------------------------------------------------------------------------------
 
 
@@ -33,18 +33,6 @@ username_generator =
 
 type TestOutcome = TestPassed | TestFailed String
 type TestResult = TestResult String TestOutcome
-
-type alias Model = List TestResult
-type Msg = Seed Random.Seed | NewTestResult TestResult
-
-
-seed_generator : Generator Random.Seed
-seed_generator =
-  Random.int Random.minInt Random.maxInt |> Random.map Random.initialSeed
-
-
-init : ( Model, Cmd Msg )
-init = ( [], seed_generator |> Random.generate Seed )
 
 
 type Test = Test String (Random.Seed -> Task Http.Error TestOutcome)
@@ -218,6 +206,24 @@ tests =
                           )
       )))))
   ]
+
+
+--------------------------------------------------------------------------------
+----------------------------------- Program ------------------------------------
+--------------------------------------------------------------------------------
+
+
+type alias Model = List TestResult
+type Msg = Seed Random.Seed | NewTestResult TestResult
+
+
+seed_generator : Generator Random.Seed
+seed_generator =
+  Random.int Random.minInt Random.maxInt |> Random.map Random.initialSeed
+
+
+init : ( Model, Cmd Msg )
+init = ( [], seed_generator |> Random.generate Seed )
 
 
 startTests : Random.Seed -> Cmd Msg
