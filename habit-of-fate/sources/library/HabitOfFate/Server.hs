@@ -20,6 +20,7 @@ module HabitOfFate.Server (FileLocator, makeApp) where
 
 import HabitOfFate.Prelude hiding (log)
 
+import Data.Aeson hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
@@ -78,11 +79,11 @@ getBody = singletonCommon GetBodyInstruction
 getBodyJSON ∷ (FromJSON α, ActionMonad m) ⇒ m α
 getBodyJSON = do
   body ← getBody
-  case decode ∘ view strict $ body of
-    Nothing → do
-      log [i|Error parsing JSON:\n#{decodeUtf8 body}|]
+  case eitherDecode' $ body of
+    Left message → do
+      log [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body}|]
       raiseStatus 400 "Bad request: Invalid JSON"
-    Just json → pure json
+    Right json → pure json
 
 getParams ∷ ActionMonad m ⇒ m [Param]
 getParams = singletonCommon GetParamsInstruction
