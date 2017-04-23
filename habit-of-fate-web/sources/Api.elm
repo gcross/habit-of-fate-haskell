@@ -139,6 +139,9 @@ habits_decoder =
   |> Decode.map EveryDict.fromList
 
 
+encodeUuid : Uuid -> Value
+encodeUuid = toString >> Encode.string
+
 
 encodeCredits : Credits -> Value
 encodeCredits credits =
@@ -257,3 +260,56 @@ deleteHabit token uuid =
   )
   |> Http.toTask
   |> handleErrorStatusCode 404 NoHabitToDelete
+
+
+--------------------------------------------------------------------------------
+--------------------------------- Game-related ---------------------------------
+--------------------------------------------------------------------------------
+
+
+--------------------------------- Get Credits ----------------------------------
+
+
+getCredits : Token -> Task Http.Error Credits
+getCredits token =
+  (
+    Http.request
+      { method = "GET"
+      , headers = [Http.header "Authorization" ("Bearer " ++ token)]
+      , url = "/credits"
+      , body = Http.emptyBody
+      , expect = Http.expectJson credit_decoder
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask
+
+
+--------------------------------- Mark Habits ----------------------------------
+
+type alias Marks = { successes: List Uuid, failures: List Uuid }
+
+
+encodeMarks : Marks -> Value
+encodeMarks marks =
+  Encode.object
+  [ ("successes", marks.successes |> List.map encodeUuid |> Encode.list)
+  , ("failures", marks.failures |> List.map encodeUuid |> Encode.list)
+  ]
+
+
+markHabits : Token -> Marks -> Task Http.Error Credits
+markHabits token marks =
+  (
+    Http.request
+      { method = "POST"
+      , headers = [Http.header "Authorization" ("Bearer " ++ token)]
+      , url = "/mark"
+      , body = Http.jsonBody (encodeMarks marks)
+      , expect = Http.expectJson credit_decoder
+      , timeout = Nothing
+      , withCredentials = False
+      }
+  )
+  |> Http.toTask

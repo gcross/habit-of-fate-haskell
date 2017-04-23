@@ -52,6 +52,9 @@ type Test = Test String (Random.Seed -> Task Http.Error TestOutcome)
 test_habit : Habit
 test_habit = { name = "name", credits = { success = 1, failure = 0 } }
 
+test_habit_2 : Habit
+test_habit_2 = { name = "name", credits = { success = 0, failure = 1 } }
+
 
 testWithAccount :
   String -> (Token -> Random.Seed -> Task Http.Error TestOutcome) -> Test
@@ -186,6 +189,33 @@ tests =
           Nothing -> TestPassed
           Just _ -> TestFailed "The habit was found after being deleted."
       ))))
+  , testWithAccount "Getting credits after account creation gets zeros." (\token _ ->
+      getCredits token |> Task.map (\credits ->
+        if credits.success == 0 && credits.failure == 0
+          then TestPassed
+          else TestFailed ("Non-zero credits: " ++ toString credits)
+      ))
+  , testWithAccount "Marking habits changes the credits correctly." (\token seed_1 ->
+    let (habit_id_1, seed_2) = Random.step Uuid.uuidGenerator seed_1
+        (habit_id_2, _) = Random.step Uuid.uuidGenerator seed_2
+    in
+      putHabit token habit_id_1 test_habit |> andThen (\_ ->
+      putHabit token habit_id_2 test_habit_2 |> andThen (\_ ->
+      markHabits token
+        { successes = [habit_id_1]
+        , failures = [habit_id_2]
+        } |> andThen (\_ ->
+      getCredits token |> Task.map (\credits ->
+        let expected_credits =
+             { success = test_habit.credits.success + test_habit_2.credits.success
+             , failure = test_habit.credits.failure + test_habit_2.credits.failure
+             }
+        in if credits == expected_credits
+          then TestPassed
+          else TestFailed ("Expected " ++ toString expected_credits ++
+                           " but saw " ++ toString credits
+                          )
+      )))))
   ]
 
 
