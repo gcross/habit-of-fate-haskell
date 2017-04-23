@@ -1,3 +1,4 @@
+import Array exposing (Array)
 import Char exposing (fromCode, toCode)
 import EveryDict
 import Html exposing
@@ -208,8 +209,8 @@ tests =
 --------------------------------------------------------------------------------
 
 
-type alias Model = List (String, TestOutcome)
-type Msg = Seed Random.Seed | NewTestResult String TestOutcome
+type alias Model = Array (Maybe TestOutcome)
+type Msg = Seed Random.Seed | NewTestOutcome Int TestOutcome
 
 
 seed_generator : Generator Random.Seed
@@ -218,55 +219,62 @@ seed_generator =
 
 
 init : ( Model, Cmd Msg )
-init = ( [], seed_generator |> Random.generate Seed )
+init = ( Array.repeat (List.length tests) Nothing, seed_generator |> Random.generate Seed )
 
 
 startTests : Random.Seed -> Cmd Msg
 startTests initial_seed =
   tests
   |> foldr
-      (\(name, makeTask) (seed, rest_cmds) ->
+      (\(name, makeTask) (index, seed, rest_cmds) ->
         let (test_seed, next_seed) = Random.step seed_generator seed
         in
-          ( next_seed
+          ( index + 1
+          , next_seed
           , (makeTask seed
              |> Task.attempt (\result ->
                  case result of
                    Ok outcome -> outcome
                    Err error -> TestFailed ("Unexpected error: " ++ toString error)
                 )
-             |> Cmd.map (NewTestResult name)
+             |> Cmd.map (NewTestOutcome index)
             )::rest_cmds
           )
       )
-      (initial_seed, [])
-  |> Tuple.second
+      (0, initial_seed, [])
+  |> (\(_, _, cmds) -> cmds)
   |> Cmd.batch
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg old_results =
+update msg outcomes =
   case msg of
-    Seed seed -> (old_results, startTests seed)
-    NewTestResult name outcome -> ((name, outcome)::old_results, Cmd.none)
+    Seed seed -> (outcomes, startTests seed)
+    NewTestOutcome index outcome ->
+      ( Array.set index (Just outcome) outcomes
+      , Cmd.none
+      )
 
 
 view : Model -> Html Msg
-view results =
+view outcomes =
   div []
     [ div [ ] [Html.ul [] (
-        results
-        |> List.map (\(name, outcome) ->
+        List.map2 (,)
+          (tests |> List.map Tuple.first)
+          (outcomes |> Array.toList)
+        |> List.map (\(name, maybe_outcome) ->
             let (color, txt) =
-                  case outcome of
-                    TestPassed ->
+                  case maybe_outcome of
+                    Nothing ->
+                      ("black", "Test \"" ++ name ++ "\" is still running....")
+                    Just TestPassed ->
                       ("green", "Test \"" ++ name ++ "\" passed.")
-                    TestFailed reason ->
+                    Just (TestFailed reason) ->
                       ("red", "Test \"" ++ name ++ "\" failed: " ++ reason)
             in Html.li [style [("color", color)]] [text txt]
            )
         |> List.map (\result -> Html.li [] [result])
-        |> List.reverse
       )]
     ]
 
