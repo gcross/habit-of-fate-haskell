@@ -275,7 +275,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
                 GetParamsInstruction → interpret (rest params_)
                 RaiseStatusInstruction s → throwError s
                 LogInstruction message → do
-                  tell ∘ singleton $ [i|#{username} #{message}|]
+                  tell ∘ singleton $ [i|[#{username}]: #{message}|]
                   interpret (rest ())
               ReaderViewInstruction → interpret (rest account)
             (error_or_result, logs) = runWriter ∘ runExceptT ∘ interpret $ program
@@ -302,7 +302,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
                 GetParamsInstruction → interpret (rest params_)
                 RaiseStatusInstruction s → throwError s
                 LogInstruction message → do
-                  tell ∘ singleton $ [i|#{username} #{message}|]
+                  tell ∘ singleton $ [i|[#{username}]: #{message}|]
                   interpret (rest ())
               WriterGetAccountInstruction → get >>= interpret ∘ rest
               WriterPutAccountInstruction new_account → put new_account >> interpret (rest ())
