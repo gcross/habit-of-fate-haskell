@@ -33,6 +33,7 @@ import Data.UUID
 import Data.Yaml hiding (Parser, (.=))
 import Network.HTTP.Types.Status
 import Network.Wai
+import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import Web.JWT hiding (decode, header)
 import Web.Scotty
   ( ActionM
@@ -212,6 +213,7 @@ makeApp ∷
   (Map Text Account → IO ()) →
   IO Application
 makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
+  liftIO $ hSetBuffering stderr LineBuffering
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
     traverse newTVar initial_accounts >>= newTVar
   write_request ← newEmptyTMVarIO
