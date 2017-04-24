@@ -31,9 +31,15 @@ handleErrorStatusCode code value =
 type alias Token = String
 
 
-makeLoginUrl : String -> String -> String -> String
-makeLoginUrl =
-  print (string <> s "?username=" <> string <> s "&password=" <> string)
+type alias LoginInformation = { username: String, password: String }
+
+
+encodeLoginInformation : LoginInformation -> Value
+encodeLoginInformation login_information =
+  Encode.object
+  [ ("username", Encode.string login_information.username)
+  , ("password", Encode.string login_information.password)
+  ]
 
 
 -------------------------------- Create Account --------------------------------
@@ -42,14 +48,14 @@ makeLoginUrl =
 type CreateAccountResult = AccountAlreadyExists | AccountCreated Token
 
 
-createAccount : String -> String -> Task Http.Error CreateAccountResult
-createAccount username password =
+createAccount : LoginInformation -> Task Http.Error CreateAccountResult
+createAccount login_information =
   (
     Http.request
       { method = "POST"
       , headers = []
-      , url = makeLoginUrl "api/create" username password
-      , body = Http.emptyBody
+      , url = "api/create"
+      , body = Http.jsonBody (encodeLoginInformation login_information)
       , expect = Http.expectString
       , timeout = Nothing
       , withCredentials = False
@@ -66,14 +72,14 @@ createAccount username password =
 type LoginResult = NoSuchAccount | InvalidPassword | LoginSuccessful Token
 
 
-login : String -> String -> Task Http.Error LoginResult
-login username password =
+login : LoginInformation -> Task Http.Error LoginResult
+login login_information =
   (
     Http.request
       { method = "POST"
       , headers = []
-      , url = makeLoginUrl "api/login" username password
-      , body = Http.emptyBody
+      , url = "api/login"
+      , body = Http.jsonBody (encodeLoginInformation login_information)
       , expect = Http.expectString
       , timeout = Nothing
       , withCredentials = False

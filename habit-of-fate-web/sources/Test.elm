@@ -49,7 +49,7 @@ withAccount : (Token -> Random.Seed -> Task Http.Error TestOutcome) -> Test
 withAccount constructTestTask seed =
   let (username, next_seed) = Random.step username_generator seed
   in
-    createAccount username username
+    createAccountWherePasswordIsUsername username
     |> andThen (\result ->
         case result of
           AccountCreated token -> constructTestTask token next_seed
@@ -65,12 +65,22 @@ withAccountAndHabitId constructTestTask =
   )
 
 
+createAccountWherePasswordIsUsername : String -> Task Http.Error CreateAccountResult
+createAccountWherePasswordIsUsername username =
+  createAccount { username=username, password=username }
+
+
+loginWherePasswordIsUsername : String -> Task Http.Error LoginResult
+loginWherePasswordIsUsername username =
+  login { username=username, password=username }
+
+
 tests : List (String, Test)
 tests =
   [ ("Creating a new account succeeds.", \seed ->
       let (username, _) = Random.step username_generator seed
       in
-        createAccount username username |> Task.map (\result ->
+        createAccountWherePasswordIsUsername username |> Task.map (\result ->
           case result of
             AccountCreated _ -> TestPassed
             AccountAlreadyExists -> TestFailed "Account already existed."
@@ -79,7 +89,7 @@ tests =
   , ("Logging in to a missing account fails.", \seed ->
       let (username, _) = Random.step username_generator seed
       in
-        login username username |> Task.map (\result ->
+        loginWherePasswordIsUsername username |> Task.map (\result ->
           case result of
             NoSuchAccount -> TestPassed
             InvalidPassword -> TestFailed "Account existed."
@@ -89,8 +99,8 @@ tests =
   , ("Logging into an existing account but with the wrong password.", \seed ->
       let (username, _) = Random.step username_generator seed
       in
-        createAccount username username
-        |> andThen (\_ -> login username "wrong password")
+        createAccountWherePasswordIsUsername username
+        |> andThen (\_ -> login { username=username, password="wrong password" })
         |> Task.map (\result ->
             case result of
               InvalidPassword -> TestPassed
@@ -101,8 +111,8 @@ tests =
   , ("Logging into an existing account with the correct password.", \seed ->
       let (username, _) = Random.step username_generator seed
       in
-        createAccount username username
-        |> andThen (\_ -> login username username)
+        createAccountWherePasswordIsUsername username
+        |> andThen (\_ -> loginWherePasswordIsUsername username)
         |> Task.map (\result ->
             case result of
               LoginSuccessful _ -> TestPassed

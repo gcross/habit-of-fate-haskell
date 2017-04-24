@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLabels #-}
@@ -195,6 +196,15 @@ setStatusAndLog status_@(Status code message) = do
 
 type FileLocator = FilePath → IO (Maybe FilePath)
 
+bodyJSON ∷ FromJSON α ⇒ ActionM α
+bodyJSON = do
+  body_ ← body
+  case eitherDecode' body_ of
+    Left message → do
+      logIO [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body_}|]
+      finishWithStatusMessage 400 "Bad request: Invalid JSON"
+    Right value → pure value
+
 makeApp ∷
   FileLocator →
   Secret →
@@ -343,36 +353,34 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
       logIO $ [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next
     Scotty.post "/api/create" $ do
-      username ← param "username"
-      password ← param "password"
-      logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
+      LoginInformation{login_username,login_password} ← bodyJSON
+      logIO $ [i|Request to create an account for "#{login_username}" with password "#{login_password}"|]
       account_status ← liftIO $ do
-        new_account ← newAccount password
+        new_account ← newAccount login_password
         atomically $ do
           accounts ← readTVar accounts_tvar
-          if member username accounts
+          if member login_username accounts
             then return AccountExists
             else do
               account_tvar ← newTVar new_account
-              modifyTVar accounts_tvar $ insertMap username account_tvar
+              modifyTVar accounts_tvar $ insertMap login_username account_tvar
               return AccountCreated
       case account_status of
         AccountExists → do
-          logIO $ [i|Account "#{username}" already exists!|]
+          logIO $ [i|Account "#{login_username}" already exists!|]
           status conflict409
         AccountCreated → do
-          logIO $ [i|Account "#{username}" successfully created!|]
+          logIO $ [i|Account "#{login_username}" successfully created!|]
           status created201
           Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
             { iss = Just expected_iss
-            , sub = Just (fromJust $ stringOrURI username)
+            , sub = Just (fromJust $ stringOrURI login_username)
             }
     Scotty.post "/api/login" $ do
-      username ← param "username"
-      password ← param "password"
-      logIO $ [i|Request to log into an account with "#{username}" with password "#{password}"|]
+      LoginInformation{login_username,login_password} ← bodyJSON
+      logIO $ [i|Request to log into an account with "#{login_username}" with password "#{login_password}"|]
       (
-        (fmap (lookup username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
+        (fmap (lookup login_username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
         >>=
         maybe (finishWithStatusMessage 404 "Not Found: No such account") return
         >>=
@@ -380,11 +388,11 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
         >>=
         bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
         ∘
-        passwordIsValid password
+        passwordIsValid login_password
        )
       Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
         { iss = Just expected_iss
-        , sub = Just (fromJust $ stringOrURI username)
+        , sub = Just (fromJust $ stringOrURI login_username)
         }
     Scotty.get "/api/habits" ∘ reader $ do
       log "Requested all habits."

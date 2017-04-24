@@ -48,12 +48,14 @@ loginOrCreateAccount route username password secure_mode hostname port = do
             Testing → False
             Secure → True
         , port = port
+        , requestHeaders = [(hContentType, "application/json; charset=utf-8")]
+        , requestBody = RequestBodyLBS ∘ encode $ LoginInformation (pack username) (pack password)
         }
   response ←
     flip httpLbs manager
     $
     request_template_without_authorization
-      { path = encodeUtf8 ∘ pack $ [i|/api/#{route}?username=#{username}&password=#{password}|] }
+      { path = encodeUtf8 ∘ pack $ [i|/api/#{route}|] }
   let code = responseStatusCode response
   if code >= 200 && code <= 299
     then return ∘ Right $
