@@ -67,12 +67,12 @@ withAccountAndHabitId constructTestTask =
 
 createAccountWherePasswordIsUsername : String -> Task Http.Error CreateAccountResult
 createAccountWherePasswordIsUsername username =
-  createAccount { username=username, password=username }
+  createAccountTask { username=username, password=username }
 
 
 loginWherePasswordIsUsername : String -> Task Http.Error LoginResult
 loginWherePasswordIsUsername username =
-  login { username=username, password=username }
+  loginTask { username=username, password=username }
 
 
 tests : List (String, Test)
@@ -93,19 +93,19 @@ tests =
           case result of
             NoSuchAccount -> TestPassed
             InvalidPassword -> TestFailed "Account existed."
-            LoginSuccessful _ -> TestFailed "Login successful."
+            LoginSuccessful _ -> TestFailed "LoginTask successful."
         )
     )
   , ("Logging into an existing account but with the wrong password.", \seed ->
       let (username, _) = Random.step username_generator seed
       in
         createAccountWherePasswordIsUsername username
-        |> andThen (\_ -> login { username=username, password="wrong password" })
+        |> andThen (\_ -> loginTask { username=username, password="wrong password" })
         |> Task.map (\result ->
             case result of
               InvalidPassword -> TestPassed
               NoSuchAccount -> TestFailed "No such account."
-              LoginSuccessful _ -> TestFailed "Login successful."
+              LoginSuccessful _ -> TestFailed "LoginTask successful."
            )
     )
   , ("Logging into an existing account with the correct password.", \seed ->
@@ -121,28 +121,28 @@ tests =
            )
     )
   , ("Putting an new habit results in HabitCreated.", withAccountAndHabitId (\token habit_id ->
-      putHabit token habit_id test_habit |> Task.map (\result ->
+      putHabitTask token habit_id test_habit |> Task.map (\result ->
         case result of
           HabitCreated -> TestPassed
           HabitReplaced -> TestFailed "Got HabitReplaced"
       )
     ))
   , ("Putting an existing habit results in HabitReplaced.", withAccountAndHabitId (\token habit_id ->
-      putHabit token habit_id test_habit |> andThen (\_ ->
-      putHabit token habit_id test_habit |> Task.map (\result ->
+      putHabitTask token habit_id test_habit |> andThen (\_ ->
+      putHabitTask token habit_id test_habit |> Task.map (\result ->
         case result of
           HabitCreated -> TestFailed "Got HabitCreated"
           HabitReplaced -> TestPassed
     ))))
   , ("Getting a non-existent habit returns Nothing.", withAccountAndHabitId (\token habit_id ->
-      getHabit token habit_id |> Task.map (\result ->
+      getHabitTask token habit_id |> Task.map (\result ->
         case result of
           Nothing -> TestPassed
           Just habit -> TestFailed ("Unexpectedly received: " ++ toString habit)
     )))
   , ("Putting an existing habit results followed by getting it gets the right value.", withAccountAndHabitId (\token habit_id ->
-      putHabit token habit_id test_habit |> andThen (\_ ->
-      getHabit token habit_id |> Task.map (\result ->
+      putHabitTask token habit_id test_habit |> andThen (\_ ->
+      getHabitTask token habit_id |> Task.map (\result ->
         case result of
           Nothing -> TestFailed "Could not find the habit."
           Just habit ->
@@ -151,41 +151,41 @@ tests =
               else TestFailed ("Expected " ++ toString test_habit ++ " but got " ++ toString habit)
     ))))
   , ("Getting all habits when none exist returns the empty list.", withAccount (\token _ ->
-      getHabits token |> Task.map (\habits ->
+      getHabitsTask token |> Task.map (\habits ->
         if EveryDict.isEmpty habits
           then TestPassed
           else TestFailed ("Unexpectedly received habits: " ++ toString habits)
     )))
   , ("Putting a habit followed by getting all habits returns a singleton list with the habit.", withAccountAndHabitId (\token habit_id ->
-      putHabit token habit_id test_habit |> andThen (\_ ->
-      getHabits token |> Task.map (\habits ->
+      putHabitTask token habit_id test_habit |> andThen (\_ ->
+      getHabitsTask token |> Task.map (\habits ->
         if habits == EveryDict.singleton habit_id test_habit
           then TestPassed
           else TestFailed ("Expected " ++ toString [test_habit] ++ " but got " ++ toString habits)
     ))))
   , ("Deleting a non-existent habit returns NoHabitToDelete.", withAccountAndHabitId (\token habit_id ->
-      deleteHabit token habit_id |> Task.map (\result ->
+      deleteHabitTask token habit_id |> Task.map (\result ->
         case result of
           NoHabitToDelete -> TestPassed
           HabitDeleted -> TestFailed "Unexpected success."
     )))
   , ("Deleting an existing habit returns HabitDeleted.", withAccountAndHabitId (\token habit_id ->
-      putHabit token habit_id test_habit |> andThen (\_ ->
-      deleteHabit token habit_id |> Task.map (\result ->
+      putHabitTask token habit_id test_habit |> andThen (\_ ->
+      deleteHabitTask token habit_id |> Task.map (\result ->
         case result of
           HabitDeleted -> TestPassed
           NoHabitToDelete -> TestFailed "The habit was not found when being deleted."
     ))))
   , ("Deleting an existing habit causes it to no longer be found by getHabit.", withAccountAndHabitId (\token habit_id ->
-      putHabit token habit_id test_habit |> andThen (\_ ->
-      deleteHabit token habit_id |> andThen (\_ ->
-      getHabit token habit_id |> Task.map (\result ->
+      putHabitTask token habit_id test_habit |> andThen (\_ ->
+      deleteHabitTask token habit_id |> andThen (\_ ->
+      getHabitTask token habit_id |> Task.map (\result ->
         case result of
           Nothing -> TestPassed
           Just _ -> TestFailed "The habit was found after being deleted."
     )))))
   , ("Getting credits after account creation gets zeros.", withAccount (\token _ ->
-      getCredits token |> Task.map (\credits ->
+      getCreditsTask token |> Task.map (\credits ->
         if credits.success == 0 && credits.failure == 0
           then TestPassed
           else TestFailed ("Non-zero credits: " ++ toString credits)
@@ -194,13 +194,13 @@ tests =
     let (habit_id_1, seed_2) = Random.step Uuid.uuidGenerator seed_1
         (habit_id_2, _) = Random.step Uuid.uuidGenerator seed_2
     in
-      putHabit token habit_id_1 test_habit |> andThen (\_ ->
-      putHabit token habit_id_2 test_habit_2 |> andThen (\_ ->
-      markHabits token
+      putHabitTask token habit_id_1 test_habit |> andThen (\_ ->
+      putHabitTask token habit_id_2 test_habit_2 |> andThen (\_ ->
+      markHabitsTask token
         { successes = [habit_id_1]
         , failures = [habit_id_2]
         } |> andThen (\_ ->
-      getCredits token |> Task.map (\credits ->
+      getCreditsTask token |> Task.map (\credits ->
         let expected_credits =
              { success = test_habit.credits.success + test_habit_2.credits.success
              , failure = test_habit.credits.failure + test_habit_2.credits.failure

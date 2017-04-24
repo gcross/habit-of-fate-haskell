@@ -11,6 +11,18 @@ import Task exposing (Task, fail, succeed)
 import Uuid exposing (Uuid)
 
 
+type ApiResult result = UnexpectedError Http.Error | ExpectedResult result
+
+
+toCmd : Task Http.Error result -> Cmd (ApiResult result)
+toCmd =
+  Task.attempt (\result ->
+    case result of
+      Err error -> UnexpectedError error
+      Ok value -> ExpectedResult value
+  )
+
+
 handleErrorStatusCode : Int -> α -> Task Http.Error α -> Task Http.Error α
 handleErrorStatusCode code value =
   Task.onError (\error ->
@@ -48,8 +60,8 @@ encodeLoginInformation login_information =
 type CreateAccountResult = AccountAlreadyExists | AccountCreated Token
 
 
-createAccount : LoginInformation -> Task Http.Error CreateAccountResult
-createAccount login_information =
+createAccountTask : LoginInformation -> Task Http.Error CreateAccountResult
+createAccountTask login_information =
   (
     Http.request
       { method = "POST"
@@ -66,14 +78,18 @@ createAccount login_information =
   |> handleErrorStatusCode 409 AccountAlreadyExists
 
 
+createAccountCmd : LoginInformation -> Cmd (ApiResult CreateAccountResult)
+createAccountCmd = createAccountTask >> toCmd
+
+
 ------------------------------------ Login -------------------------------------
 
 
 type LoginResult = NoSuchAccount | InvalidPassword | LoginSuccessful Token
 
 
-login : LoginInformation -> Task Http.Error LoginResult
-login login_information =
+loginTask : LoginInformation -> Task Http.Error LoginResult
+loginTask login_information =
   (
     Http.request
       { method = "POST"
@@ -89,6 +105,10 @@ login login_information =
   |> Task.map LoginSuccessful
   |> handleErrorStatusCode 403 InvalidPassword
   |> handleErrorStatusCode 404 NoSuchAccount
+
+
+loginCmd : LoginInformation -> Cmd (ApiResult LoginResult)
+loginCmd = loginTask >> toCmd
 
 
 --------------------------------------------------------------------------------
@@ -167,8 +187,8 @@ encodeHabit habit =
 type PutHabitResult = HabitCreated | HabitReplaced
 
 
-putHabit : Token -> Uuid -> Habit -> Task Http.Error PutHabitResult
-putHabit token uuid habit =
+putHabitTask : Token -> Uuid -> Habit -> Task Http.Error PutHabitResult
+putHabitTask token uuid habit =
   (
     Http.request
       { method = "PUT"
@@ -189,11 +209,15 @@ putHabit token uuid habit =
   |> Http.toTask
 
 
+putHabitCmd : Token -> Uuid -> Habit -> Cmd (ApiResult PutHabitResult)
+putHabitCmd token uuid habit = putHabitTask token uuid habit |> toCmd
+
+
 ---------------------------------- Get Habit -----------------------------------
 
 
-getHabit : Token -> Uuid -> Task Http.Error (Maybe Habit)
-getHabit token uuid =
+getHabitTask : Token -> Uuid -> Task Http.Error (Maybe Habit)
+getHabitTask token uuid =
   (
     Http.request
       { method = "GET"
@@ -217,11 +241,16 @@ getHabit token uuid =
   |> handleErrorStatusCode 404 Nothing
 
 
+
+getHabitCmd : Token -> Uuid -> Cmd (ApiResult (Maybe Habit))
+getHabitCmd token uuid = getHabitTask token uuid |> toCmd
+
+
 ---------------------------------- Get Habits ----------------------------------
 
 
-getHabits : Token -> Task Http.Error (EveryDict Uuid Habit)
-getHabits token =
+getHabitsTask : Token -> Task Http.Error (EveryDict Uuid Habit)
+getHabitsTask token =
   (
     Http.request
       { method = "GET"
@@ -236,14 +265,18 @@ getHabits token =
   |> Http.toTask
 
 
+getHabitsCmd : Token -> Cmd (ApiResult (EveryDict Uuid Habit))
+getHabitsCmd = getHabitsTask >> toCmd
+
+
 --------------------------------- Delete Habit ---------------------------------
 
 
 type DeleteHabitResult = HabitDeleted | NoHabitToDelete
 
 
-deleteHabit : Token -> Uuid -> Task Http.Error DeleteHabitResult
-deleteHabit token uuid =
+deleteHabitTask : Token -> Uuid -> Task Http.Error DeleteHabitResult
+deleteHabitTask token uuid =
   (
     Http.request
       { method = "DELETE"
@@ -264,6 +297,10 @@ deleteHabit token uuid =
   |> handleErrorStatusCode 404 NoHabitToDelete
 
 
+deleteHabitCmd : Token -> Uuid -> Cmd (ApiResult DeleteHabitResult)
+deleteHabitCmd token uuid = deleteHabitTask token uuid |> toCmd
+
+
 --------------------------------------------------------------------------------
 --------------------------------- Game-related ---------------------------------
 --------------------------------------------------------------------------------
@@ -272,8 +309,8 @@ deleteHabit token uuid =
 --------------------------------- Get Credits ----------------------------------
 
 
-getCredits : Token -> Task Http.Error Credits
-getCredits token =
+getCreditsTask : Token -> Task Http.Error Credits
+getCreditsTask token =
   (
     Http.request
       { method = "GET"
@@ -286,6 +323,10 @@ getCredits token =
       }
   )
   |> Http.toTask
+
+
+getCreditsCmd : Token -> Cmd (ApiResult Credits)
+getCreditsCmd = getCreditsTask >> toCmd
 
 
 --------------------------------- Mark Habits ----------------------------------
@@ -305,8 +346,8 @@ encodeMarks marks =
   ]
 
 
-markHabits : Token -> Marks -> Task Http.Error Credits
-markHabits token marks =
+markHabitsTask : Token -> Marks -> Task Http.Error Credits
+markHabitsTask token marks =
   (
     Http.request
       { method = "POST"
@@ -319,3 +360,7 @@ markHabits token marks =
       }
   )
   |> Http.toTask
+
+
+markHabitsCmd : Token -> Marks -> Cmd (ApiResult Credits)
+markHabitsCmd token marks = markHabitsTask token marks |> toCmd
