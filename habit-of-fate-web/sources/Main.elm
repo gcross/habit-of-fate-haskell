@@ -11,9 +11,9 @@ type alias Model =
   , status: Maybe (Result String Token)
   }
 type Msg =
-    CreateAccountUsername String
-  | CreateAccountPassword String
-  | CreateAccountLogin
+    Username String
+  | Password String
+  | CreateAccountRequest
   | CreateAccountResponse (ApiResult CreateAccountResult)
 
 
@@ -34,15 +34,15 @@ init =
 update : Msg -> Model -> (Model, Cmd Msg)
 update result model =
   case result of
-    CreateAccountUsername username ->
+    Username username ->
       ( modifyLoginInformation (\login -> { login | username=username }) model
       , Cmd.none
       )
-    CreateAccountPassword password ->
+    Password password ->
       ( modifyLoginInformation (\login -> { login | password=password }) model
       , Cmd.none
       )
-    CreateAccountLogin ->
+    CreateAccountRequest ->
       ( model
       , Cmd.map CreateAccountResponse (createAccountCmd model.login_information)
       )
@@ -61,14 +61,14 @@ view model =
     [ table []
         [ tr []
             [ td [] [text "Username:"]
-            , td [] [input [type_ "text", onInput CreateAccountUsername] []]
+            , td [] [input [type_ "text", onInput Username] []]
             ]
         , tr []
             [ td [] [text "Password:"]
-            , td [] [input [type_ "password", onInput CreateAccountPassword] []]
+            , td [] [input [type_ "password", onInput Password] []]
             ]
         , tr []
-            [ td [] [button [onClick CreateAccountLogin] [text "Create account"]] ]
+            [ td [] [button [onClick CreateAccountRequest] [text "Create account"]] ]
         ]
     , div []
         (case model.status of
