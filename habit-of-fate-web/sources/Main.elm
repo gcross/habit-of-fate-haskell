@@ -15,6 +15,8 @@ type Msg =
   | Password String
   | CreateAccountRequest
   | CreateAccountResponse (ApiResult CreateAccountResult)
+  | LoginRequest
+  | LoginResponse (ApiResult LoginResult)
 
 
 modifyLoginInformation : (LoginInformation -> LoginInformation) -> Model -> Model
@@ -53,6 +55,18 @@ update result model =
               ExpectedResult AccountAlreadyExists -> Just (Err "Account already exists!")
               UnexpectedError error -> Just (Err (toString error))
       in ({ model | status=new_status }, Cmd.none)
+    LoginRequest ->
+      ( model
+      , Cmd.map LoginResponse (loginCmd model.login_information)
+      )
+    LoginResponse response ->
+      let new_status =
+            case response of
+              ExpectedResult (LoginSuccessful token) -> Just (Ok token)
+              ExpectedResult NoSuchAccount -> Just (Err "No such account.")
+              ExpectedResult InvalidPassword -> Just (Err "Invalid password.")
+              UnexpectedError error -> Just (Err (toString error))
+      in ({ model | status=new_status }, Cmd.none)
 
 
 view : Model -> Html Msg
@@ -67,8 +81,10 @@ view model =
             [ td [] [text "Password:"]
             , td [] [input [type_ "password", onInput Password] []]
             ]
-        , tr []
-            [ td [] [button [onClick CreateAccountRequest] [text "Create account"]] ]
+        ]
+    , div []
+        [ button [onClick CreateAccountRequest] [text "Create account"]
+        , button [onClick LoginRequest] [text "Login"]
         ]
     , div []
         (case model.status of
