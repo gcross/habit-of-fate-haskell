@@ -118,7 +118,7 @@ loginCmd = loginTask >> toCmd
 
 type alias Credits = { success: Float, failure: Float }
 type alias Habit = { name: String, credits: Credits }
-
+type alias Habits = EveryDict Uuid Habit
 
 makeHabitUrl : Uuid -> String
 makeHabitUrl = Uuid.toString >> print (s "/api/habits/" <> string)
@@ -150,7 +150,7 @@ habit_decoder =
     (Decode.field "credits" credit_decoder)
 
 
-habits_decoder : Decoder (EveryDict Uuid Habit)
+habits_decoder : Decoder Habits
 habits_decoder =
   Decode.keyValuePairs habit_decoder
   |> Decode.andThen (
@@ -249,7 +249,7 @@ getHabitCmd token uuid = getHabitTask token uuid |> toCmd
 ---------------------------------- Get Habits ----------------------------------
 
 
-getHabitsTask : Token -> Task Http.Error (EveryDict Uuid Habit)
+getHabitsTask : Token -> Task Http.Error Habits
 getHabitsTask token =
   (
     Http.request
@@ -265,7 +265,7 @@ getHabitsTask token =
   |> Http.toTask
 
 
-getHabitsCmd : Token -> Cmd (ApiResult (EveryDict Uuid Habit))
+getHabitsCmd : Token -> Cmd (ApiResult Habits)
 getHabitsCmd = getHabitsTask >> toCmd
 
 
