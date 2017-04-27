@@ -204,6 +204,118 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
+authorizeFor ∷ Secret → TVar (Map Text (TVar Account)) → StringOrURI → ActionM (String, TVar Account)
+authorizeFor password_secret accounts_tvar expected_iss =
+  Scotty.header "Authorization"
+  >>=
+  maybe
+    (finishWithStatusMessage 403 "Forbidden: No authorization token.")
+    return
+  >>=
+  \case
+    (words → ["Bearer", token]) → return token
+    header →
+      finishWithStatusMessage
+        403
+        [i|Forbidden: Unrecognized authorization header: #{header}|]
+  >>=
+  maybe
+    (finishWithStatusMessage 403 "Forbidden: Unable to verify key")
+    return
+  ∘
+  decodeAndVerifySignature password_secret
+  ∘
+  view strict
+  >>=
+  (\case
+    (claims → JWTClaimsSet { iss = Just observed_iss, sub = Just username })
+      | observed_iss == expected_iss →
+          ((fmap ∘ lookup ∘ pack ∘ show $ username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
+          >>=
+          maybe
+            (finishWithStatusMessage 404 "Not Found: No such account")
+            (pure ∘ (show username,))
+    _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
+  )
+
+readerForAuthorize ∷ ActionM (String, TVar Account) → ReaderProgram ProgramResult → ActionM ()
+readerForAuthorize authorize (ReaderProgram program) = do
+  (username, account_tvar) ← authorize
+  params_ ← params
+  body_ ← body
+  account ← liftIO ∘ readTVarIO $ account_tvar
+  let interpret ∷
+        Program ReaderInstruction α →
+        ExceptT Status (Writer (Seq String)) α
+      interpret (Operational.view → Return result) = pure result
+      interpret (Operational.view → instruction :>>= rest) = case instruction of
+        ReaderCommonInstruction common_instruction → case common_instruction of
+          GetBodyInstruction → interpret (rest body_)
+          GetParamsInstruction → interpret (rest params_)
+          RaiseStatusInstruction s → throwError s
+          LogInstruction message → do
+            tell ∘ singleton $ [i|[#{username}]: #{message}|]
+            interpret (rest ())
+        ReaderViewInstruction → interpret (rest account)
+      (error_or_result, logs) = runWriter ∘ runExceptT ∘ interpret $ program
+  traverse_ logIO logs
+  case error_or_result of
+    Left status_ →
+      setStatusAndLog status_
+    Right (ProgramResult status_ content) → do
+      setStatusAndLog status_
+      setContent content
+
+writerForAuthorize ∷ ActionM (String, TVar Account) → WriterProgram ProgramResult → ActionM ()
+writerForAuthorize authorize (WriterProgram program) = do
+  (username, account_tvar) ← authorize
+  params_ ← params
+  body_ ← body
+  let interpret ∷
+        Program WriterInstruction α →
+        StateT Account (ExceptT Status (Writer (Seq String))) α
+      interpret (Operational.view → Return result) = pure result
+      interpret (Operational.view → instruction :>>= rest) = case instruction of
+        WriterCommonInstruction common_instruction → case common_instruction of
+          GetBodyInstruction → interpret (rest body_)
+          GetParamsInstruction → interpret (rest params_)
+          RaiseStatusInstruction s → throwError s
+          LogInstruction message → do
+            tell ∘ singleton $ [i|[#{username}]: #{message}|]
+            interpret (rest ())
+        WriterGetAccountInstruction → get >>= interpret ∘ rest
+        WriterPutAccountInstruction new_account → put new_account >> interpret (rest ())
+  (status_, maybe_content, logs) ← liftIO ∘ atomically $ do
+    old_account ← readTVar account_tvar
+    let (error_or_result, logs) =
+          runWriter
+          ∘
+          runExceptT
+          ∘
+          flip runStateT old_account
+          $
+          interpret program
+    case error_or_result of
+      Left status_ → pure (status_, Nothing, logs)
+      Right (ProgramResult status_ content, new_account) → do
+        writeTVar account_tvar new_account
+        pure (status_, Just content, logs)
+  traverse_ logIO logs
+  setStatusAndLog status_
+  maybe (pure ()) setContent maybe_content
+
+withHabit habit_id f = do
+  use habits
+  >>=
+  maybe raiseNoSuchHabit ((habits . at habit_id .=) ∘ f)
+  ∘
+  lookup habit_id
+
+lookupHabit habit_id = do
+  use (habits . at habit_id)
+  >>=
+  maybe raiseNoSuchHabit return
+
 makeApp ∷
   Secret →
   Map Text Account →
@@ -223,118 +335,9 @@ makeApp password_secret initial_accounts saveAccounts = do
     saveAccounts
   logIO $ "Starting server..."
   let expected_iss = fromJust $ stringOrURI "habit-of-fate"
-
-      authorize ∷ ActionM (String, TVar Account)
-      authorize =
-        Scotty.header "Authorization"
-        >>=
-        maybe
-          (finishWithStatusMessage 403 "Forbidden: No authorization token.")
-          return
-        >>=
-        \case
-          (words → ["Bearer", token]) → return token
-          header →
-            finishWithStatusMessage
-              403
-              [i|Forbidden: Unrecognized authorization header: #{header}|]
-        >>=
-        maybe
-          (finishWithStatusMessage 403 "Forbidden: Unable to verify key")
-          return
-        ∘
-        decodeAndVerifySignature password_secret
-        ∘
-        view strict
-        >>=
-        (\case
-          (claims → JWTClaimsSet { iss = Just observed_iss, sub = Just username })
-            | observed_iss == expected_iss →
-                ((fmap ∘ lookup ∘ pack ∘ show $ username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
-                >>=
-                maybe
-                  (finishWithStatusMessage 404 "Not Found: No such account")
-                  (pure ∘ (show username,))
-          _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
-        )
-
-      reader ∷ ReaderProgram ProgramResult → ActionM ()
-      reader (ReaderProgram program) = do
-        (username, account_tvar) ← authorize
-        params_ ← params
-        body_ ← body
-        account ← liftIO ∘ readTVarIO $ account_tvar
-        let interpret ∷
-              Program ReaderInstruction α →
-              ExceptT Status (Writer (Seq String)) α
-            interpret (Operational.view → Return result) = pure result
-            interpret (Operational.view → instruction :>>= rest) = case instruction of
-              ReaderCommonInstruction common_instruction → case common_instruction of
-                GetBodyInstruction → interpret (rest body_)
-                GetParamsInstruction → interpret (rest params_)
-                RaiseStatusInstruction s → throwError s
-                LogInstruction message → do
-                  tell ∘ singleton $ [i|[#{username}]: #{message}|]
-                  interpret (rest ())
-              ReaderViewInstruction → interpret (rest account)
-            (error_or_result, logs) = runWriter ∘ runExceptT ∘ interpret $ program
-        traverse_ logIO logs
-        case error_or_result of
-          Left status_ →
-            setStatusAndLog status_
-          Right (ProgramResult status_ content) → do
-            setStatusAndLog status_
-            setContent content
-
-      writer ∷ WriterProgram ProgramResult → ActionM ()
-      writer (WriterProgram program) = do
-        (username, account_tvar) ← authorize
-        params_ ← params
-        body_ ← body
-        let interpret ∷
-              Program WriterInstruction α →
-              StateT Account (ExceptT Status (Writer (Seq String))) α
-            interpret (Operational.view → Return result) = pure result
-            interpret (Operational.view → instruction :>>= rest) = case instruction of
-              WriterCommonInstruction common_instruction → case common_instruction of
-                GetBodyInstruction → interpret (rest body_)
-                GetParamsInstruction → interpret (rest params_)
-                RaiseStatusInstruction s → throwError s
-                LogInstruction message → do
-                  tell ∘ singleton $ [i|[#{username}]: #{message}|]
-                  interpret (rest ())
-              WriterGetAccountInstruction → get >>= interpret ∘ rest
-              WriterPutAccountInstruction new_account → put new_account >> interpret (rest ())
-        (status_, maybe_content, logs) ← liftIO ∘ atomically $ do
-          old_account ← readTVar account_tvar
-          let (error_or_result, logs) =
-                runWriter
-                ∘
-                runExceptT
-                ∘
-                flip runStateT old_account
-                $
-                interpret program
-          case error_or_result of
-            Left status_ → pure (status_, Nothing, logs)
-            Right (ProgramResult status_ content, new_account) → do
-              writeTVar account_tvar new_account
-              pure (status_, Just content, logs)
-        traverse_ logIO logs
-        setStatusAndLog status_
-        maybe (pure ()) setContent maybe_content
-
-      withHabit habit_id f = do
-        use habits
-        >>=
-        maybe raiseNoSuchHabit ((habits . at habit_id .=) ∘ f)
-        ∘
-        lookup habit_id
-      lookupHabit habit_id = do
-        use (habits . at habit_id)
-        >>=
-        maybe raiseNoSuchHabit return
-
+      authorize = authorizeFor password_secret accounts_tvar expected_iss
+      reader = readerForAuthorize authorize
+      writer = writerForAuthorize authorize
   scottyApp $ do
     Scotty.notFound $ do
       r ← Scotty.request

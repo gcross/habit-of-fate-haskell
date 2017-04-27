@@ -122,6 +122,7 @@ import Control.Monad.Reader
   hiding
     ( fail
     , filterM
+    , reader
     , replicateM
     )
 
@@ -137,6 +138,7 @@ import Control.Monad.Writer.Strict
     ( fail
     , filterM
     , replicateM
+    , writer
     )
 
 import Data.Bool
