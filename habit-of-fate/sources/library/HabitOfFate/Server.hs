@@ -204,8 +204,14 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
-authorizeFor ∷ Secret → TVar (Map Text (TVar Account)) → StringOrURI → ActionM (String, TVar Account)
-authorizeFor password_secret accounts_tvar expected_iss =
+data Environment = Environment
+  { accounts_tvar ∷ TVar (Map Text (TVar Account))
+  , password_secret ∷ Secret
+  , expected_iss ∷ StringOrURI
+  }
+
+authorizeWith ∷ Environment → ActionM (String, TVar Account)
+authorizeWith Environment{..} =
   Scotty.header "Authorization"
   >>=
   maybe
@@ -238,9 +244,9 @@ authorizeFor password_secret accounts_tvar expected_iss =
     _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
   )
 
-readerForAuthorize ∷ ActionM (String, TVar Account) → ReaderProgram ProgramResult → ActionM ()
-readerForAuthorize authorize (ReaderProgram program) = do
-  (username, account_tvar) ← authorize
+readerWith ∷ Environment → ReaderProgram ProgramResult → ActionM ()
+readerWith environment (ReaderProgram program) = do
+  (username, account_tvar) ← authorizeWith environment
   params_ ← params
   body_ ← body
   account ← liftIO ∘ readTVarIO $ account_tvar
@@ -266,9 +272,9 @@ readerForAuthorize authorize (ReaderProgram program) = do
       setStatusAndLog status_
       setContent content
 
-writerForAuthorize ∷ ActionM (String, TVar Account) → WriterProgram ProgramResult → ActionM ()
-writerForAuthorize authorize (WriterProgram program) = do
-  (username, account_tvar) ← authorize
+writerWith ∷ Environment → WriterProgram ProgramResult → ActionM ()
+writerWith environment (WriterProgram program) = do
+  (username, account_tvar) ← authorizeWith environment
   params_ ← params
   body_ ← body
   let interpret ∷
@@ -335,9 +341,9 @@ makeApp password_secret initial_accounts saveAccounts = do
     saveAccounts
   logIO $ "Starting server..."
   let expected_iss = fromJust $ stringOrURI "habit-of-fate"
-      authorize = authorizeFor password_secret accounts_tvar expected_iss
-      reader = readerForAuthorize authorize
-      writer = writerForAuthorize authorize
+      environment = Environment{..}
+      reader = readerWith environment
+      writer = writerWith environment
   scottyApp $ do
     Scotty.notFound $ do
       r ← Scotty.request
