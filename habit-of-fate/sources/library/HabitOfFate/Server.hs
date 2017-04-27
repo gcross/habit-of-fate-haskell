@@ -17,7 +17,7 @@
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module HabitOfFate.Server (FileLocator, makeApp) where
+module HabitOfFate.Server (makeApp) where
 
 import HabitOfFate.Prelude hiding (log)
 
@@ -195,8 +195,6 @@ setStatusAndLog status_@(Status code message) = do
         | otherwise = "succeeded"
   logIO $ [i|Request #{result} - #{code} #{unpack ∘ decodeUtf8 $ message}|]
 
-type FileLocator = FilePath → IO (Maybe FilePath)
-
 bodyJSON ∷ FromJSON α ⇒ ActionM α
 bodyJSON = do
   body_ ← body
@@ -207,12 +205,11 @@ bodyJSON = do
     Right value → pure value
 
 makeApp ∷
-  FileLocator →
   Secret →
   Map Text Account →
   (Map Text Account → IO ()) →
   IO Application
-makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
+makeApp password_secret initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
     traverse newTVar initial_accounts >>= newTVar
@@ -338,17 +335,6 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
         >>=
         maybe raiseNoSuchHabit return
 
-      getContent filename =
-        (liftIO $ locateWebAppFile filename)
-        >>=
-        \case
-          Nothing → do
-            logIO "File not found."
-            setStatusAndLog notFound404
-          Just filepath → do
-            logIO [i|File found at "#{filepath}".|]
-            Scotty.file filepath
-
   scottyApp $ do
     Scotty.notFound $ do
       r ← Scotty.request
@@ -471,13 +457,6 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
         $
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
-    Scotty.get "/" $ do
-      logIO "Requested root"
-      getContent "index.html"
-    Scotty.get "/:filename" $ do
-      filename ← param "filename"
-      logIO [i|Requested "#{filename}"|]
-      getContent filename
     Scotty.notFound $ do
       r ← Scotty.request
       logIO $ [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]

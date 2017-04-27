@@ -36,29 +36,20 @@ import HabitOfFate.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
 
-no_files ∷ FileLocator
-no_files = const $ pure Nothing
-
-withTestApp ∷ FileLocator → (Int → IO ()) → IO ()
-withTestApp locateWebAppFile =
+withTestApp ∷ (Int → IO ()) → IO ()
+withTestApp =
   withApplication
-    (makeApp locateWebAppFile (secret "test secret") mempty (const $ pure ()))
+    (makeApp (secret "test secret") mempty (const $ pure ()))
 
-withTestAppNoFiles ∷ (Int → IO ()) → IO ()
-withTestAppNoFiles = withTestApp $ no_files
-
-serverTestCase ∷ String → FileLocator → (Int → IO ()) → TestTree
-serverTestCase test_name locateWebAppFile =
+serverTestCase ∷ String → (Int → IO ()) → TestTree
+serverTestCase test_name =
   testCase test_name
   ∘
-  withTestAppNoFiles
-
-serverTestCaseNoFiles ∷ String → (Int → IO ()) → TestTree
-serverTestCaseNoFiles test_name = serverTestCase test_name no_files
+  withTestApp
 
 apiTestCase ∷ String → (Client ()) → TestTree
 apiTestCase test_name action =
-  serverTestCaseNoFiles test_name
+  serverTestCase test_name
   $
   createAccount "bitslayer" "password" Testing "localhost"
   >=>
@@ -105,7 +96,7 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Server"
     [ testGroup "Missing username/password" $
         let testMissing test_name path =
-              serverTestCaseNoFiles test_name $ \port → do
+              serverTestCase test_name $ \port → do
                 manager ← newManager defaultManagerSettings
                 response ← flip httpNoBody manager $ defaultRequest
                   { method = renderStdMethod POST
@@ -123,39 +114,6 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
             [ testMissing "Missing username" "login?password=foobar"
             , testMissing "Missing password" "login?username=foobar"
             ]
-        ]
-    , testGroup "Files"
-        [ serverTestCaseNoFiles "Missing root" $ \port → do
-            manager ← newManager defaultManagerSettings
-            response ← flip httpNoBody manager $ defaultRequest
-              { method = renderStdMethod GET
-              , host = "localhost"
-              , port = port
-              , path = "/"
-              }
-            404 @=? responseStatusCode response
-        , testGroup "Existing file" $
-            flip map
-              [ ("/","index.html")
-              , ("/index.html","index.html")
-              , ("/habit-of-fate.js","habit-of-fate.js")
-              ]
-            $
-            \(request_path, recognized_filename) → do
-              testCase [i|#{request_path} -> #{recognized_filename}|] $
-                withSystemTempFile "hoftest" $ \temp_filepath handle → do
-                  hPutStr handle "testdata"
-                  hFlush handle
-                  withTestApp (pure ∘ flip lookup [(recognized_filename, temp_filepath)]) $ \port → do
-                    manager ← newManager defaultManagerSettings
-                    response ← flip httpLbs manager $ defaultRequest
-                      { method = renderStdMethod GET
-                      , host = "localhost"
-                      , port = port
-                      , path = request_path
-                      }
-                    200 @=? responseStatusCode response
-                    "testdata" @=? responseBody response
         ]
     , apiTestCase "fetching all habits from a new account returns an empty array" $
         getHabits
