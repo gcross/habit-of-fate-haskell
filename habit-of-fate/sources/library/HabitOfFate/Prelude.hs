@@ -54,6 +54,7 @@ module HabitOfFate.Prelude
   , l_
   , rewords
   , showText
+  , spy
   , swap
   ) where
 
@@ -273,6 +274,9 @@ rewords = unwords ∘ words
 
 showText ∷ Show α ⇒ α → Text
 showText = view packed ∘ show
+
+spy ∷ Show α ⇒ String → α → α
+spy label value = trace (label ⊕ ": " ⊕ show value) value
 
 swap ∷ (α,β) → (β,α)
 swap (x,y) = (y,x)
