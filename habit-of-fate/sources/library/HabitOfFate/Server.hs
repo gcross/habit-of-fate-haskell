@@ -178,6 +178,11 @@ returnText s = returnLazyText s ∘ view (from strict)
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = return ∘ ProgramResult s ∘ JSONContent
 
+logRequest ∷ ActionM ()
+logRequest = do
+  r ← Scotty.request
+  logIO $ [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
+
 --------------------------------------------------------------------------------
 --------------------------------- Action Monad ---------------------------------
 --------------------------------------------------------------------------------
@@ -256,6 +261,7 @@ instance MonadReader Account (ReaderProgram) where
 
 readerWith ∷ Environment → ReaderProgram ProgramResult → ActionM ()
 readerWith environment (ReaderProgram program) = do
+  logRequest
   (username, account_tvar) ← authorizeWith environment
   params_ ← params
   body_ ← body
@@ -302,6 +308,7 @@ instance MonadState Account WriterProgram where
 
 writerWith ∷ Environment → WriterProgram ProgramResult → ActionM ()
 writerWith (environment@Environment{..}) (WriterProgram program) = do
+  logRequest
   (username, account_tvar) ← authorizeWith environment
   params_ ← params
   body_ ← body
@@ -372,13 +379,9 @@ makeApp password_secret initial_accounts saveAccounts = do
       writer = writerWith environment
 
   scottyApp $ do
------------------------------- Log URL requested -------------------------------
-    Scotty.notFound $ do
-      r ← Scotty.request
-      logIO $ [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
-      Scotty.next
 -------------------------------- Create Account --------------------------------
     Scotty.post "/api/create" $ do
+      logRequest
       LoginInformation{login_username,login_password} ← bodyJSON
       logIO $ [i|Request to create an account for "#{login_username}" with password "#{login_password}"|]
       account_status ← liftIO $ do
@@ -404,6 +407,7 @@ makeApp password_secret initial_accounts saveAccounts = do
             }
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
+      logRequest
       LoginInformation{login_username,login_password} ← bodyJSON
       logIO $ [i|Request to log into an account with "#{login_username}" with password "#{login_password}"|]
       (
