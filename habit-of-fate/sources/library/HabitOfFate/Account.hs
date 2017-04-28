@@ -94,22 +94,3 @@ data HabitsToMark = HabitsToMark
   } deriving (Eq, Ord, Read, Show)
 deriveJSON ''HabitsToMark
 makeLenses ''HabitsToMark
-
-data LoginInformation = LoginInformation
-  { login_username ∷ Text
-  , login_password ∷ Text
-  }
-
-instance FromJSON LoginInformation where
-  parseJSON (Object v) =
-    LoginInformation
-    <$> v .: "username"
-    <*> v .: "password"
-  parseJSON _ = fail "expected an object"
-
-instance ToJSON LoginInformation where
-  toJSON LoginInformation{..} =
-    object
-    [ "username" .= login_username
-    , "password" .= login_password
-    ]

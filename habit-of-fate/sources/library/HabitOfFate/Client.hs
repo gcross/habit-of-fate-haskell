@@ -48,8 +48,15 @@ loginOrCreateAccount route username password secure_mode hostname port = do
             Testing → False
             Secure → True
         , port = port
-        , requestHeaders = [(hContentType, "application/json; charset=utf-8")]
-        , requestBody = RequestBodyLBS ∘ encode $ LoginInformation (pack username) (pack password)
+        , requestHeaders = [(hContentType, "application/x-www-form-urlencoded")]
+        , requestBody =
+            RequestBodyBS
+            ∘
+            encodeUtf8
+            ∘
+            pack
+            $
+            [i|username=#{username}&password=#{password}|]
         }
   response ←
     flip httpLbs manager

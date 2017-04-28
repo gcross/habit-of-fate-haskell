@@ -382,36 +382,38 @@ makeApp password_secret initial_accounts saveAccounts = do
 -------------------------------- Create Account --------------------------------
     Scotty.post "/api/create" $ do
       logRequest
-      LoginInformation{login_username,login_password} ← bodyJSON
-      logIO $ [i|Request to create an account for "#{login_username}" with password "#{login_password}"|]
+      username ← param "username"
+      password ← param "password"
+      logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
       account_status ← liftIO $ do
-        new_account ← newAccount login_password
+        new_account ← newAccount password
         atomically $ do
           accounts ← readTVar accounts_tvar
-          if member login_username accounts
+          if member username accounts
             then return AccountExists
             else do
               account_tvar ← newTVar new_account
-              modifyTVar accounts_tvar $ insertMap login_username account_tvar
+              modifyTVar accounts_tvar $ insertMap username account_tvar
               return AccountCreated
       case account_status of
         AccountExists → do
-          logIO $ [i|Account "#{login_username}" already exists!|]
+          logIO $ [i|Account "#{username}" already exists!|]
           status conflict409
         AccountCreated → do
-          logIO $ [i|Account "#{login_username}" successfully created!|]
+          logIO $ [i|Account "#{username}" successfully created!|]
           status created201
           Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
             { iss = Just expected_iss
-            , sub = Just (fromJust $ stringOrURI login_username)
+            , sub = Just (fromJust $ stringOrURI username)
             }
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest
-      LoginInformation{login_username,login_password} ← bodyJSON
-      logIO $ [i|Request to log into an account with "#{login_username}" with password "#{login_password}"|]
+      username ← param "username"
+      password ← param "password"
+      logIO $ [i|Request to log into an account with "#{username}" with password "#{password}"|]
       (
-        (fmap (lookup login_username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
+        (fmap (lookup username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
         >>=
         maybe (finishWithStatusMessage 404 "Not Found: No such account") return
         >>=
@@ -419,11 +421,11 @@ makeApp password_secret initial_accounts saveAccounts = do
         >>=
         bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
         ∘
-        passwordIsValid login_password
+        passwordIsValid password
        )
       Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
         { iss = Just expected_iss
-        , sub = Just (fromJust $ stringOrURI login_username)
+        , sub = Just (fromJust $ stringOrURI username)
         }
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" ∘ reader $ do
