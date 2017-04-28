@@ -14,6 +14,7 @@ import HabitOfFate.Prelude hiding (elements)
 import Control.Concurrent
 import Control.Lens.Extras
 import qualified Data.Map as Map
+import Data.IORef
 import qualified Data.UUID as UUID
 import Network.HTTP.Client
 import Network.HTTP.Types
@@ -148,6 +149,15 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
         createHabit test_habit_id_2 test_habit_2
         markHabits [test_habit_id] [test_habit_id_2]
         getCredits >>= liftIO ∘ (@?= Credits 1 2)
+    , testCase "Putting a habit causes the accounts to be written" $ do
+        write_requested_ref ← newIORef False
+        withApplication
+          (makeApp (secret "test secret") mempty (const $ writeIORef write_requested_ref True))
+          $
+          \port → do
+            session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
+            flip runReaderT session_info $ createHabit test_habit_id test_habit
+        readIORef write_requested_ref >>= assertBool "Write was not requested."
     ]
   , testGroup "HabitOfFate.Story"
     [ testGroup "s"

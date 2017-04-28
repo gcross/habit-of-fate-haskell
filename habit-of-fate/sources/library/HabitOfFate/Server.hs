@@ -208,6 +208,7 @@ data Environment = Environment
   { accounts_tvar ∷ TVar (Map Text (TVar Account))
   , password_secret ∷ Secret
   , expected_iss ∷ StringOrURI
+  , write_request_var ∷ TMVar ()
   }
 
 authorizeWith ∷ Environment → ActionM (String, TVar Account)
@@ -273,7 +274,7 @@ readerWith environment (ReaderProgram program) = do
       setContent content
 
 writerWith ∷ Environment → WriterProgram ProgramResult → ActionM ()
-writerWith environment (WriterProgram program) = do
+writerWith (environment@Environment{..}) (WriterProgram program) = do
   (username, account_tvar) ← authorizeWith environment
   params_ ← params
   body_ ← body
@@ -305,6 +306,7 @@ writerWith environment (WriterProgram program) = do
       Left status_ → pure (status_, Nothing, logs)
       Right (ProgramResult status_ content, new_account) → do
         writeTVar account_tvar new_account
+        tryPutTMVar write_request_var ()
         pure (status_, Just content, logs)
   traverse_ logIO logs
   setStatusAndLog status_
@@ -331,10 +333,10 @@ makeApp password_secret initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
     traverse newTVar initial_accounts >>= newTVar
-  write_request ← newEmptyTMVarIO
+  write_request_var ← newEmptyTMVarIO
   liftIO ∘ forkIO ∘ forever $
     (atomically $ do
-      takeTMVar write_request
+      takeTMVar write_request_var
       readTVar accounts_tvar >>= traverse readTVar
     )
     >>=
