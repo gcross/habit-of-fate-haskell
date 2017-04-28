@@ -327,7 +327,7 @@ makeApp password_secret initial_accounts saveAccounts = do
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
     traverse newTVar initial_accounts >>= newTVar
   write_request_var ← newEmptyTMVarIO
-  liftIO ∘ forkIO ∘ forever $
+  forkIO ∘ forever $
     (atomically $ do
       takeTMVar write_request_var
       readTVar accounts_tvar >>= traverse readTVar
