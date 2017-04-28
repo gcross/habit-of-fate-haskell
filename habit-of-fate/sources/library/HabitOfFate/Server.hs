@@ -312,13 +312,6 @@ writerWith (environment@Environment{..}) (WriterProgram program) = do
   setStatusAndLog status_
   maybe (pure ()) setContent maybe_content
 
-withHabit habit_id f = do
-  use habits
-  >>=
-  maybe raiseNoSuchHabit ((habits . at habit_id .=) ∘ f)
-  ∘
-  lookup habit_id
-
 lookupHabit habit_id = do
   use (habits . at habit_id)
   >>=
