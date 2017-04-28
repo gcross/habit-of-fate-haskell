@@ -54,17 +54,88 @@ import HabitOfFate.Credits
 import HabitOfFate.Logging
 import HabitOfFate.Story
 
+--------------------------------------------------------------------------------
+-------------------------------- Miscellaneous ---------------------------------
+--------------------------------------------------------------------------------
+
 instance Parsable UUID where
   parseParam = maybe (Left "badly formed UUID") Right ∘ fromText ∘ view strict
 
-data CommonInstructionInstruction α where
-  GetBodyInstruction ∷ CommonInstructionInstruction Lazy.ByteString
-  GetParamsInstruction ∷ CommonInstructionInstruction [Param]
-  RaiseStatusInstruction ∷ Status → CommonInstructionInstruction α
-  LogInstruction ∷ String → CommonInstructionInstruction ()
+data Environment = Environment
+  { accounts_tvar ∷ TVar (Map Text (TVar Account))
+  , password_secret ∷ Secret
+  , expected_iss ∷ StringOrURI
+  , write_request_var ∷ TMVar ()
+  }
 
-class Monad m ⇒ ActionMonad m where
-  singletonCommon ∷ CommonInstructionInstruction α → m α
+--------------------------------------------------------------------------------
+---------------------------- Shared Scotty Actions -----------------------------
+--------------------------------------------------------------------------------
+
+----------------------------------- Queries ------------------------------------
+
+lookupHabit habit_id = do
+  use (habits . at habit_id)
+  >>=
+  maybe raiseNoSuchHabit return
+
+param ∷ Parsable α ⇒ Lazy.Text → ActionM α
+param name =
+  Scotty.param name
+  `rescue`
+  (const
+   $
+   do Scotty.text $ "Missing parameter: \"" ⊕ name ⊕ "\""
+      status badRequest400
+      finish
+  )
+
+bodyJSON ∷ FromJSON α ⇒ ActionM α
+bodyJSON = do
+  body_ ← body
+  case eitherDecode' body_ of
+    Left message → do
+      logIO [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body_}|]
+      finishWithStatusMessage 400 "Bad request: Invalid JSON"
+    Right value → pure value
+
+data AccountStatus = AccountExists | AccountCreated
+
+authorizeWith ∷ Environment → ActionM (String, TVar Account)
+authorizeWith Environment{..} =
+  Scotty.header "Authorization"
+  >>=
+  maybe
+    (finishWithStatusMessage 403 "Forbidden: No authorization token.")
+    return
+  >>=
+  \case
+    (words → ["Bearer", token]) → return token
+    header →
+      finishWithStatusMessage
+        403
+        [i|Forbidden: Unrecognized authorization header: #{header}|]
+  >>=
+  maybe
+    (finishWithStatusMessage 403 "Forbidden: Unable to verify key")
+    return
+  ∘
+  decodeAndVerifySignature password_secret
+  ∘
+  view strict
+  >>=
+  (\case
+    (claims → JWTClaimsSet { iss = Just observed_iss, sub = Just username })
+      | observed_iss == expected_iss →
+          ((fmap ∘ lookup ∘ pack ∘ show $ username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
+          >>=
+          maybe
+            (finishWithStatusMessage 404 "Not Found: No such account")
+            (pure ∘ (show username,))
+    _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
+  )
+
+----------------------------------- Results ------------------------------------
 
 finishWithStatus ∷ Status → ActionM α
 finishWithStatus s = do
@@ -74,6 +145,53 @@ finishWithStatus s = do
 
 finishWithStatusMessage ∷ Int → String → ActionM α
 finishWithStatusMessage code = finishWithStatus ∘ Status code ∘ encodeUtf8 ∘ pack
+
+setContent ∷ Content → ActionM ()
+setContent NoContent = pure ()
+setContent (TextContent t) = Scotty.text t
+setContent (JSONContent j) = Scotty.json j
+
+setStatusAndLog ∷ Status → ActionM ()
+setStatusAndLog status_@(Status code message) = do
+  status status_
+  let result
+        | code < 200 || code >= 300 = "failed"
+        | otherwise = "succeeded"
+  logIO $ [i|Request #{result} - #{code} #{unpack ∘ decodeUtf8 $ message}|]
+
+data ProgramResult = ProgramResult Status Content
+
+data Content =
+    NoContent
+  | TextContent Lazy.Text
+  | ∀ α. ToJSON α ⇒ JSONContent α
+
+returnNothing ∷ Monad m ⇒ Status → m ProgramResult
+returnNothing s = return $ ProgramResult s NoContent
+
+returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
+returnLazyText s = return ∘ ProgramResult s ∘ TextContent
+
+returnText ∷ Monad m ⇒ Status → Text → m ProgramResult
+returnText s = returnLazyText s ∘ view (from strict)
+
+returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
+returnJSON s = return ∘ ProgramResult s ∘ JSONContent
+
+--------------------------------------------------------------------------------
+--------------------------------- Action Monad ---------------------------------
+--------------------------------------------------------------------------------
+
+------------------------------------ Common ------------------------------------
+
+data CommonInstructionInstruction α where
+  GetBodyInstruction ∷ CommonInstructionInstruction Lazy.ByteString
+  GetParamsInstruction ∷ CommonInstructionInstruction [Param]
+  RaiseStatusInstruction ∷ Status → CommonInstructionInstruction α
+  LogInstruction ∷ String → CommonInstructionInstruction ()
+
+class Monad m ⇒ ActionMonad m where
+  singletonCommon ∷ CommonInstructionInstruction α → m α
 
 getBody ∷ ActionMonad m ⇒ m Lazy.ByteString
 getBody = singletonCommon GetBodyInstruction
@@ -119,6 +237,8 @@ raiseNoSuchHabit = raiseStatus 404 "Not found: No such habit"
 log ∷ ActionMonad m ⇒ String → m ()
 log = singletonCommon ∘ LogInstruction
 
+------------------------------------ Reader ------------------------------------
+
 data ReaderInstruction α where
   ReaderCommonInstruction ∷ CommonInstructionInstruction α → ReaderInstruction α
   ReaderViewInstruction ∷ ReaderInstruction Account
@@ -133,117 +253,6 @@ instance ActionMonad ReaderProgram where
 instance MonadReader Account (ReaderProgram) where
   ask = ReaderProgram $ Operational.singleton ReaderViewInstruction
   local = error "if you see this, then ReaderProgram needs to have a local method"
-
-data WriterInstruction α where
-  WriterCommonInstruction ∷ CommonInstructionInstruction α → WriterInstruction α
-  WriterGetAccountInstruction ∷ WriterInstruction Account
-  WriterPutAccountInstruction ∷ Account → WriterInstruction ()
-
-newtype WriterProgram α = WriterProgram
-  { unwrapWriterProgram ∷ Program WriterInstruction α }
-  deriving (Applicative, Functor, Monad)
-
-instance ActionMonad WriterProgram where
-  singletonCommon = WriterProgram ∘ Operational.singleton ∘ WriterCommonInstruction
-
-instance MonadState Account WriterProgram where
-  get = WriterProgram $ Operational.singleton WriterGetAccountInstruction
-  put = WriterProgram ∘ Operational.singleton ∘ WriterPutAccountInstruction
-
-data ProgramResult = ProgramResult Status Content
-
-data Content =
-    NoContent
-  | TextContent Lazy.Text
-  | ∀ α. ToJSON α ⇒ JSONContent α
-
-returnNothing ∷ Monad m ⇒ Status → m ProgramResult
-returnNothing s = return $ ProgramResult s NoContent
-
-returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
-returnLazyText s = return ∘ ProgramResult s ∘ TextContent
-
-returnText ∷ Monad m ⇒ Status → Text → m ProgramResult
-returnText s = returnLazyText s ∘ view (from strict)
-
-returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
-returnJSON s = return ∘ ProgramResult s ∘ JSONContent
-
-data AccountStatus = AccountExists | AccountCreated
-
-param ∷ Parsable α ⇒ Lazy.Text → ActionM α
-param name =
-  Scotty.param name
-  `rescue`
-  (const
-   $
-   do Scotty.text $ "Missing parameter: \"" ⊕ name ⊕ "\""
-      status badRequest400
-      finish
-  )
-
-setContent ∷ Content → ActionM ()
-setContent NoContent = pure ()
-setContent (TextContent t) = Scotty.text t
-setContent (JSONContent j) = Scotty.json j
-
-setStatusAndLog ∷ Status → ActionM ()
-setStatusAndLog status_@(Status code message) = do
-  status status_
-  let result
-        | code < 200 || code >= 300 = "failed"
-        | otherwise = "succeeded"
-  logIO $ [i|Request #{result} - #{code} #{unpack ∘ decodeUtf8 $ message}|]
-
-bodyJSON ∷ FromJSON α ⇒ ActionM α
-bodyJSON = do
-  body_ ← body
-  case eitherDecode' body_ of
-    Left message → do
-      logIO [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body_}|]
-      finishWithStatusMessage 400 "Bad request: Invalid JSON"
-    Right value → pure value
-
-data Environment = Environment
-  { accounts_tvar ∷ TVar (Map Text (TVar Account))
-  , password_secret ∷ Secret
-  , expected_iss ∷ StringOrURI
-  , write_request_var ∷ TMVar ()
-  }
-
-authorizeWith ∷ Environment → ActionM (String, TVar Account)
-authorizeWith Environment{..} =
-  Scotty.header "Authorization"
-  >>=
-  maybe
-    (finishWithStatusMessage 403 "Forbidden: No authorization token.")
-    return
-  >>=
-  \case
-    (words → ["Bearer", token]) → return token
-    header →
-      finishWithStatusMessage
-        403
-        [i|Forbidden: Unrecognized authorization header: #{header}|]
-  >>=
-  maybe
-    (finishWithStatusMessage 403 "Forbidden: Unable to verify key")
-    return
-  ∘
-  decodeAndVerifySignature password_secret
-  ∘
-  view strict
-  >>=
-  (\case
-    (claims → JWTClaimsSet { iss = Just observed_iss, sub = Just username })
-      | observed_iss == expected_iss →
-          ((fmap ∘ lookup ∘ pack ∘ show $ username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
-          >>=
-          maybe
-            (finishWithStatusMessage 404 "Not Found: No such account")
-            (pure ∘ (show username,))
-    _ → finishWithStatusMessage 403 "Forbidden: Token does not grant access to this resource"
-  )
 
 readerWith ∷ Environment → ReaderProgram ProgramResult → ActionM ()
 readerWith environment (ReaderProgram program) = do
@@ -272,6 +281,24 @@ readerWith environment (ReaderProgram program) = do
     Right (ProgramResult status_ content) → do
       setStatusAndLog status_
       setContent content
+
+------------------------------------ Writer ------------------------------------
+
+data WriterInstruction α where
+  WriterCommonInstruction ∷ CommonInstructionInstruction α → WriterInstruction α
+  WriterGetAccountInstruction ∷ WriterInstruction Account
+  WriterPutAccountInstruction ∷ Account → WriterInstruction ()
+
+newtype WriterProgram α = WriterProgram
+  { unwrapWriterProgram ∷ Program WriterInstruction α }
+  deriving (Applicative, Functor, Monad)
+
+instance ActionMonad WriterProgram where
+  singletonCommon = WriterProgram ∘ Operational.singleton ∘ WriterCommonInstruction
+
+instance MonadState Account WriterProgram where
+  get = WriterProgram $ Operational.singleton WriterGetAccountInstruction
+  put = WriterProgram ∘ Operational.singleton ∘ WriterPutAccountInstruction
 
 writerWith ∷ Environment → WriterProgram ProgramResult → ActionM ()
 writerWith (environment@Environment{..}) (WriterProgram program) = do
@@ -312,10 +339,9 @@ writerWith (environment@Environment{..}) (WriterProgram program) = do
   setStatusAndLog status_
   maybe (pure ()) setContent maybe_content
 
-lookupHabit habit_id = do
-  use (habits . at habit_id)
-  >>=
-  maybe raiseNoSuchHabit return
+--------------------------------------------------------------------------------
+------------------------------ Server Application ------------------------------
+--------------------------------------------------------------------------------
 
 makeApp ∷
   Secret →
@@ -323,9 +349,14 @@ makeApp ∷
   (Map Text Account → IO ()) →
   IO Application
 makeApp password_secret initial_accounts saveAccounts = do
+----------------------------------- Prelude ------------------------------------
   liftIO $ hSetBuffering stderr LineBuffering
+
+  logIO $ "Starting server..."
+
   accounts_tvar ∷ TVar (Map Text (TVar Account)) ← atomically $
     traverse newTVar initial_accounts >>= newTVar
+
   write_request_var ← newEmptyTMVarIO
   forkIO ∘ forever $
     (atomically $ do
@@ -334,16 +365,19 @@ makeApp password_secret initial_accounts saveAccounts = do
     )
     >>=
     saveAccounts
-  logIO $ "Starting server..."
+
   let expected_iss = fromJust $ stringOrURI "habit-of-fate"
       environment = Environment{..}
       reader = readerWith environment
       writer = writerWith environment
+
   scottyApp $ do
+------------------------------ Log URL requested -------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
       logIO $ [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next
+-------------------------------- Create Account --------------------------------
     Scotty.post "/api/create" $ do
       LoginInformation{login_username,login_password} ← bodyJSON
       logIO $ [i|Request to create an account for "#{login_username}" with password "#{login_password}"|]
@@ -368,6 +402,7 @@ makeApp password_secret initial_accounts saveAccounts = do
             { iss = Just expected_iss
             , sub = Just (fromJust $ stringOrURI login_username)
             }
+------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       LoginInformation{login_username,login_password} ← bodyJSON
       logIO $ [i|Request to log into an account with "#{login_username}" with password "#{login_password}"|]
@@ -386,9 +421,11 @@ makeApp password_secret initial_accounts saveAccounts = do
         { iss = Just expected_iss
         , sub = Just (fromJust $ stringOrURI login_username)
         }
+-------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" ∘ reader $ do
       log "Requested all habits."
       view habits >>= returnJSON ok200
+---------------------------------- Get Habit -----------------------------------
     Scotty.get "/api/habits/:habit_id" ∘ reader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested habit with id #{habit_id}.|]
@@ -396,6 +433,7 @@ makeApp password_secret initial_accounts saveAccounts = do
       case lookup habit_id habits_ of
         Nothing → raiseNoSuchHabit
         Just habit → returnJSON ok200 habit
+--------------------------------- Delete Habit ---------------------------------
     Scotty.delete "/api/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
@@ -404,6 +442,7 @@ makeApp password_secret initial_accounts saveAccounts = do
         if habit_was_there
           then noContent204
           else notFound404
+---------------------------------- Put Habit -----------------------------------
     Scotty.put "/api/habits/:habit_id" ∘ writer $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to put habit with id #{habit_id}.|]
@@ -413,9 +452,11 @@ makeApp password_secret initial_accounts saveAccounts = do
         if habit_was_there
           then noContent204
           else created201
+--------------------------------- Get Credits ----------------------------------
     Scotty.get "/api/credits" ∘ reader $ do
       log $ "Requested credits."
       view (game . credits) >>= returnJSON ok200
+--------------------------------- Mark Habits ----------------------------------
     Scotty.post "/api/mark" ∘ writer $ do
       let markHabits ∷ [UUID] → Lens' Credits Double → WriterProgram Double
           markHabits uuids which_credits = do
@@ -432,6 +473,7 @@ makeApp password_secret initial_accounts saveAccounts = do
           <$> markHabits (marks ^. successes) success
           <*> markHabits (marks ^. failures ) failure
        ) >>= returnJSON ok200
+----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" ∘ writer $ do
       let go d = do
             let r = runAccount d
@@ -461,6 +503,7 @@ makeApp password_secret initial_accounts saveAccounts = do
         $
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
+---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
       logIO $ [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
