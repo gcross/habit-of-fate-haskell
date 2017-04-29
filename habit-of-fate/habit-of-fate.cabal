@@ -13,6 +13,7 @@ library
   hs-source-dirs:      sources/library
   build-depends:       base
                      , aeson
+                     , blaze-html
                      , bytestring
                      , connection
                      , containers

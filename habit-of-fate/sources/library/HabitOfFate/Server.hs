@@ -19,7 +19,7 @@
 
 module HabitOfFate.Server (makeApp) where
 
-import HabitOfFate.Prelude hiding (log)
+import HabitOfFate.Prelude hiding (div, log)
 
 import Data.Aeson hiding ((.=))
 import Control.Concurrent
@@ -34,12 +34,29 @@ import Data.Yaml hiding (Parser, (.=))
 import Network.HTTP.Types.Status
 import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
+import Text.Blaze.Html5
+  ( (!)
+  , body
+  , button
+  , docTypeHtml
+  , div
+  , head
+  , input
+  , p
+  , span
+  , table
+  , td
+  , title
+  , toHtml
+  , tr
+  )
+import Text.Blaze.Html5.Attributes (type_)
+import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Web.JWT hiding (decode, header)
 import Web.Scotty
   ( ActionM
   , Param
   , Parsable
-  , body
   , params
   , parseParam
   , finish
@@ -92,7 +109,7 @@ param name =
 
 bodyJSON ∷ FromJSON α ⇒ ActionM α
 bodyJSON = do
-  body_ ← body
+  body_ ← Scotty.body
   case eitherDecode' body_ of
     Left message → do
       logIO [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body_}|]
@@ -264,7 +281,7 @@ readerWith environment (ReaderProgram program) = do
   logRequest
   (username, account_tvar) ← authorizeWith environment
   params_ ← params
-  body_ ← body
+  body_ ← Scotty.body
   account ← liftIO ∘ readTVarIO $ account_tvar
   let interpret ∷
         Program ReaderInstruction α →
@@ -311,7 +328,7 @@ writerWith (environment@Environment{..}) (WriterProgram program) = do
   logRequest
   (username, account_tvar) ← authorizeWith environment
   params_ ← params
-  body_ ← body
+  body_ ← Scotty.body
   let interpret ∷
         Program WriterInstruction α →
         StateT Account (ExceptT Status (Writer (Seq String))) α
@@ -406,6 +423,19 @@ makeApp password_secret initial_accounts saveAccounts = do
             { iss = Just expected_iss
             , sub = Just (fromJust $ stringOrURI username)
             }
+    Scotty.get "/create" $ do
+      logRequest
+      Scotty.html ∘ renderHtml ∘ docTypeHtml $ do
+        head $ title "Create account"
+        body ∘ foldMap div $
+          [ table ∘ (foldMap $ tr ∘ foldMap td) $
+            [ [p $ "Username:", input]
+            , [p $ "Password:", input ! type_ "password"]
+            , [p $ "Password (again):", input ! type_ "password"]
+            ]
+          , button "Create account"
+          ]
+
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest
