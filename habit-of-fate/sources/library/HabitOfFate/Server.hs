@@ -116,7 +116,7 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
-data AccountStatus = AccountExists | AccountCreated
+data CreateAccountResult = AccountExists | AccountCreated
 
 authorizeWith ∷ Environment → ActionM (String, TVar Account)
 authorizeWith Environment{..} =
@@ -397,25 +397,27 @@ makeApp password_secret initial_accounts saveAccounts = do
 
   scottyApp $ do
 -------------------------------- Create Account --------------------------------
+    let createAccount ∷ Text → Text → ActionM CreateAccountResult
+        createAccount username password = liftIO $ do
+          logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
+          new_account ← newAccount password
+          atomically $ do
+            accounts ← readTVar accounts_tvar
+            if member username accounts
+              then return AccountExists
+              else do
+                account_tvar ← newTVar new_account
+                modifyTVar accounts_tvar $ insertMap username account_tvar
+                return AccountCreated
     Scotty.post "/api/create" $ do
       logRequest
       username ← param "username"
       password ← param "password"
-      logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
-      account_status ← liftIO $ do
-        new_account ← newAccount password
-        atomically $ do
-          accounts ← readTVar accounts_tvar
-          if member username accounts
-            then return AccountExists
-            else do
-              account_tvar ← newTVar new_account
-              modifyTVar accounts_tvar $ insertMap username account_tvar
-              return AccountCreated
+      account_status ← createAccount username password
       case account_status of
         AccountExists → do
           logIO $ [i|Account "#{username}" already exists!|]
-          status conflict409
+          finishWithStatus conflict409
         AccountCreated → do
           logIO $ [i|Account "#{username}" successfully created!|]
           status created201
@@ -423,18 +425,6 @@ makeApp password_secret initial_accounts saveAccounts = do
             { iss = Just expected_iss
             , sub = Just (fromJust $ stringOrURI username)
             }
-    Scotty.get "/create" $ do
-      logRequest
-      Scotty.html ∘ renderHtml ∘ docTypeHtml $ do
-        head $ title "Create account"
-        body ∘ foldMap div $
-          [ table ∘ (foldMap $ tr ∘ foldMap td) $
-            [ [p $ "Username:", input]
-            , [p $ "Password:", input ! type_ "password"]
-            , [p $ "Password (again):", input ! type_ "password"]
-            ]
-          , button "Create account"
-          ]
 
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
