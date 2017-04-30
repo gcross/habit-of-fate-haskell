@@ -41,6 +41,7 @@ import Text.Blaze.Html5
   , button
   , docTypeHtml
   , div
+  , form
   , head
   , input
   , p
@@ -49,9 +50,16 @@ import Text.Blaze.Html5
   , td
   , title
   , toHtml
+  , toValue
   , tr
   )
-import Text.Blaze.Html5.Attributes (type_)
+import Text.Blaze.Html5.Attributes
+  ( action
+  , method
+  , name
+  , type_
+  , value
+  )
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Web.JWT hiding (decode, header)
 import Web.Scotty
@@ -107,6 +115,9 @@ param name =
       status badRequest400
       finish
   )
+
+paramOrBlank ∷ Lazy.Text → ActionM Text
+paramOrBlank name = Scotty.param name `rescue` (const ∘ pure $ "")
 
 bodyJSON ∷ FromJSON α ⇒ ActionM α
 bodyJSON = do
@@ -410,6 +421,7 @@ makeApp password_secret initial_accounts saveAccounts = do
                 account_tvar ← newTVar new_account
                 modifyTVar accounts_tvar $ insertMap username account_tvar
                 return AccountCreated
+
     Scotty.post "/api/create" $ do
       logRequest
       username ← param "username"
@@ -427,6 +439,47 @@ makeApp password_secret initial_accounts saveAccounts = do
             , sub = Just (fromJust $ stringOrURI username)
             }
 
+    let returnCreateAccountForm ∷ Text → Text → ActionM ()
+        returnCreateAccountForm username error_message = do
+          Scotty.html ∘ renderHtml ∘ docTypeHtml $ do
+            head $ title "Create account"
+            body ∘ (form ! action "/create" ! method "post") ∘ foldMap div $
+              [ table ∘ (foldMap $ tr ∘ foldMap td) $
+                [ [ p $ "Username:"
+                  , input ! name "username" ! type_ "text" ! value (toValue username)
+                  ]
+                , [ p $ "Password:", input ! type_ "password" ! name "password"]
+                , [ p $ "Password (again):", input ! type_ "password" ! name "password2"]
+                ]
+              , button "Create account"
+              , toHtml error_message
+              ]
+          finish
+
+
+    Scotty.get "/create" $ returnCreateAccountForm "" ""
+
+    Scotty.post "/create" $ do
+      username ← paramOrBlank "username"
+      when (username == "") $
+        returnCreateAccountForm username "No username was provided."
+      password ← paramOrBlank "password"
+      when (password == "") $
+        returnCreateAccountForm username "No password was provided."
+      password2 ← paramOrBlank "password2"
+      when (password2 == "") $
+        returnCreateAccountForm username "You need to repeat the password."
+      when (password /= password2) $
+        returnCreateAccountForm username "The password do not match."
+      createAccount username password >>=
+        \case
+          AccountExists → do
+            logIO $ [i|Account "#{username}" already exists!|]
+            returnCreateAccountForm username "The account already exists."
+          AccountCreated → do
+            logIO $ [i|Account "#{username}" successfully created!|]
+            Scotty.html ∘ renderHtml ∘ docTypeHtml ∘ body $ "Account created!"
+            status created201
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest
