@@ -116,6 +116,23 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
             , testMissing "Missing password" "login?username=foobar"
             ]
         ]
+    , testGroup "Empty username/password" $
+        let testEmpty test_name path =
+              serverTestCase test_name $ \port → do
+                manager ← newManager defaultManagerSettings
+                response ← flip httpNoBody manager $ defaultRequest
+                  { method = renderStdMethod POST
+                  , host = "localhost"
+                  , port = port
+                  , path = "/api/" ⊕ path
+                  }
+                400 @=? responseStatusCode response
+        in
+        [ testGroup "Create account"
+            [ testEmpty "Empty username" "create?username="
+            , testEmpty "Empty password" "create?password="
+            ]
+        ]
     , apiTestCase "fetching all habits from a new account returns an empty array" $
         getHabits
         >>=

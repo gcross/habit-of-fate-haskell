@@ -25,6 +25,7 @@ import Data.Aeson hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
+import Control.Exception (assert)
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Lazy as Lazy
@@ -398,7 +399,7 @@ makeApp password_secret initial_accounts saveAccounts = do
   scottyApp $ do
 -------------------------------- Create Account --------------------------------
     let createAccount ∷ Text → Text → ActionM CreateAccountResult
-        createAccount username password = liftIO $ do
+        createAccount username password = assert ((username /= "") && (password /= "")) ∘ liftIO $ do
           logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
           new_account ← newAccount password
           atomically $ do
