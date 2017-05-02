@@ -11,19 +11,11 @@ module Main where
 
 import HabitOfFate.Prelude hiding (elements)
 
-import Control.Concurrent
-import Control.Lens.Extras
 import qualified Data.Map as Map
 import Data.IORef
-import qualified Data.UUID as UUID
 import Network.HTTP.Client
 import Network.HTTP.Types
 import Network.Wai.Handler.Warp
-import System.Directory
-import System.FilePath
-import System.IO
-import System.IO.Temp
-import System.Random
 import Test.Tasty
 import Test.Tasty.HUnit
 import Web.JWT

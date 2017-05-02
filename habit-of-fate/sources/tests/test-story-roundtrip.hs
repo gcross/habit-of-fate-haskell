@@ -12,7 +12,6 @@ module Main where
 import HabitOfFate.Prelude hiding (elements)
 
 import Control.Lens.Extras
-import System.Directory
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import qualified Test.Tasty.SmallCheck as S
