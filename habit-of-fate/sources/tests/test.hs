@@ -23,9 +23,6 @@ import System.Directory
 import System.FilePath
 import System.IO
 import System.IO.Temp
-import System.Log
-import System.Log.Handler.Simple
-import System.Log.Logger
 import System.Random
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -56,14 +53,6 @@ apiTestCase test_name action =
   >=>
   runReaderT action ∘ fromMaybe (error "Unable to create account.")
 
-initialize = do
-  doesFileExist "test.log" >>= flip when (removeFile "test.log")
-  file_handler ← fileHandler "test.log" DEBUG
-  updateGlobalLogger rootLoggerName $
-    setLevel DEBUG
-    ∘
-    setHandlers [file_handler]
-
 test_habit = Habit "name" (Credits 1 1)
 test_habit_2 = Habit "test" (Credits 2 2)
 
@@ -93,7 +82,7 @@ originalFromSubEvent =
 createHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitCreated)
 replaceHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitReplaced)
 
-main = initialize >> (defaultMain $ testGroup "All Tests"
+main = defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Server"
     [ testGroup "Missing username/password" $
         let testMissing test_name path =
@@ -280,4 +269,3 @@ hopeless task, but {she} has no other choice.
         ]
     ]
   ]
- )
