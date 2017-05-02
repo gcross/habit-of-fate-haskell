@@ -376,6 +376,15 @@ writerWith (environment@Environment{..}) (WriterProgram program) = do
   maybe (pure ()) setContent maybe_content
 
 --------------------------------------------------------------------------------
+----------------------------------- Messages -----------------------------------
+--------------------------------------------------------------------------------
+
+no_username_message = "No username was provided."
+no_password_message = "No password was provided."
+no_password2_message = "You need to repeat the password."
+password_mismatch_message = "The password do not match."
+
+--------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
@@ -462,20 +471,21 @@ makeApp password_secret initial_accounts saveAccounts = do
     Scotty.post "/create" $ do
       username ← paramOrBlank "username"
       when (username == "") $
-        returnCreateAccountForm username "No username was provided."
+        returnCreateAccountForm username no_username_message
       password ← paramOrBlank "password"
       when (password == "") $
-        returnCreateAccountForm username "No password was provided."
+        returnCreateAccountForm username no_password_message
       password2 ← paramOrBlank "password2"
       when (password2 == "") $
-        returnCreateAccountForm username "You need to repeat the password."
+        returnCreateAccountForm username no_password2_message
       when (password /= password2) $
-        returnCreateAccountForm username "The password do not match."
+        returnCreateAccountForm username password_mismatch_message
       createAccount username password >>=
         \case
           AccountExists → do
             logIO $ [i|Account "#{username}" already exists!|]
             returnCreateAccountForm username "The account already exists."
+            status ok200
           AccountCreated → do
             logIO $ [i|Account "#{username}" successfully created!|]
             Scotty.html ∘ renderHtml ∘ docTypeHtml ∘ body $ "Account created!"
