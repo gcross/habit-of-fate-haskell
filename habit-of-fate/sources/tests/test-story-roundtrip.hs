@@ -13,9 +13,6 @@ import HabitOfFate.Prelude hiding (elements)
 
 import Control.Lens.Extras
 import System.Directory
-import System.Log
-import System.Log.Handler.Simple
-import System.Log.Logger
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import qualified Test.Tasty.SmallCheck as S
@@ -85,16 +82,6 @@ instance (Monad m, Serial m α) ⇒ Serial m (GenQuest α) where
 
 instance (Monad m, Serial m α) ⇒ Serial m (GenStory α) where
 
-log_filename = "test-story-roundtrip.hs"
-
-initialize = do
-  doesFileExist log_filename >>= flip when (removeFile log_filename)
-  file_handler ← fileHandler log_filename DEBUG
-  updateGlobalLogger rootLoggerName $
-    setLevel DEBUG
-    ∘
-    setHandlers [file_handler]
-
 originalFromSubParagraph ∷ SubParagraph → Text
 originalFromSubParagraph =
   rewords
@@ -115,7 +102,7 @@ originalFromSubEvent =
   ∘
   unwrapGenEvent
 
-main = initialize >> (defaultMain $ testGroup "All Tests"
+main = defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Story"
     [ testGroup "round-trip"
       [ testGroup "Paragraph -> [Node] -> Paragraph" $
@@ -158,4 +145,3 @@ main = initialize >> (defaultMain $ testGroup "All Tests"
       ]
     ]
   ]
- )

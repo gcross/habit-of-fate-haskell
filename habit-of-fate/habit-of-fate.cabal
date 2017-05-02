@@ -86,7 +86,6 @@ test-suite test
                      , containers
                      , directory
                      , filepath
-                     , hslogger
                      , http-client
                      , http-types
                      , jwt
@@ -108,7 +107,6 @@ test-suite test-story-roundtrip
                      , base
                      , directory
                      , filepath
-                     , hslogger
                      , lens
                      , QuickCheck
                      , random
