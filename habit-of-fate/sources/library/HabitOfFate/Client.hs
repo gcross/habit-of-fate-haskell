@@ -114,6 +114,7 @@ newtype ClientT m α = ClientT { unwrapClientT ∷ InnerClientAction m α }
     , MonadCatch
     , MonadIO
     , MonadThrow
+    , MonadTrans
     )
 
 type ClientIO = ClientT IO
