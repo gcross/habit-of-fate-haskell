@@ -46,7 +46,7 @@ import HabitOfFate.Story
 
 data Quit = Quit
 
-type InnerAction = ExceptT Quit Client
+type InnerAction = ExceptT Quit ClientIO
 
 newtype ActionMonad α = ActionMonad
   { unwrapActionMonad ∷ InnerAction α }
@@ -70,7 +70,7 @@ quit ∷ ActionMonad α
 quit = throwError Quit
 
 class Monad m ⇒ MonadClient m where
-  liftC ∷ Client α → m α
+  liftC ∷ ClientIO α → m α
 
 instance MonadClient ActionMonad where
   liftC = ActionMonad ∘ lift
@@ -324,7 +324,7 @@ runSession ∷ SessionInfo → IO ()
 runSession session_info =
   void
   ∘
-  flip runReaderT session_info
+  flip runClientT session_info
   ∘
   runExceptT
   ∘
