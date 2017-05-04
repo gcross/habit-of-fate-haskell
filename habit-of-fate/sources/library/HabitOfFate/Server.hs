@@ -128,7 +128,7 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
-data CreateAccountResult = AccountExists | AccountCreated
+data CreateAccountResult = AccountExists | AccountCreated deriving (Eq,Show,Ord,Read)
 
 authorizeWith ∷ Environment → ActionM (String, TVar Account)
 authorizeWith Environment{..} =
