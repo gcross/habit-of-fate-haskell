@@ -37,13 +37,13 @@ serverTestCase test_name =
   ∘
   withTestApp
 
-apiTestCase ∷ String → (Client ()) → TestTree
+apiTestCase ∷ String → (ClientIO ()) → TestTree
 apiTestCase test_name action =
   serverTestCase test_name
   $
   createAccount "bitslayer" "password" Testing "localhost"
   >=>
-  runReaderT action ∘ fromMaybe (error "Unable to create account.")
+  runClientT action ∘ fromMaybe (error "Unable to create account.")
 
 test_habit = Habit "name" (Credits 1 1)
 test_habit_2 = Habit "test" (Credits 2 2)
@@ -154,7 +154,7 @@ main = defaultMain $ testGroup "All Tests"
           $
           \port → do
             session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
-            flip runReaderT session_info $ createHabit test_habit_id test_habit
+            flip runClientT session_info $ createHabit test_habit_id test_habit
         readIORef write_requested_ref >>= assertBool "Write was not requested."
     ]
   , testGroup "HabitOfFate.Story"

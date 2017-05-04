@@ -1,15 +1,23 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Client where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Base
 import Control.Monad.Catch
+import Control.Monad.Trans.Control
 import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
@@ -96,7 +104,36 @@ login username password secure_mode hostname port =
   <$>
   loginOrCreateAccount "login" username password secure_mode hostname port
 
-type Client = ReaderT SessionInfo IO
+type InnerClientAction = ReaderT SessionInfo
+
+newtype ClientT m α = ClientT { unwrapClientT ∷ InnerClientAction m α }
+  deriving
+    ( Applicative
+    , Functor
+    , Monad
+    , MonadCatch
+    , MonadIO
+    , MonadThrow
+    )
+
+type ClientIO = ClientT IO
+
+runClientT ∷ ClientT m α → SessionInfo → m α
+runClientT = runReaderT ∘ unwrapClientT
+
+instance MonadBase IO m ⇒ MonadBase IO (ClientT m) where
+  liftBase = ClientT ∘ liftBase
+
+instance MonadBaseControl IO ClientIO where
+  type StM ClientIO α = StM (InnerClientAction IO) α
+  liftBaseWith f = ClientT $ liftBaseWith $ \r → f (r ∘ unwrapClientT)
+  restoreM = ClientT ∘ restoreM
+
+getManager ∷ Monad m ⇒ ClientT m Manager
+getManager = ClientT $ view manager
+
+getRequestTemplate ∷ Monad m ⇒ ClientT m Request
+getRequestTemplate = ClientT $ view request_template
 
 decodeUtf8InResponse ∷ Response LBS.ByteString → Text
 decodeUtf8InResponse = decodeUtf8 ∘ LBS.toStrict ∘ responseBody
@@ -104,9 +141,9 @@ decodeUtf8InResponse = decodeUtf8 ∘ LBS.toStrict ∘ responseBody
 pathToHabit ∷ UUID → Text
 pathToHabit = ("habits/" ⊕) ∘ UUID.toText
 
-makeRequest ∷ StdMethod → Text → Client Request
+makeRequest ∷ Monad m ⇒ StdMethod → Text → ClientT m Request
 makeRequest std_method path = do
-  view request_template
+  getRequestTemplate
   <&>
   \template → template { method = renderStdMethod std_method, path = encodeUtf8 $ "/api/" ⊕ path }
 
@@ -121,7 +158,8 @@ instance Show InvalidJSON where
   show (InvalidJSON doc) = "Invalid JSON: " ⊕ show doc
 instance Exception InvalidJSON where
 
-parseResponseBody ∷ FromJSON α ⇒ Response LBS.ByteString → Client α
+parseResponseBody ∷
+  (MonadThrow m, FromJSON α) ⇒ Response LBS.ByteString → ClientT m α
 parseResponseBody =
   either (throwM ∘ InvalidJSON) return
   ∘
@@ -137,27 +175,22 @@ instance Show UnexpectedStatus where
     [i|Status code not one of #{expected_codes}: #{status}|]
 instance Exception UnexpectedStatus where
 
-sendRequest ∷ Request → Client (Response LBS.ByteString)
-sendRequest request =
-  view manager
-  >>=
-  liftIO ∘ httpLbs request
+sendRequest ∷ MonadIO m ⇒ Request → ClientT m (Response LBS.ByteString)
+sendRequest request = getManager >>= liftIO ∘ httpLbs request
 
-request ∷ StdMethod → Text → Client (Response LBS.ByteString)
-request method path =
-  makeRequest method path
-  >>=
-  sendRequest
+request ∷ MonadIO m ⇒ StdMethod → Text → ClientT m (Response LBS.ByteString)
+request method path = makeRequest method path >>= sendRequest
 
-requestWithJSON ∷ ToJSON α ⇒ StdMethod → Text → α → Client (Response LBS.ByteString)
-requestWithJSON method path value = do
+requestWithJSON ∷
+  (MonadIO m, ToJSON α) ⇒ StdMethod → Text → α → ClientT m (Response LBS.ByteString)
+requestWithJSON method path value =
   (makeRequest method path <&> addJSONBody value)
   >>=
   sendRequest
 
 data PutResult = HabitCreated | HabitReplaced deriving (Eq, Ord, Read, Show)
 
-putHabit ∷ UUID → Habit → Client PutResult
+putHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Habit → ClientT m PutResult
 putHabit habit_id habit = do
   response ← requestWithJSON PUT (pathToHabit habit_id) habit
   case responseStatusCode response of
@@ -167,7 +200,7 @@ putHabit habit_id habit = do
 
 data DeleteResult = HabitDeleted | NoHabitToDelete deriving (Eq, Ord, Read, Show)
 
-deleteHabit ∷ UUID → Client DeleteResult
+deleteHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → ClientT m DeleteResult
 deleteHabit habit_id = do
   response ← request DELETE $ pathToHabit habit_id
   case responseStatusCode response of
@@ -175,7 +208,7 @@ deleteHabit habit_id = do
     404 → pure NoHabitToDelete
     code → throwM $ UnexpectedStatus [204,404] code
 
-getHabit ∷ UUID → Client (Maybe Habit)
+getHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → ClientT m (Maybe Habit)
 getHabit habit_id = do
   response ← request GET $ pathToHabit habit_id
   case responseStatusCode response of
@@ -183,28 +216,28 @@ getHabit habit_id = do
     404 → pure Nothing
     code → throwM $ UnexpectedStatus [200,404] code
 
-getHabits ∷ Client (Map UUID Habit)
+getHabits ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m (Map UUID Habit)
 getHabits = do
   response ← request GET "habits"
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-getCredits ∷ Client Credits
+getCredits ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m Credits
 getCredits = do
   response ← request GET "credits"
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-markHabits ∷ [UUID] → [UUID] → Client Credits
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → ClientT m Credits
 markHabits success_habits failure_habits = do
   response ← requestWithJSON POST "mark" (HabitsToMark success_habits failure_habits)
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-runGame ∷ Client Story
+runGame ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m Story
 runGame = do
   response ← request POST "run"
   case responseStatusCode response of
