@@ -17,15 +17,23 @@
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module HabitOfFate.Server (makeApp) where
+module HabitOfFate.Server
+  ( makeApp
+  -- Messages
+  , no_username_message
+  , no_password_message
+  , no_password2_message
+  , password_mismatch_message
+  , account_exists_message
+  ) where
 
-import HabitOfFate.Prelude hiding (div, log)
+import HabitOfFate.Prelude hiding (div, id, log)
 
 import Data.Aeson hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
-import Control.Exception (assert)
+import Control.Exception (SomeException, assert, catch)
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Lazy as Lazy
@@ -55,6 +63,7 @@ import Text.Blaze.Html5
   )
 import Text.Blaze.Html5.Attributes
   ( action
+  , id
   , method
   , name
   , type_
@@ -376,6 +385,16 @@ writerWith (environment@Environment{..}) (WriterProgram program) = do
   maybe (pure ()) setContent maybe_content
 
 --------------------------------------------------------------------------------
+----------------------------------- Messages -----------------------------------
+--------------------------------------------------------------------------------
+
+no_username_message = "No username was provided."
+no_password_message = "No password was provided."
+no_password2_message = "You need to repeat the password."
+password_mismatch_message = "The password do not match."
+account_exists_message = "The account already exists."
+
+--------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
@@ -444,42 +463,42 @@ makeApp password_secret initial_accounts saveAccounts = do
           Scotty.html ∘ renderHtml ∘ docTypeHtml $ do
             head $ title "Create account"
             body ∘ (form ! action "/create" ! method "post") ∘ foldMap div $
-              [ table ∘ (foldMap $ tr ∘ foldMap td) $
-                [ [ p $ "Username:"
-                  , input ! name "username" ! type_ "text" ! value (toValue username)
-                  ]
-                , [ p $ "Password:", input ! type_ "password" ! name "password"]
-                , [ p $ "Password (again):", input ! type_ "password" ! name "password2"]
-                ]
-              , button "Create account"
-              , toHtml error_message
-              ]
+             [ table ∘ (foldMap $ tr ∘ foldMap td) $
+               [ [ p $ "Username:"
+                 , input ! name "username" ! type_ "text" ! value (toValue username)
+                 ]
+               , [ p $ "Password:", input ! type_ "password" ! name "password"]
+               , [ p $ "Password (again):", input ! type_ "password" ! name "password2"]
+               ]
+             , button ! id "create-account" $ "Create account"
+             , p ! id "error-message" $ toHtml error_message
+             ]
           finish
-
 
     Scotty.get "/create" $ returnCreateAccountForm "" ""
 
     Scotty.post "/create" $ do
       username ← paramOrBlank "username"
       when (username == "") $
-        returnCreateAccountForm username "No username was provided."
+        returnCreateAccountForm username no_username_message
       password ← paramOrBlank "password"
       when (password == "") $
-        returnCreateAccountForm username "No password was provided."
+        returnCreateAccountForm username no_password_message
       password2 ← paramOrBlank "password2"
       when (password2 == "") $
-        returnCreateAccountForm username "You need to repeat the password."
+        returnCreateAccountForm username no_password2_message
       when (password /= password2) $
-        returnCreateAccountForm username "The password do not match."
+        returnCreateAccountForm username password_mismatch_message
       createAccount username password >>=
         \case
           AccountExists → do
             logIO $ [i|Account "#{username}" already exists!|]
-            returnCreateAccountForm username "The account already exists."
+            status ok200
+            returnCreateAccountForm username account_exists_message
           AccountCreated → do
             logIO $ [i|Account "#{username}" successfully created!|]
-            Scotty.html ∘ renderHtml ∘ docTypeHtml ∘ body $ "Account created!"
             status created201
+            Scotty.html ∘ renderHtml ∘ docTypeHtml ∘ body $ "Account created!"
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest

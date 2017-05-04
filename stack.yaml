@@ -4,6 +4,7 @@ packages:
 - 'habit-of-fate'
 - 'habit-of-fate-client'
 - 'habit-of-fate-server'
+- 'webdriver'
 resolver: lts-7.6
 extra-deps:
 - 'labels-0.1.2'
