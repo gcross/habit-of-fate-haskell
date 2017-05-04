@@ -16,34 +16,41 @@ import HabitOfFate.Client
 import HabitOfFate.Logging
 import HabitOfFate.Server
 
-main :: IO ()
+
+testBrowser ∷ String → (String → ClientT WD ()) → TestTree
+testBrowser test_name run =
+  testCase test_name $
+  withApplication
+    (makeApp (secret "test secret") mempty (const $ pure ()))
+    (\port → do
+      maybe_session_info ← createAccount "username" "password" Testing "localhost" port
+      case maybe_session_info of
+        Nothing → fail "Unable to create the account."
+        Just session_info →
+          runSession defaultConfig ∘ finallyClose ∘ flip runClientT session_info $ do
+            lift $ setImplicitWait 10000
+            run $ "http://localhost:" ⊕ show port ⊕ "/"
+    )
+
+main ∷ IO ()
 main = defaultMain ∘ testGroup "All tests" $
   [ testGroup "Create account page" $
-      let testCreateAccount test_name run =
-            testCase test_name $
-            withApplication
-              (makeApp (secret "test secret") mempty (const $ pure ()))
-              (\port → runSession defaultConfig ∘ finallyClose $ do
-                setImplicitWait 10000
-                run $ "http://localhost:" ⊕ show port ⊕ "/"
-              )
-      in
-      [ testCreateAccount "Correct error message when creating with blank username" $ \base_url → do
+      [ testBrowser "Correct error message when creating with blank username" $ \base_url → lift $ do
           openPage $ base_url ⊕ "create"
           findElem (ById "create-account") >>= click
           findElem (ById "error-message") >>= getText >>= liftIO ∘ (@?= no_username_message)
-      , testCreateAccount "Correct error message when creating with blank username" $ \base_url → do
+      , testBrowser "Correct error message when creating with blank username" $ \base_url → lift $ do
           openPage $ base_url ⊕ "create"
           findElem (ByName "username") >>= sendKeys "username"
           findElem (ById "create-account") >>= click
           findElem (ById "error-message") >>= getText >>= liftIO ∘ (@?= no_password_message)
-      , testCreateAccount "Correct error message when creating with no repeated password" $ \base_url → do
+      , testBrowser "Correct error message when creating with no repeated password" $ \base_url → lift $ do
           openPage $ base_url ⊕ "create"
           findElem (ByName "username") >>= sendKeys "username"
           findElem (ByName "password") >>= sendKeys "password"
           findElem (ById "create-account") >>= click
           findElem (ById "error-message") >>= getText >>= liftIO ∘ (@?= no_password2_message)
-      , testCreateAccount "Correct error message when creating with non-matching passwords" $ \base_url → do
+      , testBrowser "Correct error message when creating with non-matching passwords" $ \base_url → lift $ do
           openPage $ base_url ⊕ "create"
           findElem (ByName "username") >>= sendKeys "username"
           findElem (ByName "password") >>= sendKeys "password"
