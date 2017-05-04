@@ -114,4 +114,8 @@ test-suite test-webdriver
   main-is:             test-webdriver.hs
   build-depends:       habit-of-fate
                      , base
+                     , jwt
+                     , tasty
+                     , tasty-hunit
+                     , warp
                      , webdriver
