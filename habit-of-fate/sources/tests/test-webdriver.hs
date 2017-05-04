@@ -27,14 +27,16 @@ testBrowser test_name run =
       case maybe_session_info of
         Nothing → fail "Unable to create the account."
         Just session_info →
+          -- runSession defaultConfig ∘ finallyClose ∘ flip runClientT session_info $ do
           runSession defaultConfig ∘ finallyClose ∘ flip runClientT session_info $ do
-            lift $ setImplicitWait 10000
+            -- lift $ setImplicitWait 10000
             run $ "http://localhost:" ⊕ show port ⊕ "/"
     )
 
 main ∷ IO ()
 main = defaultMain ∘ testGroup "All tests" $
   [ testGroup "Create account page" $
+  {-
       [ testBrowser "Correct error message when creating with blank username" $ \base_url → lift $ do
           openPage $ base_url ⊕ "create"
           findElem (ById "create-account") >>= click
@@ -57,5 +59,13 @@ main = defaultMain ∘ testGroup "All tests" $
           findElem (ByName "password2") >>= sendKeys "password2"
           findElem (ById "create-account") >>= click
           findElem (ById "error-message") >>= getText >>= liftIO ∘ (@?= password_mismatch_message)
+      -}
+      [ testBrowser "Correct error message when account already exists" $ \base_url → lift $ do
+          openPage $ base_url ⊕ "create"
+          findElem (ByName "username") >>= sendKeys "username"
+          findElem (ByName "password") >>= sendKeys "password"
+          findElem (ByName "password2") >>= sendKeys "password"
+          findElem (ById "create-account") >>= click
+          findElem (ById "error-message") >>= getText >>= liftIO ∘ (@?= account_exists_message)
       ]
   ]

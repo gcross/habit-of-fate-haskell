@@ -33,13 +33,14 @@ import Data.Aeson hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
-import Control.Exception (SomeException, assert, catch)
+import Control.Exception (SomeException, assert, catch, throwIO)
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Lazy as Lazy
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID
 import Data.Yaml hiding (Parser, (.=))
+import GHC.Conc
 import Network.HTTP.Types.Status
 import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
@@ -429,34 +430,61 @@ makeApp password_secret initial_accounts saveAccounts = do
   scottyApp $ do
 -------------------------------- Create Account --------------------------------
     let createAccount ∷ Text → Text → ActionM CreateAccountResult
-        createAccount username password = assert ((username /= "") && (password /= "")) ∘ liftIO $ do
-          logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
-          new_account ← newAccount password
-          atomically $ do
-            accounts ← readTVar accounts_tvar
-            if member username accounts
-              then return AccountExists
-              else do
-                account_tvar ← newTVar new_account
-                modifyTVar accounts_tvar $ insertMap username account_tvar
-                return AccountCreated
+        createAccount username password =
+          assert ((username /= "") && (password /= "")) ∘ liftIO
+          $
+          catch
+            (do
+              logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
+              logIO "MOTA A"
+              new_account ← newAccount password
+              logIO "MADE IT HERE!!!"
+              logIO $ "MOTA B: " ⊕ show new_account
+              result ← atomically $ do
+                unsafeIOToSTM (logIO "ATOM A")
+                accounts ← readTVar accounts_tvar
+                unsafeIOToSTM (logIO "ATOM B")
+                let mem = member username accounts
+                unsafeIOToSTM (logIO "ATOM C")
+                if trace ("member =" ⊕ show mem) mem
+                  then do
+                    unsafeIOToSTM (logIO "ATOM D1")
+                    return AccountExists
+                  else do
+                    unsafeIOToSTM (logIO "ATOM D2")
+                    account_tvar ← newTVar new_account
+                    unsafeIOToSTM (logIO "ATOM E2")
+                    modifyTVar accounts_tvar $ insertMap username account_tvar
+                    unsafeIOToSTM (logIO "ATOM F2")
+                    return AccountCreated
+              logIO "MOTA C"
+              pure result
+            )
+            (\(e ∷ SomeException) → logIO [i|EXC: #{e}|] >> throwIO e)
 
-    Scotty.post "/api/create" $ do
-      logRequest
-      username ← param "username"
-      password ← param "password"
-      account_status ← createAccount username password
-      case account_status of
-        AccountExists → do
-          logIO $ [i|Account "#{username}" already exists!|]
-          finishWithStatus conflict409
-        AccountCreated → do
-          logIO $ [i|Account "#{username}" successfully created!|]
-          status created201
-          Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
-            { iss = Just expected_iss
-            , sub = Just (fromJust $ stringOrURI username)
-            }
+    Scotty.post "/api/create" $
+      (do
+        logRequest
+        logIO "API A"
+        username ← param "username"
+        password ← param "password"
+        logIO "API B"
+        account_status ← createAccount username password
+        logIO "API C"
+        case account_status of
+          AccountExists → do
+            logIO $ [i|Account "#{username}" already exists!|]
+            finishWithStatus conflict409
+          AccountCreated → do
+            logIO $ [i|Account "#{username}" successfully created!|]
+            status created201
+            Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
+              { iss = Just expected_iss
+              , sub = Just (fromJust $ stringOrURI username)
+              }
+        logIO "API D"
+       `rescue` (liftIO ∘ logIO ∘ show)
+      )
 
     let returnCreateAccountForm ∷ Text → Text → ActionM ()
         returnCreateAccountForm username error_message = do
@@ -477,18 +505,23 @@ makeApp password_secret initial_accounts saveAccounts = do
 
     Scotty.get "/create" $ returnCreateAccountForm "" ""
 
-    Scotty.post "/create" $ do
+    Scotty.post "/create" $
+     (do
+      logIO "Web A"
       username ← paramOrBlank "username"
       when (username == "") $
         returnCreateAccountForm username no_username_message
+      logIO "Web B"
       password ← paramOrBlank "password"
       when (password == "") $
         returnCreateAccountForm username no_password_message
+      logIO "Web C"
       password2 ← paramOrBlank "password2"
       when (password2 == "") $
         returnCreateAccountForm username no_password2_message
       when (password /= password2) $
         returnCreateAccountForm username password_mismatch_message
+      logIO "Web D"
       createAccount username password >>=
         \case
           AccountExists → do
@@ -499,6 +532,9 @@ makeApp password_secret initial_accounts saveAccounts = do
             logIO $ [i|Account "#{username}" successfully created!|]
             status created201
             Scotty.html ∘ renderHtml ∘ docTypeHtml ∘ body $ "Account created!"
+      logIO "Web E"
+      `rescue` (liftIO ∘ logIO ∘ show)
+     )
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest

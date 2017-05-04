@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -23,6 +24,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Game
 import HabitOfFate.Habit
 import HabitOfFate.JSON ()
+import HabitOfFate.Logging
 import HabitOfFate.Quests
 import HabitOfFate.Story
 import HabitOfFate.TH
@@ -46,15 +48,19 @@ makeLenses ''Account
 newAccount ∷ Text → IO Account
 newAccount password =
   Account
-    <$> (
-          makePassword (encodeUtf8 password) 17
-          >>=
-          evaluate ∘ decodeUtf8
+    <$> (do
+          logIO [i|111|]
+          logIO [i|   .Z #{encodeUtf8 password}|]
+          p1 ← makePassword (encodeUtf8 password) 15
+          logIO [i|   .A #{p1}|]
+          p2 ← evaluate ∘ decodeUtf8 $ p1
+          logIO [i|   .B #{p2}|]
+          return p2
         )
-    <*> pure mempty
-    <*> pure newGame
-    <*> pure Nothing
-    <*> newStdGen
+    <*> (logIO "222" >> pure mempty)
+    <*> (logIO "333" >> pure newGame)
+    <*> (logIO "444" >> pure Nothing)
+    <*> (logIO "555" >> newStdGen)
 
 passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password_ account =
