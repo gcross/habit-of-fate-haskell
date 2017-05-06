@@ -75,8 +75,11 @@ createHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitCr
 replaceHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitReplaced)
 
 main = defaultMain $ testGroup "All Tests"
+  ------------------------------------------------------------------------------
   [ testGroup "HabitOfFate.Server"
+  ------------------------------------------------------------------------------
     [ testGroup "Missing username/password" $
+    ----------------------------------------------------------------------------
         let testMissing test_name path =
               serverTestCase test_name $ \port → do
                 manager ← newManager defaultManagerSettings
@@ -97,7 +100,9 @@ main = defaultMain $ testGroup "All Tests"
             , testMissing "Missing password" "login?username=foobar"
             ]
         ]
+    ----------------------------------------------------------------------------
     , testGroup "Empty username/password" $
+    ----------------------------------------------------------------------------
         let testEmpty test_name path =
               serverTestCase test_name $ \port → do
                 manager ← newManager defaultManagerSettings
@@ -114,15 +119,21 @@ main = defaultMain $ testGroup "All Tests"
             , testEmpty "Empty password" "create?password="
             ]
         ]
+    ----------------------------------------------------------------------------
     , apiTestCase "fetching all habits from a new account returns an empty array" $
+    ----------------------------------------------------------------------------
         getHabits
         >>=
         liftIO ∘ (@?= Map.empty)
+    ----------------------------------------------------------------------------
     , apiTestCase "fetching a habit when none exist returns Nothing" $
+    ----------------------------------------------------------------------------
         getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
         >>=
         liftIO ∘ (@?= Nothing)
+    ----------------------------------------------------------------------------
     , testGroup "putHabit"
+    ----------------------------------------------------------------------------
         [ apiTestCase "putting a habit and then fetching it returns the habit" $ do
             createHabit test_habit_id test_habit
             getHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
@@ -134,7 +145,9 @@ main = defaultMain $ testGroup "All Tests"
             replaceHabit test_habit_id test_habit_2
             getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
         ]
+    ----------------------------------------------------------------------------
     , testGroup "deleteHabit"
+    ----------------------------------------------------------------------------
         [ apiTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
             deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
         , apiTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
@@ -142,12 +155,16 @@ main = defaultMain $ testGroup "All Tests"
             deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
             getHabits >>= liftIO ∘ (@?= Map.empty)
         ]
+    ----------------------------------------------------------------------------
     , apiTestCase "markHabits" $ do
+    ----------------------------------------------------------------------------
         createHabit test_habit_id test_habit
         createHabit test_habit_id_2 test_habit_2
         markHabits [test_habit_id] [test_habit_id_2]
         getCredits >>= liftIO ∘ (@?= Credits 1 2)
+    ----------------------------------------------------------------------------
     , testCase "Putting a habit causes the accounts to be written" $ do
+    ----------------------------------------------------------------------------
         write_requested_ref ← newIORef False
         withApplication
           (makeApp (secret "test secret") mempty (const $ writeIORef write_requested_ref True))
@@ -157,8 +174,11 @@ main = defaultMain $ testGroup "All Tests"
             flip runClientT session_info $ createHabit test_habit_id test_habit
         readIORef write_requested_ref >>= assertBool "Write was not requested."
     ]
+  ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Story"
+  ------------------------------------------------------------------------------
     [ testGroup "s"
+    ----------------------------------------------------------------------------
       [ testCase "just a substitution" $ olength [s|{test}|] @?= 1
       , testCase "single story plain text" $
           olength [s|line1|] @?= 1
@@ -178,7 +198,9 @@ main = defaultMain $ testGroup "All Tests"
       , testCase "two keys separated by a space" $
           "{x} {y}" @?= originalFromSubEvent [s_fixed|{x} {y}|]
       ]
+    ----------------------------------------------------------------------------
     , testGroup "makeSubstitutor"
+    ----------------------------------------------------------------------------
       [ testGroup "name" $
           [ testCase "gendered"
               ∘
@@ -202,8 +224,11 @@ main = defaultMain $ testGroup "All Tests"
                 "X"
           ]
       ]
+    ----------------------------------------------------------------------------
     , testGroup "substitute"
+    ----------------------------------------------------------------------------
         [ testCase "single letter" $ do
+        ------------------------------------------------------------------------
             let GenEvent [subparagraph] = [s_fixed|{x}|]
             Right "X" @=? (
               rewords
@@ -212,7 +237,9 @@ main = defaultMain $ testGroup "All Tests"
               <$>
               substitute (const ∘ Right ∘ Text_ $ "X") subparagraph
              )
+        ------------------------------------------------------------------------
         , testCase "two keys separated by a space" $ do
+        ------------------------------------------------------------------------
             let GenEvent [subparagraph] = [s_fixed|{x} {y}|]
             Right "X Y" @=? (
               rewords
@@ -225,7 +252,9 @@ main = defaultMain $ testGroup "All Tests"
                   \case {"x" → Right "X"; "y" → Right "Y"; _ → Left "not found"}
               ) subparagraph
              )
+        ------------------------------------------------------------------------
         , testCase "paragraph" $ do
+        ------------------------------------------------------------------------
             let GenEvent [subparagraph] = [s_fixed|
 The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
 to wander alone in the Wicked Forest at night, but {her|pos} {son}, little
@@ -253,7 +282,9 @@ hopeless task, but {she} has no other choice.
               ) subparagraph
              )
         ]
+    ----------------------------------------------------------------------------
     , testGroup "rendering"
+    ----------------------------------------------------------------------------
         [ testCase "three Text_, middle space" $
             (renderStoryToText $ GenStory [GenQuest [GenEvent ["X Y"]]])
             @?=
