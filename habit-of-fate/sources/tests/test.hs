@@ -37,14 +37,6 @@ serverTestCase test_name =
   ∘
   withTestApp
 
-apiTestCase ∷ String → (ClientIO ()) → TestTree
-apiTestCase test_name action =
-  serverTestCase test_name
-  $
-  createAccount "bitslayer" "password" Testing "localhost"
-  >=>
-  runClientT action ∘ fromMaybe (error "Unable to create account.")
-
 test_habit = Habit "name" (Credits 1 1)
 test_habit_2 = Habit "test" (Credits 2 2)
 
@@ -78,101 +70,113 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   [ testGroup "HabitOfFate.Server"
   ------------------------------------------------------------------------------
-    [ testGroup "Missing username/password" $
+    [ testGroup "JSON API" $
     ----------------------------------------------------------------------------
-        let testMissing test_name path =
-              serverTestCase test_name $ \port → do
-                manager ← newManager defaultManagerSettings
-                response ← flip httpNoBody manager $ defaultRequest
-                  { method = renderStdMethod POST
-                  , host = "localhost"
-                  , port = port
-                  , path = "/api/" ⊕ path
-                  }
-                400 @=? responseStatusCode response
+        let apiTestCase ∷ String → (ClientIO ()) → TestTree
+            apiTestCase test_name action =
+              serverTestCase test_name
+              $
+              createAccount "bitslayer" "password" Testing "localhost"
+              >=>
+              runClientT action ∘ fromMaybe (error "Unable to create account.")
         in
-        [ testGroup "Create account"
-            [ testMissing "Missing username" "create?password=foobar"
-            , testMissing "Missing password" "create?username=foobar"
+        ------------------------------------------------------------------------
+        [ testGroup "Missing username/password" $
+        ------------------------------------------------------------------------
+            let testMissing test_name path =
+                  serverTestCase test_name $ \port → do
+                    manager ← newManager defaultManagerSettings
+                    response ← flip httpNoBody manager $ defaultRequest
+                      { method = renderStdMethod POST
+                      , host = "localhost"
+                      , port = port
+                      , path = "/api/" ⊕ path
+                      }
+                    400 @=? responseStatusCode response
+            in
+            [ testGroup "Create account"
+                [ testMissing "Missing username" "create?password=foobar"
+                , testMissing "Missing password" "create?username=foobar"
+                ]
+            , testGroup "Log in"
+                [ testMissing "Missing username" "login?password=foobar"
+                , testMissing "Missing password" "login?username=foobar"
+                ]
             ]
-        , testGroup "Log in"
-            [ testMissing "Missing username" "login?password=foobar"
-            , testMissing "Missing password" "login?username=foobar"
+        ------------------------------------------------------------------------
+        , testGroup "Empty username/password" $
+        ------------------------------------------------------------------------
+            let testEmpty test_name path =
+                  serverTestCase test_name $ \port → do
+                    manager ← newManager defaultManagerSettings
+                    response ← flip httpNoBody manager $ defaultRequest
+                      { method = renderStdMethod POST
+                      , host = "localhost"
+                      , port = port
+                      , path = "/api/" ⊕ path
+                      }
+                    400 @=? responseStatusCode response
+            in
+            [ testGroup "Create account"
+                [ testEmpty "Empty username" "create?username="
+                , testEmpty "Empty password" "create?password="
+                ]
             ]
-        ]
-    ----------------------------------------------------------------------------
-    , testGroup "Empty username/password" $
-    ----------------------------------------------------------------------------
-        let testEmpty test_name path =
-              serverTestCase test_name $ \port → do
-                manager ← newManager defaultManagerSettings
-                response ← flip httpNoBody manager $ defaultRequest
-                  { method = renderStdMethod POST
-                  , host = "localhost"
-                  , port = port
-                  , path = "/api/" ⊕ path
-                  }
-                400 @=? responseStatusCode response
-        in
-        [ testGroup "Create account"
-            [ testEmpty "Empty username" "create?username="
-            , testEmpty "Empty password" "create?password="
+        ------------------------------------------------------------------------
+        , apiTestCase "fetching all habits from a new account returns an empty array" $
+        ------------------------------------------------------------------------
+            getHabits
+            >>=
+            liftIO ∘ (@?= Map.empty)
+        ------------------------------------------------------------------------
+        , apiTestCase "fetching a habit when none exist returns Nothing" $
+        ------------------------------------------------------------------------
+            getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
+            >>=
+            liftIO ∘ (@?= Nothing)
+        ------------------------------------------------------------------------
+        , testGroup "putHabit"
+        ------------------------------------------------------------------------
+            [ apiTestCase "putting a habit and then fetching it returns the habit" $ do
+                createHabit test_habit_id test_habit
+                getHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
+            , apiTestCase "putting a habit causes fetching all habits to return a singleton map" $ do
+                createHabit test_habit_id test_habit
+                getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
+            , apiTestCase "putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
+                createHabit test_habit_id test_habit
+                replaceHabit test_habit_id test_habit_2
+                getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
             ]
+        ------------------------------------------------------------------------
+        , testGroup "deleteHabit"
+        ------------------------------------------------------------------------
+            [ apiTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
+                deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
+            , apiTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
+                createHabit test_habit_id test_habit
+                deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
+                getHabits >>= liftIO ∘ (@?= Map.empty)
+            ]
+        ------------------------------------------------------------------------
+        , apiTestCase "markHabits" $ do
+        ------------------------------------------------------------------------
+            createHabit test_habit_id test_habit
+            createHabit test_habit_id_2 test_habit_2
+            markHabits [test_habit_id] [test_habit_id_2]
+            getCredits >>= liftIO ∘ (@?= Credits 1 2)
+        ------------------------------------------------------------------------
+        , testCase "Putting a habit causes the accounts to be written" $ do
+        ------------------------------------------------------------------------
+            write_requested_ref ← newIORef False
+            withApplication
+              (makeApp (secret "test secret") mempty (const $ writeIORef write_requested_ref True))
+              $
+              \port → do
+                session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
+                flip runClientT session_info $ createHabit test_habit_id test_habit
+            readIORef write_requested_ref >>= assertBool "Write was not requested."
         ]
-    ----------------------------------------------------------------------------
-    , apiTestCase "fetching all habits from a new account returns an empty array" $
-    ----------------------------------------------------------------------------
-        getHabits
-        >>=
-        liftIO ∘ (@?= Map.empty)
-    ----------------------------------------------------------------------------
-    , apiTestCase "fetching a habit when none exist returns Nothing" $
-    ----------------------------------------------------------------------------
-        getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
-        >>=
-        liftIO ∘ (@?= Nothing)
-    ----------------------------------------------------------------------------
-    , testGroup "putHabit"
-    ----------------------------------------------------------------------------
-        [ apiTestCase "putting a habit and then fetching it returns the habit" $ do
-            createHabit test_habit_id test_habit
-            getHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
-        , apiTestCase "putting a habit causes fetching all habits to return a singleton map" $ do
-            createHabit test_habit_id test_habit
-            getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
-        , apiTestCase "putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
-            createHabit test_habit_id test_habit
-            replaceHabit test_habit_id test_habit_2
-            getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
-        ]
-    ----------------------------------------------------------------------------
-    , testGroup "deleteHabit"
-    ----------------------------------------------------------------------------
-        [ apiTestCase "deleting a non-existing habit returns NoHabitToDelete" $ do
-            deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
-        , apiTestCase "putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
-            createHabit test_habit_id test_habit
-            deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
-            getHabits >>= liftIO ∘ (@?= Map.empty)
-        ]
-    ----------------------------------------------------------------------------
-    , apiTestCase "markHabits" $ do
-    ----------------------------------------------------------------------------
-        createHabit test_habit_id test_habit
-        createHabit test_habit_id_2 test_habit_2
-        markHabits [test_habit_id] [test_habit_id_2]
-        getCredits >>= liftIO ∘ (@?= Credits 1 2)
-    ----------------------------------------------------------------------------
-    , testCase "Putting a habit causes the accounts to be written" $ do
-    ----------------------------------------------------------------------------
-        write_requested_ref ← newIORef False
-        withApplication
-          (makeApp (secret "test secret") mempty (const $ writeIORef write_requested_ref True))
-          $
-          \port → do
-            session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
-            flip runClientT session_info $ createHabit test_habit_id test_habit
-        readIORef write_requested_ref >>= assertBool "Write was not requested."
     ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Story"
