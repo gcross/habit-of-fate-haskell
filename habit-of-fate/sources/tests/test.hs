@@ -4,6 +4,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -183,39 +184,51 @@ main = defaultMain $ testGroup "All Tests"
         ]
     ----------------------------------------------------------------------------
     , testGroup "Web API" $
-    ----------------------------------------------------------------------------
-        [ testGroup "/create" $
+      --------------------------------------------------------------------------
+      [ testGroup "Invalid sign-on" $
         ------------------------------------------------------------------------
-          let testErrorMessage ∷ String → Text → Text → TestTree
-              testErrorMessage test_name body error_message =
-                serverTestCase test_name $ \port → do
-                  manager ← newManager defaultManagerSettings
-                  response ← flip httpLbs manager $ defaultRequest
-                    { method = renderStdMethod POST
-                    , host = "localhost"
-                    , port = port
-                    , path = "/create"
-                    , requestHeaders = [("Content-Type", "application/x-www-form-urlencoded")]
-                    , requestBody = RequestBodyBS (encodeUtf8 body)
-                    }
-                  200 @=? responseStatusCode response
-                  doc ←
-                    either throwIO pure
-                    ∘
-                    parseLBS def
-                    ∘
-                    responseBody
-                    $
-                    response
-                  (fromDocument doc $// attributeIs "id" "error-message" >=> child >=> content)
-                    @?= [error_message]
-          in
-            [ testErrorMessage "No username" "username=&password=" no_username_message
-            , testErrorMessage "No password" "username=U&password=&password=" no_password_message
-            , testErrorMessage "No repeat password" "username=U&password=P&password=" no_password2_message
-            , testErrorMessage "Mismatched passwords" "username=U&password=P&password2=P2" password_mismatch_message
-            ]
+        let checkErrorMessage ∷ Text → Text → Text → Int → IO ()
+            checkErrorMessage path body error_message port = do
+              manager ← newManager defaultManagerSettings
+              response ← flip httpLbs manager $ defaultRequest
+                { method = renderStdMethod POST
+                , host = "localhost"
+                , port = port
+                , path = encodeUtf8 path
+                , requestHeaders = [("Content-Type", "application/x-www-form-urlencoded")]
+                , requestBody = RequestBodyBS (encodeUtf8 body)
+                }
+              200 @=? responseStatusCode response
+              doc ←
+                either throwIO pure
+                ∘
+                parseLBS def
+                ∘
+                responseBody
+                $
+                response
+              (fromDocument doc $// attributeIs "id" "error-message" >=> child >=> content)
+                @?= [error_message]
+        in
+        [ testGroup "/create" $
+          [ serverTestCase "No username" $
+              checkErrorMessage "/create" "username=&password=&password2=" no_username_message
+          , serverTestCase "No password" $
+              checkErrorMessage "/create" "username=U&password=&password2=" no_password_message
+          , serverTestCase "No repeat password" $
+              checkErrorMessage "/create" "username=U&password=P&password=" no_password2_message
+          , serverTestCase "Mismatched passwords" $
+              checkErrorMessage "/create" "username=U&password=P&password2=P2" password_mismatch_message
+          , serverTestCase "Already exists" $ \port → do
+              maybe_session_info ← createAccount "U" "P" Testing "localhost" port
+              case maybe_session_info of
+                Nothing →
+                  fail "Session info should have been Just"
+                Just SessionInfo{..} →
+                  checkErrorMessage "/create" "username=U&password=P&password2=P" already_exists_message port
+          ]
         ]
+      ]
     ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Story"

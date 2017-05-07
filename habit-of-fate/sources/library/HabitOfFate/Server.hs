@@ -24,6 +24,7 @@ module HabitOfFate.Server
   , no_password_message
   , no_password2_message
   , password_mismatch_message
+  , already_exists_message
   ) where
 
 import HabitOfFate.Prelude hiding (div, id, log)
@@ -391,6 +392,7 @@ no_username_message = "No username was provided."
 no_password_message = "No password was provided."
 no_password2_message = "You need to repeat the password."
 password_mismatch_message = "The passwords do not match."
+already_exists_message = "The account already exists."
 
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
@@ -491,7 +493,7 @@ makeApp password_secret initial_accounts saveAccounts = do
         \case
           AccountExists → do
             logIO $ [i|Account "#{username}" already exists!|]
-            returnCreateAccountForm username "The account already exists."
+            returnCreateAccountForm username already_exists_message
           AccountCreated → do
             logIO $ [i|Account "#{username}" successfully created!|]
             Scotty.html ∘ renderHtml ∘ docTypeHtml ∘ body $ "Account created!"
