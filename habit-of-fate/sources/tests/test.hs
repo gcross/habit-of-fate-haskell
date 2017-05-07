@@ -11,6 +11,7 @@ module Main where
 
 import HabitOfFate.Prelude hiding (elements)
 
+import Control.Exception
 import qualified Data.Map as Map
 import Data.IORef
 import Network.HTTP.Client
@@ -18,11 +19,14 @@ import Network.HTTP.Types
 import Network.Wai.Handler.Warp
 import Test.Tasty
 import Test.Tasty.HUnit
+import Text.XML (parseLBS)
+import Text.XML.Cursor
 import Web.JWT
 
 import HabitOfFate.Client
 import HabitOfFate.Credits
 import HabitOfFate.Habit
+import HabitOfFate.Logging
 import HabitOfFate.Server
 import HabitOfFate.Story
 
@@ -176,6 +180,41 @@ main = defaultMain $ testGroup "All Tests"
                 session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
                 flip runClientT session_info $ createHabit test_habit_id test_habit
             readIORef write_requested_ref >>= assertBool "Write was not requested."
+        ]
+    ----------------------------------------------------------------------------
+    , testGroup "Web API" $
+    ----------------------------------------------------------------------------
+        [ testGroup "/create" $
+        ------------------------------------------------------------------------
+          let testErrorMessage ∷ String → Text → Text → TestTree
+              testErrorMessage test_name body error_message =
+                serverTestCase test_name $ \port → do
+                  manager ← newManager defaultManagerSettings
+                  response ← flip httpLbs manager $ defaultRequest
+                    { method = renderStdMethod POST
+                    , host = "localhost"
+                    , port = port
+                    , path = "/create"
+                    , requestHeaders = [("Content-Type", "application/x-www-form-urlencoded")]
+                    , requestBody = RequestBodyBS (encodeUtf8 body)
+                    }
+                  200 @=? responseStatusCode response
+                  doc ←
+                    either throwIO pure
+                    ∘
+                    parseLBS def
+                    ∘
+                    responseBody
+                    $
+                    response
+                  (fromDocument doc $// attributeIs "id" "error-message" >=> child >=> content)
+                    @?= [error_message]
+          in
+            [ testErrorMessage "No username" "username=&password=" no_username_message
+            , testErrorMessage "No password" "username=U&password=&password=" no_password_message
+            , testErrorMessage "No repeat password" "username=U&password=P&password=" no_password2_message
+            , testErrorMessage "Mismatched passwords" "username=U&password=P&password2=P2" password_mismatch_message
+            ]
         ]
     ]
   ------------------------------------------------------------------------------
