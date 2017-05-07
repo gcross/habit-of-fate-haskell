@@ -198,7 +198,8 @@ main = defaultMain $ testGroup "All Tests"
                 , requestHeaders = [("Content-Type", "application/x-www-form-urlencoded")]
                 , requestBody = RequestBodyBS (encodeUtf8 body)
                 }
-              200 @=? responseStatusCode response
+              assertBool "Was not successful"
+                (responseStatusCode response >= 200 && responseStatusCode response < 300)
               doc ←
                 either throwIO pure
                 ∘
@@ -226,6 +227,21 @@ main = defaultMain $ testGroup "All Tests"
                   fail "Session info should have been Just"
                 Just SessionInfo{..} →
                   checkErrorMessage "/create" "username=U&password=P&password2=P" already_exists_message port
+          ]
+        , testGroup "/login" $
+          [ serverTestCase "No username" $
+              checkErrorMessage "/login" "username=&password=" no_username_message
+          , serverTestCase "No password" $
+              checkErrorMessage "/login" "username=U&password=" no_password_message
+          , serverTestCase "No such account" $
+              checkErrorMessage "/login" "username=U&password=P" no_such_account_message
+          , serverTestCase "Invalid password" $ \port → do
+              maybe_session_info ← createAccount "U" "P" Testing "localhost" port
+              case maybe_session_info of
+                Nothing →
+                  fail "Session info should have been Just"
+                Just SessionInfo{..} →
+                  checkErrorMessage "/login" "username=U&password=Q" invalid_password_message port
           ]
         ]
       ]
