@@ -412,6 +412,8 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
       writer = writerWith environment
 
       getContent filename =
+        logIO [i|Getting content #{filename}|]
+        >>
         (liftIO $ locateWebAppFile filename)
         >>=
         \case
