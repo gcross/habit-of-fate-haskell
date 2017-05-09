@@ -140,7 +140,6 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
-data CreateAccountResult = AccountExists | AccountCreated deriving (Eq,Show,Ord,Read)
 data LoginResult = NoSuchAccount | InvalidPassword | LoginSuccessful Lazy.Text
 
 authorizeWith ∷ Environment → ActionM (String, TVar Account)
@@ -447,76 +446,29 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
 
   scottyApp $ do
 -------------------------------- Create Account --------------------------------
-    let createAccount ∷ Text → Text → ActionM CreateAccountResult
-        createAccount username password = assert ((username /= "") && (password /= "")) ∘ liftIO $ do
-          logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
-          new_account ← newAccount password
-          atomically $ do
-            accounts ← readTVar accounts_tvar
-            if member username accounts
-              then return AccountExists
-              else do
-                account_tvar ← newTVar new_account
-                modifyTVar accounts_tvar $ insertMap username account_tvar
-                return AccountCreated
-
     Scotty.post "/api/create" $ do
       logRequest
       username ← param "username"
       password ← param "password"
-      account_status ← createAccount username password
-      case account_status of
-        AccountExists → do
-          logIO $ [i|Account "#{username}" already exists!|]
-          finishWithStatus conflict409
-        AccountCreated → do
-          logIO $ [i|Account "#{username}" successfully created!|]
-          status created201
-          Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
-            { iss = Just expected_iss
-            , sub = Just (fromJust $ stringOrURI username)
-            }
-
-    let returnCreateAccountForm ∷ Text → Text → ActionM ()
-        returnCreateAccountForm username error_message = do
-          Scotty.html ∘ renderHtml ∘ docTypeHtml $ do
-            head $ title "Create account"
-            body ∘ (form ! action "/create" ! method "post") ∘ foldMap div $
-              [ table ∘ (foldMap $ tr ∘ foldMap td) $
-                [ [ p $ "Username:"
-                  , input ! name "username" ! type_ "text" ! value (toValue username)
-                  ]
-                , [ p $ "Password:", input ! type_ "password" ! name "password"]
-                , [ p $ "Password (again):", input ! type_ "password" ! name "password2"]
-                ]
-              , button "Create account"
-              , span (toHtml error_message) ! id "error-message"
-              ]
-          finish
-
-    Scotty.get "/create" $ returnCreateAccountForm "" ""
-
-    Scotty.post "/create" $ do
-      username ← paramOrBlank "username"
-      when (username == "") $
-        returnCreateAccountForm username no_username_message
-      password ← paramOrBlank "password"
-      when (password == "") $
-        returnCreateAccountForm username no_password_message
-      password2 ← paramOrBlank "password2"
-      when (password2 == "") $
-        returnCreateAccountForm username no_password2_message
-      when (password /= password2) $
-        returnCreateAccountForm username password_mismatch_message
-      createAccount username password >>=
-        \case
-          AccountExists → do
-            logIO $ [i|Account "#{username}" already exists!|]
-            returnCreateAccountForm username already_exists_message
-          AccountCreated → do
-            logIO $ [i|Account "#{username}" successfully created!|]
-            Scotty.html ∘ renderHtml ∘ docTypeHtml ∘ body $ "Account created!"
-            status created201
+      logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
+      join ∘ liftIO $ do
+        new_account ← newAccount password
+        atomically $ do
+          accounts ← readTVar accounts_tvar
+          if member username accounts
+            then pure $ do
+              logIO $ [i|Account "#{username}" already exists!|]
+              status conflict409
+            else do
+              account_tvar ← newTVar new_account
+              modifyTVar accounts_tvar $ insertMap username account_tvar
+              pure $ do
+                logIO $ [i|Account "#{username}" successfully created!|]
+                status created201
+                Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
+                  { iss = Just expected_iss
+                  , sub = Just (fromJust $ stringOrURI username)
+                  }
 ------------------------------------ Login -------------------------------------
     let login ∷ Text → Text → ActionM LoginResult
         login username password = do
