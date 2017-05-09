@@ -26,8 +26,6 @@ module HabitOfFate.Server
   , no_password2_message
   , password_mismatch_message
   , already_exists_message
-  , no_such_account_message
-  , invalid_password_message
   ) where
 
 import HabitOfFate.Prelude hiding (div, id, log)
@@ -139,8 +137,6 @@ bodyJSON = do
       logIO [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body_}|]
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
-
-data LoginResult = NoSuchAccount | InvalidPassword | LoginSuccessful Lazy.Text
 
 authorizeWith ∷ Environment → ActionM (String, TVar Account)
 authorizeWith Environment{..} =
@@ -396,8 +392,6 @@ no_password_message = "No password was provided."
 no_password2_message = "You need to repeat the password."
 password_mismatch_message = "The passwords do not match."
 already_exists_message = "The account already exists."
-no_such_account_message = "The account does not exist."
-invalid_password_message = "The password is incorrect."
 
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
@@ -470,77 +464,26 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
                   , sub = Just (fromJust $ stringOrURI username)
                   }
 ------------------------------------ Login -------------------------------------
-    let login ∷ Text → Text → ActionM LoginResult
-        login username password = do
-          maybe_account_tvar ← fmap (lookup username) ∘ liftIO ∘ readTVarIO $ accounts_tvar
-          case maybe_account_tvar of
-            Nothing → pure NoSuchAccount
-            Just account_tvar → do
-              account ← liftIO ∘ readTVarIO $ account_tvar
-              if passwordIsValid password account
-                then pure $
-                  LoginSuccessful
-                  ∘
-                  view (from strict)
-                  ∘
-                  encodeSigned HS256 password_secret
-                  $
-                  def
-                    { iss = Just expected_iss
-                    , sub = Just (fromJust $ stringOrURI username)
-                    }
-                else pure InvalidPassword
-
     Scotty.post "/api/login" $ do
       logRequest
       username ← param "username"
       password ← param "password"
       logIO $ [i|Request to log into an account with "#{username}" with password "#{password}"|]
-      result ← login username password
-      case result of
-        NoSuchAccount → finishWithStatusMessage 404 "Not Found: No such account"
-        InvalidPassword → finishWithStatusMessage 403 "Forbidden: Invalid password"
-        LoginSuccessful token → do
-          logIO "Login successful."
-          Scotty.text token
-
-    let returnLoginAccountForm ∷ Text → Text → ActionM ()
-        returnLoginAccountForm username error_message = do
-          Scotty.html ∘ renderHtml ∘ docTypeHtml $ do
-            head $ title "Create account"
-            body ∘ (form ! action "/create" ! method "post") ∘ foldMap div $
-              [ table ∘ (foldMap $ tr ∘ foldMap td) $
-                [ [ p $ "Username:"
-                  , input ! name "username" ! type_ "text" ! value (toValue username)
-                  ]
-                , [ p $ "Password:", input ! type_ "password" ! name "password"]
-                ]
-              , button "Login"
-              , span (toHtml error_message) ! id "error-message"
-              ]
-          finish
-
-    Scotty.get "/login" $ returnLoginAccountForm "" ""
-
-    Scotty.post "/login" $ do
-      username ← paramOrBlank "username"
-      when (username == "") $
-        returnLoginAccountForm username no_username_message
-      password ← paramOrBlank "password"
-      when (password == "") $
-        returnLoginAccountForm username no_password_message
-      login username password >>=
-        \case
-          NoSuchAccount → do
-            logIO $ [i|Account "#{username}" does not exist.|]
-            returnLoginAccountForm username no_such_account_message
-          InvalidPassword → do
-            logIO $ [i|Password for "#{username}" was incorrect.|]
-            returnLoginAccountForm username invalid_password_message
-          LoginSuccessful token → do
-            logIO $ [i|Login successful for "#{username}".|]
-            Scotty.addHeader "Set-Cookie" ("token=" ⊕ token)
-            status ok200
+      (
+        (fmap (lookup username) ∘ liftIO ∘ readTVarIO $ accounts_tvar)
+        >>=
+        maybe (finishWithStatusMessage 404 "Not Found: No such account") return
+        >>=
+        liftIO ∘ readTVarIO
+        >>=
+        bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
+        ∘
+        passwordIsValid password
+       )
+      Scotty.text ∘ view (from strict) ∘ encodeSigned HS256 password_secret $ def
+        { iss = Just expected_iss
+        , sub = Just (fromJust $ stringOrURI username)
+        }
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" ∘ reader $ do
       log "Requested all habits."
