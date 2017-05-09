@@ -80,6 +80,7 @@ HCkX84dkDHTBizEpVcdZp1gVf/5+hUmFgG/w9EWGrRe2UxhwHJvtkA==
 data Configuration = Configuration
   { port ∷ Int
   , maybe_data_path ∷ Maybe FilePath
+  , maybe_webapp_path ∷ Maybe FilePath
   , maybe_password_secret_path ∷ Maybe FilePath
   , maybe_certificate_path ∷ Maybe FilePath
   , maybe_key_path ∷ Maybe FilePath
@@ -106,6 +107,13 @@ habitMain = do
               [ metavar "FILE"
               , help "Path to the game data."
               , long "data"
+              , action "file"
+              ]
+            )
+        <*> (optional ∘ strOption $ mconcat
+              [ metavar "FILE"
+              , help "Path to the web app content."
+              , long "app"
               , action "file"
               ]
             )
@@ -216,7 +224,40 @@ habitMain = do
               secret <$> readFile password_secret_path
           )
 
-  app ← makeApp password_secret initial_accounts saveAccounts
+  locateWebAppFile ∷ FilePath → IO (Maybe FilePath) ←
+    case maybe_webapp_path of
+      Nothing
+        | test_mode → do
+            logIO "No path to the web app files specified; all requests will result in not found."
+            pure ∘ const ∘ pure $ Nothing
+        | otherwise →
+            exitFailureWithMessage "You need to specify the path to the web app files."
+      Just webapp_path → do
+        logIO [i|Web app files are located at #{webapp_path}.|]
+        let isUnacceptableCharacter = not ∘ (∈ ['a'..'z'] ⊕ ['A'..'Z'] ⊕ ['0'..'9'] ⊕ ['_','-','.'])
+            slashAfterPeriod filename =
+              case (findIndex (== '/') $ reverse filename, findIndex (== '.') $ reverse filename) of
+                (Just x, Just y) | x < y → True
+                _ → False
+        pure $ \filename → if
+          | any isUnacceptableCharacter filename → do
+              let unacceptable_characters = nub ∘ filter isUnacceptableCharacter $ filename
+              logIO [i|Contains invalid characters: #{unacceptable_characters}|]
+              pure Nothing
+          | (length ∘ findIndices (== '.') $ filename) > 1 → do
+              logIO "Contains more than one period."
+              pure Nothing
+          | slashAfterPeriod filename → do
+              logIO "There is a slash after the period."
+              pure Nothing
+          | otherwise →
+              let filepath = webapp_path </> filename
+              in  doesFileExist filepath
+                  >>=
+                  bool
+                    (logIO [i|File not found at #{filepath}.|] >> pure Nothing)
+                    (logIO [i|File found at #{filepath}.|] >> pure (Just filepath))
+  app ← makeApp locateWebAppFile password_secret initial_accounts saveAccounts
   let tls_settings =
         (tlsSettingsMemory certificate key)
         { onInsecure =

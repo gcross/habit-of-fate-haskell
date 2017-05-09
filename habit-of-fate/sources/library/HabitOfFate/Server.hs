@@ -18,7 +18,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module HabitOfFate.Server
-  ( makeApp
+  ( FileLocator
+  , makeApp
   -- Messages
   , no_username_message
   , no_password_message
@@ -403,13 +404,15 @@ invalid_password_message = "The password is incorrect."
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
+type FileLocator = FilePath → IO (Maybe FilePath)
+
 makeApp ∷
+  FileLocator →
   Secret →
   Map Text Account →
   (Map Text Account → IO ()) →
   IO Application
-makeApp password_secret initial_accounts saveAccounts = do
------------------------------------ Prelude ------------------------------------
+makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
 
   logIO $ "Starting server..."
@@ -430,6 +433,17 @@ makeApp password_secret initial_accounts saveAccounts = do
       environment = Environment{..}
       reader = readerWith environment
       writer = writerWith environment
+
+      getContent filename =
+        (liftIO $ locateWebAppFile filename)
+        >>=
+        \case
+          Nothing → do
+            logIO "File not found."
+            setStatusAndLog notFound404
+          Just filepath → do
+            logIO [i|File found at "#{filepath}".|]
+            Scotty.file filepath
 
   scottyApp $ do
 -------------------------------- Create Account --------------------------------
@@ -657,6 +671,14 @@ makeApp password_secret initial_accounts saveAccounts = do
         $
         s ^. l_ #quests |> s ^. l_ #quest_events . to createQuest
         )
+------------------------------------- Root -------------------------------------
+    Scotty.get "/" $ do
+      logIO "Requested root"
+      getContent "index.html"
+    Scotty.get "/:filename" $ do
+      filename ← param "filename"
+      logIO [i|Requested "#{filename}"|]
+      getContent filename
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request

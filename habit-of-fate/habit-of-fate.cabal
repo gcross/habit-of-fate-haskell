@@ -89,6 +89,7 @@ test-suite test
                      , jwt
                      , tasty
                      , tasty-hunit
+                     , temporary
                      , warp
                      , xml-conduit
   default-language:    Haskell2010
