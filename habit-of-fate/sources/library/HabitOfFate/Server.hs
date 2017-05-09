@@ -20,12 +20,6 @@
 module HabitOfFate.Server
   ( FileLocator
   , makeApp
-  -- Messages
-  , no_username_message
-  , no_password_message
-  , no_password2_message
-  , password_mismatch_message
-  , already_exists_message
   ) where
 
 import HabitOfFate.Prelude hiding (div, id, log)
@@ -382,16 +376,6 @@ writerWith (environment@Environment{..}) (WriterProgram program) = do
   traverse_ logIO logs
   setStatusAndLog status_
   maybe (pure ()) setContent maybe_content
-
---------------------------------------------------------------------------------
------------------------------------ Messages -----------------------------------
---------------------------------------------------------------------------------
-
-no_username_message = "No username was provided."
-no_password_message = "No password was provided."
-no_password2_message = "You need to repeat the password."
-password_mismatch_message = "The passwords do not match."
-already_exists_message = "The account already exists."
 
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
