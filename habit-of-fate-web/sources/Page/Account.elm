@@ -8,6 +8,7 @@ import Api exposing (..)
 
 type alias Model =
   { login_information: { username: String, password: String }
+  , maybe_password2: Maybe String
   , error: String
   }
 
@@ -15,9 +16,11 @@ type alias Model =
 type Msg =
     Username String
   | Password String
-  | CreateAccountRequest
+  | Password2 String
+  | Request
+  | CreateAccountMode
   | CreateAccountResponse (ApiResult CreateAccountResult)
-  | LoginRequest
+  | LoginMode
   | LoginResponse (ApiResult LoginResult)
 
 
@@ -43,10 +46,27 @@ update msg model =
       LoginInProgress
         (modifyLoginInformation (\login -> { login | password=password }) model)
         Cmd.none
-    CreateAccountRequest ->
+    Password2 password2 ->
       LoginInProgress
-        model
-        (Cmd.map CreateAccountResponse (createAccountCmd model.login_information))
+        { model | maybe_password2=Just password2 }
+        Cmd.none
+    Request ->
+      case model.maybe_password2 of
+        Nothing ->
+          LoginInProgress
+            model
+            (Cmd.map LoginResponse (loginCmd model.login_information))
+        Just password2 ->
+          if password2 == model.login_information.password
+            then
+              LoginInProgress
+                model
+                (Cmd.map CreateAccountResponse (createAccountCmd model.login_information))
+            else
+              LoginInProgress
+                ({ model | error="Passwords do not match." })
+                Cmd.none
+    CreateAccountMode -> LoginInProgress ({ model | maybe_password2=Just ""}) Cmd.none
     CreateAccountResponse response ->
       case response of
         ExpectedResult (AccountCreated token) -> LoginFinished token
@@ -54,10 +74,7 @@ update msg model =
           LoginInProgress { model | error="Account already exists!" } Cmd.none
         UnexpectedError error ->
           LoginInProgress { model | error=toString error} Cmd.none
-    LoginRequest ->
-      LoginInProgress
-        model
-        (Cmd.map LoginResponse (loginCmd model.login_information))
+    LoginMode -> LoginInProgress ({ model | maybe_password2=Nothing}) Cmd.none
     LoginResponse response ->
       case response of
         ExpectedResult (LoginSuccessful token) -> LoginFinished token
@@ -73,18 +90,28 @@ view : Model -> Html Msg
 view model =
   div []
     [ table []
-        [ tr []
-            [ td [] [text "Username:"]
-            , td [] [input [type_ "text", onInput Username] []]
-            ]
-        , tr []
-            [ td [] [text "Password:"]
-            , td [] [input [type_ "password", onInput Password] []]
-            ]
-        ]
-    , div []
-        [ button [onClick CreateAccountRequest] [text "Create account"]
-        , button [onClick LoginRequest] [text "Login"]
-        ]
+        (
+          [ tr []
+              [ td [] [text "Username:"]
+              , td [] [input [type_ "text", onInput Username] []]
+              ]
+          , tr []
+              [ td [] [text "Password:"]
+              , td [] [input [type_ "password", onInput Password] []]
+              ]
+          ] ++
+            case model.maybe_password2 of
+              Nothing -> []
+              Just _ ->
+                [ tr []
+                    [ td [] [text "Password (again):"]
+                    , td [] [input [type_ "password", onInput Password2] []]
+                    ]
+                ]
+        )
+    , case model.maybe_password2 of
+        Nothing -> a [ onClick CreateAccountMode ] [ text "Create account" ]
+        Just _ -> a [ onClick LoginMode ] [ text "Login" ]
+    , div [] [ button [onClick Request] [text "Submit"] ]
     , div [style [("color", "red")]] [text model.error]
     ]

@@ -22,6 +22,7 @@ init : ( Model, Cmd Msg )
 init =
   ( AccountModel
       { login_information={username="", password=""}
+      , maybe_password2=Nothing
       , error=""
       }
   , Cmd.none
