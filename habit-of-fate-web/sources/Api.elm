@@ -46,12 +46,15 @@ type alias Token = String
 type alias LoginInformation = { username: String, password: String }
 
 
-encodeLoginInformation : LoginInformation -> Value
+encodeLoginInformation : LoginInformation -> Http.Body
 encodeLoginInformation login_information =
-  Encode.object
-  [ ("username", Encode.string login_information.username)
-  , ("password", Encode.string login_information.password)
-  ]
+  Http.stringBody
+    "application/x-www-form-urlencoded"
+    (print
+      (s "username=" <> string <> s "&password=" <> string)
+      (Http.encodeUri login_information.username)
+      (Http.encodeUri login_information.password)
+    )
 
 
 -------------------------------- Create Account --------------------------------
@@ -67,7 +70,7 @@ createAccountTask login_information =
       { method = "POST"
       , headers = []
       , url = "api/create"
-      , body = Http.jsonBody (encodeLoginInformation login_information)
+      , body = encodeLoginInformation login_information
       , expect = Http.expectString
       , timeout = Nothing
       , withCredentials = False
@@ -95,7 +98,7 @@ loginTask login_information =
       { method = "POST"
       , headers = []
       , url = "api/login"
-      , body = Http.jsonBody (encodeLoginInformation login_information)
+      , body = encodeLoginInformation login_information
       , expect = Http.expectString
       , timeout = Nothing
       , withCredentials = False
