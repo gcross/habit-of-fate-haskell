@@ -22,13 +22,10 @@ import HabitOfFate.TH
 
 data GameState = GameState
   { _belief ∷ Int
-  , __credits ∷ Credits
+  , _credits ∷ Credits
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''GameState
 makeLenses ''GameState
-
-instance HasCredits GameState where
-  credits = _credits
 
 newtype Game α =
     Game { unwrapGame ∷ StateT GameState (WriterT (Seq Paragraph) (Rand StdGen)) α }

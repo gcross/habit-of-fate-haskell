@@ -61,8 +61,8 @@ apiTestCase test_name action =
   >=>
   runClientT action ∘ fromMaybe (error "Unable to create account.")
 
-test_habit = Habit "name" (Credits 1 1)
-test_habit_2 = Habit "test" (Credits 2 2)
+test_habit = Habit "name" Low Medium
+test_habit_2 = Habit "test" Medium VeryHigh
 
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
@@ -259,7 +259,7 @@ main = defaultMain $ testGroup "All Tests"
             createHabit test_habit_id test_habit
             createHabit test_habit_id_2 test_habit_2
             markHabits [test_habit_id] [test_habit_id_2]
-            getCredits >>= liftIO ∘ (@?= Credits 1 2)
+            getCredits >>= liftIO ∘ (@?= Credits 0.5 4)
         ------------------------------------------------------------------------
         , testCase "Putting a habit causes the accounts to be written" $ do
         ------------------------------------------------------------------------
@@ -271,6 +271,26 @@ main = defaultMain $ testGroup "All Tests"
                 session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
                 flip runClientT session_info $ createHabit test_habit_id test_habit
             readIORef write_requested_ref >>= assertBool "Write was not requested."
+        ]
+    ----------------------------------------------------------------------------
+    , testGroup "putHabit"
+    ----------------------------------------------------------------------------
+        [ apiTestCase "Marking a habit gets the right credits" $ do
+        ------------------------------------------------------------------------
+            createHabit test_habit_id test_habit
+            createHabit test_habit_id_2 test_habit_2
+            markHabits [test_habit_id] [test_habit_id_2]
+            credits @(Credits actual_successes actual_failures) ← getCredits
+            liftIO ∘ putStrLn ∘ show $ credits
+            let expected_successes = scaleFactor $ test_habit ^. difficulty
+                expected_failures = scaleFactor $ test_habit_2 ^. importance
+            liftIO $ do
+              assertBool
+                ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
+                (abs (actual_successes - expected_successes) < 0.1)
+              assertBool
+                ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
+                (abs (actual_failures - expected_failures) < 0.1)
         ]
     ]
   ------------------------------------------------------------------------------

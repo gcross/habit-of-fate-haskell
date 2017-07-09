@@ -39,10 +39,20 @@ type alias Test = Random.Seed -> Task Http.Error TestOutcome
 
 
 test_habit : Habit
-test_habit = { name = "name", credits = { success = 1, failure = 0 } }
+test_habit =
+  {
+    name = "name",
+    importance = VeryHigh,
+    difficulty = Medium
+  }
 
 test_habit_2 : Habit
-test_habit_2 = { name = "name", credits = { success = 0, failure = 1 } }
+test_habit_2 =
+  {
+    name = "name",
+    importance = Low,
+    difficulty = Low
+  }
 
 
 withAccount : (Token -> Random.Seed -> Task Http.Error TestOutcome) -> Test
@@ -202,8 +212,8 @@ tests =
         } |> andThen (\_ ->
       getCreditsTask token |> Task.map (\credits ->
         let expected_credits =
-             { success = test_habit.credits.success + test_habit_2.credits.success
-             , failure = test_habit.credits.failure + test_habit_2.credits.failure
+             { success = scaleFactor test_habit.difficulty
+             , failure = scaleFactor test_habit_2.importance
              }
         in if credits == expected_credits
           then TestPassed

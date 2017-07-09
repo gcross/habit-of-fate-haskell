@@ -81,6 +81,8 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Account hiding (_habits)
 import HabitOfFate.Credits
+import HabitOfFate.Game
+import HabitOfFate.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Story
 
@@ -507,20 +509,20 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
       view (game . credits) >>= returnJSON ok200
 --------------------------------- Mark Habits ----------------------------------
     Scotty.post "/api/mark" ∘ writer $ do
-      let markHabits ∷ [UUID] → Lens' Credits Double → WriterProgram Double
-          markHabits uuids which_credits = do
-            habits ← mapM lookupHabit uuids
-            new_credits ←
-              (+ sum (map (view $ credits . which_credits) habits))
-              <$>
-              use (game . credits . which_credits)
-            game . credits . which_credits .= new_credits
-            return new_credits
       marks ← getBodyJSON
-      log $ [i|Marked #{marks ^. successes} successes and #{marks ^. failures} failures.|]
+      let markHabits ∷
+            (HabitsToMark → [UUID]) →
+            (Habit → Scale) →
+            Lens' Account Double →
+            WriterProgram Double
+          markHabits getUUIDs getScale value_lens = do
+            old_value ← use value_lens
+            increment ← (sum <$>) ∘ mapM ((scaleFactor ∘ getScale <$>) ∘ lookupHabit) ∘ getUUIDs $ marks
+            value_lens <.= old_value + increment
+      log $ [i|Marking #{marks ^. successes} successes and #{marks ^. failures} failures.|]
       (Credits
-          <$> markHabits (marks ^. successes) success
-          <*> markHabits (marks ^. failures ) failure
+          <$> (markHabits (^. successes) (^. difficulty) (game . credits . success))
+          <*> (markHabits (^. failures ) (^. importance) (game . credits . failure))
        ) >>= returnJSON ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" ∘ writer $ do

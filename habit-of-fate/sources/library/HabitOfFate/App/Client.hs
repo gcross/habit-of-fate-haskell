@@ -136,6 +136,10 @@ instance EditableValue [UUID] where
         where
           (entry,rest) = break isSep x
 
+instance EditableValue Scale where
+  showValue = unpack ∘ showScale
+  parseValue = readMaybeScale ∘ pack
+
 prompt ∷ EditableValue α ⇒ String → ActionMonadWithCancel α
 prompt p =
   promptForString
@@ -236,10 +240,8 @@ mainLoop = loop [] $
       habit_id ← liftIO randomIO
       habit ← Habit
         <$> prompt "What is the name of the habit?"
-        <*> (Credits
-              <$> promptWithDefault 1.0 "How many credits is a success worth?"
-              <*> promptWithDefault 0.0 "How many credits is a failure worth?"
-            )
+        <*> promptWithDefault Medium "Importance [very low, low, medium, high, very high]?"
+        <*> promptWithDefault Medium "Difficulty [very low, low, medium, high, very high]?"
       void ∘ liftC $ putHabit habit_id habit
     ,Action 'e' "Edit a habit." ∘ withCancel $ do
       habit_id ← prompt "Which habit?"
@@ -251,10 +253,8 @@ mainLoop = loop [] $
           return
       habit ← Habit
         <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
-        <*> (Credits
-             <$> promptWithDefault (old_habit ^. credits . success) "How many credits is a success worth?"
-             <*> promptWithDefault (old_habit ^. credits . failure) "How many credits is a failure worth?"
-            )
+        <*> promptWithDefault Medium "Importance [very low, low, medium, high, very high]?"
+        <*> promptWithDefault Medium "Difficulty [very low, low, medium, high, very high]?"
       void ∘ liftC $ putHabit habit_id habit
     ,Action 'f' "Mark habits as failed." $
        withCancel $ prompt "Which habits failed?" >>= void ∘ liftC ∘ markHabits []
@@ -290,11 +290,11 @@ mainLoop = loop [] $
         if null habits
           then putStrLn "There are no habits."
           else forM_ (mapToList habits) $ \(uuid, habit) →
-            printf "%s %s [+%f/-%f]\n"
+            printf "%s %s [+%s/-%s]\n"
               (show uuid)
               (habit ^. name)
-              (habit ^. credits . success)
-              (habit ^. credits . failure)
+              (showScale $ habit ^. difficulty)
+              (showScale $ habit ^. importance)
 
 data Configuration = Configuration
   { hostname ∷ String

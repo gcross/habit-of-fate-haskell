@@ -120,8 +120,20 @@ loginCmd = loginTask >> toCmd
 
 
 type alias Credits = { success: Float, failure: Float }
-type alias Habit = { name: String, credits: Credits }
+type Scale = VeryLow | Low | Medium | High | VeryHigh
+type alias Habit = { name: String, importance: Scale, difficulty: Scale }
 type alias Habits = EveryDict Uuid Habit
+
+
+scaleFactor : Scale -> Float
+scaleFactor scale =
+  case scale of
+    VeryLow -> 1/4
+    Low -> 1/2
+    Medium -> 1
+    High -> 2
+    VeryHigh -> 4
+
 
 makeHabitUrl : Uuid -> String
 makeHabitUrl = Uuid.toString >> print (s "/api/habits/" <> string)
@@ -145,12 +157,32 @@ credit_decoder =
     (Decode.field "failure" Decode.float)
 
 
+scale_decoder : Decoder Scale
+scale_decoder =
+  Decode.string
+  |> Decode.andThen (\s ->
+      case s of
+        "very low" -> Decode.succeed VeryLow
+        "low" -> Decode.succeed Low
+        "medium" -> Decode.succeed Medium
+        "high" -> Decode.succeed High
+        "very high" -> Decode.succeed VeryHigh
+        _ -> Decode.fail "invalid scale value"
+     )
+
+
 habit_decoder : Decoder Habit
 habit_decoder =
-  Decode.map2
-    (\name credits -> { name = name, credits = credits })
+  Decode.map3
+    (\name importance difficulty ->
+       { name = name,
+         importance = importance,
+         difficulty = difficulty
+       }
+    )
     (Decode.field "name" Decode.string)
-    (Decode.field "credits" credit_decoder)
+    (Decode.field "importance" scale_decoder)
+    (Decode.field "difficulty" scale_decoder)
 
 
 habits_decoder : Decoder Habits
@@ -176,11 +208,22 @@ encodeCredits credits =
   ]
 
 
+encodeScale : Scale -> Value
+encodeScale scale =
+  case scale of
+    VeryLow -> Encode.string "very low"
+    Low -> Encode.string "low"
+    Medium -> Encode.string "medium"
+    High -> Encode.string "high"
+    VeryHigh -> Encode.string "very high"
+
+
 encodeHabit : Habit -> Value
 encodeHabit habit =
   Encode.object
   [ ("name", Encode.string habit.name)
-  , ("credits", encodeCredits habit.credits)
+  , ("importance", encodeScale habit.importance)
+  , ("difficulty", encodeScale habit.difficulty)
   ]
 
 

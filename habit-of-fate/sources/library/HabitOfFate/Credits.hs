@@ -13,6 +13,3 @@ data Credits = Credits
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Credits
 makeLenses ''Credits
-
-class HasCredits α where
-  credits ∷ Lens' α Credits
