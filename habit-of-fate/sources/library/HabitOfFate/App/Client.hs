@@ -137,8 +137,8 @@ instance EditableValue [UUID] where
           (entry,rest) = break isSep x
 
 instance EditableValue Scale where
-  showValue = unpack ∘ showScale
-  parseValue = readMaybeScale ∘ pack
+  showValue = unpack ∘ show
+  parseValue = readMaybe ∘ pack
 
 prompt ∷ EditableValue α ⇒ String → ActionMonadWithCancel α
 prompt p =
@@ -293,8 +293,8 @@ mainLoop = loop [] $
             printf "%s %s [+%s/-%s]\n"
               (show uuid)
               (habit ^. name)
-              (showScale $ habit ^. difficulty)
-              (showScale $ habit ^. importance)
+              (show $ habit ^. difficulty)
+              (show $ habit ^. importance)
 
 data Configuration = Configuration
   { hostname ∷ String

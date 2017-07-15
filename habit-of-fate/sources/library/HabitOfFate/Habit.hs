@@ -11,35 +11,43 @@ import HabitOfFate.Prelude
 
 import Data.Aeson
 
+import qualified Text.ParserCombinators.ReadPrec as ReadPrec
+import Text.ParserCombinators.ReadP (choice, string)
+import Text.Read (Read(readPrec), readMaybe)
+
 import HabitOfFate.JSON ()
 import HabitOfFate.TH
 
 data Scale = VeryLow | Low | Medium | High | VeryHigh
-  deriving (Enum,Eq,Ord,Read,Show)
+  deriving (Enum,Eq,Ord)
 
-showScale ∷ Scale → Text
-showScale VeryLow = "very low"
-showScale Low = "low"
-showScale Medium = "medium"
-showScale High = "high"
-showScale VeryHigh = "very high"
+instance Show Scale where
+  show VeryLow = "very low"
+  show Low = "low"
+  show Medium = "medium"
+  show High = "high"
+  show VeryHigh = "very high"
 
-readMaybeScale ∷ Text → Maybe Scale
-readMaybeScale "very low" = Just VeryLow
-readMaybeScale "low" = Just Low
-readMaybeScale "medium" = Just Medium
-readMaybeScale "high" = Just High
-readMaybeScale "very high" = Just VeryHigh
-readMaybeScale _ = Nothing
+instance Read Scale where
+  readPrec = ReadPrec.lift $
+    choice
+      [ string "very low" $> VeryLow
+      , string "low" $> Low
+      , string "medium" $> Medium
+      , string "high" $> High
+      , string "very high" $> VeryHigh
+      ]
 
 instance ToJSON Scale where
-  toJSON = String ∘ showScale
+  toJSON = String ∘ pack ∘ show
 
 instance FromJSON Scale where
   parseJSON (String x) =
     maybe (fail "invalid value for scale") pure
     ∘
-    readMaybeScale
+    readMaybe
+    ∘
+    unpack
     $
     x
   parseJSON _ = fail "value for scale must be a string"
