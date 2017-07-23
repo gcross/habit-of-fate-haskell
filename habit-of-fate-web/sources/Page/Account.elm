@@ -3,11 +3,30 @@ module Page.Account exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Monocle.Lens exposing (..)
 
 import Api exposing (..)
 
+
+type alias LoginInformation = { username: String, password: String }
+
+
+username_lens : Lens LoginInformation String
+username_lens =
+  let get x = x.username
+      set y x = {x | username = y}
+  in Lens get set
+
+
+password_lens : Lens LoginInformation String
+password_lens =
+  let get x = x.password
+      set y x = {x | password = y}
+  in Lens get set
+
+
 type alias Model =
-  { login_information: { username: String, password: String }
+  { login_information: LoginInformation
   , maybe_password2: Maybe String
   , error: String
   }
@@ -24,10 +43,11 @@ type Msg =
   | LoginResponse (ApiResult LoginResult)
 
 
-modifyLoginInformation :
-  (LoginInformation -> LoginInformation) -> Model -> Model
-modifyLoginInformation modify model =
-  { model | login_information = modify model.login_information }
+login_information_lens : Lens Model LoginInformation
+login_information_lens =
+  let get x = x.login_information
+      set y x = {x | login_information = y}
+  in Lens get set
 
 
 type UpdateAccountResult =
@@ -40,11 +60,11 @@ update msg model =
   case msg of
     Username username ->
       LoginInProgress
-        (modifyLoginInformation (\login -> { login | username=username }) model)
+        ((compose login_information_lens username_lens).set username model)
         Cmd.none
     Password password ->
       LoginInProgress
-        (modifyLoginInformation (\login -> { login | password=password }) model)
+        ((compose login_information_lens password_lens).set password model)
         Cmd.none
     Password2 password2 ->
       LoginInProgress
