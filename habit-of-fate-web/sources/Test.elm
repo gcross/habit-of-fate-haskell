@@ -20,6 +20,7 @@ import Tuple
 import Uuid exposing (Uuid)
 
 import Api exposing (..)
+import Habit exposing (..)
 
 
 --------------------------------------------------------------------------------

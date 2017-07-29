@@ -7,8 +7,11 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
 import List exposing (foldr)
+import Monocle.Lens exposing (..)
 import Task exposing (Task, fail, succeed)
 import Uuid exposing (Uuid)
+
+import Habit exposing (..)
 
 
 type ApiResult result = UnexpectedError Http.Error | ExpectedResult result
@@ -119,10 +122,11 @@ loginCmd = loginTask >> toCmd
 --------------------------------------------------------------------------------
 
 
-type alias Credits = { success: Float, failure: Float }
-type Scale = VeryLow | Low | Medium | High | VeryHigh
-type alias Habit = { name: String, importance: Scale, difficulty: Scale }
-type alias Habits = EveryDict Uuid Habit
+name : Lens Habit String
+name =
+  let get x = x.name
+      set y x = {x | name = y}
+  in Lens get set
 
 
 scaleFactor : Scale -> Float
