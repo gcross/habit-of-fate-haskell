@@ -1,32 +1,33 @@
 module Page.Habits exposing (..)
 
-import EveryDict exposing (EveryDict)
 
+import EveryDict exposing (EveryDict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Monocle.Lens exposing (..)
 
 
 import Api exposing (..)
+import Habit exposing (..)
 
 
-type alias Msg = ApiResult Habits
+type Msg =
+    AddHabit
 
 
-type alias Model =
-  { token: Token
-  , habits: Habits
-  , error: String
-  }
+type alias Model = List Habit
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    UnexpectedError error -> ({ model | error=toString error }, Cmd.none)
-    ExpectedResult habits -> ({ model | habits=habits }, Cmd.none)
+    AddHabit -> (model, Cmd.none)
 
 
 view : Model -> Html Msg
-view habits_model =
-  div [] [ ul [] (List.map (\habit -> li [] [text habit.name]) (EveryDict.values habits_model.habits)) ]
+view model =
+  div []
+    [ ul [] (List.map (\habit -> li [] [text habit.name]) model)
+    , button [ onClick AddHabit ] []
+    ]
