@@ -103,28 +103,28 @@ habitMain = do
               , short 'p'
               , value 8081
               ])
-        <*> (optional ∘ strOption $ mconcat
+        <*> (strOption >>> optional $ mconcat
               [ metavar "FILE"
               , help "Path to the game data."
               , long "data"
               , action "file"
               ]
             )
-        <*> (optional ∘ strOption $ mconcat
+        <*> (strOption >>> optional $ mconcat
               [ metavar "FILE"
               , help "Path to the web app content."
               , long "app"
               , action "file"
               ]
             )
-        <*> (optional ∘ strOption $ mconcat
+        <*> (strOption >>> optional $ mconcat
               [ metavar "FILE"
               , help "Path to the password secret file."
               , long "secret"
               , action "file"
               ]
             )
-        <*> (optional ∘ strOption $ mconcat
+        <*> (strOption >>> optional $ mconcat
               [ metavar "FILE"
               , help "Path to the certificate file."
               , long "cert"
@@ -132,7 +132,7 @@ habitMain = do
               , action "file"
               ]
             )
-        <*> (optional ∘ strOption $ mconcat
+        <*> (strOption >>> optional $ mconcat
               [ metavar "FILE"
               , help "Path to the key file."
               , long "key"
@@ -199,7 +199,7 @@ habitMain = do
                 pure mempty
             )
             (do logIO "Reading existing data file"
-                BS.readFile data_path >>= either error pure ∘ decodeEither
+                BS.readFile data_path >>= (decodeEither >>> either error pure)
             )
         pure (initial_accounts, encodeFile data_path)
 
@@ -208,7 +208,7 @@ habitMain = do
       Nothing
         | test_mode → do
             logIO "No password secret file specified; generating a random secret."
-            secret ∘ toText <$> randomIO
+            (toText >>> secret) <$> randomIO
         | otherwise →
             exitFailureWithMessage "You need to specify the path to the data file."
       Just password_secret_path → do
@@ -229,22 +229,22 @@ habitMain = do
       Nothing
         | test_mode → do
             logIO "No path to the web app files specified; all requests will result in not found."
-            pure ∘ const ∘ pure $ Nothing
+            Nothing |> pure |> const |> pure
         | otherwise →
             exitFailureWithMessage "You need to specify the path to the web app files."
       Just webapp_path → do
         logIO [i|Web app files are located at #{webapp_path}.|]
-        let isUnacceptableCharacter = not ∘ (∈ ['a'..'z'] ⊕ ['A'..'Z'] ⊕ ['0'..'9'] ⊕ ['_','-','.'])
+        let isUnacceptableCharacter = (∈ ['a'..'z'] ⊕ ['A'..'Z'] ⊕ ['0'..'9'] ⊕ ['_','-','.']) >>> not
             slashAfterPeriod filename =
               case (findIndex (== '/') $ reverse filename, findIndex (== '.') $ reverse filename) of
                 (Just x, Just y) | x < y → True
                 _ → False
         pure $ \filename → if
           | any isUnacceptableCharacter filename → do
-              let unacceptable_characters = nub ∘ filter isUnacceptableCharacter $ filename
+              let unacceptable_characters = filename |> filter isUnacceptableCharacter |> nub
               logIO [i|Contains invalid characters: #{unacceptable_characters}|]
               pure Nothing
-          | (length ∘ findIndices (== '.') $ filename) > 1 → do
+          | (filename |> findIndices (== '.') |> length) > 1 → do
               logIO "Contains more than one period."
               pure Nothing
           | slashAfterPeriod filename → do
@@ -263,7 +263,7 @@ habitMain = do
         { onInsecure =
             if test_mode
               then AllowInsecure
-              else DenyInsecure ∘ encodeUtf8 ∘ pack $
+              else DenyInsecure <<< encodeUtf8 <<< pack $
                      "Insecure connections are not supported."
         }
   runTLS

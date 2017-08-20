@@ -39,17 +39,13 @@ instance Read Scale where
       ]
 
 instance ToJSON Scale where
-  toJSON = String ∘ pack ∘ show
+  toJSON = show >>> pack >>> String
 
 instance FromJSON Scale where
   parseJSON (String x) =
-    maybe (fail "invalid value for scale") pure
-    ∘
-    readMaybe
-    ∘
-    unpack
-    $
-    x
+    x |> unpack
+      |> readMaybe
+      |> maybe (fail "invalid value for scale") pure
   parseJSON _ = fail "value for scale must be a string"
 
 scaleFactor ∷ Scale → Double

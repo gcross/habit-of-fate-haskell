@@ -16,21 +16,19 @@ import Data.Aeson
 import Data.UUID
 
 instance ToJSON UUID where
-  toJSON = String ∘ toText
+  toJSON = toText >>> String
 
 instance FromJSON UUID where
   parseJSON =
-    withText "expected string"
-    $
-    maybe (fail "invalid UUID") return ∘ fromText
+    withText "expected string" $ fromText >>> maybe (fail "invalid UUID") return
 
 instance ToJSON α ⇒ ToJSON (Map UUID α) where
-  toJSON = Object ∘ mapFromList ∘ map (toText *** toJSON) ∘ mapToList
+  toJSON = mapToList >>> map (toText *** toJSON) >>> mapFromList >>> Object
 
 instance FromJSON α ⇒ FromJSON (Map UUID α) where
   parseJSON = withObject "uuid map" $
-    fmap mapFromList
-    ∘
-    traverse (\(k,v) → (,) <$> maybe (fail "bad UUID") return (fromText k) <*> parseJSON v)
-    ∘
     mapToList
+    >>>
+    traverse (\(k,v) → (,) <$> maybe (fail "bad UUID") return (fromText k) <*> parseJSON v)
+    >>>
+    fmap mapFromList

@@ -73,7 +73,7 @@ forestEvent ∷ SubEvent → ForestAction ()
 forestEvent = storyForLens quest
 
 forestEvents ∷ [SubEvent] → ForestAction ()
-forestEvents = uniformAction ∘ fmap forestEvent
+forestEvents = fmap forestEvent >>> uniformAction
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
@@ -192,7 +192,7 @@ averted = uniform failure_stories >>= runFailureEvent FailureAverted
 runFailureEvent ∷ FailureResult → FailureEvent → ForestAction ()
 runFailureEvent failure_result event = do
   forestEvent $ event ^. common_failure_event
-  forestEvent ∘ (event ^.) $
+  (forestEvent <<< (event ^.)) $
     case failure_result of
       FailureAverted → failure_averted_event
       FailureHappened → failure_happened_event

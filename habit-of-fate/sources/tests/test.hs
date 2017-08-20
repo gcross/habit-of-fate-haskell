@@ -46,20 +46,21 @@ withTestAppNoFiles = withTestApp $ no_files
 
 serverTestCase ∷ String → FileLocator → (Int → IO ()) → TestTree
 serverTestCase test_name locateWebAppFile =
-  testCase test_name
-  ∘
   withTestAppNoFiles
+  >>>
+  testCase test_name
 
 serverTestCaseNoFiles ∷ String → (Int → IO ()) → TestTree
 serverTestCaseNoFiles test_name = serverTestCase test_name no_files
 
 apiTestCase ∷ String → (ClientIO ()) → TestTree
 apiTestCase test_name action =
-  serverTestCaseNoFiles test_name
-  $
-  createAccount "bitslayer" "password" Testing "localhost"
-  >=>
-  runClientT action ∘ fromMaybe (error "Unable to create account.")
+  (
+    createAccount "bitslayer" "password" Testing "localhost"
+    >=>
+    (fromMaybe (error "Unable to create account.") >>> runClientT action)
+  )
+  |> serverTestCaseNoFiles test_name
 
 test_habit = Habit "name" Low Medium
 test_habit_2 = Habit "test" Medium VeryHigh
@@ -69,26 +70,26 @@ test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 
 originalFromSubParagraph ∷ SubParagraph → Text
 originalFromSubParagraph =
-  rewords
-  ∘
   foldMap (
     \case
       Literal t → t
       Key k → "{" ⊕ k ⊕ "}"
   )
+  >>>
+  rewords
 
 originalFromSubEvent ∷ SubEvent → Text
 originalFromSubEvent =
-  mconcat
-  ∘
-  intersperse "\n"
-  ∘
-  map originalFromSubParagraph
-  ∘
   unwrapGenEvent
+  >>>
+  map originalFromSubParagraph
+  >>>
+  intersperse "\n"
+  >>>
+  mconcat
 
-createHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitCreated)
-replaceHabit habit_id habit = putHabit habit_id habit >>= liftIO ∘ (@?= HabitReplaced)
+createHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitCreated) >>> liftIO)
+replaceHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitReplaced) >>> liftIO)
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
@@ -98,11 +99,12 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
         let apiTestCase ∷ String → (ClientIO ()) → TestTree
             apiTestCase test_name action =
-              serverTestCaseNoFiles test_name
-              $
-              createAccount "bitslayer" "password" Testing "localhost"
-              >=>
-              runClientT action ∘ fromMaybe (error "Unable to create account.")
+              (
+                createAccount "bitslayer" "password" Testing "localhost"
+                >=>
+                (fromMaybe (error "Unable to create account.") >>> runClientT action)
+              )
+              |> serverTestCaseNoFiles test_name
         in
         ------------------------------------------------------------------------
         [ testGroup "Missing username/password" $
@@ -151,44 +153,44 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
             getHabits
             >>=
-            liftIO ∘ (@?= Map.empty)
+            ((@?= Map.empty) >>> liftIO)
         ------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ------------------------------------------------------------------------
             getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
             >>=
-            liftIO ∘ (@?= Nothing)
+            ((@?= Nothing) >>> liftIO)
         ------------------------------------------------------------------------
         , testGroup "putHabit"
         ------------------------------------------------------------------------
             [ apiTestCase "Putting a habit and then fetching it returns the habit" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
+                getHabit test_habit_id >>= ((@?= Just test_habit) >>> liftIO)
             --------------------------------------------------------------------
             , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
+                getHabits >>= ((@?= Map.singleton test_habit_id test_habit) >>> liftIO)
             --------------------------------------------------------------------
             , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 replaceHabit test_habit_id test_habit_2
-                getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit_2)
+                getHabits >>= ((@?= Map.singleton test_habit_id test_habit_2) >>> liftIO)
             ]
         ------------------------------------------------------------------------
         , testGroup "deleteHabit"
         ------------------------------------------------------------------------
             [ apiTestCase "Deleting a non-existing habit returns NoHabitToDelete" $ do
             --------------------------------------------------------------------
-                deleteHabit test_habit_id >>= liftIO ∘ (@?= NoHabitToDelete)
+                deleteHabit test_habit_id >>= ((@?= NoHabitToDelete) >>> liftIO)
             --------------------------------------------------------------------
             , apiTestCase "Putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                deleteHabit test_habit_id >>= liftIO ∘ (@?= HabitDeleted)
-                getHabits >>= liftIO ∘ (@?= Map.empty)
+                deleteHabit test_habit_id >>= ((@?= HabitDeleted) >>> liftIO)
+                getHabits >>= ((@?= Map.empty) >>> liftIO) 
             ]
         ]
     ----------------------------------------------------------------------------
@@ -218,7 +220,7 @@ main = defaultMain $ testGroup "All Tests"
                 withSystemTempFile "hoftest" $ \temp_filepath handle → do
                   hPutStr handle "testdata"
                   hFlush handle
-                  withTestApp (pure ∘ flip lookup [(recognized_filename, temp_filepath)]) $ \port → do
+                  withTestApp (flip lookup [(recognized_filename, temp_filepath)] >>> pure) $ \port → do
                     manager ← newManager defaultManagerSettings
                     response ← flip httpLbs manager $ defaultRequest
                       { method = renderStdMethod GET
@@ -234,32 +236,32 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
         getHabits
         >>=
-        liftIO ∘ (@?= Map.empty)
+        ((@?= Map.empty) >>> liftIO)
     ----------------------------------------------------------------------------
     , apiTestCase "Fetching a habit when none exist returns Nothing" $
     ----------------------------------------------------------------------------
         getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
         >>=
-        liftIO ∘ (@?= Nothing)
+        ((@?= Nothing) >>> liftIO)
     ----------------------------------------------------------------------------
     , testGroup "putHabit"
     ----------------------------------------------------------------------------
         [ apiTestCase "Putting a habit and then fetching it returns the habit" $ do
         ------------------------------------------------------------------------
             createHabit test_habit_id test_habit
-            getHabit test_habit_id >>= liftIO ∘ (@?= Just test_habit)
+            getHabit test_habit_id >>= ((@?= Just test_habit) >>> liftIO)
         ------------------------------------------------------------------------
         , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
         ------------------------------------------------------------------------
             createHabit test_habit_id test_habit
-            getHabits >>= liftIO ∘ (@?= Map.singleton test_habit_id test_habit)
+            getHabits >>= ((@?= Map.singleton test_habit_id test_habit) >>> liftIO)
         ------------------------------------------------------------------------
         , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
         ------------------------------------------------------------------------
             createHabit test_habit_id test_habit
             createHabit test_habit_id_2 test_habit_2
             markHabits [test_habit_id] [test_habit_id_2]
-            getCredits >>= liftIO ∘ (@?= Credits 0.5 4)
+            getCredits >>= ((@?= Credits 0.5 4) >>> liftIO)
         ------------------------------------------------------------------------
         , testCase "Putting a habit causes the accounts to be written" $ do
         ------------------------------------------------------------------------
@@ -281,9 +283,9 @@ main = defaultMain $ testGroup "All Tests"
             createHabit test_habit_id_2 test_habit_2
             markHabits [test_habit_id] [test_habit_id_2]
             credits @(Credits actual_successes actual_failures) ← getCredits
-            liftIO ∘ putStrLn ∘ show $ credits
-            let expected_successes = scaleFactor $ test_habit ^. difficulty
-                expected_failures = scaleFactor $ test_habit_2 ^. importance
+            credits |> show |> putStrLn |> liftIO
+            let expected_successes = test_habit ^. difficulty |> scaleFactor
+                expected_failures = test_habit_2 ^. importance |> scaleFactor
             liftIO $ do
               assertBool
                 ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
@@ -322,25 +324,19 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
       [ testGroup "name" $
           [ testCase "gendered"
-              ∘
-              (Right "Y" @=?)
-              ∘
-              (_Right %~ textFromParagraph)
-              $
-              makeSubstitutor
-                (flip lookup [("X", Gendered "Y" (error "should not be using the gender"))])
-                (const Nothing)
-                "X"
+              <| (Right "Y" @=?)
+              <| _Right %~ textFromParagraph
+              <| makeSubstitutor
+                  (flip lookup [("X", Gendered "Y" (error "should not be using the gender"))])
+                  (const Nothing)
+                  "X"
           , testCase "neutered"
-              ∘
-              (Right "Y" @=?)
-              ∘
-              (_Right %~ textFromParagraph)
-              $
-              makeSubstitutor
-                (const Nothing)
-                (flip lookup [("X","Y")])
-                "X"
+              <| (Right "Y" @=?)
+              <| _Right %~ textFromParagraph
+              <| makeSubstitutor
+                  (const Nothing)
+                  (flip lookup [("X","Y")])
+                  "X"
           ]
       ]
     ----------------------------------------------------------------------------
@@ -350,25 +346,21 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
             let GenEvent [subparagraph] = [s_fixed|{x}|]
             Right "X" @=? (
-              rewords
-              ∘
-              textFromParagraph
+              (textFromParagraph >>> rewords)
               <$>
-              substitute (const ∘ Right ∘ Text_ $ "X") subparagraph
+              substitute ("X" |> Text_ |> Right |> const) subparagraph
              )
         ------------------------------------------------------------------------
         , testCase "two keys separated by a space" $ do
         ------------------------------------------------------------------------
             let GenEvent [subparagraph] = [s_fixed|{x} {y}|]
             Right "X Y" @=? (
-              rewords
-              ∘
-              textFromParagraph
+              (textFromParagraph >>> rewords)
               <$>
               substitute (
-                  fmap Text_
-                  ∘
                   \case {"x" → Right "X"; "y" → Right "Y"; _ → Left "not found"}
+                  >>>
+                  fmap Text_
               ) subparagraph
              )
         ------------------------------------------------------------------------
@@ -382,14 +374,10 @@ unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
 hopeless task, but {she} has no other choice.
 |]
             Right "The last thing in the world that Mark wanted to do was to wander alone in the Wicked Forest at night, but his daughter, little Sally, was sick and would not live through the night unless Mark could find a Wolfsbane plant. It is a hopeless task, but he has no other choice." @=? (
-              rewords
-              ∘
-              textFromParagraph
+              (textFromParagraph >>> rewords)
               <$>
               substitute (
-                  fmap Text_
-                  ∘
-                  (\case
+                  \case
                     "Susie" → Right "Mark"
                     "her|pos" → Right "his"
                     "son" → Right "daughter"
@@ -397,7 +385,8 @@ hopeless task, but {she} has no other choice.
                     "an Illsbane" → Right "a Wolfsbane"
                     "she" → Right "he"
                     other → Left ("not found: " ⊕ show other)
-                  )
+                  >>>
+                  fmap Text_
               ) subparagraph
              )
         ]

@@ -11,5 +11,5 @@ import System.IO (stderr)
 logIO ∷ MonadIO m ⇒ String → m ()
 logIO message = liftIO $ do
   current_time ← getCurrentTime
-  hPutStrLn stderr ∘ pack $
+  pack >>> hPutStrLn stderr $
     formatTime defaultTimeLocale "[%F %X] " current_time ⊕ message

@@ -59,33 +59,33 @@ newGame = GameState 0 (Credits 0 0)
 
 runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
 runGame state =
-  fmap (uncurry ∘ uncurry $ RunGameResult)
-  ∘
-  runWriterT
-  ∘
-  flip runStateT state
-  ∘
   unwrapGame
+  >>>
+  flip runStateT state
+  >>>
+  runWriterT
+  >>>
+  fmap (RunGameResult |> uncurry |> uncurry)
 
 gameAddParagraph ∷ Paragraph → Game ()
-gameAddParagraph = tell ∘ singleton
+gameAddParagraph = singleton >>> tell
 
 substituteAndAddParagraphs ∷ MonadGame m ⇒ Substitutor → [SubParagraph] → m ()
 substituteAndAddParagraphs subs =
-  traverse_ addParagraph
-  ∘
-  either error identity
-  ∘
   traverse (substitute subs)
+  >>>
+  either error identity
+  >>>
+  traverse_ addParagraph
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
-uniformAction = join . uniform
+uniformAction = uniform >>> join
 
 weighted ∷ MonadRandom m ⇒ [(Rational,α)] → m α
-weighted = Random.fromList . fmap swap
+weighted = fmap swap >>> Random.fromList
 
 weightedAction ∷ MonadRandom m ⇒ [(Rational,m α)] → m α
-weightedAction = join . weighted
+weightedAction = weighted >>> join

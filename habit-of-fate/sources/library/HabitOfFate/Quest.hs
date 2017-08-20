@@ -31,32 +31,28 @@ newtype QuestAction s α = QuestAction
     )
 
 instance MonadGame (QuestAction s) where
-  addParagraph = QuestAction ∘ lift ∘ lift ∘ lift ∘ addParagraph
+  addParagraph = addParagraph >>> lift >>> lift >>> lift >>> QuestAction
 
 instance MonadState (QuestState s) (QuestAction s) where
   get =
     QuestAction
     $
     (QuestState
-      <$> (lift ∘ lift) get
+      <$> (lift >>> lift) get
       <*> get
     )
 
   put (QuestState game quest) = QuestAction $ do
-    lift ∘ lift ∘ put $ game
+    game |> put |> lift |> lift
     put quest
 
 runQuest ∷ s → QuestAction s () → Game (Maybe s)
 runQuest state action =
   flip runContT return $ callCC $ \quit →
-    (Just <$>)
-    ∘
-    flip execStateT state
-    ∘
-    flip runReaderT (quit Nothing)
-    ∘
-    unwrapQuestAction
-    $
     action
+      |> unwrapQuestAction
+      |> flip runReaderT (quit Nothing)
+      |> flip execStateT state
+      |> fmap Just
 
-questHasEnded = QuestAction $ ask >>= lift ∘ lift
+questHasEnded = ask >>= (lift >>> lift) |> QuestAction

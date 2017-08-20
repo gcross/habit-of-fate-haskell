@@ -24,6 +24,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Typeable
 import Data.UUID
 import qualified Data.UUID as UUID
+import Flow
 import Network.Connection
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
@@ -58,30 +59,32 @@ loginOrCreateAccount route username password secure_mode hostname port = do
         , port = port
         , requestHeaders = [(hContentType, "application/x-www-form-urlencoded")]
         , requestBody =
-            RequestBodyBS
-            ∘
-            encodeUtf8
-            ∘
-            pack
-            $
             [i|username=#{username}&password=#{password}|]
+            |> pack
+            |> encodeUtf8
+            |> RequestBodyBS
         }
   response ←
     flip httpLbs manager
     $
     request_template_without_authorization
-      { path = encodeUtf8 ∘ pack $ [i|/api/#{route}|] }
+      { path = pack >>> encodeUtf8 $ [i|/api/#{route}|] }
   let code = responseStatusCode response
   if code >= 200 && code <= 299
-    then return ∘ Right $
+    then Right >>> return $
       SessionInfo
         (request_template_without_authorization
           { requestHeaders =
-              [("Authorization", ("Bearer " ⊕) ∘ view strict ∘ responseBody $ response)]
+              [("Authorization"
+              ,response
+                |> responseBody
+                |> view strict
+                |> ("Bearer " ⊕)
+              )]
           }
         )
         manager
-    else return ∘ Left $ responseStatus response
+    else Left >>> return $ responseStatus response
 
 createAccount ∷ String → String → SecureMode → ByteString → Int → IO (Maybe SessionInfo)
 createAccount username password secure_mode hostname port =
@@ -93,14 +96,14 @@ data LoginError = NoSuchAccount | InvalidPassword deriving (Eq, Ord, Show)
 
 login ∷ String → String → SecureMode → ByteString → Int → IO (Either LoginError SessionInfo)
 login username password secure_mode hostname port =
-  (_Left %~
+  (_Left %~ (
+    statusCode
+    >>>
     (\case
       403 → InvalidPassword
       404 → NoSuchAccount
     )
-    ∘
-    statusCode
-  )
+  ))
   <$>
   loginOrCreateAccount "login" username password secure_mode hostname port
 
@@ -120,38 +123,41 @@ newtype ClientT m α = ClientT { unwrapClientT ∷ InnerClientAction m α }
 type ClientIO = ClientT IO
 
 runClientT ∷ ClientT m α → SessionInfo → m α
-runClientT = runReaderT ∘ unwrapClientT
+runClientT = unwrapClientT >>> runReaderT
 
 instance MonadBase IO m ⇒ MonadBase IO (ClientT m) where
-  liftBase = ClientT ∘ liftBase
+  liftBase = liftBase >>> ClientT
 
 instance MonadBaseControl IO ClientIO where
   type StM ClientIO α = StM (InnerClientAction IO) α
-  liftBaseWith f = ClientT $ liftBaseWith $ \r → f (r ∘ unwrapClientT)
-  restoreM = ClientT ∘ restoreM
+  liftBaseWith f = ClientT $ liftBaseWith $ \r → f (unwrapClientT >>> r)
+  restoreM = restoreM >>> ClientT
 
 getManager ∷ Monad m ⇒ ClientT m Manager
 getManager = ClientT $ view manager
 
 getRequestTemplate ∷ Monad m ⇒ ClientT m Request
-getRequestTemplate = ClientT $ view request_template
+getRequestTemplate = view request_template |> ClientT 
 
 decodeUtf8InResponse ∷ Response LBS.ByteString → Text
-decodeUtf8InResponse = decodeUtf8 ∘ LBS.toStrict ∘ responseBody
+decodeUtf8InResponse = responseBody >>> LBS.toStrict >>> decodeUtf8
 
 pathToHabit ∷ UUID → Text
-pathToHabit = ("habits/" ⊕) ∘ UUID.toText
+pathToHabit = UUID.toText >>> ("habits/" ⊕)
 
 makeRequest ∷ Monad m ⇒ StdMethod → Text → ClientT m Request
 makeRequest std_method path = do
   getRequestTemplate
   <&>
-  \template → template { method = renderStdMethod std_method, path = encodeUtf8 $ "/api/" ⊕ path }
+  \template → template
+    { method = renderStdMethod std_method
+    , path = encodeUtf8 $ "/api/" ⊕ path
+    }
 
 addJSONBody ∷ ToJSON α ⇒ α → Request → Request
 addJSONBody x request = request
   { requestHeaders = (hContentType, "application/json; charset=utf-8"):requestHeaders request
-  , requestBody = RequestBodyLBS ∘ encode $ x
+  , requestBody = x |> encode |> RequestBodyLBS
   }
 
 data InvalidJSON = InvalidJSON String deriving (Typeable)
@@ -162,13 +168,13 @@ instance Exception InvalidJSON where
 parseResponseBody ∷
   (MonadThrow m, FromJSON α) ⇒ Response LBS.ByteString → ClientT m α
 parseResponseBody =
-  either (throwM ∘ InvalidJSON) return
-  ∘
-  eitherDecode'
-  ∘
   responseBody
+  >>>
+  eitherDecode'
+  >>>
+  either (InvalidJSON >>> throwM) pure
 
-responseStatusCode = statusCode ∘ responseStatus
+responseStatusCode = responseStatus >>> statusCode
 
 data UnexpectedStatus = UnexpectedStatus [Int] Int deriving (Typeable)
 instance Show UnexpectedStatus where
@@ -177,7 +183,7 @@ instance Show UnexpectedStatus where
 instance Exception UnexpectedStatus where
 
 sendRequest ∷ MonadIO m ⇒ Request → ClientT m (Response LBS.ByteString)
-sendRequest request = getManager >>= liftIO ∘ httpLbs request
+sendRequest request = getManager >>= (httpLbs request >>> liftIO)
 
 request ∷ MonadIO m ⇒ StdMethod → Text → ClientT m (Response LBS.ByteString)
 request method path = makeRequest method path >>= sendRequest
@@ -243,7 +249,7 @@ runGame = do
   response ← request POST "run"
   case responseStatusCode response of
     200 →
-      (either throwM return ∘ parseText def ∘ decodeUtf8 ∘ responseBody $ response)
+      (response |> responseBody |> decodeUtf8 |> parseText def |> either throwM return)
       >>=
-      (either error return ∘ parseStoryFromDocument)
+      (parseStoryFromDocument >>> either error return)
     code → throwM $ UnexpectedStatus [200] code

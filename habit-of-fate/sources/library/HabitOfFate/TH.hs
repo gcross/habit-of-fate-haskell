@@ -23,7 +23,7 @@ deriveJSONDropping n = AesonTH.deriveJSON $ defaultOptions
   }
 
 textChar8 = QuasiQuoter
-  (Lift.lift ∘ BS8.pack)
+  (BS8.pack >>> Lift.lift)
   (error "Cannot use textChar8 as a pattern")
   (error "Cannot use textChar8 as a type")
   (error "Cannot use textChar8 as a dec")

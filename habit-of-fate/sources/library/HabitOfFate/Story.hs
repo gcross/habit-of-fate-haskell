@@ -75,22 +75,22 @@ quests ∷ IndexedTraversal Int (GenStory α) (GenStory β) (GenQuest α) (GenQu
 quests f (GenStory ps) = GenStory <$> (traversed f ps)
 
 createEvent ∷ Foldable t ⇒ t Paragraph → Event
-createEvent = GenEvent ∘ toList
+createEvent = toList >>> GenEvent
 
 createQuest ∷ Foldable t ⇒ t Event → Quest
-createQuest = GenQuest ∘ toList
+createQuest = toList >>> GenQuest
 
 createStory ∷ Foldable t ⇒ t Quest → Story
-createStory = GenStory ∘ toList
+createStory = toList >>> GenStory
 
 eventToLists ∷ GenEvent α → [GenParagraph α]
 eventToLists = unwrapGenEvent
 
 questToLists ∷ GenQuest α → [[GenParagraph α]]
-questToLists = fmap eventToLists ∘ unwrapGenQuest
+questToLists = unwrapGenQuest >>> fmap eventToLists
 
 storyToLists ∷ GenStory α → [[[GenParagraph α]]]
-storyToLists = fmap questToLists ∘ unwrapGenStory
+storyToLists = unwrapGenStory >>> fmap questToLists
 
 type Paragraph = GenParagraph Text
 type Event = GenEvent Text
@@ -98,7 +98,7 @@ type Quest = GenQuest Text
 type Story = GenStory Text
 
 instance IsString Paragraph where
-  fromString = Text_ ∘ pack
+  fromString = pack >>> Text_
 
 data SubText = Key Text | Literal Text deriving (Eq,Generic,Lift,Ord,Read,Show)
 makePrisms ''SubText
@@ -137,29 +137,30 @@ instance GenText α ⇒ Monoid (GenParagraph α) where
   mempty = Merged mempty
   mappend (Text_ x) ys | textIsNull x = ys
   mappend xs (Text_ y) | textIsNull y = xs
-  mappend (Merged xs) (Merged ys) = Merged (xs ⊕ ys)
-  mappend (Merged xs) y = Merged (xs |> y)
-  mappend x (Merged ys) = Merged (x <| ys)
-  mappend x y = Merged ∘ fromList $ [x,y]
+  mappend (Merged xs) (Merged ys) = xs ⊕ ys |> Merged
+  mappend (Merged xs) y = xs ⊢ y |> Merged
+  mappend x (Merged ys) = x ⊣ ys |> Merged
+  mappend x y = [x,y] |> fromList |> Merged
 
 textFromParagraph ∷ Paragraph → Text
 textFromParagraph = fold
 
 insertMarkers ∷ String → String
 insertMarkers =
-  unlines
-  ∘
-  (\x → ["<story><quest><event><p>"] ⊕ x ⊕ ["</p></event></quest></story>"])
-  ∘
-  fmap (\case
-    "" → "</p><p>"
-    '=':_ → "</p></event><event><p>"
-    line → line
-  )
-  ∘
-  fmap (dropWhile (∈ " \t"))
-  ∘
   lines
+  >>>
+  fmap (
+    dropWhile (∈ " \t")
+    >>>
+    \case
+      "" → "</p><p>"
+      '=':_ → "</p></event><event><p>"
+      line → line
+  )
+  >>>
+  (\x → ["<story><quest><event><p>"] ⊕ x ⊕ ["</p></event></quest></story>"])
+  >>>
+  unlines
 
 allSpaces ∷ Text → Bool
 allSpaces = allOf text (∈ " \t\r\n")
@@ -175,30 +176,30 @@ parseContainer expected_tag parseChildren node =
     NodeElement (Element (Name tag _ _) attrs children)
       | tag /= expected_tag →
           fail [i|expected <#{expected_tag}> but got <#{tag}>|]
-      | not ∘ null $ attrs →
+      | attrs |> (not <<< null) →
           fail [i|expected no attributes in <#{tag}>"|]
       | otherwise → parseChildren children
 
 parseStoryFromNodes ∷ [Node] → Either String Story
 parseStoryFromNodes =
-  fmap GenStory
-  ∘
   mapM (parseContainer "quest" parseQuestFromNodes)
+  >>>
+  fmap GenStory
 
 parseQuestFromNodes ∷ [Node] → Either String Quest
 parseQuestFromNodes =
-  fmap GenQuest
-  ∘
   mapM (parseContainer "event" parseEventFromNodes)
+  >>>
+  fmap GenQuest
 
 parseEventFromNodes ∷ [Node] → Either String Event
 parseEventFromNodes =
-  fmap (GenEvent ∘ filter (not ∘ nullOf folded))
-  ∘
   mapM (parseContainer "p" parseParagraphFromNodes)
+  >>>
+  fmap (GenEvent <<< filter (not <<< nullOf folded))
 
 parseParagraphFromNodes ∷ [Node] → Either String Paragraph
-parseParagraphFromNodes = fmap mconcat ∘ mapM parseParagraphChild
+parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
   where
     parseParagraphChild ∷ Node → Either String Paragraph
     parseParagraphChild (NodeInstruction _) = fail "unexpected XML instruction"
@@ -208,7 +209,7 @@ parseParagraphFromNodes = fmap mconcat ∘ mapM parseParagraphChild
       case lookup tag tags of
         Nothing → fail [i|unexpected tag <#{tag}>|]
         Just style
-          | not ∘ null $ attrs → fail [i|<#{tag}> had unexpected attributes|]
+          | not <<< null $ attrs → fail [i|<#{tag}> had unexpected attributes|]
           | otherwise → Style style <$> parseParagraphFromNodes children
       where
         tags ∷ Map Text Style
@@ -223,14 +224,14 @@ parseParagraphFromNodes = fmap mconcat ∘ mapM parseParagraphChild
 
 parseStoryFromDocument ∷ Document → Either String Story
 parseStoryFromDocument =
-  parseContainer "story" parseStoryFromNodes
-  ∘
-  NodeElement
-  ∘
   documentRoot
+  >>>
+  NodeElement
+  >>>
+  parseContainer "story" parseStoryFromNodes
 
 parseStoryFromText ∷ LazyText.Text → Either String Story
-parseStoryFromText = (_Left %~ show) ∘ parseText def >=> parseStoryFromDocument
+parseStoryFromText = (parseText def >>> _Left %~ show) >=> parseStoryFromDocument
 
 parseSubstitutions ∷ Paragraph → WriterT (Set Text) (Either String) SubParagraph
 parseSubstitutions =
@@ -249,7 +250,7 @@ parseSubstitutions =
         <$> takeTillNextSub
         <*> (mconcat <$> (many $ mappend <$> parseAnotherSub <*> takeTillNextSub))
 
-    takeTillNextSub = Text_ ∘ Literal ∘ pack <$> many (satisfy (/='{'))
+    takeTillNextSub = (pack >>> Literal >>> Text_) <$> many (satisfy (/='{'))
 
     parseAnotherSub = do
       key ←
@@ -258,9 +259,9 @@ parseSubstitutions =
         between
           (char '{')
           (char '}')
-          (pack ∘ rewords <$> (many1 $ letter <|> char '|' <|> space))
-      lift ∘ tell $ singletonSet key
-      return ∘ Text_ ∘ Key $ key
+          ((rewords >>> pack) <$> (many1 $ letter <|> char '|' <|> space))
+      tell >>> lift $ singletonSet key
+      key |> Key |> Text_ |> return
 
 data Gender = Male | Female deriving (Enum,Eq,Ord,Read,Show)
 
@@ -296,11 +297,9 @@ findNounConverter word
   | word ∈ ["His", "Her"] = Just $ \case { Male → "His"; Female → "Her" }
   | otherwise =
       (\(m,f) gender →
-        (first_case .~ (word ^?! first_case))
-        ∘
-        takeWhile (/= '|')
-        $
         case gender of { Male → m; Female → f }
+          |> (first_case .~ (word ^?! first_case))
+          |> takeWhile (/= '|')
       )
       <$>
       find (elemOf both (word & first_case .~ False)) nouns
@@ -329,11 +328,9 @@ isVowel = (∈ "aeiouAEIOU")
 makeSubstitutor ∷ (Text → Maybe Gendered) → (Text → Maybe Text) → Substitutor
 makeSubstitutor _ _ "" = error "empty keys are not supported"
 makeSubstitutor lookupGendered lookupNeutered key =
-  bimap show Text_
-  ∘
-  runParser parser () ""
-  $
   key
+    |> runParser parser () ""
+    |> bimap show Text_
   where
     parser =
       (do starts_with_uppercase ← try $ do
@@ -341,7 +338,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
             _ ← optional (char 'n')
             _ ← space
             return starts_with_uppercase
-          neutered_name ← pack ∘ rewords <$> many1 letter
+          neutered_name ← (rewords >>> pack) <$> many1 letter
           name ←
             maybe
               (fail [i|Unable to find neuter entity with name "#{neutered_name}".|])
@@ -362,7 +359,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
             between
               (char '[')
               (char ']')
-              (pack ∘ rewords <$> many (letter <|> space))
+              ((rewords >>> pack) <$> many (letter <|> space))
           case findNounConverter word of
             Nothing →
               maybe (fail [i|unrecognized word "#{word}"|]) return
@@ -370,17 +367,17 @@ makeSubstitutor lookupGendered lookupNeutered key =
               (view gendered_name <$> lookupGendered word) <|> lookupNeutered word
             Just convertNoun → do
               let tryName name message =
+                    lookupGendered name
+                    |>
                     maybe
                       (fail message)
                       (
-                        return
-                        ∘
-                        convertNoun
-                        ∘
                         view gendered_gender
+                        >>>
+                        convertNoun
+                        >>>
+                        return
                       )
-                    $
-                    lookupGendered name
               case maybe_name of
                 Nothing →
                   tryName "" "no default entity provided"
@@ -389,53 +386,56 @@ makeSubstitutor lookupGendered lookupNeutered key =
       )
 
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
-clearNullElements isNull = _Wrapped' %~ filter (not ∘ isNull)
+clearNullElements isNull = _Wrapped' %~ filter (not <<< isNull)
 
 dropEmptyThingsFromStory ∷ GenText α ⇒ GenStory α → GenStory α
 dropEmptyThingsFromStory =
-  (clearNullElements (nullOf events))
-  ∘
-  (quests %~ clearNullElements (nullOf paragraphs))
-  ∘
-  (quests . events %~ clearNullElements (all textIsAllSpaces))
+  quests . events %~ clearNullElements (all textIsAllSpaces)
+  >>>
+  quests %~ clearNullElements (nullOf paragraphs)
+  >>>
+  clearNullElements (nullOf events)
 
 parseQuote ∷ String → [SubEvent]
 parseQuote =
-    either (error ∘ show) identity
-    ∘
+  insertMarkers
+  >>>
+  LazyText.pack
+  >>>
+  (
+    parseStoryFromText
+    >=>
+    (dropEmptyThingsFromStory >>> pure)
+    >=>
     (
-      parseStoryFromText
-      >=>
-      (return ∘ dropEmptyThingsFromStory)
-      >=>
-      (
-        fmap fst
-        ∘
-        runWriterT
-        ∘
-        traverseOf (quests . events . paragraphs) parseSubstitutions
-      )
-      >=>
-      (\case
+      traverseOf (quests . events . paragraphs) parseSubstitutions
+      >>>
+      runWriterT
+      >>>
+      fmap fst
+    )
+    >=>
+    (
+      dropEmptyThingsFromStory
+      >>>
+      \case
         GenStory [quest] → return $ unwrapGenQuest quest
         GenStory xs → fail [i|saw #{olength xs} quests instead of 1|]
-      )
-      ∘
-      dropEmptyThingsFromStory
     )
-    ∘
-    LazyText.pack
-    ∘
-    insertMarkers
+  )
+  >>>
+  either (show >>> error) identity
 
 s = QuasiQuoter
-  (Lift.lift ∘ parseQuote)
+  (parseQuote >>> Lift.lift)
   (error "Cannot use s as a pattern")
   (error "Cannot use s as a type")
   (error "Cannot use s as a dec")
 
 s_fixed = QuasiQuoter
   (
+    parseQuote
+    >>>
     (\case
       [] → [|()|]
       [x1] → [|x1|]
@@ -450,8 +450,6 @@ s_fixed = QuasiQuoter
       [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)|]
       xs → error [i|saw #{olength xs} events, which is too many (> 10)|]
     )
-    ∘
-    parseQuote
   )
   (error "Cannot use s1 as a pattern")
   (error "Cannot use s1 as a type")
@@ -467,10 +465,6 @@ renderParagraphToNodes paragraph =
     recurse (Style style p)
       | null nested = []
       | otherwise =
-          singleton
-          ∘
-          NodeElement
-          $
           let tag = case style of
                 Bold → "b"
                 Underline → "u"
@@ -478,7 +472,7 @@ renderParagraphToNodes paragraph =
                 Color Blue → "blue"
                 Color Green → "green"
                 Introduce → "introduce"
-          in Element tag mempty nested
+          in Element tag mempty nested |> NodeElement |> singleton
       where
         nested = recurse p
     recurse (Merged children) = concatMap recurse children
@@ -486,43 +480,45 @@ renderParagraphToNodes paragraph =
 
 renderEventToNode ∷ Event → Node
 renderEventToNode =
-  NodeElement
-  ∘
-  Element "event" mempty
-  ∘
-  concatMap renderParagraphToNodes
-  ∘
   unwrapGenEvent
+  >>>
+  concatMap renderParagraphToNodes
+  >>>
+  Element "event" mempty
+  >>>
+  NodeElement
 
 renderQuestToNode ∷ Quest → Node
 renderQuestToNode =
-  NodeElement
-  ∘
-  Element "quest" mempty
-  ∘
-  foldr ((:) ∘ renderEventToNode) []
-  ∘
   unwrapGenQuest
+  >>>
+  foldr (renderEventToNode >>> (:)) []
+  >>>
+  Element "quest" mempty
+  >>>
+  NodeElement
 
 renderStoryToDocument ∷ Story → Document
 renderStoryToDocument =
-  (\n → Document (Prologue [] Nothing []) n [])
-  ∘
-  Element "story" mempty
-  ∘
-  foldr ((:) ∘ renderQuestToNode) []
-  ∘
   unwrapGenStory
+  >>>
+  foldr (renderQuestToNode >>> (:)) []
+  >>>
+  Element "story" mempty
+  >>>
+  (\n → Document (Prologue [] Nothing []) n [])
 
 renderStoryToText ∷ Story → LazyText.Text
-renderStoryToText = renderText def ∘ renderStoryToDocument
+renderStoryToText = renderStoryToDocument >>> renderText def
 
 renderStoryToChunks ∷ Story → [Chunk Text]
 renderStoryToChunks =
-  toList
-  ∘
-  execWriter
-  ∘
+  dropEmptyThingsFromStory
+  >>>
+  unwrapGenStory
+  >>>
+  uncons
+  >>>
   maybe
     (return ())
     (
@@ -536,29 +532,27 @@ renderStoryToChunks =
           renderQuest quest
         tellEventSeparator
     )
-  ∘
-  uncons
-  ∘
-  unwrapGenStory
-  ∘
-  dropEmptyThingsFromStory
+  >>>
+  execWriter
+  >>>
+  toList
   where
     tellChunk ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Chunk Text → m ()
-    tellChunk = tell ∘ singleton
+    tellChunk = singleton >>> tell
 
     tellLine ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Text → m ()
-    tellLine = tellChunk ∘ chunk ∘ (|> '\n')
+    tellLine = (⊢ '\n') >>> chunk >>> tellChunk
 
     tellNewline ∷ MonadWriter (Seq (Chunk Text)) m ⇒ m ()
     tellNewline = tellLine ""
 
     tellSeparator ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Char → m ()
-    tellSeparator = tellLine ∘ replicate 80
+    tellSeparator = replicate 80 >>> tellLine
 
     tellEventSeparator = tellSeparator '―'
     tellQuestSeparator = tellSeparator '═'
 
-    renderQuest = go ∘ unwrapGenQuest
+    renderQuest = unwrapGenQuest >>> go
       where
         go [] = return ()
         go (x:[]) = renderEvent x
@@ -567,7 +561,7 @@ renderStoryToChunks =
           tellEventSeparator
           go xs
 
-    renderEvent = go ∘ unwrapGenEvent
+    renderEvent = unwrapGenEvent >>> go
       where
         go [] = return ()
         go (x:[]) = do
@@ -581,6 +575,8 @@ renderStoryToChunks =
 
     renderParagraph ∷ Paragraph → Writer (Seq (Chunk Text)) ()
     renderParagraph =
+      go mempty
+      >>>
       flip evalStateT
         ( #number_of_columns := 0
         , #current_word := (mempty ∷ Seq Char)
@@ -588,8 +584,6 @@ renderStoryToChunks =
         , #pending_chunks := (mempty ∷ Seq (Chunk Text))
         , #pending_length := 0
         )
-      ∘
-      go mempty
       where
         go formatting (Style style rest) = go (addFormat formatting) rest
           where
@@ -626,12 +620,12 @@ renderStoryToChunks =
                   (l_ #pending_chunks <<.= mempty) >>= traverse_ tellChunk
                   tellChunk $ formatting ⊕ chunk word
               else do
-                l_ #current_word %= (|> c)
+                l_ #current_word %= (⊢ c)
                 l_ #saw_spaces_last .= False
           )
           >>
           (do
             word ← repack <$> (l_ #current_word <<.= mempty)
-            l_ #pending_chunks %= (|> formatting ⊕ chunk word)
+            l_ #pending_chunks %= (⊢ formatting ⊕ chunk word)
             l_ #pending_length += olength word
           )

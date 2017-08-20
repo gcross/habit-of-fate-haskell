@@ -28,10 +28,10 @@ import HabitOfFate.Story
 import HabitOfFate.TH
 
 instance ToJSON StdGen where
-  toJSON = toJSON ∘ show
+  toJSON = show >>> toJSON
 
 instance FromJSON StdGen where
-  parseJSON = fmap read ∘ parseJSON
+  parseJSON = parseJSON >>> fmap read
 
 data Account = Account
   {   _password ∷ Text
@@ -49,7 +49,7 @@ newAccount password =
     <$> (
           makePassword (encodeUtf8 password) 17
           >>=
-          evaluate ∘ decodeUtf8
+          (decodeUtf8 >>> evaluate)
         )
     <*> pure mempty
     <*> pure newGame

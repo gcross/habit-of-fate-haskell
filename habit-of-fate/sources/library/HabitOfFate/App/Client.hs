@@ -63,8 +63,8 @@ newtype ActionMonad α = ActionMonad
 
 instance MonadBaseControl IO ActionMonad where
   type StM ActionMonad α = StM InnerAction α
-  liftBaseWith f = ActionMonad $ liftBaseWith $ \r → f (r ∘ unwrapActionMonad)
-  restoreM = ActionMonad ∘ restoreM
+  liftBaseWith f = ActionMonad $ liftBaseWith $ \r → f (unwrapActionMonad >>> r)
+  restoreM = restoreM >>> ActionMonad
 
 quit ∷ ActionMonad α
 quit = throwError Quit
@@ -73,7 +73,7 @@ class Monad m ⇒ MonadClient m where
   liftC ∷ ClientIO α → m α
 
 instance MonadClient ActionMonad where
-  liftC = ActionMonad ∘ lift
+  liftC = lift >>> ActionMonad
 
 data Action = Action
   { _key ∷ Char
@@ -96,7 +96,7 @@ data Cancel = Cancel
 type ActionMonadWithCancel = ExceptT Cancel ActionMonad
 
 instance MonadClient ActionMonadWithCancel where
-  liftC = lift ∘ liftC
+  liftC = liftC >>> lift
 
 cancel ∷ ActionMonadWithCancel α
 cancel = liftIO (putStrLn "") >> throwError Cancel
@@ -119,17 +119,12 @@ instance EditableValue Double where
 instance EditableValue UUID where
 
 instance EditableValue [UUID] where
-  showValue = intercalate "," ∘ map showValue
-  parseValue =
-    sequence
-    ∘
-    map parseValue
-    ∘
-    split1
+  showValue = map showValue >>> intercalate ","
+  parseValue = split1 >>> map parseValue >>> sequence
     where
       isSep = flip elem (" ," :: String)
 
-      split1 = split2 ∘ dropWhile isSep
+      split1 = dropWhile isSep >>> split2
 
       split2 [] = []
       split2 x = entry:split1 rest
@@ -137,21 +132,21 @@ instance EditableValue [UUID] where
           (entry,rest) = break isSep x
 
 instance EditableValue Scale where
-  showValue = unpack ∘ show
-  parseValue = readMaybe ∘ pack
+  showValue = show >>> unpack
+  parseValue = pack >>> readMaybe
 
 prompt ∷ EditableValue α ⇒ String → ActionMonadWithCancel α
 prompt p =
   promptForString
   >>=
-  maybe
-    (liftIO (putStrLn "Bad input.") >> prompt p)
-    return
-  ∘
-  parseValue
+  (
+    parseValue
+    >>>
+    maybe (liftIO (putStrLn "Bad input.") >> prompt p) return
+  )
   where
     promptForString =
-      join ∘ liftIO $ do
+      liftIO >>> join $ do
         putStr p
         putChar ' '
         hFlush stdout
@@ -188,18 +183,20 @@ promptWithDefault def p = doPrompt
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
 promptForCommand p =
-  liftIO
-  .
-  bracket_
-    (hSetBuffering stdin NoBuffering)
-    (hSetBuffering stdin LineBuffering)
-  $ do
-  putStr p
-  putChar ' '
-  hFlush stdout
-  command ← getChar
-  putStrLn ""
-  return command
+  (
+    bracket_
+      (hSetBuffering stdin NoBuffering)
+      (hSetBuffering stdin LineBuffering)
+    >>>
+    liftIO
+  )
+  $
+  do putStr p
+     putChar ' '
+     hFlush stdout
+     command ← getChar
+     putStrLn ""
+     return command
 
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
@@ -210,7 +207,7 @@ unrecognizedCommand command
 data Escape = Escape
 
 loop ∷ [String] → [Action] → ActionMonad ()
-loop labels actions = void ∘ runExceptT $ do
+loop labels actions = runExceptT >>> void $ do
   let action_map =
         [(chr 4, lift quit)
         ,(chr 27, throwError Escape)
@@ -226,24 +223,24 @@ loop labels actions = void ∘ runExceptT $ do
       in [i|#{location}[#{action_keys}q?]>|]
     case lookup command action_map of
       Nothing → unrecognizedCommand command
-      Just code → code `catchAll` (liftIO ∘ putStrLn ∘ show)
+      Just code → code `catchAll` (show >>> putStrLn >>> liftIO)
 
 withCancel ∷ ActionMonadWithCancel () → ActionMonad ()
-withCancel = void ∘ runExceptT
+withCancel = runExceptT >>> void
 
-printAndCancel = (>> cancel) ∘ liftIO ∘ putStrLn
+printAndCancel = putStrLn >>> liftIO >>> (>> cancel)
 
 mainLoop ∷ ActionMonad ()
 mainLoop = loop [] $
-  [Action 'h' "Edit habits." ∘ loop ["Habits"] $
-    [Action 'a' "Add a habit." ∘ withCancel $ do
+  [Action 'h' "Edit habits." <<< loop ["Habits"] $
+    [Action 'a' "Add a habit." <<< withCancel $ do
       habit_id ← liftIO randomIO
       habit ← Habit
         <$> prompt "What is the name of the habit?"
         <*> promptWithDefault Medium "Importance [very low, low, medium, high, very high]?"
         <*> promptWithDefault Medium "Difficulty [very low, low, medium, high, very high]?"
-      void ∘ liftC $ putHabit habit_id habit
-    ,Action 'e' "Edit a habit." ∘ withCancel $ do
+      liftC >>> void $ putHabit habit_id habit
+    ,Action 'e' "Edit a habit." <<< withCancel $ do
       habit_id ← prompt "Which habit?"
       old_habit ←
         liftC (getHabit habit_id)
@@ -255,12 +252,12 @@ mainLoop = loop [] $
         <$> promptWithDefault (old_habit ^. name) "What is the name of the habit?"
         <*> promptWithDefault Medium "Importance [very low, low, medium, high, very high]?"
         <*> promptWithDefault Medium "Difficulty [very low, low, medium, high, very high]?"
-      void ∘ liftC $ putHabit habit_id habit
+      liftC >>> void $ putHabit habit_id habit
     ,Action 'f' "Mark habits as failed." $
-       withCancel $ prompt "Which habits failed?" >>= void ∘ liftC ∘ markHabits []
+       withCancel $ prompt "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
     ,Action 'p' "Print habits." $ printHabits
     ,Action 's' "Mark habits as successful." $
-       withCancel $ prompt "Which habits succeeded?" >>= void ∘ liftC ∘ flip markHabits []
+       withCancel $ prompt "Which habits succeeded?" >>= (flip markHabits [] >>> liftC >>> void)
     ]
   ,Action 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"
@@ -273,15 +270,11 @@ mainLoop = loop [] $
   ,Action 'r' "Run game." $ do
       story ← liftC runGame
       printer ← liftIO byteStringMakerFromEnvironment
-      liftIO
-        ∘
-        traverse_ BS.putStr
-        ∘
-        chunksToByteStrings printer
-        ∘
-        renderStoryToChunks
-        $
-        story
+      story
+        |> renderStoryToChunks
+        |> chunksToByteStrings printer
+        |> traverse_ BS.putStr
+        |> liftIO
   ]
   where
     printHabits = do
@@ -322,15 +315,11 @@ configuration_parser = Configuration
 
 runSession ∷ SessionInfo → IO ()
 runSession session_info =
-  void
-  ∘
-  flip runClientT session_info
-  ∘
-  runExceptT
-  ∘
-  unwrapActionMonad
-  $
   mainLoop
+    |> unwrapActionMonad
+    |> runExceptT
+    |> flip runClientT session_info
+    |> void
 
 doMain ∷ IO ()
 doMain = do

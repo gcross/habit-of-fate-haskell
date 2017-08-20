@@ -100,7 +100,7 @@ printParagraph =
     mapM_ printWord
   where
     setColor layer intensity color = setSGR [SetColor layer intensity color]
-    setSGR' = liftIO ∘ setSGR ∘ (:[])
+    setSGR' = (:[]) >>> setSGR >>> liftIO 
 
     printWord ∷ String → StateT PrintTextState IO ()
     printWord word = do

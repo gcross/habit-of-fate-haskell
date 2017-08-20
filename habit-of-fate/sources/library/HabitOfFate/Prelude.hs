@@ -9,6 +9,7 @@ module HabitOfFate.Prelude
     module Prelude
   , module Control.Applicative
   , module Control.Arrow
+  , module Control.Category
   , module Control.Lens
   , module Control.Monad
   , module Control.Monad.Except
@@ -38,11 +39,11 @@ module HabitOfFate.Prelude
   , module Data.Text.Lens
   , module Data.Traversable
   , module Debug.Trace
+  , module Flow
   , module Labels
   , module Text.Printf
   , module System.FilePath
   -- Operators
-  , (∘)
   , (⊕)
   , (⊕~)
   , (⊕=)
@@ -50,6 +51,8 @@ module HabitOfFate.Prelude
   , (∉)
   , (≤)
   , (≥)
+  , (⊢)
+  , (⊣)
   , identity
   , l_
   , rewords
@@ -103,7 +106,9 @@ import Control.Applicative hiding (many)
 
 import Control.Arrow hiding (loop)
 
-import Control.Lens
+import Control.Category
+
+import Control.Lens hiding ((|>), (<|))
 
 import Control.Monad
   hiding
@@ -154,7 +159,7 @@ import Data.Either
 
 import Data.Foldable
 
-import Data.Function
+import Data.Function hiding ((.), id)
 
 import Data.Functor
 
@@ -212,6 +217,8 @@ import Data.Traversable
 
 import Debug.Trace
 
+import Flow hiding ((.>), (<.))
+
 import Labels ((:=)(..))
 import qualified Labels as Labels
 
@@ -242,11 +249,6 @@ infixr 4 ⊕=
 (⊕=) = (<>=)
 {-# INLINE (⊕=) #-}
 
-infixr 9 ∘
-(∘) ∷ (β → δ) → (α → β) → (α → δ)
-(∘) = (.)
-{-# INLINE (∘) #-}
-
 infixr 6 ∈
 (∈) ∷ Eq α ⇒ α → [α] → Bool
 (∈) = elem
@@ -265,15 +267,21 @@ infix  4 ≥
 (≥) ∷ Ord α ⇒ α → α → Bool
 (≥) = (>=)
 
+infixr  5 ⊢
+(⊢) = Control.Lens.snoc
+
+infixr  5 ⊣
+(⊣) = Control.Lens.cons
+
 l_ = Labels.lens
 
 identity ∷ α → α
 identity = id
 
-rewords = unwords ∘ words
+rewords = words >>> unwords
 
 showText ∷ Show α ⇒ α → Text
-showText = view packed ∘ show
+showText = show >>> view packed
 
 spy ∷ Show α ⇒ String → α → α
 spy label value = trace (label ⊕ ": " ⊕ show value) value
