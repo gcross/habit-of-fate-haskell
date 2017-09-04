@@ -436,7 +436,7 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
       logRequest
       username ← param "username"
       password ← param "password"
-      logIO $ [i|Request to create an account for "#{username}" with password "#{password}"|]
+      logIO $ [i|Request to create an account for "#{username}".|]
       liftIO >>> join $ do
         new_account ← newAccount password
         atomically $ do
@@ -462,8 +462,8 @@ makeApp locateWebAppFile password_secret initial_accounts saveAccounts = do
       logRequest
       username ← param "username"
       password ← param "password"
-      logIO $ [i|Request to log into an account with "#{username}" with password "#{password}"|]
-      (
+      logIO $ [i|Request to log into an account with "#{username}".|]
+      account_tvar ←
         (accounts_tvar |> readTVarMonadIO |> fmap (lookup username))
         >>=
         maybe (finishWithStatusMessage 404 "Not Found: No such account") return
