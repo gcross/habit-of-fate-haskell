@@ -13,8 +13,9 @@ import System.Environment
 import System.FilePath
 
 import HabitOfFate.Account
+import HabitOfFate.Server
 
-type Accounts = Map String Account
+type Accounts = Map Username Account
 
 readAccounts ∷ FilePath → IO Accounts
 readAccounts = BS.readFile >=> either error return . decodeEither

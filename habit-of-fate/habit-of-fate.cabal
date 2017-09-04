@@ -17,6 +17,7 @@ library
                      , bytestring
                      , connection
                      , containers
+                     , cookie
                      , data-default
                      , deepseq
                      , directory

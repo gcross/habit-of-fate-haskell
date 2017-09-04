@@ -43,8 +43,10 @@ data Account = Account
 deriveJSON ''Account
 makeLenses ''Account
 
-newAccount ∷ Text → IO Account
-newAccount password =
+type Secret = ByteString
+
+newAccount ∷ ByteString → Text → IO Account
+newAccount secret password =
   Account
     <$> (
           makePassword (encodeUtf8 password) 17
