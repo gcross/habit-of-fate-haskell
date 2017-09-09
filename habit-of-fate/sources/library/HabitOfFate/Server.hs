@@ -279,14 +279,14 @@ logRequest = do
 
 ------------------------------------ Common ------------------------------------
 
-data CommonInstructionInstruction α where
-  GetBodyInstruction ∷ CommonInstructionInstruction Lazy.ByteString
-  GetParamsInstruction ∷ CommonInstructionInstruction [Param]
-  RaiseStatusInstruction ∷ Status → CommonInstructionInstruction α
-  LogInstruction ∷ String → CommonInstructionInstruction ()
+data CommonInstruction α where
+  GetBodyInstruction ∷ CommonInstruction Lazy.ByteString
+  GetParamsInstruction ∷ CommonInstruction [Param]
+  RaiseStatusInstruction ∷ Status → CommonInstruction α
+  LogInstruction ∷ String → CommonInstruction ()
 
 class Monad m ⇒ ActionMonad m where
-  singletonCommon ∷ CommonInstructionInstruction α → m α
+  singletonCommon ∷ CommonInstruction α → m α
 
 getBody ∷ ActionMonad m ⇒ m Lazy.ByteString
 getBody = singletonCommon GetBodyInstruction
@@ -335,7 +335,7 @@ log = LogInstruction >>> singletonCommon
 ------------------------------------ Reader ------------------------------------
 
 data ReaderInstruction α where
-  ReaderCommonInstruction ∷ CommonInstructionInstruction α → ReaderInstruction α
+  ReaderCommonInstruction ∷ CommonInstruction α → ReaderInstruction α
   ReaderViewInstruction ∷ ReaderInstruction Account
 
 newtype ReaderProgram α = ReaderProgram
@@ -381,7 +381,7 @@ readerWith environment (ReaderProgram program) = do
 ------------------------------------ Writer ------------------------------------
 
 data WriterInstruction α where
-  WriterCommonInstruction ∷ CommonInstructionInstruction α → WriterInstruction α
+  WriterCommonInstruction ∷ CommonInstruction α → WriterInstruction α
   WriterGetAccountInstruction ∷ WriterInstruction Account
   WriterPutAccountInstruction ∷ Account → WriterInstruction ()
 
