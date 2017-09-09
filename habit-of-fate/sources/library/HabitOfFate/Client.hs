@@ -15,6 +15,7 @@ module HabitOfFate.Client where
 
 import HabitOfFate.Prelude
 
+import Blaze.ByteString.Builder
 import Control.Monad.Base
 import Control.Monad.Catch
 import Control.Monad.Trans.Control
@@ -22,18 +23,19 @@ import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Typeable
-import Data.UUID
+import Data.UUID hiding (toByteString)
 import qualified Data.UUID as UUID
-import Flow
 import Network.Connection
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import Network.HTTP.Types
 import Text.XML
+import Web.Cookie
 
 import HabitOfFate.Credits
 import HabitOfFate.Account
 import HabitOfFate.Habit
+import HabitOfFate.Logging
 import HabitOfFate.Story
 
 data SecureMode = Testing | Secure
@@ -68,27 +70,35 @@ loginOrCreateAccount route username password secure_mode hostname port = do
     flip httpLbs manager
     $
     request_template_without_authorization
-      { path = pack >>> encodeUtf8 $ [i|/api/#{route}|] }
+      { path = [i|/api/#{route}|] |> pack |> encodeUtf8 }
   let code = responseStatusCode response
-  if code >= 200 && code <= 299
-    then Right >>> return $
-      SessionInfo
-        (request_template_without_authorization
-          { requestHeaders =
-              [("Authorization"
-              ,response
-                |> responseBody
-                |> view strict
-                |> ("Bearer " ⊕)
-              )]
-          }
-        )
-        manager
-    else Left >>> return $ responseStatus response
+  pure $
+    if code >= 200 && code <= 299
+      then
+        maybe
+          (Left internalServerError500)
+          (\token → Right $
+            SessionInfo
+              (
+                request_template_without_authorization
+                { requestHeaders =
+                  [("Cookie", toLazyByteString >>> view strict $
+                    renderCookiesText [("token", token)])]
+                }
+              )
+              manager
+          )
+          (
+            (response |> responseHeaders |> lookup "Set-Cookie")
+            >>=
+            (parseCookiesText >>> lookup "token")
+          )
+    else Left $ responseStatus response
 
 createAccount ∷ String → String → SecureMode → ByteString → Int → IO (Maybe SessionInfo)
 createAccount username password secure_mode hostname port =
-  either (const Nothing) Just
+  -- either (const Nothing) Just
+  either (\x → error $ "Status " ⊕ show x) Just
   <$>
   loginOrCreateAccount "create" username password secure_mode hostname port
 
