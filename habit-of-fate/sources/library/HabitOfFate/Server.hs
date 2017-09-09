@@ -477,8 +477,8 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
           \case { False → threadDelay (60 * 1000 * 1000) >> go; _ → go }
     in go
 
-  let createAndReturnCookie ∷ Username → TVar Account → ActionM ()
-      createAndReturnCookie username account_tvar = do
+  let createAndReturnCookie ∷ Username → ActionM ()
+      createAndReturnCookie username = do
         Cookie token ← liftIO $ do
           current_time ← getCurrentTime
           cookie ← (pack >>> Cookie) <$> (replicateM 10 $ randomRIO ('a','z'))
@@ -487,7 +487,6 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
             modifyTVar cookies_tvar $ insertMap cookie (expiration_time, username)
             modifyTVar expirations_tvar $ insertSet (expiration_time, cookie)
           pure cookie
-        new_cookies ← liftIO $ atomically $ readTVar cookies_tvar
         def
           { setCookieName="token"
           , setCookieValue=encodeUtf8 token
@@ -547,7 +546,7 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
               pure $ do
                 logIO $ [i|Account "#{username}" successfully created!|]
                 status created201
-                createAndReturnCookie username account_tvar
+                createAndReturnCookie username
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest
@@ -567,7 +566,7 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
           bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
         )
         >>
-        createAndReturnCookie username account_tvar
+        createAndReturnCookie username
        )
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" <<< reader $ do
