@@ -180,8 +180,8 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
-authorizeWith ∷ Environment → ActionM (Username, TVar Account)
-authorizeWith Environment{..} = do
+authorizeWith ∷ Bool → Environment → ActionM (Username, TVar Account)
+authorizeWith redirect_when_auth_fails Environment{..} = do
   cookie_header ← Scotty.header "Cookie" >>= valueOrStatus 403 "No cookie header."
   cookie ∷ Cookie ←
     cookie_header
@@ -218,7 +218,9 @@ authorizeWith Environment{..} = do
       modifyTVar expirations_tvar $ insertSet (new_expected_time, cookie)
     pure (username, account_tvar)
   case error_or_result of
-    Left message → finishWithStatusMessage 403 message
+    Left message
+      | redirect_when_auth_fails → Scotty.redirect "login"
+      | otherwise → finishWithStatusMessage 403 message
     Right result → pure result
 
 ----------------------------------- Results ------------------------------------
@@ -349,10 +351,10 @@ instance MonadReader Account (ReaderProgram) where
   ask = ReaderProgram $ Operational.singleton ReaderViewInstruction
   local = error "if you see this, then ReaderProgram needs to have a local method"
 
-readerWith ∷ Environment → ReaderProgram ProgramResult → ActionM ()
-readerWith environment (ReaderProgram program) = do
+readerWith ∷ Bool → Environment → ReaderProgram ProgramResult → ActionM ()
+readerWith redirect_when_auth_fails environment (ReaderProgram program) = do
   logRequest
-  (username, account_tvar) ← authorizeWith environment
+  (username, account_tvar) ← authorizeWith redirect_when_auth_fails environment
   params_ ← params
   body_ ← Scotty.body
   account ← account_tvar |> readTVarMonadIO
@@ -396,10 +398,10 @@ instance MonadState Account WriterProgram where
   get = Operational.singleton WriterGetAccountInstruction |> WriterProgram
   put = WriterPutAccountInstruction >>> Operational.singleton >>> WriterProgram
 
-writerWith ∷ Environment → WriterProgram ProgramResult → ActionM ()
-writerWith (environment@Environment{..}) (WriterProgram program) = do
+writerWith ∷ Bool → Environment → WriterProgram ProgramResult → ActionM ()
+writerWith redirect_when_auth_fails (environment@Environment{..}) (WriterProgram program) = do
   logRequest
-  (username, account_tvar) ← authorizeWith environment
+  (username, account_tvar) ← authorizeWith redirect_when_auth_fails environment
   params_ ← params
   body_ ← Scotty.body
   let interpret ∷
@@ -509,8 +511,8 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
     saveAccounts
 
   let environment = Environment{..}
-      reader = readerWith environment
-      writer = writerWith environment
+      apiReader = readerWith False environment
+      apiWriter = writerWith False environment
 
       getContent filename =
         logIO [i|Getting content #{filename}|]
@@ -569,11 +571,11 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
         createAndReturnCookie username
        )
 -------------------------------- Get All Habits --------------------------------
-    Scotty.get "/api/habits" <<< reader $ do
+    Scotty.get "/api/habits" <<< apiReader $ do
       log "Requested all habits."
       view habits >>= returnJSON ok200
 ---------------------------------- Get Habit -----------------------------------
-    Scotty.get "/api/habits/:habit_id" <<< reader $ do
+    Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested habit with id #{habit_id}.|]
       habits_ ← view habits
@@ -581,7 +583,7 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
         Nothing → raiseNoSuchHabit
         Just habit → returnJSON ok200 habit
 --------------------------------- Delete Habit ---------------------------------
-    Scotty.delete "/api/habits/:habit_id" <<< writer $ do
+    Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
       habit_was_there ← isJust <$> (habits . at habit_id <<.= Nothing)
@@ -590,7 +592,7 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
           then noContent204
           else notFound404
 ---------------------------------- Put Habit -----------------------------------
-    Scotty.put "/api/habits/:habit_id" <<< writer $ do
+    Scotty.put "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to put habit with id #{habit_id}.|]
       habit ← getBodyJSON
@@ -600,11 +602,11 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
           then noContent204
           else created201
 --------------------------------- Get Credits ----------------------------------
-    Scotty.get "/api/credits" <<< reader $ do
+    Scotty.get "/api/credits" <<< apiReader $ do
       log $ "Requested credits."
       view (game . credits) >>= returnJSON ok200
 --------------------------------- Mark Habits ----------------------------------
-    Scotty.post "/api/mark" <<< writer $ do
+    Scotty.post "/api/mark" <<< apiWriter $ do
       marks ← getBodyJSON
       let markHabits ∷
             (HabitsToMark → [UUID]) →
@@ -625,7 +627,7 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
           <*> (markHabits (^. failures ) (^. importance) (game . credits . failure))
        ) >>= returnJSON ok200
 ----------------------------------- Run Game -----------------------------------
-    Scotty.post "/api/run" <<< writer $ do
+    Scotty.post "/api/run" <<< apiWriter $ do
       let go d = do
             let r = runAccount d
             l_ #quest_events %= (⊢ r ^. story . to createEvent)
