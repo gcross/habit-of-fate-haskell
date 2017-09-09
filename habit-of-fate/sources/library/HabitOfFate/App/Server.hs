@@ -81,7 +81,6 @@ data Configuration = Configuration
   { port ∷ Int
   , maybe_data_path ∷ Maybe FilePath
   , maybe_webapp_path ∷ Maybe FilePath
-  , maybe_password_secret_path ∷ Maybe FilePath
   , maybe_certificate_path ∷ Maybe FilePath
   , maybe_key_path ∷ Maybe FilePath
   , test_mode ∷ Bool
@@ -114,13 +113,6 @@ habitMain = do
               [ metavar "FILE"
               , help "Path to the web app content."
               , long "app"
-              , action "file"
-              ]
-            )
-        <*> (strOption >>> optional $ mconcat
-              [ metavar "FILE"
-              , help "Path to the password secret file."
-              , long "secret"
               , action "file"
               ]
             )
@@ -203,27 +195,6 @@ habitMain = do
             )
         pure (initial_accounts, encodeFile data_path)
 
-  password_secret ←
-    case maybe_password_secret_path of
-      Nothing
-        | test_mode → do
-            logIO "No password secret file specified; generating a random secret."
-            (toText >>> secret) <$> randomIO
-        | otherwise →
-            exitFailureWithMessage "You need to specify the path to the data file."
-      Just password_secret_path → do
-        doesFileExist password_secret_path
-        >>=
-        bool
-          (do logIO "Creating new secret"
-              secret_uuid ← toText <$> randomIO
-              writeFile password_secret_path secret_uuid
-              return $ secret secret_uuid
-          )
-          (do logIO "Reading existing secret"
-              secret <$> readFile password_secret_path
-          )
-
   locateWebAppFile ∷ FilePath → IO (Maybe FilePath) ←
     case maybe_webapp_path of
       Nothing
@@ -257,7 +228,7 @@ habitMain = do
                   bool
                     (logIO [i|File not found at #{filepath}.|] >> pure Nothing)
                     (logIO [i|File found at #{filepath}.|] >> pure (Just filepath))
-  app ← makeApp locateWebAppFile password_secret initial_accounts saveAccounts
+  app ← makeApp locateWebAppFile initial_accounts saveAccounts
   let tls_settings =
         (tlsSettingsMemory certificate key)
         { onInsecure =

@@ -19,13 +19,14 @@
 
 module HabitOfFate.Server
   ( FileLocator
-  , Username
+  , Username(..)
   , makeApp
   ) where
 
 import HabitOfFate.Prelude hiding (div, id, log)
 
 import Data.Aeson hiding ((.=))
+import Data.Aeson.Types
 import Data.Containers
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -101,11 +102,40 @@ import HabitOfFate.Story
 instance Parsable UUID where
   parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right
 
-newtype Username = Username Text deriving (Eq,FromJSON,Ord,Parsable,Read,Show,ToJSON)
+newtype Username = Username { unwrapUsername ∷ Text } deriving (Eq,Ord,Parsable,Read,Show)
+
+instance FromJSON Username where
+  parseJSON = parseJSON >>> fmap Username
+
+instance FromJSON (Map Username Account) where
+  parseJSON =
+    (parseJSON ∷ Value → Parser (Map Text Account))
+    >>>
+    fmap (
+      mapToList
+      >>>
+      map (first Username)
+      >>>
+      mapFromList
+    )
+
+instance ToJSON Username where
+  toJSON = unwrapUsername >>> toJSON
+  toEncoding = unwrapUsername >>> toEncoding
+
+instance ToJSON (Map Username Account) where
+  toJSON =
+    mapToList
+    >>>
+    map (first unwrapUsername)
+    >>>
+    mapFromList
+    >>>
+    (toJSON ∷ Map Text Account → Value)
+
 newtype Cookie = Cookie Text deriving (Eq,FromJSON,Ord,Parsable,Read,Show,ToJSON)
 
 data Environment = Environment
-  , password_secret ∷ Secret
   { accounts_tvar ∷ TVar (Map Username (TVar Account))
   , cookies_tvar ∷ TVar (Map Cookie (UTCTime, Username))
   , expirations_tvar ∷ TVar (Set (UTCTime, Cookie))
@@ -150,17 +180,16 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
-    decodeAndVerifySignature password_secret
 authorizeWith ∷ Environment → ActionM (Username, TVar Account)
 authorizeWith Environment{..} = do
-  cookies ← Scotty.header "Cookies" >>= valueOrStatus 403 "No authorization token."
+  cookie_header ← Scotty.header "Cookie" >>= valueOrStatus 403 "No cookie header."
   cookie ∷ Cookie ←
-    cookies
+    cookie_header
       |> view strict
       |> encodeUtf8
       |> parseCookiesText
       |> lookup "token"
-      |> valueOrStatus 403 "No authorization token."
+      |> valueOrStatus 403 "No authorization token in the cookies."
       |> fmap Cookie
   current_time ← liftIO getCurrentTime
   error_or_result ← liftIO <<< atomically <<< runExceptT $ do
@@ -183,11 +212,11 @@ authorizeWith Environment{..} = do
               throwError "Token no longer refers to an existing user."
           )
           pure
-    let new_expected_time = addUTCTime (30*86400) current_time
     lift $ do
+      let new_expected_time = addUTCTime (30*86400) current_time
       modifyTVar cookies_tvar $ insertMap cookie (new_expected_time, username)
       modifyTVar expirations_tvar $ insertSet (new_expected_time, cookie)
-      pure (username, account_tvar)
+    pure (username, account_tvar)
   case error_or_result of
     Left message → finishWithStatusMessage 403 message
     Right result → pure result
@@ -412,7 +441,6 @@ type FileLocator = FilePath → IO (Maybe FilePath)
 
 makeApp ∷
   FileLocator →
-  Secret →
   Map Username Account →
   (Map Username Account → IO ()) →
   IO Application
@@ -426,25 +454,38 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
 
   cookies_tvar ← newTVarIO mempty
   expirations_tvar ← newTVarIO mempty
-  forkIO <<< forever $ do
-    atomically $ do
-      current_time ← unsafeIOToSTM getCurrentTime
-      expirations ← readTVar expirations_tvar
-      case minView expirations of
-        Nothing → retry
-        Just (first@(first_time, first_cookie), rest) →
-          when (first_time < current_time) $ do
-            modifyTVar cookies_tvar $ deleteMap first_cookie
-            writeTVar expirations_tvar rest
 
-  let createAndReturnCookie ∷ Username → TVar Account → ActionM ()
-      createAndReturnCookie username account_tvar = do
+  forkIO <<< forever $
+    let go =
+          (
+            atomically $ do
+              current_time ← unsafeIOToSTM getCurrentTime
+              expirations ← readTVar expirations_tvar
+              case minView expirations of
+                Nothing → pure False
+                Just (first@(first_time, first_cookie), rest) → do
+                  if first_time < current_time
+                    then do
+                      unsafeIOToSTM $ logIO [i|Dropping cookie #{first} at #{current_time}.|]
+                      modifyTVar cookies_tvar $ deleteMap first_cookie
+                      writeTVar expirations_tvar rest
+                      pure True
+                    else
+                      pure False
+          )
+          >>=
+          \case { False → threadDelay (60 * 1000 * 1000) >> go; _ → go }
+    in go
+
+  let createAndReturnCookie ∷ Username → ActionM ()
+      createAndReturnCookie username = do
         Cookie token ← liftIO $ do
           current_time ← getCurrentTime
           cookie ← (pack >>> Cookie) <$> (replicateM 10 $ randomRIO ('a','z'))
           atomically $ do
-            modifyTVar cookies_tvar $ insertMap cookie (current_time, username)
-            modifyTVar expirations_tvar $ insertSet (current_time, cookie)
+            let expiration_time = addUTCTime (30*86400) current_time
+            modifyTVar cookies_tvar $ insertMap cookie (expiration_time, username)
+            modifyTVar expirations_tvar $ insertSet (expiration_time, cookie)
           pure cookie
         def
           { setCookieName="token"
@@ -505,7 +546,7 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
               pure $ do
                 logIO $ [i|Account "#{username}" successfully created!|]
                 status created201
-                createAndReturnCookie username account_tvar
+                createAndReturnCookie username
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest
@@ -525,7 +566,7 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
           bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
         )
         >>
-        createAndReturnCookie username account_tvar
+        createAndReturnCookie username
        )
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" <<< reader $ do

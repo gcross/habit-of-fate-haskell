@@ -39,7 +39,7 @@ no_files = const $ pure Nothing
 withTestApp ∷ FileLocator → (Int → IO ()) → IO ()
 withTestApp locateWebAppFile =
   withApplication
-    (makeApp locateWebAppFile (secret "test secret") mempty (const $ pure ()))
+    (makeApp locateWebAppFile mempty (const $ pure ()))
 
 withTestAppNoFiles ∷ (Int → IO ()) → IO ()
 withTestAppNoFiles = withTestApp $ no_files
@@ -267,7 +267,7 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
             write_requested_ref ← newIORef False
             withApplication
-              (makeApp no_files (secret "test secret") mempty (const $ writeIORef write_requested_ref True))
+              (makeApp no_files mempty (const $ writeIORef write_requested_ref True))
               $
               \port → do
                 session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
