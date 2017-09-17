@@ -15,6 +15,7 @@ library
                      , aeson
                      , blaze-builder
                      , blaze-html
+                     , blaze-markup
                      , bytestring
                      , connection
                      , containers
@@ -44,6 +45,7 @@ library
                      , rainbow
                      , random
                      , scotty
+                     , shakespeare
                      , stm
                      , text
                      , th-lift

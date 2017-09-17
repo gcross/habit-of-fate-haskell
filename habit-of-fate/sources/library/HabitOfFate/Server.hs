@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -40,39 +41,18 @@ import qualified Data.ByteString.Lazy as Lazy
 import Data.Set (minView)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
-import Data.UUID
+import Data.UUID hiding (null)
 import Data.Yaml hiding (Parser, (.=))
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import System.Random
-import Text.Blaze.XHtml5
-  ( (!)
-  , body
-  , button
-  , docTypeHtml
-  , div
-  , form
-  , head
-  , input
-  , p
-  , span
-  , table
-  , td
-  , title
-  , toHtml
-  , toValue
-  , tr
-  )
-import Text.Blaze.XHtml5.Attributes
-  ( action
-  , id
-  , method
-  , name
-  , type_
-  , value
-  )
+import Text.Blaze (toValue)
+import Text.Blaze.Html ((!))
+import qualified Text.Blaze.Html.Renderer.Text as H
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Web.Cookie
 import Web.Scotty
@@ -219,7 +199,7 @@ authorizeWith redirect_when_auth_fails Environment{..} = do
     pure (username, account_tvar)
   case error_or_result of
     Left message
-      | redirect_when_auth_fails → Scotty.redirect "login"
+      | redirect_when_auth_fails → Scotty.redirect "/login"
       | otherwise → finishWithStatusMessage 403 message
     Right result → pure result
 
@@ -237,10 +217,10 @@ finishWithStatusMessage code = pack >>> encodeUtf8 >>> Status code >>> finishWit
 valueOrStatus ∷ Int → String → Maybe α → ActionM α
 valueOrStatus code message = maybe (finishWithStatusMessage code message) pure
 
-
 setContent ∷ Content → ActionM ()
 setContent NoContent = pure ()
 setContent (TextContent t) = Scotty.text t
+setContent (HtmlContent h) = Scotty.html (H.renderHtml h)
 setContent (JSONContent j) = Scotty.json j
 
 setStatusAndLog ∷ Status → ActionM ()
@@ -256,6 +236,7 @@ data ProgramResult = ProgramResult Status Content
 data Content =
     NoContent
   | TextContent Lazy.Text
+  | HtmlContent H.Html
   | ∀ α. ToJSON α ⇒ JSONContent α
 
 returnNothing ∷ Monad m ⇒ Status → m ProgramResult
@@ -269,6 +250,9 @@ returnText s = view (from strict) >>> returnLazyText s
 
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = JSONContent >>> ProgramResult s >>> return
+
+returnHTML ∷ Monad m ⇒ Status → H.Html → m ProgramResult
+returnHTML s = H.toHtml >>> HtmlContent >>> ProgramResult s >>> return
 
 logRequest ∷ ActionM ()
 logRequest = do
@@ -513,6 +497,8 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
   let environment = Environment{..}
       apiReader = readerWith False environment
       apiWriter = writerWith False environment
+      wwwReader = readerWith True environment
+      wwwWriter = writerWith True environment
 
       getContent filename =
         logIO [i|Getting content #{filename}|]
@@ -656,14 +642,68 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
         |> createStory
         |> renderStoryToText
        )
+-------------------------------- Create Account --------------------------------
+    let createAccountAction = do
+          logRequest
+          username@(Username username_) ←  param "username"
+          password1 ← param "password1"
+          password2 ← param "password2"
+          when (password1 == password2) $ do
+            logIO $ [i|Request to create an account for "#{username}".|]
+            liftIO >>> join $ do
+              new_account ← newAccount password1
+              atomically $ do
+                accounts ← readTVar accounts_tvar
+                if member username accounts
+                  then pure $ do
+                    logIO $ [i|Account "#{username}" already exists!|]
+                    status conflict409
+                  else do
+                    account_tvar ← newTVar new_account
+                    modifyTVar accounts_tvar $ insertMap username account_tvar
+                    pure $ do
+                      logIO $ [i|Account "#{username}" successfully created!|]
+                      createAndReturnCookie username
+                      Scotty.redirect "/"
+{-
+          H.renderHtml >>> Scotty.html $ do
+            H.head $ do
+              H.title "Account creation"
+            H.body $ do
+              H.input ! A.method "post" $ do
+                H.table $ do
+                  H.tr $ do
+                    H.td $ H.text "Username:"
+                    H.td $ H.input ! A.type_ "text" ! A.value (toValue username_)
+                    when (onull username_ && not (onull password1 && onull password2)) $
+                      H.div "Username_ must not be blank."
+                  H.tr $ do
+                    H.td $ H.text "Password:"
+                    H.td $ H.input ! A.type_ "password" ! A.value (toValue password1)
+                    when (onull password1) $
+                      if | not (onull username_) → H.div "Password must not be empty."
+                         | not (onull password2) → H.div "You need to repeat the password."
+                         | otherwise → pure ()
+                  H.tr $ do
+                    H.td $ H.text "Password (again):"
+                    H.td $ H.input ! A.type_ "password" ! A.value (toValue password2)
+                    when (onull password1) $
+                      if | not (onull username_) → H.div "Password must not be empty."
+                         | not (onull password1) → H.div "You need to repeat the password."
+                         | otherwise → pure ()
+-}
+    Scotty.get "/create" createAccountAction
+    Scotty.post "/create" createAccountAction
+-------------------------------- Get All Habits --------------------------------
+    Scotty.get "/habits" <<< wwwReader $ do
+      habits_ ← view habits
+      H.docTypeHtml >>> returnHTML ok200 $ do
+        H.head $ do
+          H.title "List of habits"
+        H.body $ do
+          H.ul $ forM_ habits_ (view name >>> H.toHtml)
 ------------------------------------- Root -------------------------------------
-    Scotty.get "/" $ do
-      logIO "Requested root"
-      getContent "index.html"
-    Scotty.get "/:filename" $ do
-      filename ← param "filename"
-      logIO [i|Requested "#{filename}"|]
-      getContent filename
+    Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
