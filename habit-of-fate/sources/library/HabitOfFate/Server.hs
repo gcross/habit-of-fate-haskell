@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -40,40 +41,16 @@ import qualified Data.ByteString.Lazy as Lazy
 import Data.Set (minView)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
-import Data.UUID
+import Data.UUID hiding (null)
 import Data.Yaml hiding (Parser, (.=))
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import System.Random
-import Text.Blaze.XHtml5
-  ( (!)
-  , body
-  , button
-  , docTypeHtml
-  , div
-  , form
-  , head
-  , input
-  , p
-  , span
-  , table
-  , td
-  , title
-  , toHtml
-  , toValue
-  , tr
-  )
-import Text.Blaze.XHtml5.Attributes
-  ( action
-  , id
-  , method
-  , name
-  , type_
-  , value
-  )
-import Text.Blaze.Html.Renderer.Text (renderHtml)
+import Text.Blaze.Html (Html, ToMarkup, toHtml)
+import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import Text.Hamlet (HtmlUrl, hamlet)
 import Web.Cookie
 import Web.Scotty
   ( ActionM
@@ -182,6 +159,7 @@ bodyJSON = do
 
 authorizeWith ∷ Bool → Environment → ActionM (Username, TVar Account)
 authorizeWith redirect_when_auth_fails Environment{..} = do
+  Scotty.headers >>= (show >>> logIO)
   cookie_header ← Scotty.header "Cookie" >>= valueOrStatus 403 "No cookie header."
   cookie ∷ Cookie ←
     cookie_header
@@ -219,7 +197,7 @@ authorizeWith redirect_when_auth_fails Environment{..} = do
     pure (username, account_tvar)
   case error_or_result of
     Left message
-      | redirect_when_auth_fails → Scotty.redirect "login"
+      | redirect_when_auth_fails → Scotty.redirect "/login"
       | otherwise → finishWithStatusMessage 403 message
     Right result → pure result
 
@@ -237,10 +215,10 @@ finishWithStatusMessage code = pack >>> encodeUtf8 >>> Status code >>> finishWit
 valueOrStatus ∷ Int → String → Maybe α → ActionM α
 valueOrStatus code message = maybe (finishWithStatusMessage code message) pure
 
-
 setContent ∷ Content → ActionM ()
 setContent NoContent = pure ()
 setContent (TextContent t) = Scotty.text t
+setContent (HtmlContent h) = h |> toHtml |> renderHtml |> decodeUtf8 |> Scotty.html
 setContent (JSONContent j) = Scotty.json j
 
 setStatusAndLog ∷ Status → ActionM ()
@@ -256,6 +234,7 @@ data ProgramResult = ProgramResult Status Content
 data Content =
     NoContent
   | TextContent Lazy.Text
+  | HtmlContent Html
   | ∀ α. ToJSON α ⇒ JSONContent α
 
 returnNothing ∷ Monad m ⇒ Status → m ProgramResult
@@ -269,6 +248,9 @@ returnText s = view (from strict) >>> returnLazyText s
 
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = JSONContent >>> ProgramResult s >>> return
+
+returnHTML ∷ Monad m ⇒ Status → Html → m ProgramResult
+returnHTML s = HtmlContent >>> ProgramResult s >>> return
 
 logRequest ∷ ActionM ()
 logRequest = do
@@ -441,12 +423,17 @@ writerWith redirect_when_auth_fails (environment@Environment{..}) (WriterProgram
 
 type FileLocator = FilePath → IO (Maybe FilePath)
 
+data Page = Habits
+renderPageURL ∷ Page → Text
+renderPageURL Habits = "/habits"
+
 makeApp ∷
+  Bool →
   FileLocator →
   Map Username Account →
   (Map Username Account → IO ()) →
   IO Application
-makeApp locateWebAppFile initial_accounts saveAccounts = do
+makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
 
   logIO $ "Starting server..."
@@ -493,8 +480,8 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
           { setCookieName="token"
           , setCookieValue=encodeUtf8 token
           , setCookieHttpOnly=True
-          , setCookieSecure=True
           , setCookieSameSite=Just sameSiteStrict
+          , setCookieSecure=not test_mode
           }
           |> renderSetCookie
           |> Builder.toLazyByteString
@@ -513,6 +500,8 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
   let environment = Environment{..}
       apiReader = readerWith False environment
       apiWriter = writerWith False environment
+      wwwReader = readerWith True environment
+      wwwWriter = writerWith True environment
 
       getContent filename =
         logIO [i|Getting content #{filename}|]
@@ -656,14 +645,80 @@ makeApp locateWebAppFile initial_accounts saveAccounts = do
         |> createStory
         |> renderStoryToText
        )
+-------------------------------- Create Account --------------------------------
+    let createAccountAction = do
+          logRequest
+          username@(Username username_) ← Username <$> paramOrBlank "username"
+          password1 ← paramOrBlank "password1"
+          password2 ← paramOrBlank "password2"
+          when ((not . onull $ password1) && password1 == password2) $ do
+            logIO $ [i|Request to create an account for "#{username_}".|]
+            liftIO >>> join $ do
+              new_account ← newAccount password1
+              atomically $ do
+                accounts ← readTVar accounts_tvar
+                if member username accounts
+                  then pure $ do
+                    logIO $ [i|Account "#{username_}" already exists!|]
+                    status conflict409
+                  else do
+                    account_tvar ← newTVar new_account
+                    modifyTVar accounts_tvar $ insertMap username account_tvar
+                    pure $ do
+                      logIO $ [i|Account "#{username_}" successfully created!|]
+                      createAndReturnCookie username
+                      Scotty.redirect "/"
+          let error_message ∷ Text =
+                if onull username_
+                  then
+                    if onull password1
+                      then ""
+                      else "Did not specify username."
+                  else
+                    case (password1, password2) of
+                      ("", "") → "Did not type the password2."
+                      ("", _) → "Did not type the password twice."
+                      (_, "") → "Did not type the password twice."
+                      _ | password1 == password2 → ""
+                      _ | otherwise → "The passwords did not agree."
+          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
+<head>
+  <title>Account creation
+<body>
+  <form method="post">
+    <div>
+      <table>
+        <tr>
+          <td> Username
+          <td>
+            <input type="text" name="username" value="#{username_}">
+        <tr>
+          <td> Password
+          <td>
+            <input type="password" name="password1">
+        <tr>
+          <td> Password (again)
+          <td>
+            <input type="password" name="password2">
+    $if (not . onull) error_message
+      <div>#{error_message}
+    <div> <input type="submit" formmethod="post"/>
+|]
+    Scotty.get "/create" createAccountAction
+    Scotty.post "/create" createAccountAction
+-------------------------------- Get All Habits --------------------------------
+    Scotty.get "/habits" <<< wwwReader $ do
+      habits_ ← view habits
+      ($ renderPageURL) >>> returnHTML ok200 $ [hamlet|
+<head>
+  <title>List of habits
+<body>
+  <ol>
+    $forall habit <- habits_
+      <li> #{habit ^. name}
+|]
 ------------------------------------- Root -------------------------------------
-    Scotty.get "/" $ do
-      logIO "Requested root"
-      getContent "index.html"
-    Scotty.get "/:filename" $ do
-      filename ← param "filename"
-      logIO [i|Requested "#{filename}"|]
-      getContent filename
+    Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request

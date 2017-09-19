@@ -228,7 +228,7 @@ habitMain = do
                   bool
                     (logIO [i|File not found at #{filepath}.|] >> pure Nothing)
                     (logIO [i|File found at #{filepath}.|] >> pure (Just filepath))
-  app ← makeApp locateWebAppFile initial_accounts saveAccounts
+  app ← makeApp test_mode locateWebAppFile initial_accounts saveAccounts
   let tls_settings =
         (tlsSettingsMemory certificate key)
         { onInsecure =

@@ -39,7 +39,7 @@ no_files = const $ pure Nothing
 withTestApp ∷ FileLocator → (Int → IO ()) → IO ()
 withTestApp locateWebAppFile =
   withApplication
-    (makeApp locateWebAppFile mempty (const $ pure ()))
+    (makeApp True locateWebAppFile mempty (const $ pure ()))
 
 withTestAppNoFiles ∷ (Int → IO ()) → IO ()
 withTestAppNoFiles = withTestApp $ no_files
@@ -190,46 +190,8 @@ main = defaultMain $ testGroup "All Tests"
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 deleteHabit test_habit_id >>= ((@?= HabitDeleted) >>> liftIO)
-                getHabits >>= ((@?= Map.empty) >>> liftIO) 
+                getHabits >>= ((@?= Map.empty) >>> liftIO)
             ]
-        ]
-    ----------------------------------------------------------------------------
-    , testGroup "Files"
-    ----------------------------------------------------------------------------
-        [ serverTestCaseNoFiles "Missing root" $ \port → do
-        ------------------------------------------------------------------------
-            manager ← newManager defaultManagerSettings
-            response ← flip httpNoBody manager $ defaultRequest
-              { method = renderStdMethod GET
-              , host = "localhost"
-              , port = port
-              , path = "/"
-              }
-            404 @=? responseStatusCode response
-        ------------------------------------------------------------------------
-        , testGroup "Existing file" $
-        ------------------------------------------------------------------------
-            flip map
-              [ ("/","index.html")
-              , ("/index.html","index.html")
-              , ("/habit-of-fate.js","habit-of-fate.js")
-              ]
-            $
-            \(request_path, recognized_filename) → do
-              testCase [i|#{request_path} -> #{recognized_filename}|] $
-                withSystemTempFile "hoftest" $ \temp_filepath handle → do
-                  hPutStr handle "testdata"
-                  hFlush handle
-                  withTestApp (flip lookup [(recognized_filename, temp_filepath)] >>> pure) $ \port → do
-                    manager ← newManager defaultManagerSettings
-                    response ← flip httpLbs manager $ defaultRequest
-                      { method = renderStdMethod GET
-                      , host = "localhost"
-                      , port = port
-                      , path = request_path
-                      }
-                    200 @=? responseStatusCode response
-                    "testdata" @=? responseBody response
         ]
     ----------------------------------------------------------------------------
     , apiTestCase "Fetching all habits from a new account returns an empty array" $
@@ -267,7 +229,7 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
             write_requested_ref ← newIORef False
             withApplication
-              (makeApp no_files mempty (const $ writeIORef write_requested_ref True))
+              (makeApp True no_files mempty (const $ writeIORef write_requested_ref True))
               $
               \port → do
                 session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
