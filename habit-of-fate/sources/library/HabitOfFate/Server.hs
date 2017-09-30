@@ -159,15 +159,19 @@ bodyJSON = do
 
 authorizeWith ∷ Bool → Environment → ActionM (Username, TVar Account)
 authorizeWith redirect_when_auth_fails Environment{..} = do
-  Scotty.headers >>= (show >>> logIO)
-  cookie_header ← Scotty.header "Cookie" >>= valueOrStatus 403 "No cookie header."
+  let handleForbidden ∷ String → Maybe α → ActionM α
+      handleForbidden message Nothing
+        | redirect_when_auth_fails = Scotty.redirect "/login"
+        | otherwise = finishWithStatusMessage 403 message
+      handleForbidden _ (Just value) = pure value
+  cookie_header ← Scotty.header "Cookie" >>= handleForbidden "No cookie header."
   cookie ∷ Cookie ←
     cookie_header
       |> view strict
       |> encodeUtf8
       |> parseCookiesText
       |> lookup "token"
-      |> valueOrStatus 403 "No authorization token in the cookies."
+      |> handleForbidden "No authorization token in the cookies."
       |> fmap Cookie
   current_time ← liftIO getCurrentTime
   error_or_result ← liftIO <<< atomically <<< runExceptT $ do
@@ -212,8 +216,8 @@ finishWithStatus s = do
 finishWithStatusMessage ∷ Int → String → ActionM α
 finishWithStatusMessage code = pack >>> encodeUtf8 >>> Status code >>> finishWithStatus
 
-valueOrStatus ∷ Int → String → Maybe α → ActionM α
-valueOrStatus code message = maybe (finishWithStatusMessage code message) pure
+valueOrRedirectToLogin ∷ Maybe α → ActionM α
+valueOrRedirectToLogin = maybe (Scotty.redirect "/login") pure
 
 setContent ∷ Content → ActionM ()
 setContent NoContent = pure ()
@@ -702,10 +706,60 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
             <input type="password" name="password2">
     $if (not . onull) error_message
       <div>#{error_message}
-    <div> <input type="submit" formmethod="post"/>
+    <div>
+      <input type="submit" formmethod="post"/>
+      <a href="/login">Login
 |]
     Scotty.get "/create" createAccountAction
     Scotty.post "/create" createAccountAction
+------------------------------------ Login -------------------------------------
+    let loginAction = do
+          logRequest
+          username@(Username username_) ← Username <$> paramOrBlank "username"
+          password ← paramOrBlank "password"
+          error_message ∷ Text ←
+            if onull username_
+              then pure ""
+              else do
+                logIO [i|Request to log in "#{username_}".|]
+                accounts ← readTVarMonadIO accounts_tvar
+                case lookup username accounts of
+                  Nothing → do
+                    logIO [i|Incorrect password for #{username_}.|]
+                    pure "No account has that username."
+                  Just account_tvar → do
+                    account ← readTVarMonadIO account_tvar
+                    if passwordIsValid password account
+                      then do
+                        logIO [i|Successfully logged in #{username_}.|]
+                        createAndReturnCookie username
+                        Scotty.redirect "/"
+                      else do
+                        logIO [i|Incorrect password for #{username_}.|]
+                        pure "No account has that username."
+          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
+<head>
+  <title>Account creation
+<body>
+  <form method="post">
+    <div>
+      <table>
+        <tr>
+          <td> Username
+          <td>
+            <input type="text" name="username" value="#{username_}">
+        <tr>
+          <td> Password
+          <td>
+            <input type="password" name="password">
+    $if (not . onull) error_message
+      <div>#{error_message}
+    <div>
+      <input type="submit" formmethod="post"/>
+      <a href="/create">Create
+|]
+    Scotty.get "/login" loginAction
+    Scotty.post "/login" loginAction
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/habits" <<< wwwReader $ do
       habits_ ← view habits
