@@ -676,7 +676,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                       else "Did not specify username."
                   else
                     case (password1, password2) of
-                      ("", "") → "Did not type the password2."
+                      ("", "") → "Did not type the password."
                       ("", _) → "Did not type the password twice."
                       (_, "") → "Did not type the password twice."
                       _ | password1 == password2 → ""
