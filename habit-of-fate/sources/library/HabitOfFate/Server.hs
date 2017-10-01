@@ -157,13 +157,10 @@ bodyJSON = do
       finishWithStatusMessage 400 "Bad request: Invalid JSON"
     Right value → pure value
 
-authorizeWith ∷ Bool → Environment → ActionM (Username, TVar Account)
-authorizeWith redirect_when_auth_fails Environment{..} = do
+authorizeWith ∷ (∀ α. String → ActionM α) → Environment → ActionM (Username, TVar Account)
+authorizeWith actionWhenAuthFails Environment{..} = do
   let handleForbidden ∷ String → Maybe α → ActionM α
-      handleForbidden message Nothing
-        | redirect_when_auth_fails = Scotty.redirect "/login"
-        | otherwise = finishWithStatusMessage 403 message
-      handleForbidden _ (Just value) = pure value
+      handleForbidden message = maybe (actionWhenAuthFails message) pure
   cookie_header ← Scotty.header "Cookie" >>= handleForbidden "No cookie header."
   cookie ∷ Cookie ←
     cookie_header
@@ -174,7 +171,7 @@ authorizeWith redirect_when_auth_fails Environment{..} = do
       |> handleForbidden "No authorization token in the cookies."
       |> fmap Cookie
   current_time ← liftIO getCurrentTime
-  error_or_result ← liftIO <<< atomically <<< runExceptT $ do
+  (liftIO <<< atomically <<< runExceptT $ do
     cookies ← lift $ readTVar cookies_tvar
     (expiration_time, username) ←
       cookies
@@ -199,11 +196,7 @@ authorizeWith redirect_when_auth_fails Environment{..} = do
       modifyTVar cookies_tvar $ insertMap cookie (new_expected_time, username)
       modifyTVar expirations_tvar $ insertSet (new_expected_time, cookie)
     pure (username, account_tvar)
-  case error_or_result of
-    Left message
-      | redirect_when_auth_fails → Scotty.redirect "/login"
-      | otherwise → finishWithStatusMessage 403 message
-    Right result → pure result
+   ) >>= either actionWhenAuthFails pure
 
 ----------------------------------- Results ------------------------------------
 
@@ -337,10 +330,10 @@ instance MonadReader Account (ReaderProgram) where
   ask = ReaderProgram $ Operational.singleton ReaderViewInstruction
   local = error "if you see this, then ReaderProgram needs to have a local method"
 
-readerWith ∷ Bool → Environment → ReaderProgram ProgramResult → ActionM ()
-readerWith redirect_when_auth_fails environment (ReaderProgram program) = do
+readerWith ∷ (∀ α. String → ActionM α) → Environment → ReaderProgram ProgramResult → ActionM ()
+readerWith actionWhenAuthFails environment (ReaderProgram program) = do
   logRequest
-  (username, account_tvar) ← authorizeWith redirect_when_auth_fails environment
+  (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← params
   body_ ← Scotty.body
   account ← account_tvar |> readTVarMonadIO
@@ -384,10 +377,10 @@ instance MonadState Account WriterProgram where
   get = Operational.singleton WriterGetAccountInstruction |> WriterProgram
   put = WriterPutAccountInstruction >>> Operational.singleton >>> WriterProgram
 
-writerWith ∷ Bool → Environment → WriterProgram ProgramResult → ActionM ()
-writerWith redirect_when_auth_fails (environment@Environment{..}) (WriterProgram program) = do
+writerWith ∷ (∀ α. String → ActionM α) → Environment → WriterProgram ProgramResult → ActionM ()
+writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram program) = do
   logRequest
-  (username, account_tvar) ← authorizeWith redirect_when_auth_fails environment
+  (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← params
   body_ ← Scotty.body
   let interpret ∷
@@ -502,10 +495,10 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
     saveAccounts
 
   let environment = Environment{..}
-      apiReader = readerWith False environment
-      apiWriter = writerWith False environment
-      wwwReader = readerWith True environment
-      wwwWriter = writerWith True environment
+      apiReader = readerWith (finishWithStatusMessage 403) environment
+      apiWriter = writerWith (finishWithStatusMessage 403) environment
+      wwwReader = readerWith (const $ Scotty.redirect "/home") environment
+      wwwWriter = writerWith (const $ Scotty.redirect "/home") environment
 
       getContent filename =
         logIO [i|Getting content #{filename}|]
