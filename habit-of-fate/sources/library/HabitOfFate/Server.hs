@@ -535,6 +535,68 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                 logIO $ [i|Account "#{username}" successfully created!|]
                 status created201
                 createAndReturnCookie username
+    let createAccountAction = do
+          logRequest
+          username@(Username username_) ← Username <$> paramOrBlank "username"
+          password1 ← paramOrBlank "password1"
+          password2 ← paramOrBlank "password2"
+          when ((not . onull $ password1) && password1 == password2) $ do
+            logIO $ [i|Request to create an account for "#{username_}".|]
+            liftIO >>> join $ do
+              new_account ← newAccount password1
+              atomically $ do
+                accounts ← readTVar accounts_tvar
+                if member username accounts
+                  then pure $ do
+                    logIO $ [i|Account "#{username_}" already exists!|]
+                    status conflict409
+                  else do
+                    account_tvar ← newTVar new_account
+                    modifyTVar accounts_tvar $ insertMap username account_tvar
+                    pure $ do
+                      logIO $ [i|Account "#{username_}" successfully created!|]
+                      createAndReturnCookie username
+                      Scotty.redirect "/"
+          let error_message ∷ Text =
+                if onull username_
+                  then
+                    if onull password1
+                      then ""
+                      else "Did not specify username."
+                  else
+                    case (password1, password2) of
+                      ("", "") → "Did not type the password."
+                      ("", _) → "Did not type the password twice."
+                      (_, "") → "Did not type the password twice."
+                      _ | password1 == password2 → ""
+                      _ | otherwise → "The passwords did not agree."
+          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
+<head>
+  <title>Account creation
+<body>
+  <form method="post">
+    <div>
+      <table>
+        <tr>
+          <td> Username
+          <td>
+            <input type="text" name="username" value="#{username_}">
+        <tr>
+          <td> Password
+          <td>
+            <input type="password" name="password1">
+        <tr>
+          <td> Password (again)
+          <td>
+            <input type="password" name="password2">
+    $if (not . onull) error_message
+      <div>#{error_message}
+    <div>
+      <input type="submit" formmethod="post"/>
+      <a href="/login">Login
+|]
+    Scotty.get "/create" createAccountAction
+    Scotty.post "/create" createAccountAction
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest
@@ -556,18 +618,79 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
         >>
         createAndReturnCookie username
        )
+    let loginAction = do
+          logRequest
+          username@(Username username_) ← Username <$> paramOrBlank "username"
+          password ← paramOrBlank "password"
+          error_message ∷ Text ←
+            if onull username_
+              then pure ""
+              else do
+                logIO [i|Request to log in "#{username_}".|]
+                accounts ← readTVarMonadIO accounts_tvar
+                case lookup username accounts of
+                  Nothing → do
+                    logIO [i|Incorrect password for #{username_}.|]
+                    pure "No account has that username."
+                  Just account_tvar → do
+                    account ← readTVarMonadIO account_tvar
+                    if passwordIsValid password account
+                      then do
+                        logIO [i|Successfully logged in #{username_}.|]
+                        createAndReturnCookie username
+                        Scotty.redirect "/"
+                      else do
+                        logIO [i|Incorrect password for #{username_}.|]
+                        pure "No account has that username."
+          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
+<head>
+  <title>Account creation
+<body>
+  <form method="post">
+    <div>
+      <table>
+        <tr>
+          <td> Username
+          <td>
+            <input type="text" name="username" value="#{username_}">
+        <tr>
+          <td> Password
+          <td>
+            <input type="password" name="password">
+    $if (not . onull) error_message
+      <div>#{error_message}
+    <div>
+      <input type="submit" formmethod="post"/>
+      <a href="/create">Create
+|]
+    Scotty.get "/login" loginAction
+    Scotty.post "/login" loginAction
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" <<< apiReader $ do
       log "Requested all habits."
       view habits >>= returnJSON ok200
----------------------------------- Get Habit -----------------------------------
-    Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
-      habit_id ← getParam "habit_id"
-      log $ [i|Requested habit with id #{habit_id}.|]
+    Scotty.get "/habits" <<< wwwReader $ do
       habits_ ← view habits
-      case lookup habit_id habits_ of
-        Nothing → raiseNoSuchHabit
-        Just habit → returnJSON ok200 habit
+      ($ renderPageURL) >>> returnHTML ok200 $ [hamlet|
+<head>
+  <title>List of habits
+<body>
+  <ol>
+    $forall habit <- habits_
+      <li> #{habit ^. name}
+|]
+---------------------------------- Get Habit -----------------------------------
+    let habitAction foundAction = do
+          habit_id ← getParam "habit_id"
+          log $ [i|Requested habit with id #{habit_id}.|]
+          habits_ ← view habits
+          case lookup habit_id habits_ of
+            Nothing → raiseNoSuchHabit
+            Just habit → foundAction habit
+
+            Just habit → returnJSON ok200 habit
+    Scotty.get "/api/habits/:habit_id" <<< apiReader $
+      habitAction (returnJSON ok200)
 --------------------------------- Delete Habit ---------------------------------
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
@@ -642,128 +765,6 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
         |> createStory
         |> renderStoryToText
        )
--------------------------------- Create Account --------------------------------
-    let createAccountAction = do
-          logRequest
-          username@(Username username_) ← Username <$> paramOrBlank "username"
-          password1 ← paramOrBlank "password1"
-          password2 ← paramOrBlank "password2"
-          when ((not . onull $ password1) && password1 == password2) $ do
-            logIO $ [i|Request to create an account for "#{username_}".|]
-            liftIO >>> join $ do
-              new_account ← newAccount password1
-              atomically $ do
-                accounts ← readTVar accounts_tvar
-                if member username accounts
-                  then pure $ do
-                    logIO $ [i|Account "#{username_}" already exists!|]
-                    status conflict409
-                  else do
-                    account_tvar ← newTVar new_account
-                    modifyTVar accounts_tvar $ insertMap username account_tvar
-                    pure $ do
-                      logIO $ [i|Account "#{username_}" successfully created!|]
-                      createAndReturnCookie username
-                      Scotty.redirect "/"
-          let error_message ∷ Text =
-                if onull username_
-                  then
-                    if onull password1
-                      then ""
-                      else "Did not specify username."
-                  else
-                    case (password1, password2) of
-                      ("", "") → "Did not type the password."
-                      ("", _) → "Did not type the password twice."
-                      (_, "") → "Did not type the password twice."
-                      _ | password1 == password2 → ""
-                      _ | otherwise → "The passwords did not agree."
-          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
-<head>
-  <title>Account creation
-<body>
-  <form method="post">
-    <div>
-      <table>
-        <tr>
-          <td> Username
-          <td>
-            <input type="text" name="username" value="#{username_}">
-        <tr>
-          <td> Password
-          <td>
-            <input type="password" name="password1">
-        <tr>
-          <td> Password (again)
-          <td>
-            <input type="password" name="password2">
-    $if (not . onull) error_message
-      <div>#{error_message}
-    <div>
-      <input type="submit" formmethod="post"/>
-      <a href="/login">Login
-|]
-    Scotty.get "/create" createAccountAction
-    Scotty.post "/create" createAccountAction
------------------------------------- Login -------------------------------------
-    let loginAction = do
-          logRequest
-          username@(Username username_) ← Username <$> paramOrBlank "username"
-          password ← paramOrBlank "password"
-          error_message ∷ Text ←
-            if onull username_
-              then pure ""
-              else do
-                logIO [i|Request to log in "#{username_}".|]
-                accounts ← readTVarMonadIO accounts_tvar
-                case lookup username accounts of
-                  Nothing → do
-                    logIO [i|Incorrect password for #{username_}.|]
-                    pure "No account has that username."
-                  Just account_tvar → do
-                    account ← readTVarMonadIO account_tvar
-                    if passwordIsValid password account
-                      then do
-                        logIO [i|Successfully logged in #{username_}.|]
-                        createAndReturnCookie username
-                        Scotty.redirect "/"
-                      else do
-                        logIO [i|Incorrect password for #{username_}.|]
-                        pure "No account has that username."
-          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
-<head>
-  <title>Account creation
-<body>
-  <form method="post">
-    <div>
-      <table>
-        <tr>
-          <td> Username
-          <td>
-            <input type="text" name="username" value="#{username_}">
-        <tr>
-          <td> Password
-          <td>
-            <input type="password" name="password">
-    $if (not . onull) error_message
-      <div>#{error_message}
-    <div>
-      <input type="submit" formmethod="post"/>
-      <a href="/create">Create
-|]
-    Scotty.get "/login" loginAction
-    Scotty.post "/login" loginAction
--------------------------------- Get All Habits --------------------------------
-    Scotty.get "/habits" <<< wwwReader $ do
-      habits_ ← view habits
-      ($ renderPageURL) >>> returnHTML ok200 $ [hamlet|
-<head>
-  <title>List of habits
-<body>
-  <ol>
-    $forall habit <- habits_
-      <li> #{habit ^. name}
-|]
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Not Found -----------------------------------
