@@ -246,8 +246,8 @@ returnText s = view (from strict) >>> returnLazyText s
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = JSONContent >>> ProgramResult s >>> return
 
-returnHTML ∷ Monad m ⇒ Status → Html → m ProgramResult
-returnHTML s = HtmlContent >>> ProgramResult s >>> return
+returnHTML ∷ Monad m ⇒ Status → ((Page → Text) → Html) → m ProgramResult
+returnHTML s = ($ renderPageURL) >>> HtmlContent >>> ProgramResult s >>> return
 
 logRequest ∷ ActionM ()
 logRequest = do
@@ -671,7 +671,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
       view habits >>= returnJSON ok200
     Scotty.get "/habits" <<< wwwReader $ do
       habits_ ← view habits
-      ($ renderPageURL) >>> returnHTML ok200 $ [hamlet|
+      returnHTML ok200 [hamlet|
 <head>
   <title>List of habits
 <body>
