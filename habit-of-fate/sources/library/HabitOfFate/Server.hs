@@ -497,8 +497,8 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
   let environment = Environment{..}
       apiReader = readerWith (finishWithStatusMessage 403) environment
       apiWriter = writerWith (finishWithStatusMessage 403) environment
-      wwwReader = readerWith (const $ Scotty.redirect "/home") environment
-      wwwWriter = writerWith (const $ Scotty.redirect "/home") environment
+      wwwReader = readerWith (const $ Scotty.redirect "/login") environment
+      wwwWriter = writerWith (const $ Scotty.redirect "/login") environment
 
       getContent filename =
         logIO [i|Getting content #{filename}|]
