@@ -122,6 +122,8 @@ data Environment = Environment
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
 
+scottyHTML = ($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html
+
 --------------------------------------------------------------------------------
 ---------------------------- Shared Scotty Actions -----------------------------
 --------------------------------------------------------------------------------
@@ -570,7 +572,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                       (_, "") → "Did not type the password twice."
                       _ | password1 == password2 → ""
                       _ | otherwise → "The passwords did not agree."
-          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
+          scottyHTML [hamlet|
 <head>
   <title>Account creation
 <body>
@@ -642,7 +644,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                       else do
                         logIO [i|Incorrect password for #{username_}.|]
                         pure "No account has that username."
-          (($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html) [hamlet|
+          scottyHTML [hamlet|
 <head>
   <title>Account creation
 <body>
