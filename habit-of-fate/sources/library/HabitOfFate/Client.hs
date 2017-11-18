@@ -132,8 +132,9 @@ newtype ClientT m α = ClientT { unwrapClientT ∷ InnerClientAction m α }
 
 type ClientIO = ClientT IO
 
-runClientT ∷ ClientT m α → SessionInfo → m α
-runClientT = unwrapClientT >>> runReaderT
+runClientT ∷ MonadIO m ⇒ ClientT m α → SessionInfo → m α
+runClientT action session =
+  (action <* logout) |> unwrapClientT |> flip runReaderT session
 
 instance MonadBase IO m ⇒ MonadBase IO (ClientT m) where
   liftBase = liftBase >>> ClientT
@@ -197,6 +198,9 @@ sendRequest request = getManager >>= (httpLbs request >>> liftIO)
 
 request ∷ MonadIO m ⇒ StdMethod → Text → ClientT m (Response LBS.ByteString)
 request method path = makeRequest method path >>= sendRequest
+
+logout ∷ MonadIO m ⇒ ClientT m ()
+logout = void $ request POST "logout"
 
 requestWithJSON ∷
   (MonadIO m, ToJSON α) ⇒ StdMethod → Text → α → ClientT m (Response LBS.ByteString)

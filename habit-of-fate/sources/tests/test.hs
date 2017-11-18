@@ -12,7 +12,7 @@ module Main where
 
 import HabitOfFate.Prelude hiding (elements)
 
-import Control.Exception
+import Control.Monad.Catch
 import qualified Data.Map as Map
 import Data.IORef
 import Network.HTTP.Client
@@ -148,6 +148,14 @@ main = defaultMain $ testGroup "All Tests"
                 , testEmpty "Empty password" "create?password="
                 ]
             ]
+        ------------------------------------------------------------------------
+        , apiTestCase "Logging out makes habits forbidden to access." $ do
+        ------------------------------------------------------------------------
+            logout
+            try getHabits >>= \case
+              Left (UnexpectedStatus _ 403) → pure ()
+              Left e → throwM e
+              _ → liftIO $ assertFailure "No exception raised."
         ------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ------------------------------------------------------------------------

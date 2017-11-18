@@ -89,6 +89,7 @@ test-suite test
   build-depends:       habit-of-fate
                      , base
                      , containers
+                     , exceptions
                      , http-client
                      , http-types
                      , jwt
