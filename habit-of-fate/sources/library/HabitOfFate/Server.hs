@@ -728,15 +728,17 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
           then noContent204
           else notFound404
 ---------------------------------- Put Habit -----------------------------------
-    Scotty.put "/api/habits/:habit_id" <<< apiWriter $ do
-      habit_id ← getParam "habit_id"
-      log $ [i|Requested to put habit with id #{habit_id}.|]
-      habit ← getBodyJSON
-      habit_was_there ← isJust <$> (habits . at habit_id <<.= Just habit)
-      returnNothing $
-        if habit_was_there
-          then noContent204
-          else created201
+    let apiWriteAction = do
+          habit_id ← getParam "habit_id"
+          log $ [i|Requested to put habit with id #{habit_id}.|]
+          habit ← getBodyJSON
+          habit_was_there ← isJust <$> (habits . at habit_id <<.= Just habit)
+          returnNothing $
+            if habit_was_there
+              then noContent204
+              else created201
+    Scotty.post "/api/habits/:habit_id" <<< apiWriter $ apiWriteAction
+    Scotty.put "/api/habits/:habit_id" <<< apiWriter $ apiWriteAction
 --------------------------------- Get Credits ----------------------------------
     Scotty.get "/api/credits" <<< apiReader $ do
       log $ "Requested credits."
