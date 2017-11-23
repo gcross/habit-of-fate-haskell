@@ -33,6 +33,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Exception (assert)
+import Control.Monad.Random
 import Control.Monad.Operational (Program, ProgramViewT(..))
 import Control.Monad.STM
 import qualified Control.Monad.Operational as Operational
@@ -387,7 +388,7 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
   body_ ← Scotty.body
   let interpret ∷
         Program WriterInstruction α →
-        StateT Account (ExceptT Status (Writer (Seq String))) α
+        StateT Account (ExceptT Status (RandT StdGen (Writer (Seq String)))) α
       interpret (Operational.view → Return result) = pure result
       interpret (Operational.view → instruction :>>= rest) = case instruction of
         WriterCommonInstruction common_instruction → case common_instruction of
@@ -399,12 +400,14 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
             interpret (rest ())
         WriterGetAccountInstruction → get >>= (rest >>> interpret)
         WriterPutAccountInstruction new_account → put new_account >> interpret (rest ())
+  initial_generator ← liftIO newStdGen
   (status_, maybe_content, logs) ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs) =
           interpret program
             |> flip runStateT old_account
             |> runExceptT
+            |> flip evalRandT initial_generator
             |> runWriter
     case error_or_result of
       Left status_ → pure (status_, Nothing, logs)
