@@ -10,6 +10,7 @@ module HabitOfFate.Habit where
 import HabitOfFate.Prelude
 
 import Data.Aeson
+import Data.Default
 
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import Text.ParserCombinators.ReadP (choice, string)
@@ -62,3 +63,6 @@ data Habit = Habit
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 makeLenses ''Habit
+
+instance Default Habit where
+  def = Habit "Habit Title" Medium Medium
