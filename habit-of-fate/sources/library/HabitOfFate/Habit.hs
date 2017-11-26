@@ -65,4 +65,4 @@ deriveJSON ''Habit
 makeLenses ''Habit
 
 instance Default Habit where
-  def = Habit "Habit Title" Medium Medium
+  def = Habit "" Medium Medium
