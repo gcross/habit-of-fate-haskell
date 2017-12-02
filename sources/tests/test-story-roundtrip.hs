@@ -55,15 +55,15 @@ instance Arbitrary α ⇒ Arbitrary (GenParagraph α) where
 
 instance Arbitrary α ⇒ Arbitrary (GenEvent α) where
   arbitrary = GenEvent <$> arbitrary
-  shrink = fmap GenEvent ∘ shrink ∘ unwrapGenEvent
+  shrink = unwrapGenEvent >>> shrink >>> fmap GenEvent
 
 instance Arbitrary α ⇒ Arbitrary (GenQuest α) where
   arbitrary = GenQuest <$> arbitrary
-  shrink = fmap GenQuest ∘ shrink ∘ unwrapGenQuest
+  shrink = unwrapGenQuest >>> shrink >>> fmap GenQuest
 
 instance Arbitrary α ⇒ Arbitrary (GenStory α) where
   arbitrary = GenStory <$> arbitrary
-  shrink = fmap GenStory ∘ shrink ∘ unwrapGenStory
+  shrink = unwrapGenStory >>> shrink >>> fmap GenStory
 
 instance (Monad m, Serial m α) ⇒ Serial m (Seq α) where
   series = fromList <$> series
@@ -83,23 +83,23 @@ instance (Monad m, Serial m α) ⇒ Serial m (GenStory α) where
 
 originalFromSubParagraph ∷ SubParagraph → Text
 originalFromSubParagraph =
-  rewords
-  ∘
   foldMap (
     \case
       Literal t → t
       Key k → "{" ⊕ k ⊕ "}"
   )
+  >>>
+  rewords
 
 originalFromSubEvent ∷ SubEvent → Text
 originalFromSubEvent =
-  mconcat
-  ∘
-  intersperse "\n"
-  ∘
-  map originalFromSubParagraph
-  ∘
   unwrapGenEvent
+  >>>
+  map originalFromSubParagraph
+  >>>
+  intersperse "\n"
+  >>>
+  mconcat
 
 main = defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Story"
