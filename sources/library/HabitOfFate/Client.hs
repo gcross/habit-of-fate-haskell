@@ -97,8 +97,7 @@ loginOrCreateAccount route username password secure_mode hostname port = do
 
 createAccount ∷ String → String → SecureMode → ByteString → Int → IO (Maybe SessionInfo)
 createAccount username password secure_mode hostname port =
-  -- either (const Nothing) Just
-  either (\x → error $ "Status " ⊕ show x) Just
+  either (const Nothing) Just
   <$>
   loginOrCreateAccount "create" username password secure_mode hostname port
 
