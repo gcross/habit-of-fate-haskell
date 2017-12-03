@@ -9,13 +9,6 @@ module HabitOfFate.Habit where
 
 import HabitOfFate.Prelude
 
-import Data.Aeson
-import Data.Default
-
-import qualified Text.ParserCombinators.ReadPrec as ReadPrec
-import Text.ParserCombinators.ReadP (choice, string)
-import Text.Read (Read(readPrec), readMaybe)
-
 import HabitOfFate.JSON ()
 import HabitOfFate.TH
 

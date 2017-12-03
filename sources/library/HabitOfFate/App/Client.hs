@@ -211,8 +211,8 @@ mainLoop = loop [] $
       habit_id ← liftIO randomIO
       habit ← Habit
         <$> prompt readNonEmpty "What is the name of the habit?"
-        <*> promptWithDefault readMaybe Medium "Importance [very low, low, medium, high, very high]?"
-        <*> promptWithDefault readMaybe Medium "Difficulty [very low, low, medium, high, very high]?"
+        <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
+        <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
       liftC >>> void $ putHabit habit_id habit
     ,Action 'e' "Edit a habit." <<< withCancel $ do
       habit_id ← prompt readMaybe "Which habit?"
@@ -224,8 +224,8 @@ mainLoop = loop [] $
           return
       habit ← Habit
         <$> promptWithDefault readNonEmpty (old_habit ^. name) "What is the name of the habit?"
-        <*> promptWithDefault readMaybe Medium "Importance [very low, low, medium, high, very high]?"
-        <*> promptWithDefault readMaybe Medium "Difficulty [very low, low, medium, high, very high]?"
+        <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
+        <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
       liftC >>> void $ putHabit habit_id habit
     ,Action 'f' "Mark habits as failed." $
        withCancel $ prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
@@ -251,6 +251,8 @@ mainLoop = loop [] $
         |> liftIO
   ]
   where
+    scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
+
     printHabits = do
       habits ← liftC getHabits
       liftIO $
