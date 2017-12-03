@@ -14,6 +14,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -27,7 +28,7 @@ module HabitOfFate.Server
 import HabitOfFate.Prelude hiding (div, id, log)
 
 import Data.Aeson hiding ((.=))
-import Data.Aeson.Types
+import Data.Aeson.Types hiding ((.=))
 import Data.Containers
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -298,6 +299,15 @@ getParam param_name = do
           400
           [i|Bad request: Parameter #{param_name} has invalid format #{value}|]
       Right x → return x
+
+getParamMaybe ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m (Maybe α)
+getParamMaybe param_name =
+  getParams
+  <&>
+  (lookup param_name >=> (parseParam >>> either (const Nothing) return))
+
+paramMaybe ∷ Parsable α ⇒ Lazy.Text → ActionM (Maybe α)
+paramMaybe param_name = (param param_name <&> Just) `rescue` (const $ pure Nothing)
 
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
 raiseStatus code =
@@ -705,23 +715,75 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
 <head>
   <title>List of habits
 <body>
-  <ol>
-    $forall habit <- habits_
-      <li> #{habit ^. name}
+  <table>
+    $forall (uuid, habit) <- mapToList habits_
+      <tr>
+        <td> <a href="/habits/#{show uuid}">#{habit ^. name}
 |]
 ---------------------------------- Get Habit -----------------------------------
-    let habitAction foundAction = do
-          habit_id ← getParam "habit_id"
-          log $ [i|Requested habit with id #{habit_id}.|]
-          habits_ ← view habits
-          case lookup habit_id habits_ of
-            Nothing → raiseNoSuchHabit
-            Just habit → foundAction habit
+    let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
+        habitPage habit_id name_error importance_error difficulty_error habit = returnHTML ok200 [hamlet|
+<head>
+  <title>Editing a habit
+<body>
+  <form method="post">
+    <div>
+      <table>
+        <tr>
+          <td> Name:
+          <td>
+            <input type="text" name="name" value="#{habit ^. name}"/>
+          <td> #{name_error}
+        <tr>
+          <td> Difficulty:
+          <td>
+            <select>
+              $forall scale <- enumFromTo minBound maxBound
+                <option value="#{scale}"> #{displayScale scale}
+          <td> #{difficulty_error}
+        <tr>
+          <td> Importance:
+          <td>
+            <select>
+              $forall scale <- enumFromTo minBound maxBound
+                <option value="#{scale}"> #{displayScale scale}
+          <td> #{importance_error}
+    <div>
+      <input type="submit"/> Submit
+      <button onclick="window.location.href='/habits'"> Cancel
+|]
+    Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
+      habit_id ← getParam "habit_id"
+      log $ [i|Requested habit with id #{habit_id}.|]
+      (view habits <&> lookup habit_id)
+        >>= maybe raiseNoSuchHabit (returnJSON ok200)
 
-            Just habit → returnJSON ok200 habit
-    Scotty.get "/api/habits/:habit_id" <<< apiReader $
-      habitAction (returnJSON ok200)
---------------------------------- Delete Habit ---------------------------------
+    Scotty.get "/habits/:habit_id" <<< wwwReader $ do
+      habit_id ← getParam "habit_id"
+      log $ [i|Web GET request for habit with id #{habit_id}.|]
+      (view habits <&> (lookup habit_id >>> fromMaybe def))
+        >>= habitPage habit_id "" "" ""
+
+    Scotty.post "/habits/:habit_id" <<< wwwWriter $ do
+      habit_id ← getParam "habit_id"
+      log $ [i|Web POST request for habit with id #{habit_id}.|]
+      (unparsed_name, maybe_name, name_error) ← getParamMaybe "name" <&> \case
+            Nothing → ("", Nothing, "No value for the name was present.")
+            Just unparsed_name
+              | onull unparsed_name → (unparsed_name, Nothing, "Name must not be blank.")
+              | otherwise → (unparsed_name, Just unparsed_name, "")
+      let getScale param_name = getParamMaybe param_name <&> \case
+            Nothing → ("", Nothing, "No value for the " ⊕ param_name ⊕ " was present.")
+            Just unparsed_value →
+              case readMaybe unparsed_value of
+                Nothing → (unparsed_name, Nothing, "Invalid value for the " ⊕ param_name ⊕ ".")
+                Just value → (unparsed_value, Just value, "")
+      (unparsed_importance, maybe_importance, importance_error) ← getScale "importance"
+      (unparsed_difficulty, maybe_difficulty, difficulty_error) ← getScale "difficulty"
+      case Habit <$> maybe_name <*> maybe_importance <*> maybe_difficulty of
+        Nothing → habitPage habit_id name_error importance_error difficulty_error def
+        Just new_habit → habits . at habit_id <<.= Nothing >> returnNothing noContent204
+-------------------------------- Delete Habit ---------------------------------
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
@@ -797,6 +859,14 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
         |> createStory
         |> renderStoryToText
        )
+------------------------------------- Home -------------------------------------
+    Scotty.get "/home" <<< scottyHTML $ [hamlet|
+<head>
+  <title>Habit of Fate
+<body>
+  <a href="/login">Login
+  <a href="/create">Create
+|]
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Not Found -----------------------------------
