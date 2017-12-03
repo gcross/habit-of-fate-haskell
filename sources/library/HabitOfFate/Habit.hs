@@ -13,7 +13,7 @@ import HabitOfFate.JSON ()
 import HabitOfFate.TH
 
 data Scale = VeryLow | Low | Medium | High | VeryHigh
-  deriving (Enum,Eq,Ord,Read,Show)
+  deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''Scale
 
 scaleFactor ∷ Scale → Double

@@ -63,6 +63,7 @@ module HabitOfFate.Prelude
 
 import Prelude
   ( Bool(..)
+  , Bounded(..)
   , Char
   , Double
   , Enum(..)
