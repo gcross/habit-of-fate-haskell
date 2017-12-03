@@ -20,34 +20,8 @@ import HabitOfFate.JSON ()
 import HabitOfFate.TH
 
 data Scale = VeryLow | Low | Medium | High | VeryHigh
-  deriving (Enum,Eq,Ord)
-
-instance Show Scale where
-  show VeryLow = "very low"
-  show Low = "low"
-  show Medium = "medium"
-  show High = "high"
-  show VeryHigh = "very high"
-
-instance Read Scale where
-  readPrec = ReadPrec.lift $
-    choice
-      [ string "very low" $> VeryLow
-      , string "low" $> Low
-      , string "medium" $> Medium
-      , string "high" $> High
-      , string "very high" $> VeryHigh
-      ]
-
-instance ToJSON Scale where
-  toJSON = show >>> pack >>> String
-
-instance FromJSON Scale where
-  parseJSON (String x) =
-    x |> unpack
-      |> readMaybe
-      |> maybe (fail "invalid value for scale") pure
-  parseJSON _ = fail "value for scale must be a string"
+  deriving (Enum,Eq,Ord,Read,Show)
+deriveJSON ''Scale
 
 scaleFactor ∷ Scale → Double
 scaleFactor VeryLow = 1/4
