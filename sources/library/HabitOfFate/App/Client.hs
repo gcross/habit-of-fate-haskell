@@ -103,24 +103,15 @@ cancel = liftIO (putStrLn "") >> throwError Cancel
 
 class EditableValue α where
   showValue ∷ α → String
-  default showValue ∷ Show α ⇒ α → String
-  showValue = show
-
   parseValue ∷ String → Maybe α
-  default parseValue ∷ Read α ⇒ String → Maybe α
-  parseValue = readMaybe
 
 instance EditableValue String where
   showValue = identity
   parseValue = Just
 
-instance EditableValue Double where
-
-instance EditableValue UUID where
-
 instance EditableValue [UUID] where
-  showValue = map showValue >>> intercalate ","
-  parseValue = split1 >>> map parseValue >>> sequence
+  showValue = map show >>> intercalate ","
+  parseValue = split1 >>> map readMaybe >>> sequence
     where
       isSep = flip elem (" ," :: String)
 
@@ -135,14 +126,18 @@ instance EditableValue Scale where
   showValue = show >>> unpack
   parseValue = pack >>> readMaybe
 
-prompt ∷ EditableValue α ⇒ String → ActionMonadWithCancel α
-prompt p =
+readNonEmpty ∷ String → Maybe String
+readNonEmpty "" = Nothing
+readNonEmpty x = Just x
+
+prompt ∷ (String → Maybe α) → String → ActionMonadWithCancel α
+prompt parseValue p =
   promptForString
   >>=
   (
     parseValue
     >>>
-    maybe (liftIO (putStrLn "Bad input.") >> prompt p) return
+    maybe (liftIO (putStrLn "Bad input.") >> prompt parseValue p) return
   )
   where
     promptForString =
@@ -167,11 +162,11 @@ prompt p =
           return
           (return <$> getLine)
 
-promptWithDefault ∷ (EditableValue α, Show α) ⇒ α → String → ActionMonadWithCancel α
+promptWithDefault ∷ EditableValue α ⇒ α → String → ActionMonadWithCancel α
 promptWithDefault def p = doPrompt
   where
     doPrompt =
-      prompt [i|#{p} [#{def}]|]
+      prompt parseValue [i|#{p} [#{showValue def}]|]
       >>=
       (\input →
         if null input
@@ -236,12 +231,12 @@ mainLoop = loop [] $
     [Action 'a' "Add a habit." <<< withCancel $ do
       habit_id ← liftIO randomIO
       habit ← Habit
-        <$> prompt "What is the name of the habit?"
+        <$> prompt readNonEmpty "What is the name of the habit?"
         <*> promptWithDefault Medium "Importance [very low, low, medium, high, very high]?"
         <*> promptWithDefault Medium "Difficulty [very low, low, medium, high, very high]?"
       liftC >>> void $ putHabit habit_id habit
     ,Action 'e' "Edit a habit." <<< withCancel $ do
-      habit_id ← prompt "Which habit?"
+      habit_id ← prompt readMaybe "Which habit?"
       old_habit ←
         liftC (getHabit habit_id)
         >>=
@@ -254,10 +249,10 @@ mainLoop = loop [] $
         <*> promptWithDefault Medium "Difficulty [very low, low, medium, high, very high]?"
       liftC >>> void $ putHabit habit_id habit
     ,Action 'f' "Mark habits as failed." $
-       withCancel $ prompt "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
+       withCancel $ prompt parseValue "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
     ,Action 'p' "Print habits." $ printHabits
     ,Action 's' "Mark habits as successful." $
-       withCancel $ prompt "Which habits succeeded?" >>= (flip markHabits [] >>> liftC >>> void)
+       withCancel $ prompt parseValue "Which habits succeeded?" >>= (flip markHabits [] >>> liftC >>> void)
     ]
   ,Action 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"
