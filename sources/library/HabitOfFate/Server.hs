@@ -27,7 +27,7 @@ module HabitOfFate.Server
 import HabitOfFate.Prelude hiding (div, id, log)
 
 import Data.Aeson hiding ((.=))
-import Data.Aeson.Types
+import Data.Aeson.Types hiding ((.=))
 import Data.Containers
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -298,6 +298,9 @@ getParam param_name = do
           400
           [i|Bad request: Parameter #{param_name} has invalid format #{value}|]
       Right x → return x
+
+getParamMaybe ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m α
+getParamMaybe param_name = Just <$> getParam `rescue` return Nothing
 
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
 raiseStatus code =
@@ -705,23 +708,84 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
 <head>
   <title>List of habits
 <body>
-  <ol>
-    $forall habit <- habits_
-      <li> #{habit ^. name}
+  <table>
+    $forall (uuid, habit) <- mapToList habits_
+      <tr>
+        <td> <a href="/habits/#{show uuid}">#{habit ^. name}
 |]
 ---------------------------------- Get Habit -----------------------------------
-    let habitAction foundAction = do
+    let lookupHabitAndRun foundAction notFoundAction = do
           habit_id ← getParam "habit_id"
           log $ [i|Requested habit with id #{habit_id}.|]
           habits_ ← view habits
           case lookup habit_id habits_ of
-            Nothing → raiseNoSuchHabit
-            Just habit → foundAction habit
-
-            Just habit → returnJSON ok200 habit
+            Nothing → notFoundAction
+            Just habit → foundAction habit_id habit
     Scotty.get "/api/habits/:habit_id" <<< apiReader $
-      habitAction (returnJSON ok200)
---------------------------------- Delete Habit ---------------------------------
+      lookupHabitAndRun (const $ returnJSON ok200) raiseNoSuchHabit
+
+    let editHabitPage habit_id habit = returnHTML ok200 [hamlet|
+<head>
+  <title>Editing a habit
+<body>
+  <form method="post">
+    <div>
+      <table>
+        <tr>
+          <td> Name:
+          <td>
+            <input type="text" name="name" value="#{habit ^. name}"/>
+        <tr>
+          <td> Difficulty:
+          <td>
+            <select>
+              <option value="verylow"> Very Low
+              <option value="low"> Low
+              <option value="medium"> Medium
+              <option value="high"> High
+              <option value="veryhigh"> Very High
+        <tr>
+          <td> Importance:
+          <td>
+            <select>
+              <option value="verylow"> Very Low
+              <option value="low"> Low
+              <option value="medium"> Medium
+              <option value="high"> High
+              <option valunot "veryhigh"> Very High
+    <div>
+      <input type="submit"/> Submit
+      <button onclick="window.location.href='/habits'"> Cancel
+|]
+    Scotty.get "/habits/:habit_id" <<< wwwReader $ do
+      habit_id ← getParam "habit_id"
+      log $ [i|Web GET request for habit with id #{habit_id}.|]
+      view habits <&> (lookup habit_id >>> fromMaybe def) >>= editHabitPage habit_id
+    Scotty.post "/habits/:habit_id" <<< wwwWriter $ do
+      habit_id ← getParam "habit_id"
+      log $ [i|Web POST request for habit with id #{habit_id}.|]
+      (unparsed_name, name_or_error) ← getParamMaybe "name" >>= \case
+        Nothing → ("", Left "No value for the name was present.")
+        Just name →
+          ( name
+          , if onull name then Left "Name must not be blank." else Right name
+          )
+      let getScale param_name = getParamMaybe param_name >>= \case
+            Nothing → ("", Left $ "No value for the " ⊕ param_name ⊕ " was present.")
+            Just unparsed_value →
+              case readMaybe unparsed_value of
+                Nothing → (fromEnum Medium, Left $ "Invalid value for the " ⊕ param_name ⊕ ".")
+      (name, name_error) ← getValue "name" $ \name →
+        if onull name then Left "Name must not be blank" else Right name
+      let getScaleValee param_name = getValue param_name $ read \case
+            "0" → 
+      (importance, importance_error) ← getValue "importance" >>= \case
+        Nothing → ("", "No importance was present.")
+        Just unvalidated_importance →
+          case readMaybe unvalidated_importance of
+            Nothing → ("medium", "Importance had invalid value \"" ⊕ importance ⊕ "\""
+            Just importance → importance
+-------------------------------- Delete Habit ---------------------------------
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
@@ -797,6 +861,14 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
         |> createStory
         |> renderStoryToText
        )
+------------------------------------- Home -------------------------------------
+    Scotty.get "/home" <<< scottyHTML $ [hamlet|
+<head>
+  <title>Habit of Fate
+<body>
+  <a href="/login">Login
+  <a href="/create">Create
+|]
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Not Found -----------------------------------
