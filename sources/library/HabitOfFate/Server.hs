@@ -432,6 +432,16 @@ data Page = Habits
 renderPageURL ∷ Page → Text
 renderPageURL Habits = "/habits"
 
+data HabitErrors = HabitErrors
+  { _name_error ∷ Text
+  , _difficulty_error ∷ Text
+  , _importance_error ∷ Text
+  } deriving (Eq,Ord,Read,Show)
+makeLenses ''Habit
+
+instance Default HabitErrors where
+  def = HabitErrors "" "" ""
+
 makeApp ∷
   Bool →
   FileLocator →
@@ -724,7 +734,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
     Scotty.get "/api/habits/:habit_id" <<< apiReader $
       lookupHabitAndRun (const $ returnJSON ok200) raiseNoSuchHabit
 
-    let editHabitPage habit_id habit = returnHTML ok200 [hamlet|
+    let editHabitPage habit_errors habit_id habit = returnHTML ok200 [hamlet|
 <head>
   <title>Editing a habit
 <body>
@@ -735,24 +745,21 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
           <td> Name:
           <td>
             <input type="text" name="name" value="#{habit ^. name}"/>
+          <td> #{habit ^. name_error}
         <tr>
           <td> Difficulty:
           <td>
             <select>
-              <option value="verylow"> Very Low
-              <option value="low"> Low
-              <option value="medium"> Medium
-              <option value="high"> High
-              <option value="veryhigh"> Very High
+              $forall scale <- [minBound..maxBound]
+                <option value="#{scale}"> #{displayScale scale}
+          <td> #{habit ^. difficulty_error}
         <tr>
           <td> Importance:
           <td>
             <select>
-              <option value="verylow"> Very Low
-              <option value="low"> Low
-              <option value="medium"> Medium
-              <option value="high"> High
-              <option valunot "veryhigh"> Very High
+              $forall scale <- [minBound..maxBound]
+                <option value="#{scale}"> #{displayScale scale}
+          <td> #{habit ^. importance_error}
     <div>
       <input type="submit"/> Submit
       <button onclick="window.location.href='/habits'"> Cancel
@@ -760,31 +767,26 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
     Scotty.get "/habits/:habit_id" <<< wwwReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Web GET request for habit with id #{habit_id}.|]
-      view habits <&> (lookup habit_id >>> fromMaybe def) >>= editHabitPage habit_id
+      view habits <&> (lookup habit_id >>> fromMaybe def) >>= editHabitPage def habit_id
     Scotty.post "/habits/:habit_id" <<< wwwWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Web POST request for habit with id #{habit_id}.|]
-      (unparsed_name, name_or_error) ← getParamMaybe "name" >>= \case
-        Nothing → ("", Left "No value for the name was present.")
-        Just name →
-          ( name
-          , if onull name then Left "Name must not be blank." else Right name
-          )
+      (unparsed_name, name, name_error) ← getParamMaybe "name" >>= \case
+        Nothing → ("", Nothing, Left "No value for the name was present.")
+        Just unparsed_name
+          | onull name → (unparsed_name, Nothing, "Name must not be blank.")
+          | otherwise → (unparsed_name, Just unparsed_name, "")
       let getScale param_name = getParamMaybe param_name >>= \case
-            Nothing → ("", Left $ "No value for the " ⊕ param_name ⊕ " was present.")
+            Nothing → ("", Nothing, "No value for the " ⊕ param_name ⊕ " was present.")
             Just unparsed_value →
               case readMaybe unparsed_value of
-                Nothing → (fromEnum Medium, Left $ "Invalid value for the " ⊕ param_name ⊕ ".")
-      (name, name_error) ← getValue "name" $ \name →
-        if onull name then Left "Name must not be blank" else Right name
-      let getScaleValee param_name = getValue param_name $ read \case
-            "0" → 
-      (importance, importance_error) ← getValue "importance" >>= \case
-        Nothing → ("", "No importance was present.")
-        Just unvalidated_importance →
-          case readMaybe unvalidated_importance of
-            Nothing → ("medium", "Importance had invalid value \"" ⊕ importance ⊕ "\""
-            Just importance → importance
+                Nothing → (unparsed_name, Nothing, "Invalid value for the " ⊕ param_name ⊕ ".")
+      (unparsed_importance, importance_or_error) ← getScale "importance"
+      (unparsed_difficulty, difficulty_or_error) ← getScale "difficulty"
+      let result = Habit <$> name_or_error <*> importance_or_error <*> difficulty_or_error
+      case result of
+        Right habit → apiWriter $ putHabit habit_id habit
+        Left _ → editHabitPage (HabitErrors 
 -------------------------------- Delete Habit ---------------------------------
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"

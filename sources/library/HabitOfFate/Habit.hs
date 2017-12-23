@@ -9,12 +9,29 @@ module HabitOfFate.Habit where
 
 import HabitOfFate.Prelude
 
+import Web.Scotty (Parsable(..))
+
 import HabitOfFate.JSON ()
 import HabitOfFate.TH
 
 data Scale = VeryLow | Low | Medium | High | VeryHigh
   deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''Scale
+
+instance Parsable Scale where
+  parseParam =
+    unpack
+    >>>
+    readMaybe
+    >>>
+    fromMaybe "Unrecognized scale."
+
+displayScale ∷ Scale → Text
+displayScale VeryLow = "Very Low"
+displayScale Low = "Low"
+displayScale Medium = "Medium"
+displayScale High = "High"
+displayScale VeryHigh = "Very High"
 
 scaleFactor ∷ Scale → Double
 scaleFactor VeryLow = 1/4
