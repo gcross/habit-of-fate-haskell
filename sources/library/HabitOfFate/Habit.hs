@@ -24,7 +24,7 @@ instance Parsable Scale where
     >>>
     readMaybe
     >>>
-    fromMaybe "Unrecognized scale."
+    maybe (Left "Unrecognized scale.") Right
 
 displayScale ∷ Scale → Text
 displayScale VeryLow = "Very Low"

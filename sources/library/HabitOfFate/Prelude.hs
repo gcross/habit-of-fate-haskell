@@ -42,6 +42,7 @@ module HabitOfFate.Prelude
   , module Flow
   , module Labels
   , module Text.Printf
+  , module Text.Read
   , module System.FilePath
   -- Operators
   , (⊕)
@@ -228,6 +229,8 @@ import System.FilePath (FilePath)
 import Text.Parsec
 
 import Text.Printf
+
+import Text.Read (readEither, readMaybe)
 
 instance MonadFail (ParsecT s u m) where
   fail = parserFail

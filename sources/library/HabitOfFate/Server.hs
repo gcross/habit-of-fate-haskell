@@ -14,6 +14,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -299,8 +300,14 @@ getParam param_name = do
           [i|Bad request: Parameter #{param_name} has invalid format #{value}|]
       Right x → return x
 
-getParamMaybe ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m α
-getParamMaybe param_name = Just <$> getParam `rescue` return Nothing
+getParamMaybe ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m (Maybe α)
+getParamMaybe param_name =
+  getParams
+  <&>
+  (lookup param_name >=> (parseParam >>> either (const Nothing) return))
+
+paramMaybe ∷ Parsable α ⇒ Lazy.Text → ActionM (Maybe α)
+paramMaybe param_name = param param_name <&> Just `rescue` return Nothing
 
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
 raiseStatus code =
@@ -437,7 +444,7 @@ data HabitErrors = HabitErrors
   , _difficulty_error ∷ Text
   , _importance_error ∷ Text
   } deriving (Eq,Ord,Read,Show)
-makeLenses ''Habit
+makeLenses ''HabitErrors
 
 instance Default HabitErrors where
   def = HabitErrors "" "" ""
@@ -724,17 +731,8 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
         <td> <a href="/habits/#{show uuid}">#{habit ^. name}
 |]
 ---------------------------------- Get Habit -----------------------------------
-    let lookupHabitAndRun foundAction notFoundAction = do
-          habit_id ← getParam "habit_id"
-          log $ [i|Requested habit with id #{habit_id}.|]
-          habits_ ← view habits
-          case lookup habit_id habits_ of
-            Nothing → notFoundAction
-            Just habit → foundAction habit_id habit
-    Scotty.get "/api/habits/:habit_id" <<< apiReader $
-      lookupHabitAndRun (const $ returnJSON ok200) raiseNoSuchHabit
-
-    let editHabitPage habit_errors habit_id habit = returnHTML ok200 [hamlet|
+    let habitPage ∷ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → ReaderProgram ProgramResult
+        habitPage habit_id name_error importance_error difficulty_error habit = returnHTML ok200 [hamlet|
 <head>
   <title>Editing a habit
 <body>
@@ -745,48 +743,63 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
           <td> Name:
           <td>
             <input type="text" name="name" value="#{habit ^. name}"/>
-          <td> #{habit ^. name_error}
+          <td> #{name_error}
         <tr>
           <td> Difficulty:
           <td>
             <select>
-              $forall scale <- [minBound..maxBound]
+              $forall scale <- enumFromTo minBound maxBound
                 <option value="#{scale}"> #{displayScale scale}
-          <td> #{habit ^. difficulty_error}
+          <td> #{difficulty_error}
         <tr>
           <td> Importance:
           <td>
             <select>
-              $forall scale <- [minBound..maxBound]
+              $forall scale <- enumFromTo minBound maxBound
                 <option value="#{scale}"> #{displayScale scale}
-          <td> #{habit ^. importance_error}
+          <td> #{importance_error}
     <div>
       <input type="submit"/> Submit
       <button onclick="window.location.href='/habits'"> Cancel
 |]
+    Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
+      habit_id ← getParam "habit_id"
+      log $ [i|Requested habit with id #{habit_id}.|]
+      (view habits <&> lookup habit_id)
+        >>= maybe raiseNoSuchHabit (returnJSON ok200)
+
     Scotty.get "/habits/:habit_id" <<< wwwReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Web GET request for habit with id #{habit_id}.|]
-      view habits <&> (lookup habit_id >>> fromMaybe def) >>= editHabitPage def habit_id
-    Scotty.post "/habits/:habit_id" <<< wwwWriter $ do
-      habit_id ← getParam "habit_id"
+      (view habits <&> (lookup habit_id >>> fromMaybe def))
+        >>= habitPage habit_id "" "" ""
+
+    Scotty.post "/habits/:habit_id" $ do
+      habit_id ← param "habit_id"
       log $ [i|Web POST request for habit with id #{habit_id}.|]
-      (unparsed_name, name, name_error) ← getParamMaybe "name" >>= \case
-        Nothing → ("", Nothing, Left "No value for the name was present.")
-        Just unparsed_name
-          | onull name → (unparsed_name, Nothing, "Name must not be blank.")
-          | otherwise → (unparsed_name, Just unparsed_name, "")
-      let getScale param_name = getParamMaybe param_name >>= \case
+      maybe_name ← paramMaybe "name"
+      maybe_importance ← paramMaybe "importance"
+      maybe_difficulty ← paramMaybe "difficulty"
+      (unparsed_name, maybe_name, name_error) ← paramMaybe "name" <&> \case
+            Nothing → ("", Nothing, "No value for the name was present.")
+            Just unparsed_name
+              | onull name → (unparsed_name, Nothing, "Name must not be blank.")
+              | otherwise → (unparsed_name, Just unparsed_name, "")
+      let getScale param_name = paramMaybe param_name <&> \case
             Nothing → ("", Nothing, "No value for the " ⊕ param_name ⊕ " was present.")
             Just unparsed_value →
               case readMaybe unparsed_value of
                 Nothing → (unparsed_name, Nothing, "Invalid value for the " ⊕ param_name ⊕ ".")
-      (unparsed_importance, importance_or_error) ← getScale "importance"
-      (unparsed_difficulty, difficulty_or_error) ← getScale "difficulty"
-      let result = Habit <$> name_or_error <*> importance_or_error <*> difficulty_or_error
-      case result of
-        Right habit → apiWriter $ putHabit habit_id habit
-        Left _ → editHabitPage (HabitErrors 
+                Just value → (unparsed_value, Just value, "")
+      (unparsed_importance, maybe_importance, importance_error) ← getScale "importance"
+      (unparsed_difficulty, maybe_difficulty, difficulty_error) ← getScale "difficulty"
+      case Habit <$> maybe_name <*> maybe_importance <*> maybe_difficulty of
+        Nothing →
+          habitPage habit_id name_error importance_error difficulty_error def
+            |> wwwReader
+        Just new_habit →
+          (habits . at habit_id <<.= Nothing >> returnNothing noContent204)
+             |> apiWriter
 -------------------------------- Delete Habit ---------------------------------
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
