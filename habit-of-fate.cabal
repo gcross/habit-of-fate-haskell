@@ -76,6 +76,7 @@ library
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Server
+                     , HabitOfFate.Server.Testing
                      , HabitOfFate.Story
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
