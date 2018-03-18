@@ -214,6 +214,7 @@ mainLoop = loop [] $
         <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
       liftC >>> void $ putHabit habit_id habit
+      "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
     ,Action 'e' "Edit a habit." <<< withCancel $ do
       habit_id ← prompt readMaybe "Which habit?"
       old_habit ←
