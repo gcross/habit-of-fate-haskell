@@ -27,7 +27,6 @@ library
                      , filepath
                      , flow
                      , interpolate
-                     , jwt
                      , http-api-data
                      , http-client
                      , http-client-tls
@@ -59,12 +58,10 @@ library
                      , vector
                      , wai
                      , warp
-                     , warp-tls
                      , xml-conduit
                      , yaml
   exposed-modules:     HabitOfFate.Account
-                     , HabitOfFate.App.Client
-                     , HabitOfFate.App.Server
+                     , HabitOfFate.API
                      , HabitOfFate.Client
                      , HabitOfFate.Credits
                      , HabitOfFate.Game
@@ -92,7 +89,20 @@ executable habit-client
 executable habit-server
   hs-source-dirs:      sources/executables
   main-is:             habit-server.hs
-  build-depends:       habit-of-fate, base
+  build-depends:       habit-of-fate
+                     , base
+                     , bytestring
+                     , directory
+                     , filepath
+                     , jwt
+                     , optparse-applicative
+                     , random
+                     , text
+                     , uuid
+                     , warp
+                     , warp-tls
+                     , yaml
+
   default-language:    Haskell2010
 
 test-suite test

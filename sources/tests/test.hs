@@ -26,7 +26,7 @@ import Text.XML (parseLBS)
 import Text.XML.Cursor
 import Web.JWT
 
-import HabitOfFate.Client
+import HabitOfFate.API
 import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Logging

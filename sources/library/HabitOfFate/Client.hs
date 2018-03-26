@@ -1,268 +1,334 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Client where
+module HabitOfFate.Client (doMain) where
 
-import HabitOfFate.Prelude
+import HabitOfFate.Prelude hiding (argument)
 
-import Blaze.ByteString.Builder
+import Control.Exception (AsyncException(UserInterrupt))
 import Control.Monad.Base
 import Control.Monad.Catch
+import Control.Monad.Cont
 import Control.Monad.Trans.Control
-import Data.Aeson
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as LBS
-import Data.Typeable
-import Data.UUID hiding (toByteString)
+import qualified Data.ByteString as BS
+import Data.Char
+import qualified Data.Text.IO as S
+import Data.UUID (UUID)
 import qualified Data.UUID as UUID
-import Network.Connection
-import Network.HTTP.Client
-import Network.HTTP.Client.TLS
-import Network.HTTP.Types
+import Options.Applicative
+import Rainbow.Translate
+import System.IO
+import System.IO.Error (isEOFError)
+import System.Random
+import Text.Read (readEither, readMaybe)
 import Text.XML
-import Web.Cookie
 
+import HabitOfFate.API
 import HabitOfFate.Credits
-import HabitOfFate.Account
 import HabitOfFate.Habit
-import HabitOfFate.Logging
 import HabitOfFate.Story
 
-data SecureMode = Testing | Secure
+data Quit = Quit
 
-data SessionInfo = SessionInfo
-  { _request_template ∷ Request
-  , _manager ∷ Manager
-  }
-makeLenses ''SessionInfo
+type InnerAction = ExceptT Quit ClientIO
 
-loginOrCreateAccount ∷ String → String → String → SecureMode → ByteString → Int → IO (Either Status SessionInfo)
-loginOrCreateAccount route username password secure_mode hostname port = do
-  manager ← newManager $
-    case secure_mode of
-      Testing → defaultManagerSettings
-      Secure → mkManagerSettings (TLSSettingsSimple True False False) Nothing
-  let request_template_without_authorization = defaultRequest
-        { method = renderStdMethod POST
-        , host = hostname
-        , secure = case secure_mode of
-            Testing → False
-            Secure → True
-        , port = port
-        , requestHeaders = [(hContentType, "application/x-www-form-urlencoded")]
-        , requestBody =
-            [i|username=#{username}&password=#{password}|]
-            |> pack
-            |> encodeUtf8
-            |> RequestBodyBS
-        }
-  response ←
-    flip httpLbs manager
-    $
-    request_template_without_authorization
-      { path = [i|/api/#{route}|] |> pack |> encodeUtf8 }
-  let code = responseStatusCode response
-  pure $
-    if code >= 200 && code <= 299
-      then
-        maybe
-          (Left internalServerError500)
-          (\token → Right $
-            SessionInfo
-              (
-                request_template_without_authorization
-                { requestHeaders =
-                  [("Cookie", toLazyByteString >>> view strict $
-                    renderCookiesText [("token", token)])]
-                }
-              )
-              manager
-          )
-          (
-            (response |> responseHeaders |> lookup "Set-Cookie")
-            >>=
-            (parseCookiesText >>> lookup "token")
-          )
-    else Left $ responseStatus response
-
-createAccount ∷ String → String → SecureMode → ByteString → Int → IO (Maybe SessionInfo)
-createAccount username password secure_mode hostname port =
-  either (const Nothing) Just
-  <$>
-  loginOrCreateAccount "create" username password secure_mode hostname port
-
-data LoginError = NoSuchAccount | InvalidPassword deriving (Eq, Ord, Show)
-
-login ∷ String → String → SecureMode → ByteString → Int → IO (Either LoginError SessionInfo)
-login username password secure_mode hostname port =
-  (_Left %~ (
-    statusCode
-    >>>
-    (\case
-      403 → InvalidPassword
-      404 → NoSuchAccount
-    )
-  ))
-  <$>
-  loginOrCreateAccount "login" username password secure_mode hostname port
-
-type InnerClientAction = ReaderT SessionInfo
-
-newtype ClientT m α = ClientT { unwrapClientT ∷ InnerClientAction m α }
+newtype ActionMonad α = ActionMonad
+  { unwrapActionMonad ∷ InnerAction α }
   deriving
-    ( Applicative
-    , Functor
-    , Monad
-    , MonadCatch
-    , MonadIO
-    , MonadThrow
-    , MonadTrans
-    )
+  ( Applicative
+  , Functor
+  , Monad
+  , MonadBase IO
+  , MonadCatch
+  , MonadError Quit
+  , MonadIO
+  , MonadThrow
+  )
 
-type ClientIO = ClientT IO
+instance MonadBaseControl IO ActionMonad where
+  type StM ActionMonad α = StM InnerAction α
+  liftBaseWith f = ActionMonad $ liftBaseWith $ \r → f (unwrapActionMonad >>> r)
+  restoreM = restoreM >>> ActionMonad
 
-runClientT ∷ MonadIO m ⇒ ClientT m α → SessionInfo → m α
-runClientT action session =
-  (action <* logout) |> unwrapClientT |> flip runReaderT session
+quit ∷ ActionMonad α
+quit = throwError Quit
 
-instance MonadBase IO m ⇒ MonadBase IO (ClientT m) where
-  liftBase = liftBase >>> ClientT
+class Monad m ⇒ MonadClient m where
+  liftC ∷ ClientIO α → m α
 
-instance MonadBaseControl IO ClientIO where
-  type StM ClientIO α = StM (InnerClientAction IO) α
-  liftBaseWith f = ClientT $ liftBaseWith $ \r → f (unwrapClientT >>> r)
-  restoreM = restoreM >>> ClientT
+instance MonadClient ActionMonad where
+  liftC = lift >>> ActionMonad
 
-getManager ∷ Monad m ⇒ ClientT m Manager
-getManager = ClientT $ view manager
+data Action = Action
+  { _key ∷ Char
+  , _description ∷ String
+  , _code ∷ ActionMonad ()
+  }
+makeLenses ''Action
 
-getRequestTemplate ∷ Monad m ⇒ ClientT m Request
-getRequestTemplate = view request_template |> ClientT 
+printHelp ∷ MonadIO m ⇒ [Action] → m ()
+printHelp actions = liftIO $ do
+  putStrLn "Actions:"
+  forM_ actions $ \action →
+    putStrLn [i|  #{action ^. key}: #{action ^. description}|]
+  putStrLn "  --"
+  putStrLn "  q: Quit this menu."
+  putStrLn "  ?: Display this help message."
 
-decodeUtf8InResponse ∷ Response LBS.ByteString → Text
-decodeUtf8InResponse = responseBody >>> LBS.toStrict >>> decodeUtf8
+data Cancel = Cancel
 
-pathToHabit ∷ UUID → Text
-pathToHabit = UUID.toText >>> ("habits/" ⊕)
+type ActionMonadWithCancel = ExceptT Cancel ActionMonad
 
-makeRequest ∷ Monad m ⇒ StdMethod → Text → ClientT m Request
-makeRequest std_method path = do
-  getRequestTemplate
-  <&>
-  \template → template
-    { method = renderStdMethod std_method
-    , path = encodeUtf8 $ "/api/" ⊕ path
-    }
+instance MonadClient ActionMonadWithCancel where
+  liftC = liftC >>> lift
 
-addJSONBody ∷ ToJSON α ⇒ α → Request → Request
-addJSONBody x request = request
-  { requestHeaders = (hContentType, "application/json; charset=utf-8"):requestHeaders request
-  , requestBody = x |> encode |> RequestBodyLBS
+cancel ∷ ActionMonadWithCancel α
+cancel = liftIO (putStrLn "") >> throwError Cancel
+
+parseUUIDs = split1 >>> map readMaybe >>> sequence
+  where
+    isSep = flip elem (" ," :: String)
+
+    split1 = dropWhile isSep >>> split2
+
+    split2 [] = []
+    split2 x = entry:split1 rest
+      where
+        (entry,rest) = break isSep x
+
+readNonEmpty ∷ String → Maybe String
+readNonEmpty "" = Nothing
+readNonEmpty x = Just x
+
+prompt ∷ (String → Maybe α) → String → ActionMonadWithCancel α
+prompt parseValue p =
+  promptForString
+  >>=
+  (
+    parseValue
+    >>>
+    maybe (liftIO (putStrLn "Bad input.") >> prompt parseValue p) return
+  )
+  where
+    promptForString =
+      liftIO >>> join $ do
+        putStr p
+        putChar ' '
+        hFlush stdout
+        handleJust
+          (\e →
+            (
+              case fromException e of
+                Just UserInterrupt → Just cancel
+                _ → Nothing
+            )
+            <|>
+            (
+              isEOFError <$> fromException e
+              >>=
+              bool Nothing (Just $ liftIO (putStrLn "") >> lift quit)
+            )
+          )
+          return
+          (return <$> getLine)
+
+promptWithDefault ∷ Show α ⇒ (String → Maybe α) → α → String → ActionMonadWithCancel α
+promptWithDefault parseValue def p =
+    prompt parseValue' [i|#{p} [#{show def}]|]
+  where
+    parseValue' "" = Just def
+    parseValue' x = parseValue x
+
+promptForCommand ∷ MonadIO m ⇒ String → m Char
+promptForCommand p =
+  (
+    bracket_
+      (hSetBuffering stdin NoBuffering)
+      (hSetBuffering stdin LineBuffering)
+    >>>
+    liftIO
+  )
+  $
+  do putStr p
+     putChar ' '
+     hFlush stdout
+     command ← getChar
+     putStrLn ""
+     return command
+
+unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
+unrecognizedCommand command
+  | not (isAlpha command) = return ()
+  | otherwise = liftIO $
+      putStrLn [i|Unrecognized command '#{command}'.  Press ? for help.\n|]
+
+data Escape = Escape
+
+loop ∷ [String] → [Action] → ActionMonad ()
+loop labels actions = runExceptT >>> void $ do
+  let action_map =
+        [(chr 4, lift quit)
+        ,(chr 27, throwError Escape)
+        ,('q', throwError Escape)
+        ,('?',printHelp actions)
+        ]
+        ⊕
+        (map ((^. key) &&& (^. code . to lift)) actions)
+  forever $ do
+    command ← promptForCommand $
+      let location = ointercalate "|" $ "HoF":labels
+          action_keys = map (^. key) actions
+      in [i|#{location}[#{action_keys}q?]>|]
+    case lookup command action_map of
+      Nothing → unrecognizedCommand command
+      Just code → code `catchAll` (show >>> putStrLn >>> liftIO)
+
+withCancel ∷ ActionMonadWithCancel () → ActionMonad ()
+withCancel = runExceptT >>> void
+
+printAndCancel = putStrLn >>> liftIO >>> (>> cancel)
+
+mainLoop ∷ ActionMonad ()
+mainLoop = loop [] $
+  [Action 'h' "Edit habits." <<< loop ["Habits"] $
+    [Action 'a' "Add a habit." <<< withCancel $ do
+      habit_id ← liftIO randomIO
+      habit ← Habit
+        <$> prompt readNonEmpty "What is the name of the habit?"
+        <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
+        <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
+      liftC >>> void $ putHabit habit_id habit
+      "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
+    ,Action 'e' "Edit a habit." <<< withCancel $ do
+      habit_id ← prompt readMaybe "Which habit?"
+      old_habit ←
+        liftC (getHabit habit_id)
+        >>=
+        maybe
+          (printAndCancel "No such habit.")
+          return
+      habit ← Habit
+        <$> promptWithDefault readNonEmpty (old_habit ^. name) "What is the name of the habit?"
+        <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
+        <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
+      liftC >>> void $ putHabit habit_id habit
+    ,Action 'f' "Mark habits as failed." $
+       withCancel $ prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
+    ,Action 'p' "Print habits." $ printHabits
+    ,Action 's' "Mark habits as successful." $
+       withCancel $ prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftC >>> void)
+    ]
+  ,Action 'p' "Print data." $ do
+      liftIO $ putStrLn "Habits:"
+      printHabits
+      liftIO $ putStrLn ""
+      liftIO $ putStrLn "Game:"
+      credits ← liftC getCredits
+      liftIO $ putStrLn [i|    Success credits: #{credits ^. success}|]
+      liftIO $ putStrLn [i|    Failure credits: #{credits ^. failure}|]
+  ,Action 'r' "Run game." $ do
+      story ← liftC runGame
+      printer ← liftIO byteStringMakerFromEnvironment
+      story
+        |> renderStoryToChunks
+        |> chunksToByteStrings printer
+        |> traverse_ BS.putStr
+        |> liftIO
+  ]
+  where
+    scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
+
+    printHabits = do
+      habits ← liftC getHabits
+      liftIO $
+        if null habits
+          then putStrLn "There are no habits."
+          else forM_ (mapToList habits) $ \(uuid, habit) →
+            printf "%s %s [+%s/-%s]\n"
+              (show uuid)
+              (habit ^. name)
+              (show $ habit ^. difficulty)
+              (show $ habit ^. importance)
+
+data Configuration = Configuration
+  { hostname ∷ String
+  , port ∷ Int
+  , create_account_mode ∷ Bool
   }
 
-data InvalidJSON = InvalidJSON String deriving (Typeable)
-instance Show InvalidJSON where
-  show (InvalidJSON doc) = "Invalid JSON: " ⊕ show doc
-instance Exception InvalidJSON where
+configuration_parser ∷ Parser Configuration
+configuration_parser = Configuration
+  <$> strArgument (mconcat
+        [ metavar "HOSTNAME"
+        , help "Name of the host to connect to."
+        , value "localhost"
+        ])
+  <*> argument auto (mconcat
+        [ metavar "PORT"
+        , help "Port to connect to."
+        , value 8081
+        ])
+  <*> switch (mconcat
+        [ help "Create a new account."
+        , long "create"
+        , short 'c'
+        ])
 
-parseResponseBody ∷
-  (MonadThrow m, FromJSON α) ⇒ Response LBS.ByteString → ClientT m α
-parseResponseBody =
-  responseBody
-  >>>
-  eitherDecode'
-  >>>
-  either (InvalidJSON >>> throwM) pure
+runSession ∷ SessionInfo → IO ()
+runSession session_info =
+  mainLoop
+    |> unwrapActionMonad
+    |> runExceptT
+    |> flip runClientT session_info
+    |> void
 
-responseStatusCode = responseStatus >>> statusCode
-
-data UnexpectedStatus = UnexpectedStatus [Int] Int deriving (Typeable)
-instance Show UnexpectedStatus where
-  show (UnexpectedStatus expected_codes status) =
-    [i|Status code not one of #{expected_codes}: #{status}|]
-instance Exception UnexpectedStatus where
-
-sendRequest ∷ MonadIO m ⇒ Request → ClientT m (Response LBS.ByteString)
-sendRequest request = getManager >>= (httpLbs request >>> liftIO)
-
-request ∷ MonadIO m ⇒ StdMethod → Text → ClientT m (Response LBS.ByteString)
-request method path = makeRequest method path >>= sendRequest
-
-logout ∷ MonadIO m ⇒ ClientT m ()
-logout = void $ request POST "logout"
-
-requestWithJSON ∷
-  (MonadIO m, ToJSON α) ⇒ StdMethod → Text → α → ClientT m (Response LBS.ByteString)
-requestWithJSON method path value =
-  (makeRequest method path <&> addJSONBody value)
-  >>=
-  sendRequest
-
-data PutResult = HabitCreated | HabitReplaced deriving (Eq, Ord, Read, Show)
-
-putHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Habit → ClientT m PutResult
-putHabit habit_id habit = do
-  response ← requestWithJSON PUT (pathToHabit habit_id) habit
-  case responseStatusCode response of
-    201 → pure HabitCreated
-    204 → pure HabitReplaced
-    code → throwM $ UnexpectedStatus [201,204] code
-
-data DeleteResult = HabitDeleted | NoHabitToDelete deriving (Eq, Ord, Read, Show)
-
-deleteHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → ClientT m DeleteResult
-deleteHabit habit_id = do
-  response ← request DELETE $ pathToHabit habit_id
-  case responseStatusCode response of
-    204 → pure HabitDeleted
-    404 → pure NoHabitToDelete
-    code → throwM $ UnexpectedStatus [204,404] code
-
-getHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → ClientT m (Maybe Habit)
-getHabit habit_id = do
-  response ← request GET $ pathToHabit habit_id
-  case responseStatusCode response of
-    200 → parseResponseBody response
-    404 → pure Nothing
-    code → throwM $ UnexpectedStatus [200,404] code
-
-getHabits ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m (Map UUID Habit)
-getHabits = do
-  response ← request GET "habits"
-  case responseStatusCode response of
-    200 → parseResponseBody response
-    code → throwM $ UnexpectedStatus [200] code
-
-getCredits ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m Credits
-getCredits = do
-  response ← request GET "credits"
-  case responseStatusCode response of
-    200 → parseResponseBody response
-    code → throwM $ UnexpectedStatus [200] code
-
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → ClientT m Credits
-markHabits success_habits failure_habits = do
-  response ← requestWithJSON POST "mark" (HabitsToMark success_habits failure_habits)
-  case responseStatusCode response of
-    200 → parseResponseBody response
-    code → throwM $ UnexpectedStatus [200] code
-
-runGame ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m Story
-runGame = do
-  response ← request POST "run"
-  case responseStatusCode response of
-    200 →
-      (response |> responseBody |> decodeUtf8 |> parseText def |> either throwM return)
+doMain ∷ IO ()
+doMain = do
+  Configuration{..} ←
+    execParser $ info
+      (configuration_parser <**> helper)
+      (   fullDesc
+       <> header "habit-client - a client program for habit-of-fate"
+      )
+  putStr "Username: "
+  hFlush stdout
+  username ← getLine
+  putStr "Password: "
+  hFlush stdout
+  hSetEcho stdout False
+  password ← getLine
+  hSetEcho stdout True
+  putStrLn ""
+  let doLogin =
+        login username password Secure "localhost" 8081
+        >>=
+        either
+          (\case
+            NoSuchAccount → putStrLn "No such account."
+            InvalidPassword → putStrLn "Invalid password."
+          )
+          runSession
+  if create_account_mode
+    then
+      createAccount username password Secure "localhost" 8081
       >>=
-      (parseStoryFromDocument >>> either error return)
-    code → throwM $ UnexpectedStatus [200] code
+      maybe
+        (putStrLn "Account already exists. Logging in..." >> doLogin)
+        runSession
+    else doLogin

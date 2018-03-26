@@ -2,7 +2,7 @@
 
 module Main where
 
-import HabitOfFate.App.Client (doMain)
+import HabitOfFate.Client (doMain)
 
 main ∷ IO ()
 main = doMain
