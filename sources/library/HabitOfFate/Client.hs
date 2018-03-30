@@ -76,17 +76,16 @@ instance MonadClient ActionMonad where
   liftC = lift >>> ActionMonad
 
 data Action = Action
-  { _key ∷ Char
-  , _description ∷ String
-  , _code ∷ ActionMonad ()
+  { keyOf ∷ Char
+  , descriptionOf ∷ String
+  , codeOf ∷ ActionMonad ()
   }
-makeLenses ''Action
 
 printHelp ∷ MonadIO m ⇒ [Action] → m ()
 printHelp actions = liftIO $ do
   putStrLn "Actions:"
   forM_ actions $ \action →
-    putStrLn [i|  #{action ^. key}: #{action ^. description}|]
+    putStrLn [i|  #{keyOf action}: #{descriptionOf action}|]
   putStrLn "  --"
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
@@ -189,11 +188,11 @@ loop labels actions = runExceptT >>> void $ do
         ,('?',printHelp actions)
         ]
         ⊕
-        (map ((^. key) &&& (^. code . to lift)) actions)
+        (map (keyOf &&& (codeOf >>> lift)) actions)
   forever $ do
     command ← promptForCommand $
       let location = ointercalate "|" $ "HoF":labels
-          action_keys = map (^. key) actions
+          action_keys = map keyOf actions
       in [i|#{location}[#{action_keys}q?]>|]
     case lookup command action_map of
       Nothing → unrecognizedCommand command
