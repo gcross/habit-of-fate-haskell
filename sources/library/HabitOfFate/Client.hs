@@ -21,84 +21,78 @@ module HabitOfFate.Client (doMain) where
 import HabitOfFate.Prelude hiding (argument)
 
 import Control.Exception (AsyncException(UserInterrupt))
-import Control.Monad.Base
 import Control.Monad.Catch
-import Control.Monad.Cont
-import Control.Monad.Trans.Control
 import qualified Data.ByteString as BS
 import Data.Char
-import qualified Data.Text.IO as S
 import Data.UUID (UUID)
-import qualified Data.UUID as UUID
 import Options.Applicative
+  ( Parser
+  , argument
+  , auto
+  , execParser
+  , fullDesc
+  , header
+  , help
+  , helper
+  , info
+  , long
+  , metavar
+  , short
+  , strArgument
+  , switch
+  , value
+  )
 import Rainbow.Translate
+import System.Exit (exitSuccess)
 import System.IO
 import System.IO.Error (isEOFError)
 import System.Random
-import Text.Read (readEither, readMaybe)
-import Text.XML
 
 import HabitOfFate.API
 import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
-data Quit = Quit
+data Cancel = Cancel
 
-type InnerAction = ExceptT Quit ClientIO
+type InteractionMonad = ExceptT Cancel ClientIO
 
-newtype ActionMonad α = ActionMonad
-  { unwrapActionMonad ∷ InnerAction α }
-  deriving
-  ( Applicative
-  , Functor
-  , Monad
-  , MonadBase IO
-  , MonadCatch
-  , MonadError Quit
-  , MonadIO
-  , MonadThrow
-  )
+cancel ∷ InteractionMonad α
+cancel = liftIO (putStrLn "") >> throwError Cancel
 
-instance MonadBaseControl IO ActionMonad where
-  type StM ActionMonad α = StM InnerAction α
-  liftBaseWith f = ActionMonad $ liftBaseWith $ \r → f (unwrapActionMonad >>> r)
-  restoreM = restoreM >>> ActionMonad
+liftC ∷ ClientIO α → InteractionMonad α
+liftC = lift
 
-quit ∷ ActionMonad α
-quit = throwError Quit
+data MenuAction =
+    SubMenu String [MenuItem]
+  | Interaction (InteractionMonad ())
 
-class Monad m ⇒ MonadClient m where
-  liftC ∷ ClientIO α → m α
-
-instance MonadClient ActionMonad where
-  liftC = lift >>> ActionMonad
-
-data Action = Action
+data MenuItem = MenuItem
   { keyOf ∷ Char
   , descriptionOf ∷ String
-  , codeOf ∷ ActionMonad ()
+  , actionOf ∷ MenuAction
   }
 
-printHelp ∷ MonadIO m ⇒ [Action] → m ()
-printHelp actions = liftIO $ do
-  putStrLn "Actions:"
-  forM_ actions $ \action →
-    putStrLn [i|  #{keyOf action}: #{descriptionOf action}|]
+subMenu ∷ Char → String → String → Menu → MenuItem
+subMenu key description sublabel subitems =
+  MenuItem key description (SubMenu sublabel subitems)
+
+interaction ∷ Char → String → InteractionMonad () → MenuItem
+interaction key description interaction' =
+  MenuItem key description (Interaction interaction')
+
+type Menu = [MenuItem]
+
+printHelp ∷ MonadIO m ⇒ Menu → m ()
+printHelp items = liftIO $ do
+  putStrLn "Interactions:"
+  forM_ items $ \item →
+    putStrLn [i|  #{keyOf item:""}: #{descriptionOf item}|]
   putStrLn "  --"
   putStrLn "  q: Quit this menu."
   putStrLn "  ?: Display this help message."
 
-data Cancel = Cancel
-
-type ActionMonadWithCancel = ExceptT Cancel ActionMonad
-
-instance MonadClient ActionMonadWithCancel where
-  liftC = liftC >>> lift
-
-cancel ∷ ActionMonadWithCancel α
-cancel = liftIO (putStrLn "") >> throwError Cancel
-
+parseUUIDs ∷ String → Maybe [UUID]
 parseUUIDs = split1 >>> map readMaybe >>> sequence
   where
     isSep = flip elem (" ," :: String)
@@ -114,7 +108,7 @@ readNonEmpty ∷ String → Maybe String
 readNonEmpty "" = Nothing
 readNonEmpty x = Just x
 
-prompt ∷ (String → Maybe α) → String → ActionMonadWithCancel α
+prompt ∷ (String → Maybe α) → String → InteractionMonad α
 prompt parseValue p =
   promptForString
   >>=
@@ -140,17 +134,17 @@ prompt parseValue p =
             (
               isEOFError <$> fromException e
               >>=
-              bool Nothing (Just $ liftIO (putStrLn "") >> lift quit)
+              bool Nothing (Just $ liftIO (putStrLn "") >> liftIO exitSuccess)
             )
           )
           return
           (return <$> getLine)
 
-promptWithDefault ∷ Show α ⇒ (String → Maybe α) → α → String → ActionMonadWithCancel α
-promptWithDefault parseValue def p =
-    prompt parseValue' [i|#{p} [#{show def}]|]
+promptWithDefault ∷ Show α ⇒ (String → Maybe α) → α → String → InteractionMonad α
+promptWithDefault parseValue default_value p =
+    prompt parseValue' [i|#{p} [#{show default_value}]|]
   where
-    parseValue' "" = Just def
+    parseValue' "" = Just default_value
     parseValue' x = parseValue x
 
 promptForCommand ∷ MonadIO m ⇒ String → m Char
@@ -172,40 +166,34 @@ promptForCommand p =
 
 unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
 unrecognizedCommand command
-  | not (isAlpha command) = return ()
+  | not (isAlphaNum command) = return ()
   | otherwise = liftIO $
-      putStrLn [i|Unrecognized command '#{command}'.  Press ? for help.\n|]
+      putStrLn [i|Unrecognized command #{command}.  Press ? for help.|]
 
-data Escape = Escape
+runMenu ∷ [String] → Menu → ClientIO ()
+runMenu labels items = go
+  where
+    action_map = map (keyOf &&& actionOf) items
+    location = ointercalate "/" labels
+    command_prompt = [i|#{location} [#{map keyOf items}q?]|]
 
-loop ∷ [String] → [Action] → ActionMonad ()
-loop labels actions = runExceptT >>> void $ do
-  let action_map =
-        [(chr 4, lift quit)
-        ,(chr 27, throwError Escape)
-        ,('q', throwError Escape)
-        ,('?',printHelp actions)
-        ]
-        ⊕
-        (map (keyOf &&& (codeOf >>> lift)) actions)
-  forever $ do
-    command ← promptForCommand $
-      let location = ointercalate "|" $ "HoF":labels
-          action_keys = map keyOf actions
-      in [i|#{location}[#{action_keys}q?]>|]
-    case lookup command action_map of
-      Nothing → unrecognizedCommand command
-      Just code → code `catchAll` (show >>> putStrLn >>> liftIO)
+    go = promptForCommand command_prompt >>= \case
+      '\^D' → liftIO exitSuccess
+      '\^[' → return () -- escape key
+      'q' → return ()
+      '?' → printHelp items >> go
+      command → case lookup command action_map of
+        Nothing → unrecognizedCommand command >> go
+        Just (SubMenu sublabel subitems) → runMenu (labels ⊕ [sublabel]) subitems >> go
+        Just (Interaction action) → void (runExceptT action) >> go
 
-withCancel ∷ ActionMonadWithCancel () → ActionMonad ()
-withCancel = runExceptT >>> void
-
+printAndCancel ∷ String → InteractionMonad α
 printAndCancel = putStrLn >>> liftIO >>> (>> cancel)
 
-mainLoop ∷ ActionMonad ()
-mainLoop = loop [] $
-  [Action 'h' "Edit habits." <<< loop ["Habits"] $
-    [Action 'a' "Add a habit." <<< withCancel $ do
+main_menu ∷ Menu
+main_menu =
+  [subMenu 'h' "Edit habits." "Habits"
+    [interaction 'a' "Add a habit." $ do
       habit_id ← liftIO randomIO
       habit ← Habit
         <$> prompt readNonEmpty "What is the name of the habit?"
@@ -213,7 +201,7 @@ mainLoop = loop [] $
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
       liftC >>> void $ putHabit habit_id habit
       "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
-    ,Action 'e' "Edit a habit." <<< withCancel $ do
+    ,interaction 'e' "Edit a habit." $ do
       habit_id ← prompt readMaybe "Which habit?"
       old_habit ←
         liftC (getHabit habit_id)
@@ -226,13 +214,13 @@ mainLoop = loop [] $
         <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
       liftC >>> void $ putHabit habit_id habit
-    ,Action 'f' "Mark habits as failed." $
-       withCancel $ prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
-    ,Action 'p' "Print habits." $ printHabits
-    ,Action 's' "Mark habits as successful." $
-       withCancel $ prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftC >>> void)
+    ,interaction 'f' "Mark habits as failed." $
+       prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
+    ,interaction 'p' "Print habits." $ printHabits
+    ,interaction 's' "Mark habits as successful." $
+       prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftC >>> void)
     ]
-  ,Action 'p' "Print data." $ do
+  ,interaction 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"
       printHabits
       liftIO $ putStrLn ""
@@ -240,7 +228,7 @@ mainLoop = loop [] $
       credits ← liftC getCredits
       liftIO $ putStrLn [i|    Success credits: #{credits ^. success}|]
       liftIO $ putStrLn [i|    Failure credits: #{credits ^. failure}|]
-  ,Action 'r' "Run game." $ do
+  ,interaction 'r' "Run game." $ do
       story ← liftC runGame
       printer ← liftIO byteStringMakerFromEnvironment
       story
@@ -290,9 +278,8 @@ configuration_parser = Configuration
 
 runSession ∷ SessionInfo → IO ()
 runSession session_info =
-  mainLoop
-    |> unwrapActionMonad
-    |> runExceptT
+  main_menu
+    |> runMenu ["HoF"]
     |> flip runClientT session_info
     |> void
 
