@@ -118,7 +118,7 @@ login username password secure_mode hostname port =
 
 type InnerClientAction = ReaderT SessionInfo
 
-newtype ClientT m α = ClientT { unwrapClientT ∷ InnerClientAction m α }
+newtype SessionT m α = SessionT { unwrapSessionT ∷ InnerClientAction m α }
   deriving
     ( Applicative
     , Functor
@@ -129,25 +129,25 @@ newtype ClientT m α = ClientT { unwrapClientT ∷ InnerClientAction m α }
     , MonadTrans
     )
 
-type ClientIO = ClientT IO
+type SessionIO = SessionT IO
 
-runClientT ∷ MonadIO m ⇒ ClientT m α → SessionInfo → m α
-runClientT action session =
-  (action <* logout) |> unwrapClientT |> flip runReaderT session
+runSessionT ∷ MonadIO m ⇒ SessionT m α → SessionInfo → m α
+runSessionT action session =
+  (action <* logout) |> unwrapSessionT |> flip runReaderT session
 
-instance MonadBase IO m ⇒ MonadBase IO (ClientT m) where
-  liftBase = liftBase >>> ClientT
+instance MonadBase IO m ⇒ MonadBase IO (SessionT m) where
+  liftBase = liftBase >>> SessionT
 
-instance MonadBaseControl IO ClientIO where
-  type StM ClientIO α = StM (InnerClientAction IO) α
-  liftBaseWith f = ClientT $ liftBaseWith $ \r → f (unwrapClientT >>> r)
-  restoreM = restoreM >>> ClientT
+instance MonadBaseControl IO SessionIO where
+  type StM SessionIO α = StM (InnerClientAction IO) α
+  liftBaseWith f = SessionT $ liftBaseWith $ \r → f (unwrapSessionT >>> r)
+  restoreM = restoreM >>> SessionT
 
-getManager ∷ Monad m ⇒ ClientT m Manager
-getManager = ClientT $ view manager
+getManager ∷ Monad m ⇒ SessionT m Manager
+getManager = SessionT $ view manager
 
-getRequestTemplate ∷ Monad m ⇒ ClientT m Request
-getRequestTemplate = view request_template |> ClientT 
+getRequestTemplate ∷ Monad m ⇒ SessionT m Request
+getRequestTemplate = view request_template |> SessionT
 
 decodeUtf8InResponse ∷ Response LBS.ByteString → Text
 decodeUtf8InResponse = responseBody >>> LBS.toStrict >>> decodeUtf8
@@ -155,7 +155,7 @@ decodeUtf8InResponse = responseBody >>> LBS.toStrict >>> decodeUtf8
 pathToHabit ∷ UUID → Text
 pathToHabit = UUID.toText >>> ("habits/" ⊕)
 
-makeRequest ∷ Monad m ⇒ StdMethod → Text → ClientT m Request
+makeRequest ∷ Monad m ⇒ StdMethod → Text → SessionT m Request
 makeRequest std_method path = do
   getRequestTemplate
   <&>
@@ -176,7 +176,7 @@ instance Show InvalidJSON where
 instance Exception InvalidJSON where
 
 parseResponseBody ∷
-  (MonadThrow m, FromJSON α) ⇒ Response LBS.ByteString → ClientT m α
+  (MonadThrow m, FromJSON α) ⇒ Response LBS.ByteString → SessionT m α
 parseResponseBody =
   responseBody
   >>>
@@ -192,17 +192,17 @@ instance Show UnexpectedStatus where
     [i|Status code not one of #{expected_codes}: #{status}|]
 instance Exception UnexpectedStatus where
 
-sendRequest ∷ MonadIO m ⇒ Request → ClientT m (Response LBS.ByteString)
+sendRequest ∷ MonadIO m ⇒ Request → SessionT m (Response LBS.ByteString)
 sendRequest request = getManager >>= (httpLbs request >>> liftIO)
 
-request ∷ MonadIO m ⇒ StdMethod → Text → ClientT m (Response LBS.ByteString)
+request ∷ MonadIO m ⇒ StdMethod → Text → SessionT m (Response LBS.ByteString)
 request method path = makeRequest method path >>= sendRequest
 
-logout ∷ MonadIO m ⇒ ClientT m ()
+logout ∷ MonadIO m ⇒ SessionT m ()
 logout = void $ request POST "logout"
 
 requestWithJSON ∷
-  (MonadIO m, ToJSON α) ⇒ StdMethod → Text → α → ClientT m (Response LBS.ByteString)
+  (MonadIO m, ToJSON α) ⇒ StdMethod → Text → α → SessionT m (Response LBS.ByteString)
 requestWithJSON method path value =
   (makeRequest method path <&> addJSONBody value)
   >>=
@@ -210,7 +210,7 @@ requestWithJSON method path value =
 
 data PutResult = HabitCreated | HabitReplaced deriving (Eq, Ord, Read, Show)
 
-putHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Habit → ClientT m PutResult
+putHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Habit → SessionT m PutResult
 putHabit habit_id habit = do
   response ← requestWithJSON PUT (pathToHabit habit_id) habit
   case responseStatusCode response of
@@ -220,7 +220,7 @@ putHabit habit_id habit = do
 
 data DeleteResult = HabitDeleted | NoHabitToDelete deriving (Eq, Ord, Read, Show)
 
-deleteHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → ClientT m DeleteResult
+deleteHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m DeleteResult
 deleteHabit habit_id = do
   response ← request DELETE $ pathToHabit habit_id
   case responseStatusCode response of
@@ -228,7 +228,7 @@ deleteHabit habit_id = do
     404 → pure NoHabitToDelete
     code → throwM $ UnexpectedStatus [204,404] code
 
-getHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → ClientT m (Maybe Habit)
+getHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m (Maybe Habit)
 getHabit habit_id = do
   response ← request GET $ pathToHabit habit_id
   case responseStatusCode response of
@@ -236,28 +236,28 @@ getHabit habit_id = do
     404 → pure Nothing
     code → throwM $ UnexpectedStatus [200,404] code
 
-getHabits ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m (Map UUID Habit)
+getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Map UUID Habit)
 getHabits = do
   response ← request GET "habits"
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-getCredits ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m Credits
+getCredits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Credits
 getCredits = do
   response ← request GET "credits"
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → ClientT m Credits
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → SessionT m Credits
 markHabits success_habits failure_habits = do
   response ← requestWithJSON POST "mark" (HabitsToMark success_habits failure_habits)
   case responseStatusCode response of
     200 → parseResponseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-runGame ∷ (MonadIO m, MonadThrow m) ⇒ ClientT m Story
+runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Story
 runGame = do
   response ← request POST "run"
   case responseStatusCode response of

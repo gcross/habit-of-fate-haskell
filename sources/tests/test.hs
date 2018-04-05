@@ -43,12 +43,12 @@ serverTestCase test_name locateWebAppFile =
 serverTestCaseNoFiles ∷ String → (Int → IO ()) → TestTree
 serverTestCaseNoFiles test_name = serverTestCase test_name no_files
 
-apiTestCase ∷ String → (ClientIO ()) → TestTree
+apiTestCase ∷ String → (SessionIO ()) → TestTree
 apiTestCase test_name action =
   (
     createAccount "bitslayer" "password" Testing "localhost"
     >=>
-    (fromMaybe (error "Unable to create account.") >>> runClientT action)
+    (fromMaybe (error "Unable to create account.") >>> runSessionT action)
   )
   |> serverTestCaseNoFiles test_name
 
@@ -87,12 +87,12 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
     [ testGroup "JSON API" $
     ----------------------------------------------------------------------------
-        let apiTestCase ∷ String → (ClientIO ()) → TestTree
+        let apiTestCase ∷ String → (SessionIO ()) → TestTree
             apiTestCase test_name action =
               (
                 createAccount "bitslayer" "password" Testing "localhost"
                 >=>
-                (fromMaybe (error "Unable to create account.") >>> runClientT action)
+                (fromMaybe (error "Unable to create account.") >>> runSessionT action)
               )
               |> serverTestCaseNoFiles test_name
         in
@@ -231,7 +231,7 @@ main = defaultMain $ testGroup "All Tests"
               $
               \port → do
                 session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
-                flip runClientT session_info $ createHabit test_habit_id test_habit
+                flip runSessionT session_info $ createHabit test_habit_id test_habit
             readIORef write_requested_ref >>= assertBool "Write was not requested."
         ]
     ----------------------------------------------------------------------------

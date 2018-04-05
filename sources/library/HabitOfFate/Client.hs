@@ -44,13 +44,13 @@ import HabitOfFate.Story
 
 data Cancel = Cancel
 
-type InteractionMonad = ExceptT Cancel ClientIO
+type InteractionMonad = ExceptT Cancel SessionIO
 
 cancel ∷ InteractionMonad α
 cancel = liftIO (putStrLn "") >> throwError Cancel
 
-liftC ∷ ClientIO α → InteractionMonad α
-liftC = lift
+liftSession ∷ SessionIO α → InteractionMonad α
+liftSession = lift
 
 data MenuAction =
     SubMenu String [MenuItem]
@@ -159,7 +159,7 @@ unrecognizedCommand command
   | otherwise = liftIO $
       putStrLn [i|Unrecognized command #{command}.  Press ? for help.|]
 
-runMenu ∷ [String] → Menu → ClientIO ()
+runMenu ∷ [String] → Menu → SessionIO ()
 runMenu labels items = go
   where
     action_map = map (keyOf &&& actionOf) items
@@ -188,12 +188,12 @@ main_menu =
         <$> prompt readNonEmpty "What is the name of the habit?"
         <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
-      liftC >>> void $ putHabit habit_id habit
+      liftSession >>> void $ putHabit habit_id habit
       "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
     ,interaction 'e' "Edit a habit." $ do
       habit_id ← prompt readMaybe "Which habit?"
       old_habit ←
-        liftC (getHabit habit_id)
+        liftSession (getHabit habit_id)
         >>=
         maybe
           (printAndCancel "No such habit.")
@@ -202,23 +202,23 @@ main_menu =
         <$> promptWithDefault readNonEmpty (old_habit ^. name) "What is the name of the habit?"
         <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
-      liftC >>> void $ putHabit habit_id habit
+      liftSession >>> void $ putHabit habit_id habit
     ,interaction 'f' "Mark habits as failed." $
-       prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftC >>> void)
+       prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftSession >>> void)
     ,interaction 'p' "Print habits." $ printHabits
     ,interaction 's' "Mark habits as successful." $
-       prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftC >>> void)
+       prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftSession >>> void)
     ]
   ,interaction 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"
       printHabits
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
-      credits ← liftC getCredits
+      credits ← liftSession getCredits
       liftIO $ putStrLn [i|    Success credits: #{credits ^. success}|]
       liftIO $ putStrLn [i|    Failure credits: #{credits ^. failure}|]
   ,interaction 'r' "Run game." $ do
-      story ← liftC runGame
+      story ← liftSession runGame
       printer ← liftIO byteStringMakerFromEnvironment
       story
         |> renderStoryToChunks
@@ -230,7 +230,7 @@ main_menu =
     scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
 
     printHabits = do
-      habits ← liftC getHabits
+      habits ← liftSession getHabits
       liftIO $
         if null habits
           then putStrLn "There are no habits."
@@ -269,7 +269,7 @@ runSession ∷ SessionInfo → IO ()
 runSession session_info =
   main_menu
     |> runMenu ["HoF"]
-    |> flip runClientT session_info
+    |> flip runSessionT session_info
     |> void
 
 doMain ∷ IO ()
