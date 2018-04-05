@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -14,7 +13,6 @@ import Control.Exception (AsyncException(UserInterrupt))
 import Control.Monad.Catch
 import qualified Data.ByteString as BS
 import Data.Char
-import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Options.Applicative
   ( Parser
@@ -44,13 +42,15 @@ import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
-data Cancel = Cancel deriving (Show, Typeable)
-instance Exception Cancel where
+data Cancel = Cancel
 
-type InteractionMonad = SessionIO
+type InteractionMonad = ExceptT Cancel SessionIO
 
 cancel ∷ InteractionMonad α
-cancel = liftIO (putStrLn "") >> throwM Cancel
+cancel = liftIO (putStrLn "") >> throwError Cancel
+
+liftSession ∷ SessionIO α → InteractionMonad α
+liftSession = lift
 
 data MenuAction =
     SubMenu String [MenuItem]
@@ -174,7 +174,7 @@ runMenu labels items = go
       command → case lookup command action_map of
         Nothing → unrecognizedCommand command >> go
         Just (SubMenu sublabel subitems) → runMenu (labels ⊕ [sublabel]) subitems >> go
-        Just (Interaction action) → (action `catch` (\Cancel → pure ())) >> go
+        Just (Interaction action) → void (runExceptT action) >> go
 
 printAndCancel ∷ String → InteractionMonad α
 printAndCancel = putStrLn >>> liftIO >>> (>> cancel)
@@ -188,12 +188,12 @@ main_menu =
         <$> prompt readNonEmpty "What is the name of the habit?"
         <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
-      void $ putHabit habit_id habit
+      liftSession >>> void $ putHabit habit_id habit
       "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
     ,interaction 'e' "Edit a habit." $ do
       habit_id ← prompt readMaybe "Which habit?"
       old_habit ←
-        getHabit habit_id
+        liftSession (getHabit habit_id)
         >>=
         maybe
           (printAndCancel "No such habit.")
@@ -202,23 +202,23 @@ main_menu =
         <$> promptWithDefault readNonEmpty (old_habit ^. name) "What is the name of the habit?"
         <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
-      void $ putHabit habit_id habit
+      liftSession >>> void $ putHabit habit_id habit
     ,interaction 'f' "Mark habits as failed." $
-       prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> void)
+       prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftSession >>> void)
     ,interaction 'p' "Print habits." $ printHabits
     ,interaction 's' "Mark habits as successful." $
-       prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> void)
+       prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftSession >>> void)
     ]
   ,interaction 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"
       printHabits
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
-      credits ← getCredits
+      credits ← liftSession getCredits
       liftIO $ putStrLn [i|    Success credits: #{credits ^. success}|]
       liftIO $ putStrLn [i|    Failure credits: #{credits ^. failure}|]
   ,interaction 'r' "Run game." $ do
-      story ← runGame
+      story ← liftSession runGame
       printer ← liftIO byteStringMakerFromEnvironment
       story
         |> renderStoryToChunks
@@ -230,7 +230,7 @@ main_menu =
     scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
 
     printHabits = do
-      habits ← getHabits
+      habits ← liftSession getHabits
       liftIO $
         if null habits
           then putStrLn "There are no habits."
