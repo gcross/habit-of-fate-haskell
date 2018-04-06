@@ -38,8 +38,7 @@ getInput getter =
 
 io_functions ∷ IOFunctions
 io_functions = IOFunctions
-  { ioCancelFn = throwIO Cancel
-  , ioGetCharFn = do
+  { ioGetCharFn = do
       c ← getInput $
         bracket_
           (hSetBuffering stdin NoBuffering)
@@ -60,11 +59,15 @@ io_functions = IOFunctions
 main ∷ IO ()
 main =
   (
-    execParser $ info
-      (configuration_parser <**> helper)
-      (   fullDesc
-       <> header "habit-client - a client program for habit-of-fate"
-      )
+    (
+      execParser $ info
+        (configuration_parser <**> helper)
+        (   fullDesc
+          <> header "habit-client - a client program for habit-of-fate"
+        )
+    )
+    >>=
+    runWithConfiguration io_functions
   )
-  >>=
-  runWithConfiguration io_functions
+  `catch`
+  (\Cancel → pure ())

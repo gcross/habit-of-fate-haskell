@@ -46,12 +46,8 @@ import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
-data Cancel = Cancel deriving (Show, Typeable)
-instance Exception Cancel where
-
 data IOFunctions = IOFunctions
-  { ioCancelFn ∷ ∀ α. IO α
-  , ioGetCharFn ∷ IO Char
+  { ioGetCharFn ∷ IO Char
   , ioGetStrFn ∷ IO String
   , ioGetStrNoEchoFn ∷ IO String
   , ioPutStrFn ∷ String → IO ()
@@ -60,10 +56,11 @@ data IOFunctions = IOFunctions
 
 type InteractionMonad = ReaderT IOFunctions SessionIO
 
-type InteractionMonadConstraints m = (MonadIO m, MonadReader IOFunctions m)
-
-ioCancel ∷ InteractionMonadConstraints m ⇒ m α
-ioCancel = asks ioCancelFn >>= liftIO
+type InteractionMonadConstraints m =
+  ( MonadIO m
+  , MonadReader IOFunctions m
+  , MonadThrow m
+  )
 
 ioGetChar ∷ InteractionMonadConstraints m ⇒ m Char
 ioGetChar = asks ioGetCharFn >>= liftIO
@@ -83,6 +80,12 @@ ioPutStrLn ∷ InteractionMonadConstraints m ⇒ String → m ()
 ioPutStrLn message = do
   putStr ← asks ioPutStrLnFn
   liftIO $ putStr message
+
+data Cancel = Cancel deriving (Show, Typeable)
+instance Exception Cancel where
+
+cancel ∷ InteractionMonadConstraints m ⇒ m α
+cancel = throwM Cancel
 
 liftSession ∷ SessionIO α → InteractionMonad α
 liftSession = lift
@@ -174,7 +177,7 @@ runMenu labels items = go
         Just (Interaction action) → (action `catch` (\Cancel → pure ())) >> go
 
 printAndCancel ∷ String → InteractionMonad α
-printAndCancel message = ioPutStrLn message >> ioCancel
+printAndCancel message = ioPutStrLn message >> cancel
 
 main_menu ∷ Menu
 main_menu =
