@@ -8,7 +8,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -250,6 +249,10 @@ returnText s = view (from strict) >>> returnLazyText s
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = JSONContent >>> ProgramResult s >>> return
 
+data Page = Habits
+renderPageURL ∷ Page → Text
+renderPageURL Habits = "/habits"
+
 returnHTML ∷ Monad m ⇒ Status → ((Page → Text) → Html) → m ProgramResult
 returnHTML s = ($ renderPageURL) >>> HtmlContent >>> ProgramResult s >>> return
 
@@ -435,9 +438,11 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
 
 type FileLocator = FilePath → IO (Maybe FilePath)
 
-data Page = Habits
-renderPageURL ∷ Page → Text
-renderPageURL Habits = "/habits"
+data RunGameState = RunGameState
+  { _run_quests ∷ Seq Quest
+  , _run_quest_events ∷ Seq Event
+  }
+makeLenses ''RunGameState
 
 makeApp ∷
   Bool →
@@ -833,13 +838,13 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
     Scotty.post "/api/run" <<< apiWriter $ do
       let go d = do
             let r = runAccount d
-            l_ #quest_events %= (⊢ r ^. story . to createEvent)
+            run_quest_events %= (⊢ r ^. story . to createEvent)
             if stillHasCredits (r ^. new_data)
               then do
                 when (r ^. quest_completed) $
-                  (l_ #quest_events <<.= mempty)
+                  (run_quest_events <<.= mempty)
                   >>=
-                  (createQuest >>> (⊣) >>> (l_ #quests %=))
+                  (createQuest >>> (⊣) >>> (run_quests %=))
                 go (r ^. new_data)
               else return (r ^. new_data)
       (new_d, s) ←
@@ -848,14 +853,14 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
         (
           go
           >>>
-          flip runStateT
-            ( #quests := (mempty ∷ Seq Quest)
-            , #quest_events := (mempty ∷ Seq Event)
-            )
+          flip runStateT (RunGameState
+            { _run_quests = mempty
+            , _run_quest_events = mempty
+            })
         )
       put new_d
       returnLazyText ok200 $!! (
-        s ^. l_ #quests ⊢ s ^. l_ #quest_events . to createQuest
+        s ^. run_quests ⊢ s ^. run_quest_events . to createQuest
         |> createStory
         |> renderStoryToText
        )

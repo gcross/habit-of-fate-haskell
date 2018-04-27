@@ -40,7 +40,6 @@ module HabitOfFate.Prelude
   , module Data.Traversable
   , module Debug.Trace
   , module Flow
-  , module Labels
   , module Text.Printf
   , module Text.Read
   , module System.FilePath
@@ -55,7 +54,6 @@ module HabitOfFate.Prelude
   , (⊢)
   , (⊣)
   , identity
-  , l_
   , rewords
   , showText
   , spy
@@ -221,9 +219,6 @@ import Debug.Trace
 
 import Flow hiding ((.>), (<.))
 
-import Labels ((:=)(..))
-import qualified Labels as Labels
-
 import System.FilePath (FilePath)
 
 import Text.Parsec
@@ -276,8 +271,6 @@ infixr  5 ⊢
 
 infixr  5 ⊣
 (⊣) = Control.Lens.cons
-
-l_ = Labels.lens
 
 identity ∷ α → α
 identity = id

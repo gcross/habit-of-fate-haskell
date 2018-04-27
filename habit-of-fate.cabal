@@ -31,7 +31,6 @@ library
                      , http-client
                      , http-client-tls
                      , http-types
-                     , labels
                      , lens
                      , MonadRandom
                      , mono-traversable
