@@ -15,7 +15,7 @@ module HabitOfFate.Client
   , IOFunctions(..)
   , configuration_parser
   , getSessionInfoFromUser
-  , runWithConfiguration
+  , runClientWithConfiguration
   ) where
 
 import HabitOfFate.Prelude hiding (argument)
@@ -295,8 +295,8 @@ getSessionInfoFromUser io_functions Configuration{..} = do
         pure
     else doLogin
 
-runWithConfiguration ∷ IOFunctions → Configuration → IO ()
-runWithConfiguration io_functions = do
+runClientWithConfiguration ∷ IOFunctions → Configuration → IO ()
+runClientWithConfiguration io_functions = do
   getSessionInfoFromUser io_functions
   >=>
   runSessionT (runReaderT runMainMenu io_functions)
