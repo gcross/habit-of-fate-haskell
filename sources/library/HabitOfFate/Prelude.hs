@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -226,9 +227,6 @@ import Text.Parsec
 import Text.Printf
 
 import Text.Read (readEither, readMaybe)
-
-instance MonadFail (ParsecT s u m) where
-  fail = parserFail
 
 instance MonadFail (Either String) where
   fail = Left

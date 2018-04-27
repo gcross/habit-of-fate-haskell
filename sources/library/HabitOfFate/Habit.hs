@@ -13,7 +13,6 @@ import Text.Blaze (ToMarkup(..))
 
 import Web.Scotty (Parsable(..))
 
-import HabitOfFate.JSON ()
 import HabitOfFate.TH
 
 data Scale = VeryLow | Low | Medium | High | VeryHigh

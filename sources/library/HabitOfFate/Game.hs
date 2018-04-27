@@ -84,8 +84,5 @@ uniform = Random.uniform
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join
 
-weighted ∷ MonadRandom m ⇒ [(Rational,α)] → m α
-weighted = fmap swap >>> Random.fromList
-
-weightedAction ∷ MonadRandom m ⇒ [(Rational,m α)] → m α
+weightedAction ∷ MonadRandom m ⇒ [(m α, Rational)] → m α
 weightedAction = weighted >>> join

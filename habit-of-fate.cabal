@@ -65,7 +65,6 @@ library
                      , HabitOfFate.Credits
                      , HabitOfFate.Game
                      , HabitOfFate.Habit
-                     , HabitOfFate.JSON
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
                      , HabitOfFate.Quest
@@ -92,6 +91,7 @@ executable habit-server
   main-is:             habit-server.hs
   build-depends:       habit-of-fate
                      , base
+                     , aeson
                      , bytestring
                      , directory
                      , filepath

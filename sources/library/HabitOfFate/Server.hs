@@ -80,36 +80,22 @@ import HabitOfFate.Story
 instance Parsable UUID where
   parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right
 
-newtype Username = Username { unwrapUsername ∷ Text } deriving (Eq,Ord,Parsable,Read,Show)
+newtype Username = Username { unwrapUsername ∷ Text } deriving
+  ( Eq
+  , FromJSONKey
+  , Ord
+  , Parsable
+  , Read
+  , Show
+  , ToJSONKey
+  )
 
 instance FromJSON Username where
   parseJSON = parseJSON >>> fmap Username
 
-instance FromJSON (Map Username Account) where
-  parseJSON =
-    (parseJSON ∷ Value → Parser (Map Text Account))
-    >>>
-    fmap (
-      mapToList
-      >>>
-      map (first Username)
-      >>>
-      mapFromList
-    )
-
 instance ToJSON Username where
   toJSON = unwrapUsername >>> toJSON
   toEncoding = unwrapUsername >>> toEncoding
-
-instance ToJSON (Map Username Account) where
-  toJSON =
-    mapToList
-    >>>
-    map (first unwrapUsername)
-    >>>
-    mapFromList
-    >>>
-    (toJSON ∷ Map Text Account → Value)
 
 newtype Cookie = Cookie Text deriving (Eq,FromJSON,Ord,Parsable,Read,Show,ToJSON)
 

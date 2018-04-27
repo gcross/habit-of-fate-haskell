@@ -10,6 +10,7 @@ module Main where
 
 import HabitOfFate.Prelude
 
+import Data.Aeson
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Text.IO

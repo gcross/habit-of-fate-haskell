@@ -22,7 +22,6 @@ import System.FilePath
 import HabitOfFate.Credits
 import HabitOfFate.Game
 import HabitOfFate.Habit
-import HabitOfFate.JSON ()
 import HabitOfFate.Quests
 import HabitOfFate.Story
 import HabitOfFate.TH
