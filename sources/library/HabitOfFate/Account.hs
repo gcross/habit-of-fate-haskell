@@ -16,8 +16,6 @@ import Crypto.PasswordStore
 import Data.Aeson
 import Data.Map (Map)
 import Data.UUID (UUID)
-import System.Directory
-import System.FilePath
 
 import HabitOfFate.Credits
 import HabitOfFate.Game
