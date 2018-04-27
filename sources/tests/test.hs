@@ -82,47 +82,47 @@ type IOChannel = MVar IOCommunication
 
 data CreateMode = CreateIfMissing | FailIfMissing
 
-clientTestCase ∷ CreateMode → String → ReaderT IOChannel IO () → TestTree
-clientTestCase create_mode test_name runTest = do
-  serverTestCaseNoFiles
-    test_name
-    (\port → do
-      io_channel ← newEmptyMVar
-      let receive ∷ (MVar α → IOCommunication) → IO α
-          receive construct = do
-            result_mvar ← newEmptyMVar
-            putMVar io_channel $ construct result_mvar
-            takeMVar result_mvar
+clientTestCase ∷ String → ReaderT Int IO () → TestTree
+clientTestCase test_name runTest = serverTestCaseNoFiles test_name (runReaderT runTest)
 
-          ioGetCharFn = receive IOGetChar
-          ioGetStrFn = receive IOGetStr
-          ioGetStrNoEchoFn = receive IOGetStrNoEcho
+withClient ∷ CreateMode → ReaderT IOChannel IO () → ReaderT Int IO ()
+withClient create_mode run = do
+  port ← ask
+  io_channel ← liftIO newEmptyMVar
+  let receive ∷ (MVar α → IOCommunication) → IO α
+      receive construct = do
+        result_mvar ← newEmptyMVar
+        putMVar io_channel $ construct result_mvar
+        takeMVar result_mvar
 
-          send ∷ (α → IOCommunication) → α → IO ()
-          send construct value = putMVar io_channel $ construct value
+      ioGetCharFn = receive IOGetChar
+      ioGetStrFn = receive IOGetStr
+      ioGetStrNoEchoFn = receive IOGetStrNoEcho
 
-          ioPutStrFn = send IOPutStr
-          ioPutStrLnFn = send IOPutStrLn
+      send ∷ (α → IOCommunication) → α → IO ()
+      send construct value = putMVar io_channel $ construct value
 
-          io_functions = IOFunctions{..}
+      ioPutStrFn = send IOPutStr
+      ioPutStrLnFn = send IOPutStrLn
 
-      thread_id ← forkIO $
-        runClientWithConfiguration
-          io_functions
-          (Configuration
-            "localhost"
-            port
-            (case create_mode of
-              CreateIfMissing → True
-              FailIfMissing → False
-            )
+      io_functions = IOFunctions{..}
+  liftIO $ do
+    thread_id ← forkIO $
+      runClientWithConfiguration
+        io_functions
+        (Configuration
+          "localhost"
+          port
+          (case create_mode of
+            CreateIfMissing → True
+            FailIfMissing → False
           )
-        `catches`
-          [ Handler (\(_ ∷ ExitCode) → putMVar io_channel IOExit)
-          , Handler (\(exc ∷ SomeException) → putMVar io_channel (IOException exc))
-          ]
-      runReaderT runTest io_channel `finally` killThread thread_id
-    )
+        )
+      `catches`
+        [ Handler (\(_ ∷ ExitCode) → putMVar io_channel IOExit)
+        , Handler (\(exc ∷ SomeException) → putMVar io_channel (IOException exc))
+        ]
+    runReaderT run io_channel `finally` killThread thread_id
 
 test_habit = Habit "name" Low Medium
 test_habit_2 = Habit "test" Medium VeryHigh
@@ -330,7 +330,7 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Client"
     ----------------------------------------------------------------------------
-      [ clientTestCase CreateIfMissing "Start client but don't do anything." $ pure ()
+      [ clientTestCase "Start client but don't do anything." $ pure ()
       ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Story"
