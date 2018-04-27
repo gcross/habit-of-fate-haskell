@@ -9,7 +9,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -511,6 +510,15 @@ renderStoryToDocument =
 renderStoryToText ∷ Story → LazyText.Text
 renderStoryToText = renderStoryToDocument >>> renderText def
 
+data RenderState = RenderState
+  { _render_number_of_columns ∷ Int
+  , _render_current_word ∷ Seq Char
+  , _render_saw_spaces_last ∷ Bool
+  , _render_pending_chunks ∷ Seq (Chunk Text)
+  , _render_pending_length ∷ Int
+  }
+makeLenses ''RenderState
+
 renderStoryToChunks ∷ Story → [Chunk Text]
 renderStoryToChunks =
   dropEmptyThingsFromStory
@@ -577,13 +585,13 @@ renderStoryToChunks =
     renderParagraph =
       go mempty
       >>>
-      flip evalStateT
-        ( #number_of_columns := 0
-        , #current_word := (mempty ∷ Seq Char)
-        , #saw_spaces_last := False
-        , #pending_chunks := (mempty ∷ Seq (Chunk Text))
-        , #pending_length := 0
-        )
+      flip evalStateT (RenderState
+        { _render_number_of_columns = 0
+        , _render_current_word = mempty
+        , _render_saw_spaces_last = False
+        , _render_pending_chunks = mempty
+        , _render_pending_length = 0
+        })
       where
         go formatting (Style style rest) = go (addFormat formatting) rest
           where
@@ -600,32 +608,32 @@ renderStoryToChunks =
           (forMOf_ text t $ \c →
             if c ∈ " \t\r\n"
               then do
-                saw_spaces_last ← l_ #saw_spaces_last <<.= True
+                saw_spaces_last ← render_saw_spaces_last <<.= True
                 current_word_is_empty ←
                   (&&)
-                    <$> (null <$> use (l_ #current_word))
-                    <*> (null <$> use (l_ #pending_chunks))
+                    <$> (null <$> use (render_current_word))
+                    <*> (null <$> use (render_pending_chunks))
                 unless (saw_spaces_last || current_word_is_empty) $ do
-                  word ← repack <$> (l_ #current_word <<.= mempty)
-                  word_length ← (olength word +) <$> (l_ #pending_length <<.= 0)
-                  number_of_columns ← use (l_ #number_of_columns)
+                  word ← repack <$> (render_current_word <<.= mempty)
+                  word_length ← (olength word +) <$> (render_pending_length <<.= 0)
+                  number_of_columns ← use (render_number_of_columns)
                   case number_of_columns of
-                    0 → l_ #number_of_columns .= word_length
+                    0 → render_number_of_columns .= word_length
                     _ | number_of_columns + 1 + word_length >= 80 → do
                           tellNewline
-                          l_ #number_of_columns .= word_length
+                          render_number_of_columns .= word_length
                     _ | otherwise → do
                           tellChunk $ chunk " "
-                          l_ #number_of_columns += 1 + word_length
-                  (l_ #pending_chunks <<.= mempty) >>= traverse_ tellChunk
+                          render_number_of_columns += 1 + word_length
+                  (render_pending_chunks <<.= mempty) >>= traverse_ tellChunk
                   tellChunk $ formatting ⊕ chunk word
               else do
-                l_ #current_word %= (⊢ c)
-                l_ #saw_spaces_last .= False
+                render_current_word %= (⊢ c)
+                render_saw_spaces_last .= False
           )
           >>
           (do
-            word ← repack <$> (l_ #current_word <<.= mempty)
-            l_ #pending_chunks %= (⊢ formatting ⊕ chunk word)
-            l_ #pending_length += olength word
+            word ← repack <$> (render_current_word <<.= mempty)
+            render_pending_chunks %= (⊢ formatting ⊕ chunk word)
+            render_pending_length += olength word
           )
