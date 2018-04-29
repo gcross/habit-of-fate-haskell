@@ -1,34 +1,31 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Client
-  ( Cancel(..)
-  , Configuration(..)
-  , IOFunctions(..)
-  , configuration_parser
-  , getSessionInfoFromUser
-  , runClientWithConfiguration
-  ) where
+module HabitOfFate.Client (doMain) where
 
 import HabitOfFate.Prelude hiding (argument)
 
+import Control.Exception (AsyncException(UserInterrupt))
 import Control.Monad.Catch
 import qualified Data.ByteString as BS
+import Data.Char
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Options.Applicative
   ( Parser
   , argument
   , auto
+  , execParser
+  , fullDesc
+  , header
   , help
+  , helper
+  , info
   , long
   , metavar
   , short
@@ -37,8 +34,9 @@ import Options.Applicative
   , value
   )
 import Rainbow.Translate
-import System.Exit (exitFailure, exitSuccess)
-import qualified System.IO as IO
+import System.Exit (exitSuccess)
+import System.IO
+import System.IO.Error (isEOFError)
 import System.Random
 
 import HabitOfFate.API
@@ -46,49 +44,16 @@ import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Story
 
-data IOFunctions = IOFunctions
-  { ioGetCharFn ∷ IO Char
-  , ioGetStrFn ∷ IO String
-  , ioGetStrNoEchoFn ∷ IO String
-  , ioPutStrFn ∷ String → IO ()
-  , ioPutStrLnFn ∷ String → IO ()
-  }
-
-type InteractionMonad = ReaderT IOFunctions SessionIO
-
-type InteractionMonadConstraints m =
-  ( MonadIO m
-  , MonadReader IOFunctions m
-  , MonadThrow m
-  )
-
-ioGetChar ∷ InteractionMonadConstraints m ⇒ m Char
-ioGetChar = asks ioGetCharFn >>= liftIO
-
-ioGetStr ∷ InteractionMonadConstraints m ⇒ m String
-ioGetStr = asks ioGetStrFn >>= liftIO
-
-ioGetStrNoEcho ∷ InteractionMonadConstraints m ⇒ m String
-ioGetStrNoEcho = asks ioGetStrNoEchoFn >>= liftIO
-
-ioPutStr ∷ InteractionMonadConstraints m ⇒ String → m ()
-ioPutStr message = do
-  putStr ← asks ioPutStrFn
-  liftIO $ putStr message
-
-ioPutStrLn ∷ InteractionMonadConstraints m ⇒ String → m ()
-ioPutStrLn message = do
-  putStr ← asks ioPutStrLnFn
-  liftIO $ putStr message
-
 data Cancel = Cancel deriving (Show, Typeable)
 instance Exception Cancel where
 
-cancel ∷ InteractionMonadConstraints m ⇒ m α
-cancel = throwM Cancel
+type InteractionMonad = SessionIO
+
+cancel ∷ InteractionMonad α
+cancel = liftIO (putStrLn "") >> throwM Cancel
 
 liftSession ∷ SessionIO α → InteractionMonad α
-liftSession = lift
+liftSession = id
 
 data MenuAction =
     SubMenu String [MenuItem]
@@ -110,14 +75,14 @@ interaction key description interaction' =
 
 type Menu = [MenuItem]
 
-printHelp ∷ Menu → InteractionMonad ()
-printHelp items = do
-  ioPutStrLn "Interactions:"
+printHelp ∷ MonadIO m ⇒ Menu → m ()
+printHelp items = liftIO $ do
+  putStrLn "Interactions:"
   forM_ items $ \item →
-    ioPutStrLn [i|  #{keyOf item:""}: #{descriptionOf item}|]
-  ioPutStrLn "  --"
-  ioPutStrLn "  q: Quit this menu."
-  ioPutStrLn "  ?: Display this help message."
+    putStrLn [i|  #{keyOf item:""}: #{descriptionOf item}|]
+  putStrLn "  --"
+  putStrLn "  q: Quit this menu."
+  putStrLn "  ?: Display this help message."
 
 parseUUIDs ∷ String → Maybe [UUID]
 parseUUIDs = split1 >>> map readMaybe >>> sequence
@@ -142,10 +107,30 @@ prompt parseValue p =
   (
     parseValue
     >>>
-    maybe (ioPutStrLn "Bad input." >> prompt parseValue p) return
+    maybe (liftIO (putStrLn "Bad input.") >> prompt parseValue p) return
   )
   where
-    promptForString = ioPutStr (p ⊕ " ") >> ioGetStr
+    promptForString =
+      liftIO >>> join $ do
+        putStr p
+        putChar ' '
+        hFlush stdout
+        handleJust
+          (\e →
+            (
+              case fromException e of
+                Just UserInterrupt → Just cancel
+                _ → Nothing
+            )
+            <|>
+            (
+              isEOFError <$> fromException e
+              >>=
+              bool Nothing (Just $ liftIO (putStrLn "") >> liftIO exitSuccess)
+            )
+          )
+          return
+          (return <$> getLine)
 
 promptWithDefault ∷ Show α ⇒ (String → Maybe α) → α → String → InteractionMonad α
 promptWithDefault parseValue default_value p =
@@ -154,19 +139,37 @@ promptWithDefault parseValue default_value p =
     parseValue' "" = Just default_value
     parseValue' x = parseValue x
 
-unrecognizedCommand ∷ Char → InteractionMonad ()
-unrecognizedCommand ' ' = pure ()
-unrecognizedCommand command =
-  ioPutStrLn [i|Unrecognized command #{command}.  Press ? for help.|]
+promptForCommand ∷ MonadIO m ⇒ String → m Char
+promptForCommand p =
+  (
+    bracket_
+      (hSetBuffering stdin NoBuffering)
+      (hSetBuffering stdin LineBuffering)
+    >>>
+    liftIO
+  )
+  $
+  do putStr p
+     putChar ' '
+     hFlush stdout
+     command ← getChar
+     putStrLn ""
+     return command
 
-runMenu ∷ [String] → Menu → InteractionMonad ()
+unrecognizedCommand ∷ MonadIO m ⇒ Char → m ()
+unrecognizedCommand command
+  | not (isAlphaNum command) = return ()
+  | otherwise = liftIO $
+      putStrLn [i|Unrecognized command #{command}.  Press ? for help.|]
+
+runMenu ∷ [String] → Menu → SessionIO ()
 runMenu labels items = go
   where
     action_map = map (keyOf &&& actionOf) items
     location = ointercalate "/" labels
-    command_prompt = [i|#{location} [#{map keyOf items}q?] |]
+    command_prompt = [i|#{location} [#{map keyOf items}q?]|]
 
-    go = ioPutStr command_prompt >> ioGetChar >>= \case
+    go = promptForCommand command_prompt >>= \case
       '\^D' → liftIO exitSuccess
       '\^[' → return () -- escape key
       'q' → return ()
@@ -177,7 +180,7 @@ runMenu labels items = go
         Just (Interaction action) → (action `catch` (\Cancel → pure ())) >> go
 
 printAndCancel ∷ String → InteractionMonad α
-printAndCancel message = ioPutStrLn message >> cancel
+printAndCancel = putStrLn >>> liftIO >>> (>> cancel)
 
 main_menu ∷ Menu
 main_menu =
@@ -189,7 +192,7 @@ main_menu =
         <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
         <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
       liftSession >>> void $ putHabit habit_id habit
-      "Habit ID is " ⊕ show habit_id |> ioPutStrLn
+      "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
     ,interaction 'e' "Edit a habit." $ do
       habit_id ← prompt readMaybe "Which habit?"
       old_habit ←
@@ -210,13 +213,13 @@ main_menu =
        prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftSession >>> void)
     ]
   ,interaction 'p' "Print data." $ do
-      ioPutStrLn "Habits:"
+      liftIO $ putStrLn "Habits:"
       printHabits
-      ioPutStrLn ""
-      ioPutStrLn "Game:"
+      liftIO $ putStrLn ""
+      liftIO $ putStrLn "Game:"
       credits ← liftSession getCredits
-      ioPutStrLn [i|    Success credits: #{credits ^. success}|]
-      ioPutStrLn [i|    Failure credits: #{credits ^. failure}|]
+      liftIO $ putStrLn [i|    Success credits: #{credits ^. success}|]
+      liftIO $ putStrLn [i|    Failure credits: #{credits ^. failure}|]
   ,interaction 'r' "Run game." $ do
       story ← liftSession runGame
       printer ← liftIO byteStringMakerFromEnvironment
@@ -231,18 +234,15 @@ main_menu =
 
     printHabits = do
       habits ← liftSession getHabits
-      if null habits
-        then ioPutStrLn "There are no habits."
-        else forM_ (mapToList habits) $ \(uuid, habit) →
-          ioPutStrLn $
-            printf "%s %s [+%s/-%s]"
+      liftIO $
+        if null habits
+          then putStrLn "There are no habits."
+          else forM_ (mapToList habits) $ \(uuid, habit) →
+            printf "%s %s [+%s/-%s]\n"
               (show uuid)
               (habit ^. name)
               (show $ habit ^. difficulty)
               (show $ habit ^. importance)
-
-runMainMenu ∷ InteractionMonad ()
-runMainMenu = runMenu ["HoF"] main_menu
 
 data Configuration = Configuration
   { hostname ∷ String
@@ -268,35 +268,44 @@ configuration_parser = Configuration
         , short 'c'
         ])
 
-getSessionInfoFromUser ∷ IOFunctions → Configuration → IO SessionInfo
-getSessionInfoFromUser io_functions Configuration{..} = do
-  (username, password) ← flip runReaderT io_functions $
-    liftA2 (,)
-      (ioPutStr "Username: " >> ioGetStr)
-      (ioPutStr "Password: " >> ioGetStrNoEcho)
+runSession ∷ SessionInfo → IO ()
+runSession session_info =
+  main_menu
+    |> runMenu ["HoF"]
+    |> flip runSessionT session_info
+    |> void
+
+doMain ∷ IO ()
+doMain = do
+  Configuration{..} ←
+    execParser $ info
+      (configuration_parser <**> helper)
+      (   fullDesc
+       <> header "habit-client - a client program for habit-of-fate"
+      )
+  putStr "Username: "
+  hFlush stdout
+  username ← getLine
+  putStr "Password: "
+  hFlush stdout
+  hSetEcho stdout False
+  password ← getLine
+  hSetEcho stdout True
+  putStrLn ""
   let doLogin =
         login username password Secure "localhost" 8081
         >>=
         either
-          (\err → do
-            IO.putStrLn $
-              case err of
-                NoSuchAccount → "No such account."
-                InvalidPassword → "Invalid password."
-            liftIO exitFailure
+          (\case
+            NoSuchAccount → putStrLn "No such account."
+            InvalidPassword → putStrLn "Invalid password."
           )
-          pure
+          runSession
   if create_account_mode
     then
       createAccount username password Secure "localhost" 8081
       >>=
       maybe
-        (IO.putStrLn "Account already exists. Logging in..." >> doLogin)
-        pure
+        (putStrLn "Account already exists. Logging in..." >> doLogin)
+        runSession
     else doLogin
-
-runClientWithConfiguration ∷ IOFunctions → Configuration → IO ()
-runClientWithConfiguration io_functions = do
-  getSessionInfoFromUser io_functions
-  >=>
-  runSessionT (runReaderT runMainMenu io_functions)

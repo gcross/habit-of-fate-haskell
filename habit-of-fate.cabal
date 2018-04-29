@@ -81,9 +81,7 @@ library
 executable habit-client
   hs-source-dirs:      sources/executables
   main-is:             habit-client.hs
-  build-depends:       habit-of-fate
-                     , base
-                     , optparse-applicative
+  build-depends:       habit-of-fate, base
   default-language:    Haskell2010
 
 executable habit-server

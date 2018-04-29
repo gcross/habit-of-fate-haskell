@@ -4,9 +4,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -14,15 +12,12 @@ module Main where
 
 import HabitOfFate.Prelude hiding (elements)
 
-import Control.Concurrent
-import Control.Concurrent.MVar
 import Control.Monad.Catch
 import qualified Data.Map as Map
 import Data.IORef
 import Network.HTTP.Client
 import Network.HTTP.Types
 import Network.Wai.Handler.Warp
-import System.Exit
 import System.IO
 import System.IO.Temp
 import Test.Tasty
@@ -32,7 +27,6 @@ import Text.XML.Cursor
 import Web.JWT
 
 import HabitOfFate.API
-import HabitOfFate.Client hiding (port)
 import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Logging
@@ -57,72 +51,6 @@ apiTestCase test_name action =
     (fromMaybe (error "Unable to create account.") >>> runSessionT action)
   )
   |> serverTestCaseNoFiles test_name
-
-data IOCommunication =
-    IOGetChar (MVar Char)
-  | IOGetStr (MVar String)
-  | IOGetStrNoEcho (MVar String)
-  | IOPutStr String
-  | IOPutStrLn String
-  | IOException SomeException
-  | IOExit
-
-instance Show IOCommunication where
-  show (IOGetChar _) = "IOGetChar (MVar ..)"
-  show (IOGetStr _) = "IOGetStr (MVar ..)"
-  show (IOGetStrNoEcho _) = "IOGetStrNoEcho (MVar ..)"
-  show (IOPutStr s) = "IOPutStr (" ⊕ s ⊕ ")"
-  show (IOPutStrLn s) = "IOPutStrLn (" ⊕ s ⊕ ")"
-  show (IOException exc) = "IOException (" ⊕ displayException exc ⊕ ")"
-  show  IOExit = "IOExit"
-
-makePrisms ''IOCommunication
-
-type IOChannel = MVar IOCommunication
-
-data CreateMode = CreateIfMissing | FailIfMissing
-
-clientTestCase ∷ String → ReaderT Int IO () → TestTree
-clientTestCase test_name runTest = serverTestCaseNoFiles test_name (runReaderT runTest)
-
-withClient ∷ CreateMode → ReaderT IOChannel IO () → ReaderT Int IO ()
-withClient create_mode run = do
-  port ← ask
-  io_channel ← liftIO newEmptyMVar
-  let receive ∷ (MVar α → IOCommunication) → IO α
-      receive construct = do
-        result_mvar ← newEmptyMVar
-        putMVar io_channel $ construct result_mvar
-        takeMVar result_mvar
-
-      ioGetCharFn = receive IOGetChar
-      ioGetStrFn = receive IOGetStr
-      ioGetStrNoEchoFn = receive IOGetStrNoEcho
-
-      send ∷ (α → IOCommunication) → α → IO ()
-      send construct value = putMVar io_channel $ construct value
-
-      ioPutStrFn = send IOPutStr
-      ioPutStrLnFn = send IOPutStrLn
-
-      io_functions = IOFunctions{..}
-  liftIO $ do
-    thread_id ← forkIO $
-      runClientWithConfiguration
-        io_functions
-        (Configuration
-          "localhost"
-          port
-          (case create_mode of
-            CreateIfMissing → True
-            FailIfMissing → False
-          )
-        )
-      `catches`
-        [ Handler (\(_ ∷ ExitCode) → putMVar io_channel IOExit)
-        , Handler (\(exc ∷ SomeException) → putMVar io_channel (IOException exc))
-        ]
-    runReaderT run io_channel `finally` killThread thread_id
 
 test_habit = Habit "name" Low Medium
 test_habit_2 = Habit "test" Medium VeryHigh
@@ -327,11 +255,6 @@ main = defaultMain $ testGroup "All Tests"
                 (abs (actual_failures - expected_failures) < 0.1)
         ]
     ]
-  ------------------------------------------------------------------------------
-  , testGroup "HabitOfFate.Client"
-    ----------------------------------------------------------------------------
-      [ clientTestCase "Start client but don't do anything." $ pure ()
-      ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Story"
   ------------------------------------------------------------------------------
