@@ -28,6 +28,7 @@ import qualified Data.UUID as UUID
 import Network.Connection
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
+import Network.HTTP.Simple
 import Network.HTTP.Types
 import Text.XML
 import Web.Cookie
@@ -42,7 +43,6 @@ data SecureMode = Testing | Secure
 
 data SessionInfo = SessionInfo
   { _request_template ∷ Request
-  , _manager ∷ Manager
   }
 makeLenses ''SessionInfo
 
@@ -67,7 +67,7 @@ loginOrCreateAccount route username password secure_mode hostname port = do
             |> RequestBodyBS
         }
   response ←
-    flip httpLbs manager
+    httpLBS
     $
     request_template_without_authorization
       { path = [i|/api/#{route}|] |> pack |> encodeUtf8 }
@@ -77,16 +77,12 @@ loginOrCreateAccount route username password secure_mode hostname port = do
       then
         maybe
           (Left internalServerError500)
-          (\token → Right $
-            SessionInfo
-              (
-                request_template_without_authorization
-                { requestHeaders =
-                  [("Cookie", toLazyByteString >>> view strict $
-                    renderCookiesText [("token", token)])]
-                }
-              )
-              manager
+          (\token → Right $ SessionInfo $
+            request_template_without_authorization
+            { requestHeaders =
+              [("Cookie", toLazyByteString >>> view strict $
+                renderCookiesText [("token", token)])]
+            }
           )
           (
             (response |> responseHeaders |> lookup "Set-Cookie")
@@ -143,9 +139,6 @@ instance MonadBaseControl IO SessionIO where
   liftBaseWith f = SessionT $ liftBaseWith $ \r → f (unwrapSessionT >>> r)
   restoreM = restoreM >>> SessionT
 
-getManager ∷ Monad m ⇒ SessionT m Manager
-getManager = SessionT $ view manager
-
 getRequestTemplate ∷ Monad m ⇒ SessionT m Request
 getRequestTemplate = view request_template |> SessionT
 
@@ -193,7 +186,7 @@ instance Show UnexpectedStatus where
 instance Exception UnexpectedStatus where
 
 sendRequest ∷ MonadIO m ⇒ Request → SessionT m (Response LBS.ByteString)
-sendRequest request = getManager >>= (httpLbs request >>> liftIO)
+sendRequest request = httpLBS request
 
 request ∷ MonadIO m ⇒ StdMethod → Text → SessionT m (Response LBS.ByteString)
 request method path = makeRequest method path >>= sendRequest
