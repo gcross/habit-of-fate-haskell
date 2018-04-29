@@ -187,24 +187,33 @@ instance Exception UnexpectedStatus where
 sendRequest ∷ MonadIO m ⇒ Request → SessionT m (Response LBS.ByteString)
 sendRequest request = httpLBS request
 
+sendRequestForJSON ∷ (MonadIO m, FromJSON α) ⇒ Request → SessionT m (Response (Either JSONException α))
+sendRequestForJSON request = httpJSONEither request
+
 request ∷ MonadIO m ⇒ StdMethod → Text → SessionT m (Response LBS.ByteString)
 request method path = makeRequest method path >>= sendRequest
+
+requestForJSON ∷ (MonadIO m, FromJSON α) ⇒ StdMethod → Text → SessionT m (Response (Either JSONException α))
+requestForJSON method path = makeRequest method path >>= sendRequestForJSON
 
 logout ∷ MonadIO m ⇒ SessionT m ()
 logout = void $ request POST "logout"
 
-requestWithJSON ∷
-  (MonadIO m, ToJSON α) ⇒ StdMethod → Text → α → SessionT m (Response LBS.ByteString)
-requestWithJSON method path value =
+requestWithJSONForJSON ∷
+  (MonadIO m, ToJSON α, FromJSON β) ⇒ StdMethod → Text → α → SessionT m (Response (Either JSONException β))
+requestWithJSONForJSON method path value =
   (makeRequest method path <&> addJSONBody value)
   >>=
-  sendRequest
+  sendRequestForJSON
 
 data PutResult = HabitCreated | HabitReplaced deriving (Eq, Ord, Read, Show)
 
 putHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Habit → SessionT m PutResult
 putHabit habit_id habit = do
-  response ← requestWithJSON PUT (pathToHabit habit_id) habit
+  response ←
+    makeRequest PUT (pathToHabit habit_id)
+    >>=
+    (setRequestBodyJSON habit >>> sendRequest)
   case responseStatusCode response of
     201 → pure HabitCreated
     204 → pure HabitReplaced
@@ -222,31 +231,35 @@ deleteHabit habit_id = do
 
 getHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m (Maybe Habit)
 getHabit habit_id = do
-  response ← request GET $ pathToHabit habit_id
+  response ← requestForJSON GET $ pathToHabit habit_id
   case responseStatusCode response of
-    200 → parseResponseBody response
+    200 → either throwM pure $ responseBody response
     404 → pure Nothing
     code → throwM $ UnexpectedStatus [200,404] code
 
 getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Map UUID Habit)
 getHabits = do
-  response ← request GET "habits"
+  response ← requestForJSON GET "habits"
   case responseStatusCode response of
-    200 → parseResponseBody response
+    200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
 getCredits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Credits
 getCredits = do
-  response ← request GET "credits"
+  response ← requestForJSON GET "credits"
   case responseStatusCode response of
-    200 → parseResponseBody response
+    200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
 markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → SessionT m Credits
 markHabits success_habits failure_habits = do
-  response ← requestWithJSON POST "mark" (HabitsToMark success_habits failure_habits)
+  response ←
+    requestWithJSONForJSON
+      POST
+      "mark"
+      (HabitsToMark success_habits failure_habits)
   case responseStatusCode response of
-    200 → parseResponseBody response
+    200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
 runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Story
