@@ -14,7 +14,7 @@ import HabitOfFate.Client
   ( Cancel(..)
   , IOFunctions(..)
   , configuration_parser
-  , runWithConfiguration
+  , runClientWithConfiguration
   )
 
 getInput ∷ IO α → IO α
@@ -67,7 +67,7 @@ main =
         )
     )
     >>=
-    runWithConfiguration io_functions
+    runClientWithConfiguration io_functions
   )
   `catch`
   (\Cancel → pure ())
