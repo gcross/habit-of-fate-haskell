@@ -190,69 +190,69 @@ main = defaultMain $ testGroup "All Tests"
                 deleteHabit test_habit_id >>= ((@?= HabitDeleted) >>> liftIO)
                 getHabits >>= ((@?= Map.empty) >>> liftIO)
             ]
-        ]
-    ----------------------------------------------------------------------------
-    , apiTestCase "Fetching all habits from a new account returns an empty array" $
-    ----------------------------------------------------------------------------
-        getHabits
-        >>=
-        ((@?= Map.empty) >>> liftIO)
-    ----------------------------------------------------------------------------
-    , apiTestCase "Fetching a habit when none exist returns Nothing" $
-    ----------------------------------------------------------------------------
-        getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
-        >>=
-        ((@?= Nothing) >>> liftIO)
-    ----------------------------------------------------------------------------
-    , testGroup "putHabit"
-    ----------------------------------------------------------------------------
-        [ apiTestCase "Putting a habit and then fetching it returns the habit" $ do
-        ------------------------------------------------------------------------
-            createHabit test_habit_id test_habit
-            getHabit test_habit_id >>= ((@?= Just test_habit) >>> liftIO)
-        ------------------------------------------------------------------------
-        , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
-        ------------------------------------------------------------------------
-            createHabit test_habit_id test_habit
-            getHabits >>= ((@?= Map.singleton test_habit_id test_habit) >>> liftIO)
-        ------------------------------------------------------------------------
-        , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
-        ------------------------------------------------------------------------
-            createHabit test_habit_id test_habit
-            createHabit test_habit_id_2 test_habit_2
-            markHabits [test_habit_id] [test_habit_id_2]
-            getCredits >>= ((@?= Credits 0.5 4) >>> liftIO)
-        ------------------------------------------------------------------------
-        , testCase "Putting a habit causes the accounts to be written" $ do
-        ------------------------------------------------------------------------
-            write_requested_ref ← newIORef False
-            withApplication
-              (makeApp True no_files mempty (const $ writeIORef write_requested_ref True))
-              $
-              \port → do
-                session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
-                flip runSessionT session_info $ createHabit test_habit_id test_habit
-            readIORef write_requested_ref >>= assertBool "Write was not requested."
-        ]
-    ----------------------------------------------------------------------------
-    , testGroup "putHabit"
-    ----------------------------------------------------------------------------
-        [ apiTestCase "Marking a habit gets the right credits" $ do
-        ------------------------------------------------------------------------
-            createHabit test_habit_id test_habit
-            createHabit test_habit_id_2 test_habit_2
-            markHabits [test_habit_id] [test_habit_id_2]
-            credits @(Credits actual_successes actual_failures) ← getCredits
-            credits |> show |> putStrLn |> liftIO
-            let expected_successes = test_habit ^. difficulty |> scaleFactor
-                expected_failures = test_habit_2 ^. importance |> scaleFactor
-            liftIO $ do
-              assertBool
-                ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
-                (abs (actual_successes - expected_successes) < 0.1)
-              assertBool
-                ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
-                (abs (actual_failures - expected_failures) < 0.1)
+        ----------------------------------------------------------------------------
+        , apiTestCase "Fetching all habits from a new account returns an empty array" $
+        ----------------------------------------------------------------------------
+            getHabits
+            >>=
+            ((@?= Map.empty) >>> liftIO)
+        ----------------------------------------------------------------------------
+        , apiTestCase "Fetching a habit when none exist returns Nothing" $
+        ----------------------------------------------------------------------------
+            getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
+            >>=
+            ((@?= Nothing) >>> liftIO)
+        ----------------------------------------------------------------------------
+        , testGroup "putHabit"
+        ----------------------------------------------------------------------------
+            [ apiTestCase "Putting a habit and then fetching it returns the habit" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id test_habit
+                getHabit test_habit_id >>= ((@?= Just test_habit) >>> liftIO)
+            ------------------------------------------------------------------------
+            , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id test_habit
+                getHabits >>= ((@?= Map.singleton test_habit_id test_habit) >>> liftIO)
+            ------------------------------------------------------------------------
+            , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id test_habit
+                createHabit test_habit_id_2 test_habit_2
+                markHabits [test_habit_id] [test_habit_id_2]
+                getCredits >>= ((@?= Credits 0.5 4) >>> liftIO)
+            ------------------------------------------------------------------------
+            , testCase "Putting a habit causes the accounts to be written" $ do
+            ------------------------------------------------------------------------
+                write_requested_ref ← newIORef False
+                withApplication
+                  (makeApp True no_files mempty (const $ writeIORef write_requested_ref True))
+                  $
+                  \port → do
+                    session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
+                    flip runSessionT session_info $ createHabit test_habit_id test_habit
+                readIORef write_requested_ref >>= assertBool "Write was not requested."
+            ]
+        ----------------------------------------------------------------------------
+        , testGroup "putHabit"
+        ----------------------------------------------------------------------------
+            [ apiTestCase "Marking a habit gets the right credits" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id test_habit
+                createHabit test_habit_id_2 test_habit_2
+                markHabits [test_habit_id] [test_habit_id_2]
+                credits @(Credits actual_successes actual_failures) ← getCredits
+                credits |> show |> putStrLn |> liftIO
+                let expected_successes = test_habit ^. difficulty |> scaleFactor
+                    expected_failures = test_habit_2 ^. importance |> scaleFactor
+                liftIO $ do
+                  assertBool
+                    ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
+                    (abs (actual_successes - expected_successes) < 0.1)
+                  assertBool
+                    ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
+                    (abs (actual_failures - expected_failures) < 0.1)
+            ]
         ]
     ]
   ------------------------------------------------------------------------------
