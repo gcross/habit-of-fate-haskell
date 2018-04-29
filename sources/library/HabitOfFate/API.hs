@@ -36,7 +36,6 @@ import Web.Cookie
 import HabitOfFate.Credits
 import HabitOfFate.Account
 import HabitOfFate.Habit
-import HabitOfFate.Logging
 import HabitOfFate.Story
 
 data SecureMode = Testing | Secure
