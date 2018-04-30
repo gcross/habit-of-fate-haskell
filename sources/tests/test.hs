@@ -15,13 +15,14 @@ import HabitOfFate.Prelude hiding (elements)
 import Control.Monad.Catch
 import qualified Data.Map as Map
 import Data.IORef
-import Network.HTTP.Client
+import Network.HTTP.Simple
 import Network.HTTP.Types
 import Network.Wai.Handler.Warp
 import System.IO
 import System.IO.Temp
 import Test.Tasty
 import Test.Tasty.HUnit
+import Text.HTML.DOM (sinkDoc)
 import Text.XML (parseLBS)
 import Text.XML.Cursor
 import Web.JWT
@@ -101,13 +102,13 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
             let testMissing test_name path =
                   serverTestCase test_name no_files $ \port → do
-                    manager ← newManager defaultManagerSettings
-                    response ← flip httpNoBody manager $ defaultRequest
-                      { method = renderStdMethod POST
-                      , host = "localhost"
-                      , port = port
-                      , path = "/api/" ⊕ path
-                      }
+                    response ←
+                      defaultRequest
+                        |> setRequestMethod "POST"
+                        |> setRequestHost "localhost"
+                        |> setRequestPort port
+                        |> setRequestPath ("/api/" ⊕ path)
+                        |> httpNoBody
                     400 @=? responseStatusCode response
             in
             [ testGroup "Create account"
@@ -124,13 +125,13 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
             let testEmpty test_name path =
                   serverTestCase test_name no_files $ \port → do
-                    manager ← newManager defaultManagerSettings
-                    response ← flip httpNoBody manager $ defaultRequest
-                      { method = renderStdMethod POST
-                      , host = "localhost"
-                      , port = port
-                      , path = "/api/" ⊕ path
-                      }
+                    response ←
+                      defaultRequest
+                        |> setRequestMethod "POST"
+                        |> setRequestHost "localhost"
+                        |> setRequestPort port
+                        |> setRequestPath ("/api/" ⊕ path)
+                        |> httpNoBody
                     400 @=? responseStatusCode response
             in
             [ testGroup "Create account"

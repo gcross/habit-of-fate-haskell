@@ -113,7 +113,9 @@ test-suite test
                      , base
                      , containers
                      , exceptions
+                     , html-conduit
                      , http-client
+                     , http-conduit
                      , http-types
                      , jwt
                      , tasty
