@@ -6,6 +6,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Main where
@@ -15,6 +16,7 @@ import HabitOfFate.Prelude hiding (elements, text)
 import Control.Monad.Catch
 import qualified Data.Map as Map
 import Data.IORef
+import Network.HTTP.Client (redirectCount)
 import Network.HTTP.Simple
 import Network.Wai.Handler.Warp
 import System.IO
@@ -275,9 +277,12 @@ main = defaultMain $ testGroup "All Tests"
                       |> setRequestHost "localhost"
                       |> setRequestPort port
                       |> setRequestPath path
+                      |> (\x → x {redirectCount = 0})
                       |> customizeRequest
-                      |> flip httpSink (const sinkDoc)
+                      |> flip httpSink (\response → (response,) <$> sinkDoc)
                 in runTest requestDocument
+            assertRedirectsTo response expected_location =
+              getResponseHeader "Location" response @?= [expected_location]
             assertPageTitleEquals doc expected_page_title =
               doc ^? root . entire . named "head" . entire . named "title" . text
                 @?= Just expected_page_title
@@ -292,20 +297,28 @@ main = defaultMain $ testGroup "All Tests"
               @?= Just expected_text
         in
     ----------------------------------------------------------------------------
-        [ webTestCase "GET / with no cookies redirects to login page" $ \requestDocument → do
-            doc ← requestDocument "/" $ setRequestMethod "GET"
-            assertPageTitleEquals doc "Habit of Fate - Login"
+        [ webTestCase "GET / redirects to /habits" $ \requestDocument → do
+            (response, _) ← requestDocument "/" $ setRequestMethod "GET"
+            assertRedirectsTo response "/habits"
         , webTestCase "GET /login returns login page" $ \requestDocument → do
-            doc ← requestDocument "/" $ setRequestMethod "GET"
+            (_, doc) ← requestDocument "/login" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Login"
         , webTestCase "POST /login for non-existent user returns login page withe error" $ \requestDocument → do
-            doc ← requestDocument "/login" $
+            (_, doc) ← requestDocument "/login" $
               setRequestBodyURLEncoded [("username","username"), ("password","password")]
             assertPageTitleEquals doc "Habit of Fate - Login"
             assertTextIs doc "error-message" "No account has that username."
         , webTestCase "GET /create returns account creation page" $ \requestDocument → do
-            doc ← requestDocument "/create" $ setRequestMethod "GET"
+            (_, doc) ← requestDocument "/create" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Account Creation"
+        , webTestCase "POST /create with fields filled in redirects to /" $ \requestDocument → do
+            (response, _) ← requestDocument "/create" $
+              setRequestBodyURLEncoded
+                [ ("username","username")
+                , ("password1","password")
+                , ("password2","password")
+                ]
+            assertRedirectsTo response "/"
         ]
         ------------------------------------------------------------------------
     ]
