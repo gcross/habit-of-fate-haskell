@@ -285,7 +285,7 @@ main = defaultMain $ testGroup "All Tests"
               (
                 findOf
                   (cosmosOf $ dropping 1 entire)
-                  (elementAttributes >>> lookup "id" >>> (== Just "error-message"))
+                  (elementAttributes >>> lookup "id" >>> (== Just element_id))
                   (doc ^. root)
                 |> fmap (^. text)
               )
