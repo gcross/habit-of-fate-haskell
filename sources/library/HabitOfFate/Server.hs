@@ -578,7 +578,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                       _ | otherwise → "The passwords did not agree."
           scottyHTML [hamlet|
 <head>
-  <title>Account creation
+  <title>Habit of Fate - Account Creation
 <body>
   <form method="post">
     <div>
