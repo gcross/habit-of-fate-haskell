@@ -48,7 +48,7 @@ withTestAppNoFiles = withTestApp $ no_files
 
 serverTestCase ∷ String → FileLocator → (Int → IO ()) → TestTree
 serverTestCase test_name locateWebAppFile =
-  withTestAppNoFiles
+  withTestApp locateWebAppFile
   >>>
   testCase test_name
 
