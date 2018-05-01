@@ -33,8 +33,18 @@ import HabitOfFate.API
 import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Server
-import HabitOfFate.Server.Testing
 import HabitOfFate.Story
+
+no_files ∷ FileLocator
+no_files = const $ pure Nothing
+
+withTestApp ∷ FileLocator → (Int → IO ()) → IO ()
+withTestApp locateWebAppFile =
+  withApplication
+    (makeApp True locateWebAppFile mempty (const $ pure ()))
+
+withTestAppNoFiles ∷ (Int → IO ()) → IO ()
+withTestAppNoFiles = withTestApp $ no_files
 
 serverTestCase ∷ String → FileLocator → (Int → IO ()) → TestTree
 serverTestCase test_name locateWebAppFile =
