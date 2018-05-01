@@ -25,7 +25,7 @@ import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
 import Text.XML (parseLBS)
 import Text.XML.Cursor
-import Text.XML.Lens (entire, named, root, text)
+import Text.XML.Lens (elementAttributes, entire, named, root, text)
 import Web.JWT
 
 import HabitOfFate.API
@@ -279,6 +279,23 @@ main = defaultMain $ testGroup "All Tests"
               |> flip httpSink (const sinkDoc)
             doc ^? root . entire . named "head" . entire . named "title" . text
               @?= Just "Habit of Fate - Login"
+        , serverTestCaseNoFiles "POST /login for non-existent user returns login page withe error" $ \port → do
+            doc ← defaultRequest
+              |> setRequestSecure False
+              |> setRequestHost "localhost"
+              |> setRequestPort port
+              |> setRequestPath "/login"
+              |> setRequestBodyURLEncoded [("username","username"), ("password","password")]
+              |> flip httpSink (const sinkDoc)
+            doc ^? root . entire . named "head" . entire . named "title" . text
+              @?= Just "Habit of Fate - Login"
+            (
+              findOf
+                (cosmosOf $ dropping 1 entire)
+                (elementAttributes >>> lookup "id" >>> (== Just "error-message"))
+                (doc ^. root)
+              |> fmap (^. text)
+             ) @?= Just "No account has that username."
         , serverTestCaseNoFiles "GET /create returns account creation page" $ \port → do
             doc ← defaultRequest
               |> setRequestMethod "GET"

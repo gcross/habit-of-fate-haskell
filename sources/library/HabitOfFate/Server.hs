@@ -664,7 +664,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
           <td>
             <input type="password" name="password">
     $if (not . onull) error_message
-      <div>#{error_message}
+      <div id="error-message">#{error_message}
     <div>
       <input type="submit" formmethod="post"/>
       <a href="/create">Create
