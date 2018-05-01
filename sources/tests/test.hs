@@ -25,7 +25,14 @@ import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
 import Text.XML (parseLBS)
 import Text.XML.Cursor
-import Text.XML.Lens (elementAttributes, entire, named, root, text)
+import Text.XML.Lens
+  ( Document
+  , elementAttributes
+  , entire
+  , named
+  , root
+  , text
+  )
 import Web.JWT
 
 import HabitOfFate.API
@@ -257,55 +264,57 @@ main = defaultMain $ testGroup "All Tests"
             ]
         ]
     ----------------------------------------------------------------------------
-    , testGroup "Web"
+    , testGroup "Web" $
+        let webTestCase ∷ String → (((Request → Request) → IO Document) → IO ()) → TestTree
+            webTestCase test_name runTest =
+              serverTestCaseNoFiles test_name $ \port →
+                let requestDocument ∷ (Request → Request) → IO Document
+                    requestDocument customizeRequest = defaultRequest
+                      |> setRequestSecure False
+                      |> setRequestHost "localhost"
+                      |> setRequestPort port
+                      |> customizeRequest
+                      |> flip httpSink (const sinkDoc)
+                in runTest requestDocument
+            assertPageTitleEquals doc expected_page_title =
+              doc ^? root . entire . named "head" . entire . named "title" . text
+                @?= Just expected_page_title
+            assertTextIs doc element_id expected_text =
+              (
+                findOf
+                  (cosmosOf $ dropping 1 entire)
+                  (elementAttributes >>> lookup "id" >>> (== Just "error-message"))
+                  (doc ^. root)
+                |> fmap (^. text)
+              )
+              @?= Just expected_text
+        in
     ----------------------------------------------------------------------------
-        [ serverTestCaseNoFiles "GET / with no cookies redirects to login page" $ \port → do
-            doc ← defaultRequest
-              |> setRequestMethod "GET"
-              |> setRequestSecure False
-              |> setRequestHost "localhost"
-              |> setRequestPort port
-              |> setRequestPath "/"
-              |> flip httpSink (const sinkDoc)
-            doc ^? root . entire . named "head" . entire . named "title" . text
-              @?= Just "Habit of Fate - Login"
-        , serverTestCaseNoFiles "GET /login returns login page" $ \port → do
-            doc ← defaultRequest
-              |> setRequestMethod "GET"
-              |> setRequestSecure False
-              |> setRequestHost "localhost"
-              |> setRequestPort port
-              |> setRequestPath "/login"
-              |> flip httpSink (const sinkDoc)
-            doc ^? root . entire . named "head" . entire . named "title" . text
-              @?= Just "Habit of Fate - Login"
-        , serverTestCaseNoFiles "POST /login for non-existent user returns login page withe error" $ \port → do
-            doc ← defaultRequest
-              |> setRequestSecure False
-              |> setRequestHost "localhost"
-              |> setRequestPort port
-              |> setRequestPath "/login"
-              |> setRequestBodyURLEncoded [("username","username"), ("password","password")]
-              |> flip httpSink (const sinkDoc)
-            doc ^? root . entire . named "head" . entire . named "title" . text
-              @?= Just "Habit of Fate - Login"
-            (
-              findOf
-                (cosmosOf $ dropping 1 entire)
-                (elementAttributes >>> lookup "id" >>> (== Just "error-message"))
-                (doc ^. root)
-              |> fmap (^. text)
-             ) @?= Just "No account has that username."
-        , serverTestCaseNoFiles "GET /create returns account creation page" $ \port → do
-            doc ← defaultRequest
-              |> setRequestMethod "GET"
-              |> setRequestSecure False
-              |> setRequestHost "localhost"
-              |> setRequestPort port
-              |> setRequestPath "/create"
-              |> flip httpSink (const sinkDoc)
-            doc ^? root . entire . named "head" . entire . named "title" . text
-              @?= Just "Habit of Fate - Account Creation"
+        [ webTestCase "GET / with no cookies redirects to login page" $ \requestDocument → do
+            doc ← requestDocument $
+              setRequestMethod "GET"
+              >>>
+              setRequestPath "/"
+            assertPageTitleEquals doc "Habit of Fate - Login"
+        , webTestCase "GET /login returns login page" $ \requestDocument → do
+            doc ← requestDocument $
+              setRequestMethod "GET"
+              >>>
+              setRequestPath "/"
+            assertPageTitleEquals doc "Habit of Fate - Login"
+        , webTestCase "POST /login for non-existent user returns login page withe error" $ \requestDocument → do
+            doc ← requestDocument $
+              setRequestPath "/login"
+              >>>
+              setRequestBodyURLEncoded [("username","username"), ("password","password")]
+            assertPageTitleEquals doc "Habit of Fate - Login"
+            assertTextIs doc "error-message" "No account has that username."
+        , webTestCase "GET /create returns account creation page" $ \requestDocument → do
+            doc ← requestDocument $
+              setRequestMethod "GET"
+              >>>
+              setRequestPath "/create"
+            assertPageTitleEquals doc "Habit of Fate - Account Creation"
         ]
         ------------------------------------------------------------------------
     ]
