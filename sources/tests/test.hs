@@ -269,6 +269,16 @@ main = defaultMain $ testGroup "All Tests"
               |> flip httpSink (const sinkDoc)
             doc ^? root . entire . named "head" . entire . named "title" . text
               @?= Just "Habit of Fate - Login"
+        , serverTestCaseNoFiles "GET /login returns login page" $ \port → do
+            doc ← defaultRequest
+              |> setRequestMethod "GET"
+              |> setRequestSecure False
+              |> setRequestHost "localhost"
+              |> setRequestPort port
+              |> setRequestPath "/login"
+              |> flip httpSink (const sinkDoc)
+            doc ^? root . entire . named "head" . entire . named "title" . text
+              @?= Just "Habit of Fate - Login"
         , serverTestCaseNoFiles "GET /create returns account creation page" $ \port → do
             doc ← defaultRequest
               |> setRequestMethod "GET"
