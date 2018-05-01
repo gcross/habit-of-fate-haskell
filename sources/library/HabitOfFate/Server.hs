@@ -636,7 +636,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                 accounts ← readTVarMonadIO accounts_tvar
                 case lookup username accounts of
                   Nothing → do
-                    logIO [i|Incorrect password for #{username_}.|]
+                    logIO [i|No account has username #{username_}.|]
                     pure "No account has that username."
                   Just account_tvar → do
                     account ← readTVarMonadIO account_tvar
