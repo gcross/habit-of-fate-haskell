@@ -16,29 +16,22 @@ import Control.Monad.Catch
 import qualified Data.Map as Map
 import Data.IORef
 import Network.HTTP.Simple
-import Network.HTTP.Types
 import Network.Wai.Handler.Warp
 import System.IO
-import System.IO.Temp
 import Test.Tasty
 import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
-import Text.XML (parseLBS)
-import Text.XML.Cursor
 import Text.XML.Lens
-  ( Document
-  , elementAttributes
+  ( elementAttributes
   , entire
   , named
   , root
   , text
   )
-import Web.JWT
 
 import HabitOfFate.API
 import HabitOfFate.Credits
 import HabitOfFate.Habit
-import HabitOfFate.Logging
 import HabitOfFate.Server
 import HabitOfFate.Server.Testing
 import HabitOfFate.Story
