@@ -265,14 +265,13 @@ main = defaultMain $ testGroup "All Tests"
         ]
     ----------------------------------------------------------------------------
     , testGroup "Web" $
-        let webTestCase ∷ String → (((Request → Request) → IO Document) → IO ()) → TestTree
-            webTestCase test_name runTest =
+        let webTestCase test_name runTest =
               serverTestCaseNoFiles test_name $ \port →
-                let requestDocument ∷ (Request → Request) → IO Document
-                    requestDocument customizeRequest = defaultRequest
+                let requestDocument path customizeRequest = defaultRequest
                       |> setRequestSecure False
                       |> setRequestHost "localhost"
                       |> setRequestPort port
+                      |> setRequestPath path
                       |> customizeRequest
                       |> flip httpSink (const sinkDoc)
                 in runTest requestDocument
@@ -291,29 +290,18 @@ main = defaultMain $ testGroup "All Tests"
         in
     ----------------------------------------------------------------------------
         [ webTestCase "GET / with no cookies redirects to login page" $ \requestDocument → do
-            doc ← requestDocument $
-              setRequestMethod "GET"
-              >>>
-              setRequestPath "/"
+            doc ← requestDocument "/" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Login"
         , webTestCase "GET /login returns login page" $ \requestDocument → do
-            doc ← requestDocument $
-              setRequestMethod "GET"
-              >>>
-              setRequestPath "/"
+            doc ← requestDocument "/" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Login"
         , webTestCase "POST /login for non-existent user returns login page withe error" $ \requestDocument → do
-            doc ← requestDocument $
-              setRequestPath "/login"
-              >>>
+            doc ← requestDocument "/login" $
               setRequestBodyURLEncoded [("username","username"), ("password","password")]
             assertPageTitleEquals doc "Habit of Fate - Login"
             assertTextIs doc "error-message" "No account has that username."
         , webTestCase "GET /create returns account creation page" $ \requestDocument → do
-            doc ← requestDocument $
-              setRequestMethod "GET"
-              >>>
-              setRequestPath "/create"
+            doc ← requestDocument "/create" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Account Creation"
         ]
         ------------------------------------------------------------------------
