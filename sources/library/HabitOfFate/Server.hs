@@ -650,7 +650,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                         pure "No account has that username."
           scottyHTML [hamlet|
 <head>
-  <title>Account creation
+  <title>Habit of Fate - Login
 <body>
   <form method="post">
     <div>
