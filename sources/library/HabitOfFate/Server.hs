@@ -27,15 +27,11 @@ module HabitOfFate.Server
 import HabitOfFate.Prelude hiding (div, id, log)
 
 import Data.Aeson hiding ((.=))
-import Data.Aeson.Types hiding ((.=))
-import Data.Containers
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
-import Control.Exception (assert)
 import Control.Monad.Random
 import Control.Monad.Operational (Program, ProgramViewT(..))
-import Control.Monad.STM
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as Lazy
@@ -43,15 +39,13 @@ import Data.Set (minView)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
 import Data.UUID hiding (null)
-import Data.Yaml hiding (Parser, (.=))
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
-import System.Random
-import Text.Blaze.Html (Html, ToMarkup, toHtml)
+import Text.Blaze.Html (Html, toHtml)
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
-import Text.Hamlet (HtmlUrl, hamlet)
+import Text.Hamlet (hamlet)
 import Web.Cookie
 import Web.Scotty
   ( ActionM
