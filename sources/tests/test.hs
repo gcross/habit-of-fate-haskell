@@ -10,7 +10,7 @@
 
 module Main where
 
-import HabitOfFate.Prelude hiding (elements)
+import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Monad.Catch
 import qualified Data.Map as Map
@@ -25,6 +25,7 @@ import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
 import Text.XML (parseLBS)
 import Text.XML.Cursor
+import Text.XML.Lens (entire, named, root, text)
 import Web.JWT
 
 import HabitOfFate.API
@@ -255,6 +256,21 @@ main = defaultMain $ testGroup "All Tests"
                     (abs (actual_failures - expected_failures) < 0.1)
             ]
         ]
+    ----------------------------------------------------------------------------
+    , testGroup "Web"
+    ----------------------------------------------------------------------------
+        [ serverTestCaseNoFiles "GET / with no cookies redirects to login page" $ \port → do
+            doc ← defaultRequest
+              |> setRequestMethod "GET"
+              |> setRequestSecure False
+              |> setRequestHost "localhost"
+              |> setRequestPort port
+              |> setRequestPath "/"
+              |> flip httpSink (const sinkDoc)
+            doc ^? root . entire . named "head" . entire . named "title" . text
+              @?= Just "Habit of Fate - Login"
+        ]
+        ------------------------------------------------------------------------
     ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Story"
