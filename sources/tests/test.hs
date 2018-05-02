@@ -14,8 +14,8 @@ module Main where
 import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Monad.Catch
-import qualified Data.Map as Map
 import Data.IORef
+import qualified Data.Map as Map
 import Network.HTTP.Client (redirectCount)
 import Network.HTTP.Simple
 import Network.Wai.Handler.Warp
