@@ -467,7 +467,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
       createAndReturnCookie username = do
         Cookie token ← liftIO $ do
           current_time ← getCurrentTime
-          cookie ← (pack >>> Cookie) <$> (replicateM 10 $ randomRIO ('a','z'))
+          cookie ← (pack >>> Cookie) <$> (replicateM 20 $ randomRIO ('A','z'))
           atomically $ do
             let expiration_time = addUTCTime (30*86400) current_time
             modifyTVar cookies_tvar $ insertMap cookie (expiration_time, username)
