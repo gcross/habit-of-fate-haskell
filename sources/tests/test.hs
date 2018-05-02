@@ -319,6 +319,13 @@ main = defaultMain $ testGroup "All Tests"
                 |> fmap (^. text)
               )
               @?= Just expected_text
+            createTestAccount username password =
+              requestDocument "/create" $
+                setRequestBodyURLEncoded
+                  [ ("username",username)
+                  , ("password1",password)
+                  , ("password2",password)
+                  ]
         in
     ----------------------------------------------------------------------------
         [ webTestCase "GET / redirects to /habits" $ do
@@ -335,13 +342,8 @@ main = defaultMain $ testGroup "All Tests"
         , webTestCase "GET /create returns account creation page" $ do
             (_, doc) ← requestDocument "/create" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Account Creation"
-        , webTestCase "POST /create with fields filled in redirects to /" $ \requestDocument → do
-            (response, _) ← requestDocument "/create" $
-              setRequestBodyURLEncoded
-                [ ("username","username")
-                , ("password1","password")
-                , ("password2","password")
-                ]
+        , webTestCase "POST /create with fields filled in redirects to /" $ do
+            (response, _) ← createTestAccount "username" "password"
             assertRedirectsTo response "/"
         ]
         ------------------------------------------------------------------------
