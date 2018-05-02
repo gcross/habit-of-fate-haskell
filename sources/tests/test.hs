@@ -272,43 +272,39 @@ main = defaultMain $ testGroup "All Tests"
         ]
     ----------------------------------------------------------------------------
     , testGroup "Web" $
-        let webTestCase ∷
-              String →
-              (
-                (
-                  ByteString →
-                  (Request → Request) →
-                  StateT CookieJar IO (Response (), Document)
-                ) →
-                StateT CookieJar IO ()
-              ) →
-              TestTree
+        let webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
             webTestCase test_name runTest =
               serverTestCaseNoFiles test_name $ \port → do
                 current_time ← liftIO getCurrentTime
-                let requestDocument ∷
-                      ByteString →
-                      (Request → Request) →
-                      StateT CookieJar IO (Response (), Document)
-                    requestDocument path customizeRequest = do
-                      old_cookie_jar ← get
-                      let request_without_cookies =
-                            defaultRequest
-                            |> setRequestSecure False
-                            |> setRequestHost "localhost"
-                            |> setRequestPort port
-                            |> setRequestPath path
-                            |> (\x → x {redirectCount = 0})
-                            |> customizeRequest
-                          (cookie_header, new_cookie_jar) =
-                            computeCookieString request old_cookie_jar current_time True
-                          request = addRequestHeader "Cookie" cookie_header request_without_cookies
-                      (response, doc) ← liftIO $ httpSink request (\response → (response,) <$> sinkDoc)
-                      let (updated_cookie_jar, response_without_cookie) =
-                            updateCookieJar response request current_time new_cookie_jar
-                      put updated_cookie_jar
-                      return (response_without_cookie, doc)
-                void $ runStateT (runTest requestDocument) mempty
+                runTest
+                  |> flip runReaderT port
+                  |> void
+                  |> flip runStateT mempty
+                  |> void
+            requestDocument ∷
+              ByteString →
+              (Request → Request) →
+              ReaderT Int (StateT CookieJar IO) (Response (), Document)
+            requestDocument path customizeRequest = do
+              port ← ask
+              old_cookie_jar ← get
+              current_time ← liftIO getCurrentTime
+              let request_without_cookies =
+                    defaultRequest
+                    |> setRequestSecure False
+                    |> setRequestHost "localhost"
+                    |> setRequestPort port
+                    |> setRequestPath path
+                    |> (\x → x {redirectCount = 0})
+                    |> customizeRequest
+                  (cookie_header, new_cookie_jar) =
+                    computeCookieString request old_cookie_jar current_time True
+                  request = addRequestHeader "Cookie" cookie_header request_without_cookies
+              (response, doc) ← liftIO $ httpSink request (\response → (response,) <$> sinkDoc)
+              let (updated_cookie_jar, response_without_cookie) =
+                    updateCookieJar response request current_time new_cookie_jar
+              put updated_cookie_jar
+              return (response_without_cookie, doc)
             assertRedirectsTo response expected_location = liftIO $
               getResponseHeader "Location" response @?= [expected_location]
             assertPageTitleEquals doc expected_page_title = liftIO $
@@ -325,18 +321,18 @@ main = defaultMain $ testGroup "All Tests"
               @?= Just expected_text
         in
     ----------------------------------------------------------------------------
-        [ webTestCase "GET / redirects to /habits" $ \requestDocument → do
+        [ webTestCase "GET / redirects to /habits" $ do
             (response, _) ← requestDocument "/" $ setRequestMethod "GET"
             assertRedirectsTo response "/habits"
-        , webTestCase "GET /login returns login page" $ \requestDocument → do
+        , webTestCase "GET /login returns login page" $ do
             (_, doc) ← requestDocument "/login" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Login"
-        , webTestCase "POST /login for non-existent user returns login page withe error" $ \requestDocument → do
+        , webTestCase "POST /login for non-existent user returns login page withe error" $ do
             (_, doc) ← requestDocument "/login" $
               setRequestBodyURLEncoded [("username","username"), ("password","password")]
             assertPageTitleEquals doc "Habit of Fate - Login"
             assertTextIs doc "error-message" "No account has that username."
-        , webTestCase "GET /create returns account creation page" $ \requestDocument → do
+        , webTestCase "GET /create returns account creation page" $ do
             (_, doc) ← requestDocument "/create" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Account Creation"
         , webTestCase "POST /create with fields filled in redirects to /" $ \requestDocument → do
