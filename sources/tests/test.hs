@@ -345,6 +345,10 @@ main = defaultMain $ testGroup "All Tests"
         , webTestCase "POST /create with fields filled in redirects to /" $ do
             (response, _) ← createTestAccount "username" "password"
             assertRedirectsTo response "/"
+        , webTestCase "Creating an account causes /habits to load the habits page" $ do
+            _ ← createTestAccount "username" "password"
+            (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+            assertPageTitleEquals doc "Habit of Fate - List of Habits"
         ]
         ------------------------------------------------------------------------
     ]
