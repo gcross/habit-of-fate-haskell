@@ -698,7 +698,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
       habits_ ← view habits
       returnHTML ok200 [hamlet|
 <head>
-  <title>List of habits
+  <title>Habit of Fate - List of Habits
 <body>
   <table>
     $forall (uuid, habit) <- mapToList habits_
