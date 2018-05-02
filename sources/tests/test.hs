@@ -16,7 +16,8 @@ import HabitOfFate.Prelude hiding (elements, text)
 import Control.Monad.Catch
 import Data.IORef
 import qualified Data.Map as Map
-import Network.HTTP.Client (redirectCount)
+import Data.Time.Clock
+import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Simple
 import Network.Wai.Handler.Warp
 import System.IO
@@ -24,7 +25,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
 import Text.XML.Lens
-  ( elementAttributes
+  ( Document
+  , elementAttributes
   , entire
   , named
   , root
@@ -270,23 +272,49 @@ main = defaultMain $ testGroup "All Tests"
         ]
     ----------------------------------------------------------------------------
     , testGroup "Web" $
-        let webTestCase test_name runTest =
-              serverTestCaseNoFiles test_name $ \port →
-                let requestDocument path customizeRequest = defaultRequest
-                      |> setRequestSecure False
-                      |> setRequestHost "localhost"
-                      |> setRequestPort port
-                      |> setRequestPath path
-                      |> (\x → x {redirectCount = 0})
-                      |> customizeRequest
-                      |> flip httpSink (\response → (response,) <$> sinkDoc)
-                in runTest requestDocument
-            assertRedirectsTo response expected_location =
+        let webTestCase ∷
+              String →
+              (
+                (
+                  ByteString →
+                  (Request → Request) →
+                  StateT CookieJar IO (Response (), Document)
+                ) →
+                StateT CookieJar IO ()
+              ) →
+              TestTree
+            webTestCase test_name runTest =
+              serverTestCaseNoFiles test_name $ \port → do
+                current_time ← liftIO getCurrentTime
+                let requestDocument ∷
+                      ByteString →
+                      (Request → Request) →
+                      StateT CookieJar IO (Response (), Document)
+                    requestDocument path customizeRequest = do
+                      old_cookie_jar ← get
+                      let request_without_cookies =
+                            defaultRequest
+                            |> setRequestSecure False
+                            |> setRequestHost "localhost"
+                            |> setRequestPort port
+                            |> setRequestPath path
+                            |> (\x → x {redirectCount = 0})
+                            |> customizeRequest
+                          (cookie_header, new_cookie_jar) =
+                            computeCookieString request old_cookie_jar current_time True
+                          request = addRequestHeader "Cookie" cookie_header request_without_cookies
+                      (response, doc) ← liftIO $ httpSink request (\response → (response,) <$> sinkDoc)
+                      let (updated_cookie_jar, response_without_cookie) =
+                            updateCookieJar response request current_time new_cookie_jar
+                      put updated_cookie_jar
+                      return (response_without_cookie, doc)
+                void $ runStateT (runTest requestDocument) mempty
+            assertRedirectsTo response expected_location = liftIO $
               getResponseHeader "Location" response @?= [expected_location]
-            assertPageTitleEquals doc expected_page_title =
+            assertPageTitleEquals doc expected_page_title = liftIO $
               doc ^? root . entire . named "head" . entire . named "title" . text
                 @?= Just expected_page_title
-            assertTextIs doc element_id expected_text =
+            assertTextIs doc element_id expected_text = liftIO $
               (
                 findOf
                   (cosmosOf $ dropping 1 entire)
