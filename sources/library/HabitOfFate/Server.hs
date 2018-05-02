@@ -31,7 +31,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Monad.Random
-import Control.Monad.Operational (Program, ProgramViewT(..))
+import Control.Monad.Operational (Program, ProgramViewT(..), interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as Lazy
@@ -333,20 +333,18 @@ readerWith actionWhenAuthFails environment (ReaderProgram program) = do
   params_ ← params
   body_ ← Scotty.body
   account ← account_tvar |> readTVarMonadIO
-  let interpret ∷
-        Program ReaderInstruction α →
-        ExceptT Status (Writer (Seq String)) α
-      interpret (Operational.view → Return result) = pure result
-      interpret (Operational.view → instruction :>>= rest) = case instruction of
-        ReaderCommonInstruction common_instruction → case common_instruction of
-          GetBodyInstruction → interpret (rest body_)
-          GetParamsInstruction → interpret (rest params_)
-          RaiseStatusInstruction s → throwError s
-          LogInstruction message → do
-            [i|[#{username}]: #{message}|] |> singleton |> tell
-            interpret (rest ())
-        ReaderViewInstruction → interpret (rest account)
-      (error_or_result, logs) = program |> interpret |> runExceptT |> runWriter
+  let interpret ∷ ReaderInstruction α → ExceptT Status (Writer (Seq String)) α
+      interpret (ReaderCommonInstruction GetBodyInstruction) = pure body_
+      interpret (ReaderCommonInstruction GetParamsInstruction) = pure params_
+      interpret (ReaderCommonInstruction (RaiseStatusInstruction s)) = throwError s
+      interpret (ReaderCommonInstruction (LogInstruction message)) =
+        void ([i|[#{username}]: #{message}|] |> singleton |> tell)
+      interpret ReaderViewInstruction = pure account
+      (error_or_result, logs) =
+        program
+          |> interpretWithMonad interpret
+          |> runExceptT
+          |> runWriter
   traverse_ logIO logs
   case error_or_result of
     Left status_ →
@@ -380,24 +378,20 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
   params_ ← params
   body_ ← Scotty.body
   let interpret ∷
-        Program WriterInstruction α →
+        WriterInstruction α →
         StateT Account (ExceptT Status (RandT StdGen (Writer (Seq String)))) α
-      interpret (Operational.view → Return result) = pure result
-      interpret (Operational.view → instruction :>>= rest) = case instruction of
-        WriterCommonInstruction common_instruction → case common_instruction of
-          GetBodyInstruction → interpret (rest body_)
-          GetParamsInstruction → interpret (rest params_)
-          RaiseStatusInstruction s → throwError s
-          LogInstruction message → do
-            [i|[#{username}]: #{message}|] |> singleton |> tell
-            interpret (rest ())
-        WriterGetAccountInstruction → get >>= (rest >>> interpret)
-        WriterPutAccountInstruction new_account → put new_account >> interpret (rest ())
+      interpret (WriterCommonInstruction GetBodyInstruction) = pure body_
+      interpret (WriterCommonInstruction GetParamsInstruction) = pure params_
+      interpret (WriterCommonInstruction (RaiseStatusInstruction s)) = throwError s
+      interpret (WriterCommonInstruction (LogInstruction message)) =
+        void ([i|[#{username}]: #{message}|] |> singleton |> tell)
+      interpret WriterGetAccountInstruction = get
+      interpret (WriterPutAccountInstruction new_account) = put new_account
   initial_generator ← liftIO newStdGen
   (status_, maybe_content, logs) ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs) =
-          interpret program
+          interpretWithMonad interpret program
             |> flip runStateT old_account
             |> runExceptT
             |> flip evalRandT initial_generator
