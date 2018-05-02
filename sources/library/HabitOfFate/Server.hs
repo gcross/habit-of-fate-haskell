@@ -638,7 +638,7 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
                       then do
                         logIO [i|Successfully logged in #{username_}.|]
                         createAndReturnCookie username
-                        Scotty.redirect "/"
+                        Scotty.redirect "/habits"
                       else do
                         logIO [i|Incorrect password for #{username_}.|]
                         pure "No account has that username."

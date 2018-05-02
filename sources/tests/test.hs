@@ -326,6 +326,12 @@ main = defaultMain $ testGroup "All Tests"
                   , ("password1",password)
                   , ("password2",password)
                   ]
+            loginTestAccount username password =
+              requestDocument "/login" $
+                setRequestBodyURLEncoded
+                  [ ("username",username)
+                  , ("password",password)
+                  ]
         in
     ----------------------------------------------------------------------------
         [ webTestCase "GET / redirects to /habits" $ do
@@ -346,6 +352,14 @@ main = defaultMain $ testGroup "All Tests"
             (response, _) ← createTestAccount "username" "password"
             assertRedirectsTo response "/"
         , webTestCase "Creating an account causes /habits to load the habits page" $ do
+            _ ← createTestAccount "username" "password"
+            (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+            assertPageTitleEquals doc "Habit of Fate - List of Habits"
+        , webTestCase "Creating an account then logging in redirects to /habits" $ do
+            _ ← createTestAccount "username" "password"
+            (response, _) ← loginTestAccount "username" "password"
+            assertRedirectsTo response "/habits"
+        , webTestCase "Creating an account makes /habits load the list of habits" $ do
             _ ← createTestAccount "username" "password"
             (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - List of Habits"
