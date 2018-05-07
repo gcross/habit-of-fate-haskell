@@ -39,25 +39,11 @@ import HabitOfFate.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
 
-no_files ∷ FileLocator
-no_files = const $ pure Nothing
+withTestApp ∷ (Int → IO ()) → IO ()
+withTestApp = withApplication (makeApp True mempty (const $ pure ()))
 
-withTestApp ∷ FileLocator → (Int → IO ()) → IO ()
-withTestApp locateWebAppFile =
-  withApplication
-    (makeApp True locateWebAppFile mempty (const $ pure ()))
-
-withTestAppNoFiles ∷ (Int → IO ()) → IO ()
-withTestAppNoFiles = withTestApp $ no_files
-
-serverTestCase ∷ String → FileLocator → (Int → IO ()) → TestTree
-serverTestCase test_name locateWebAppFile =
-  withTestApp locateWebAppFile
-  >>>
-  testCase test_name
-
-serverTestCaseNoFiles ∷ String → (Int → IO ()) → TestTree
-serverTestCaseNoFiles test_name = serverTestCase test_name no_files
+serverTestCase ∷ String → (Int → IO ()) → TestTree
+serverTestCase test_name = withTestApp >>> testCase test_name
 
 apiTestCase ∷ String → (SessionIO ()) → TestTree
 apiTestCase test_name action =
@@ -66,7 +52,7 @@ apiTestCase test_name action =
     >=>
     (fromMaybe (error "Unable to create account.") >>> runSessionT action)
   )
-  |> serverTestCaseNoFiles test_name
+  |> serverTestCase test_name
 
 test_habit = Habit "name" Low Medium
 test_habit_2 = Habit "test" Medium VeryHigh
@@ -110,13 +96,13 @@ main = defaultMain $ testGroup "All Tests"
                 >=>
                 (fromMaybe (error "Unable to create account.") >>> runSessionT action)
               )
-              |> serverTestCaseNoFiles test_name
+              |> serverTestCase test_name
         in
         ------------------------------------------------------------------------
         [ testGroup "Missing username/password" $
         ------------------------------------------------------------------------
             let testMissing test_name path =
-                  serverTestCase test_name no_files $ \port → do
+                  serverTestCase test_name $ \port → do
                     response ←
                       defaultRequest
                         |> setRequestMethod "POST"
@@ -139,7 +125,7 @@ main = defaultMain $ testGroup "All Tests"
         , testGroup "Empty username/password" $
         ------------------------------------------------------------------------
             let testEmpty test_name path =
-                  serverTestCase test_name no_files $ \port → do
+                  serverTestCase test_name $ \port → do
                     response ←
                       defaultRequest
                         |> setRequestMethod "POST"
@@ -242,7 +228,7 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
                 write_requested_ref ← newIORef False
                 withApplication
-                  (makeApp True no_files mempty (const $ writeIORef write_requested_ref True))
+                  (makeApp True mempty (const $ writeIORef write_requested_ref True))
                   $
                   \port → do
                     session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
@@ -274,7 +260,7 @@ main = defaultMain $ testGroup "All Tests"
     , testGroup "Web" $
         let webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
             webTestCase test_name runTest =
-              serverTestCaseNoFiles test_name $ \port → do
+              serverTestCase test_name $ \port → do
                 current_time ← liftIO getCurrentTime
                 runTest
                   |> flip runReaderT port

@@ -19,8 +19,7 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module HabitOfFate.Server
-  ( FileLocator
-  , Username(..)
+  ( Username(..)
   , makeApp
   ) where
 
@@ -35,6 +34,7 @@ import Control.Monad.Operational (Program, ProgramViewT(..), interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as Lazy
+import Data.List (isSuffixOf)
 import Data.Set (minView)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
@@ -42,6 +42,7 @@ import Data.UUID hiding (null)
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
+import System.FilePath
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import Text.Blaze.Html (Html, toHtml)
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
@@ -51,6 +52,7 @@ import Web.Scotty
   ( ActionM
   , Param
   , Parsable
+  , addHeader
   , params
   , parseParam
   , finish
@@ -66,6 +68,8 @@ import HabitOfFate.Game
 import HabitOfFate.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Story
+
+import Paths_habit_of_fate (getDataFileName)
 
 --------------------------------------------------------------------------------
 -------------------------------- Miscellaneous ---------------------------------
@@ -410,8 +414,6 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
-type FileLocator = FilePath → IO (Maybe FilePath)
-
 data RunGameState = RunGameState
   { _run_quests ∷ Seq Quest
   , _run_quest_events ∷ Seq Event
@@ -420,11 +422,10 @@ makeLenses ''RunGameState
 
 makeApp ∷
   Bool →
-  FileLocator →
   Map Username Account →
   (Map Username Account → IO ()) →
   IO Application
-makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
+makeApp test_mode initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
 
   logIO $ "Starting server..."
@@ -493,19 +494,6 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
       apiWriter = writerWith (finishWithStatusMessage 403) environment
       wwwReader = readerWith (const $ Scotty.redirect "/login") environment
       wwwWriter = writerWith (const $ Scotty.redirect "/login") environment
-
-      getContent filename =
-        logIO [i|Getting content #{filename}|]
-        >>
-        (liftIO $ locateWebAppFile filename)
-        >>=
-        \case
-          Nothing → do
-            logIO "File not found."
-            setStatusAndLog notFound404
-          Just filepath → do
-            logIO [i|File found at "#{filepath}".|]
-            Scotty.file filepath
 
   scottyApp $ do
 -------------------------------- Create Account --------------------------------
@@ -848,6 +836,22 @@ makeApp test_mode locateWebAppFile initial_accounts saveAccounts = do
 |]
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
+---------------------------------- Web Files -----------------------------------
+    let fetch ∷ FilePath → String → ActionM ()
+        fetch subdirectory extension = do
+          filepath ← param "filename"
+          logIO [i|Requested file #{filepath} in #{subdirectory}|]
+          when ('/' ∈ filepath) $ do
+            logIO [i|Filepath #{filepath} has a slash.|]
+            Scotty.next
+          unless (('.':extension) `isSuffixOf` filepath) $ do
+            logIO [i|Filename #{filepath} does not end with .#{extension}|]
+            Scotty.next
+          addHeader "Content-Type" "text/css"
+          file_to_return ← (subdirectory </> filepath) |> getDataFileName |> liftIO
+          logIO [i|Returning #{file_to_return}|]
+          Scotty.file file_to_return
+    Scotty.get "/css/:filename" $ fetch "css" "css"
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
