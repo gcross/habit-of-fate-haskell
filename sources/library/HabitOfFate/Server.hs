@@ -855,5 +855,5 @@ makeApp test_mode initial_accounts saveAccounts = do
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
-      logIO $ [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
+      logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next
