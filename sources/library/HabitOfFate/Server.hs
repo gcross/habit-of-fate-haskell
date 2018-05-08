@@ -30,7 +30,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.DeepSeq
 import Control.Monad.Random
-import Control.Monad.Operational (Program, ProgramViewT(..), interpretWithMonad)
+import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as Lazy
