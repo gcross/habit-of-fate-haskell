@@ -62,6 +62,7 @@ import System.FilePath
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import Text.Blaze.Html (Html, toHtml)
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import Text.Cassius (cassius, renderCss)
 import Text.Hamlet (hamlet)
 import Web.Cookie
 import Web.Scotty
@@ -124,6 +125,7 @@ readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
 
 scottyHTML = ($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html
+scottyCSS = ($ renderPageURL) >>> renderCss >>> Scotty.text
 
 --------------------------------------------------------------------------------
 ---------------------------- Shared Scotty Actions -----------------------------
@@ -643,23 +645,22 @@ makeApp test_mode initial_accounts saveAccounts = do
           scottyHTML [hamlet|
 <head>
   <title>Habit of Fate - Login
+  <link rel="stylesheet" type="text/css" href="css/enter.css"/>
 <body>
-  <form method="post">
-    <div>
-      <table>
-        <tr>
-          <td> Username
-          <td>
-            <input type="text" name="username" value="#{username_}">
-        <tr>
-          <td> Password
-          <td>
-            <input type="password" name="password">
-    $if (not . onull) error_message
-      <div id="error-message">#{error_message}
-    <div>
-      <input type="submit" formmethod="post"/>
-      <a href="/create">Create
+  <div class="enter">
+    <div class="tabs">
+      <span class="active"> Login
+      <span class="inactive"> Create
+    <form method="post">
+      <div>
+        <div>
+          <input type="text" name="username" value="#{username_}" for="Username">
+        <div>
+          <input type="password" name="password" for="Password">
+      $if (not . onull) error_message
+        <div id="error-message">#{error_message}
+      <div>
+        <input type="submit" formmethod="post"/>
 |]
     Scotty.get "/login" loginAction
     Scotty.post "/login" loginAction
@@ -852,22 +853,33 @@ makeApp test_mode initial_accounts saveAccounts = do
 |]
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
----------------------------------- Web Files -----------------------------------
-    let fetch ∷ FilePath → String → ActionM ()
-        fetch subdirectory extension = do
-          filepath ← param "filename"
-          logIO [i|Requested file #{filepath} in #{subdirectory}|]
-          when ('/' ∈ filepath) $ do
-            logIO [i|Filepath #{filepath} has a slash.|]
-            Scotty.next
-          unless (('.':extension) `isSuffixOf` filepath) $ do
-            logIO [i|Filename #{filepath} does not end with .#{extension}|]
-            Scotty.next
-          addHeader "Content-Type" "text/css"
-          file_to_return ← (subdirectory </> filepath) |> getDataFileName |> liftIO
-          logIO [i|Returning #{file_to_return}|]
-          Scotty.file file_to_return
-    Scotty.get "/css/:filename" $ fetch "css" "css"
+--------------------------------- Style Sheets ---------------------------------
+    Scotty.get "/css/enter.css" <<< scottyCSS $ [cassius|
+body
+  background: #a2aeff
+  font-family: Arial
+
+.enter
+  width: 600px
+  padding: 8% 0 0
+  margin: auto
+
+.tabs
+  color: white
+
+  .active
+    background: #728fff
+    padding: 10px
+
+  .inactive
+    background: #476bff
+    padding: 10px
+
+form
+  background: #728fff
+  color: white
+  padding: 10px
+|]
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
