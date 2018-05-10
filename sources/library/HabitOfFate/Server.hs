@@ -887,6 +887,9 @@ body
     background: #476bff
     padding: 10px
 
+  span.inactive:hover
+    background: #5d7dff
+
 form
   background: #728fff
   color: white
