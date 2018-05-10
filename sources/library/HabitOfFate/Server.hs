@@ -875,9 +875,9 @@ body
   display: flex
   flex-direction: row
   flex-wrap: nowrap
-  position: relative
   margin-bottom: -10px
   margin-right: 20px
+  position: relative
 
   .active
     background: #728fff
