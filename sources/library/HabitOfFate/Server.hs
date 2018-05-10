@@ -854,7 +854,9 @@ makeApp test_mode initial_accounts saveAccounts = do
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 --------------------------------- Style Sheets ---------------------------------
-    Scotty.get "/css/enter.css" <<< scottyCSS $ [cassius|
+    Scotty.get "/css/enter.css" $ do
+      addHeader "Content-Type" "text/css"
+      scottyCSS [cassius|
 body
   background: #a2aeff
   font-family: Arial
