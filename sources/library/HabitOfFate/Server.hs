@@ -573,27 +573,21 @@ makeApp test_mode initial_accounts saveAccounts = do
           scottyHTML [hamlet|
 <head>
   <title>Habit of Fate - Account Creation
+  <link rel="stylesheet" type="text/css" href="css/enter.css"/>
 <body>
-  <form method="post">
-    <div>
-      <table>
-        <tr>
-          <td> Username
-          <td>
-            <input type="text" name="username" value="#{username_}">
-        <tr>
-          <td> Password
-          <td>
-            <input type="password" name="password1">
-        <tr>
-          <td> Password (again)
-          <td>
-            <input type="password" name="password2">
-    $if (not . onull) error_message
-      <div>#{error_message}
-    <div>
-      <input type="submit" formmethod="post"/>
-      <a href="/login">Login
+  <div class="enter">
+    <div class="tabs">
+      <span class="inactive"><a href="/login">Login</a>
+      <span class="active"> Create
+    <form method="post">
+      <div>
+        <div> <input type="text" name="username" value="#{username_}" for="Username">
+        <div> <input type="password" name="password1" for="Password">
+        <div> <input type="password" name="password2" for="Password (again)">
+      $if (not . onull) error_message
+        <div id="error-message">#{error_message}
+      <div>
+        <input type="submit" formmethod="post"/>
 |]
     Scotty.get "/create" createAccountAction
     Scotty.post "/create" createAccountAction
@@ -650,13 +644,11 @@ makeApp test_mode initial_accounts saveAccounts = do
   <div class="enter">
     <div class="tabs">
       <span class="active"> Login
-      <span class="inactive"> Create
+      <span class="inactive"><a href="/create">Create</a>
     <form method="post">
       <div>
-        <div>
-          <input type="text" name="username" value="#{username_}" for="Username">
-        <div>
-          <input type="password" name="password" for="Password">
+        <div> <input type="text" name="username" value="#{username_}" for="Username">
+        <div> <input type="password" name="password" for="Password">
       $if (not . onull) error_message
         <div id="error-message">#{error_message}
       <div>
@@ -879,15 +871,18 @@ body
   margin-right: 20px
   position: relative
 
-  .active
-    background: #728fff
-    padding: 10px
+.active
+  background: #728fff
+  padding: 10px
 
-  .inactive
-    background: #476bff
-    padding: 10px
+.inactive
+  background: #476bff
+  padding: 10px
 
-  span.inactive:hover
+  a
+    color: white
+
+span.inactive:hover
     background: #5d7dff
 
 form
