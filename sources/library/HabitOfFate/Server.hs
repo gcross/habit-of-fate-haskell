@@ -864,6 +864,7 @@ body
 .enter
   display: flex
   flex-direction: column
+  justify-content: center;
   padding: 8% 0 0
   margin: auto
   width: 600px
@@ -871,19 +872,19 @@ body
 .tabs
   bottom: 10px
   color: white
+  display: flex
+  flex-direction: row
+  flex-wrap: nowrap
   position: relative
-  margin: 0
+  margin-bottom: -10px
+  margin-right: 20px
 
   .active
     background: #728fff
-    border-color: #728fff
-    border-style: solid
     padding: 10px
 
   .inactive
     background: #476bff
-    border-color: #476bff
-    border-style: solid
     padding: 10px
 
 form
