@@ -862,9 +862,9 @@ body
 .enter
   display: flex
   flex-direction: column
-  width: 600px
   padding: 8% 0 0
   margin: auto
+  width: 600px
 
 .tabs
   bottom: 10px
