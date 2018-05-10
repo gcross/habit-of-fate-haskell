@@ -860,19 +860,28 @@ body
   font-family: Arial
 
 .enter
+  display: flex
+  flex-direction: column
   width: 600px
   padding: 8% 0 0
   margin: auto
 
 .tabs
+  bottom: 10px
   color: white
+  position: relative
+  margin: 0
 
   .active
     background: #728fff
+    border-color: #728fff
+    border-style: solid
     padding: 10px
 
   .inactive
     background: #476bff
+    border-color: #476bff
+    border-style: solid
     padding: 10px
 
 form
