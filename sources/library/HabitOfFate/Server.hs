@@ -540,24 +540,27 @@ makeApp test_mode initial_accounts saveAccounts = do
           username@(Username username_) ← Username <$> paramOrBlank "username"
           password1 ← paramOrBlank "password1"
           password2 ← paramOrBlank "password2"
-          when ((not . onull $ password1) && password1 == password2) $ do
-            logIO $ [i|Request to create an account for "#{username_}".|]
-            liftIO >>> join $ do
-              new_account ← newAccount password1
-              atomically $ do
-                accounts ← readTVar accounts_tvar
-                if member username accounts
-                  then pure $ do
-                    logIO $ [i|Account "#{username_}" already exists!|]
-                    status conflict409
-                  else do
-                    account_tvar ← newTVar new_account
-                    modifyTVar accounts_tvar $ insertMap username account_tvar
-                    pure $ do
-                      logIO $ [i|Account "#{username_}" successfully created!|]
-                      createAndReturnCookie username
-                      Scotty.redirect "/"
-          let error_message ∷ Text =
+          error_message ∷ Text ←
+            if ((not . onull $ password1) && password1 == password2)
+              then do
+                logIO $ [i|Request to create an account for "#{username_}".|]
+                liftIO >>> join $ do
+                  new_account ← newAccount password1
+                  atomically $ do
+                    accounts ← readTVar accounts_tvar
+                    if member username accounts
+                      then pure $ do
+                        logIO $ [i|Account "#{username_}" already exists!|]
+                        status conflict409
+                        pure "This account already exists."
+                      else do
+                        account_tvar ← newTVar new_account
+                        modifyTVar accounts_tvar $ insertMap username account_tvar
+                        pure $ do
+                          logIO $ [i|Account "#{username_}" successfully created!|]
+                          createAndReturnCookie username
+                          Scotty.redirect "/"
+              else pure $
                 if onull username_
                   then
                     if onull password1
