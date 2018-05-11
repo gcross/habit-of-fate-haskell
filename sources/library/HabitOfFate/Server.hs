@@ -581,13 +581,13 @@ makeApp test_mode initial_accounts saveAccounts = do
       <span class="active"> Create
     <form method="post">
       <div>
-        <div> <input type="text" name="username" value="#{username_}" placeholder="Username">
-        <div> <input type="password" name="password1" placeholder="Password">
-        <div> <input type="password" name="password2" placeholder="Password (again)">
+        <div class="fields"> <input type="text" name="username" value="#{username_}" placeholder="Username">
+        <div class="fields"> <input type="password" name="password1" placeholder="Password">
+        <div class="fields"> <input type="password" name="password2" placeholder="Password (again)">
       $if (not . onull) error_message
         <div id="error-message">#{error_message}
       <div>
-        <input type="submit" formmethod="post"/>
+        <input class="submit" type="submit" formmethod="post" value="Create Account">
 |]
     Scotty.get "/create" createAccountAction
     Scotty.post "/create" createAccountAction
@@ -647,12 +647,12 @@ makeApp test_mode initial_accounts saveAccounts = do
       <span class="inactive"><a href="/create">Create</a>
     <form method="post">
       <div>
-        <div> <input type="text" name="username" value="#{username_}" placeholder="Username">
-        <div> <input type="password" name="password" placeholder="Password">
+        <div class="fields"> <input type="text" name="username" value="#{username_}" placeholder="Username">
+        <div class="fields"> <input type="password" name="password" placeholder="Password">
       $if (not . onull) error_message
         <div id="error-message">#{error_message}
       <div>
-        <input type="submit" formmethod="post"/>
+        <input class="submit" type="submit" formmethod="post" value="Login">
 |]
     Scotty.get "/login" loginAction
     Scotty.post "/login" loginAction
@@ -888,7 +888,25 @@ span.inactive:hover
 form
   background: #728fff
   color: white
+  font-family: Arial
+  font-size: 20
   padding: 10px
+
+  .fields
+    display: flex
+    flex-direction: column
+    padding-bottom: 10px
+
+    input
+      background: #c3d0ff
+      border: 0
+      font-family: Arial
+      font-size: 20
+      padding: 5px
+
+  #error-message
+    color: #9b0000
+    padding-bottom: 10px
 |]
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
