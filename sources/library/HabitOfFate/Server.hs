@@ -581,9 +581,9 @@ makeApp test_mode initial_accounts saveAccounts = do
       <span class="active"> Create
     <form method="post">
       <div>
-        <div> <input type="text" name="username" value="#{username_}" for="Username">
-        <div> <input type="password" name="password1" for="Password">
-        <div> <input type="password" name="password2" for="Password (again)">
+        <div> <input type="text" name="username" value="#{username_}" placeholder="Username">
+        <div> <input type="password" name="password1" placeholder="Password">
+        <div> <input type="password" name="password2" placeholder="Password (again)">
       $if (not . onull) error_message
         <div id="error-message">#{error_message}
       <div>
@@ -647,8 +647,8 @@ makeApp test_mode initial_accounts saveAccounts = do
       <span class="inactive"><a href="/create">Create</a>
     <form method="post">
       <div>
-        <div> <input type="text" name="username" value="#{username_}" for="Username">
-        <div> <input type="password" name="password" for="Password">
+        <div> <input type="text" name="username" value="#{username_}" placeholder="Username">
+        <div> <input type="password" name="password" placeholder="Password">
       $if (not . onull) error_message
         <div id="error-message">#{error_message}
       <div>
