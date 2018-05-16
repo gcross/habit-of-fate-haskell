@@ -37,6 +37,7 @@
 module HabitOfFate.Server
   ( Username(..)
   , makeApp
+  , makeAppRunningInTestMode
   ) where
 
 import HabitOfFate.Prelude hiding (div, id, log)
@@ -50,7 +51,6 @@ import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as Lazy
-import Data.List (isSuffixOf)
 import Data.Set (minView)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
@@ -58,7 +58,6 @@ import Data.UUID hiding (null)
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
-import System.FilePath
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import Text.Blaze.Html (Html, toHtml)
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
@@ -438,12 +437,12 @@ data RunGameState = RunGameState
   }
 makeLenses ''RunGameState
 
-makeApp ∷
+makeAppWithTestMode ∷
   Bool →
   Map Username Account →
   (Map Username Account → IO ()) →
   IO Application
-makeApp test_mode initial_accounts saveAccounts = do
+makeAppWithTestMode test_mode initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
 
   logIO $ "Starting server..."
@@ -916,3 +915,15 @@ form
       r ← Scotty.request
       logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next
+
+makeApp ∷
+  Map Username Account →
+  (Map Username Account → IO ()) →
+  IO Application
+makeApp = makeAppWithTestMode False
+
+makeAppRunningInTestMode ∷
+  Map Username Account →
+  (Map Username Account → IO ()) →
+  IO Application
+makeAppRunningInTestMode = makeAppWithTestMode True

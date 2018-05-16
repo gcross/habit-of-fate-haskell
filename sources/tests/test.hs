@@ -56,7 +56,7 @@ import HabitOfFate.Server
 import HabitOfFate.Story
 
 withTestApp ∷ (Int → IO ()) → IO ()
-withTestApp = withApplication (makeApp True mempty (const $ pure ()))
+withTestApp = withApplication (makeAppRunningInTestMode mempty (const $ pure ()))
 
 serverTestCase ∷ String → (Int → IO ()) → TestTree
 serverTestCase test_name = withTestApp >>> testCase test_name
@@ -244,7 +244,7 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
                 write_requested_ref ← newIORef False
                 withApplication
-                  (makeApp True mempty (const $ writeIORef write_requested_ref True))
+                  (makeAppRunningInTestMode mempty (const $ writeIORef write_requested_ref True))
                   $
                   \port → do
                     session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
@@ -365,6 +365,11 @@ main = defaultMain $ testGroup "All Tests"
             _ ← createTestAccount "username" "password"
             (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - List of Habits"
+        , webTestCase "Creating a conflicting account displays an error message" $ do
+            _ ← createTestAccount "username" "password"
+            (response, doc) ← createTestAccount "username" "password"
+            liftIO $ getResponseStatusCode response @?= 409
+            assertTextIs doc "error-message" "This account already exists."
         ]
         ------------------------------------------------------------------------
     ]

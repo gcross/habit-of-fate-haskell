@@ -103,7 +103,15 @@ executable habit-server
                      , warp
                      , warp-tls
                      , yaml
+  default-language:    Haskell2010
 
+executable habit-test-server
+  hs-source-dirs:      sources/executables
+  main-is:             habit-test-server.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , warp
+                     , warp-tls
   default-language:    Haskell2010
 
 test-suite test
