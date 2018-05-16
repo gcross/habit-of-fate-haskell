@@ -127,6 +127,7 @@ test-suite test
                      , http-conduit
                      , http-types
                      , jwt
+                     , lens
                      , tasty
                      , tasty-hunit
                      , temporary

@@ -30,6 +30,7 @@ module Main where
 import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Monad.Catch
+import Data.Data.Lens (uniplate)
 import Data.IORef
 import qualified Data.Map as Map
 import Data.Time.Clock
@@ -315,7 +316,7 @@ main = defaultMain $ testGroup "All Tests"
             assertTextIs doc element_id expected_text = liftIO $
               (
                 findOf
-                  (cosmosOf $ dropping 1 entire)
+                  (cosmosOf uniplate)
                   (elementAttributes >>> lookup "id" >>> (== Just element_id))
                   (doc ^. root)
                 |> fmap (^. text)
