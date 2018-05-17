@@ -44,7 +44,6 @@ import Text.HTML.DOM (sinkDoc)
 import Text.XML.Lens
   ( Document
   , elementAttributes
-  , entire
   , named
   , root
   , text
@@ -311,7 +310,7 @@ main = defaultMain $ testGroup "All Tests"
             assertRedirectsTo response expected_location = liftIO $
               getResponseHeader "Location" response @?= [expected_location]
             assertPageTitleEquals doc expected_page_title = liftIO $
-              doc ^? root . entire . named "head" . entire . named "title" . text
+              doc ^? root . uniplate . named "head" . uniplate . named "title" . text
                 @?= Just expected_page_title
             assertTextIs doc element_id expected_text = liftIO $
               (
