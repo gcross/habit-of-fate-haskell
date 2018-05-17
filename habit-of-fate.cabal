@@ -132,6 +132,7 @@ test-suite test
                      , tasty-hunit
                      , temporary
                      , time
+                     , uuid
                      , warp
                      , xml-conduit
                      , xml-lens
