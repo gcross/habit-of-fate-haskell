@@ -43,6 +43,7 @@ import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
 import Text.XML.Lens
   ( Document
+  , (./)
   , elementAttributes
   , named
   , root
@@ -310,7 +311,7 @@ main = defaultMain $ testGroup "All Tests"
             assertRedirectsTo response expected_location = liftIO $
               getResponseHeader "Location" response @?= [expected_location]
             assertPageTitleEquals doc expected_page_title = liftIO $
-              doc ^? root . uniplate . named "head" . uniplate . named "title" . text
+              doc ^? root ./ named "head" ./ named "title" . text
                 @?= Just expected_page_title
             assertTextIs doc element_id expected_text = liftIO $
               (
