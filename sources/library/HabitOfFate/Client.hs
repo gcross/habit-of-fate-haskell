@@ -205,8 +205,8 @@ main_menu =
       habit_id ← liftIO randomIO
       habit ← Habit
         <$> prompt readNonEmpty "What is the name of the habit?"
-        <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
-        <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
+        <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
+        <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
       liftSession >>> void $ putHabit habit_id habit
       "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
     ,interaction 'e' "Edit a habit." $ do
@@ -219,8 +219,8 @@ main_menu =
           return
       habit ← Habit
         <$> promptWithDefault readNonEmpty (old_habit ^. name) "What is the name of the habit?"
-        <*> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options)
-        <*> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options)
+        <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
+        <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
       liftSession >>> void $ putHabit habit_id habit
     ,interaction 'f' "Mark habits as failed." $
        prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftSession >>> void)

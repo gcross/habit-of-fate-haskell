@@ -700,7 +700,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 |]
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
-        habitPage habit_id name_error importance_error difficulty_error habit = returnHTML ok200 [hamlet|
+        habitPage habit_id name_error difficulty_error importance_error habit = returnHTML ok200 [hamlet|
 <head>
   <title>Editing a habit
 <body>
@@ -716,15 +716,15 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           <td> Difficulty:
           <td>
             <select>
-              $forall scale <- enumFromTo minBound maxBound
-                <option value="#{scale}"> #{displayScale scale}
+              $forall scale <- scales
+                <option value="#{scale}"> #{displayScale scale} Difficulty
           <td> #{difficulty_error}
         <tr>
           <td> Importance:
           <td>
             <select>
-              $forall scale <- enumFromTo minBound maxBound
-                <option value="#{scale}"> #{displayScale scale}
+              $forall scale <- scales
+                <option value="#{scale}"> #{displayScale scale} Importance
           <td> #{importance_error}
     <div>
       <input type="submit"/> Submit
@@ -756,10 +756,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
               case readMaybe unparsed_value of
                 Nothing → (unparsed_name, Nothing, "Invalid value for the " ⊕ param_name ⊕ ".")
                 Just value → (unparsed_value, Just value, "")
-      (unparsed_importance, maybe_importance, importance_error) ← getScale "importance"
       (unparsed_difficulty, maybe_difficulty, difficulty_error) ← getScale "difficulty"
-      case Habit <$> maybe_name <*> maybe_importance <*> maybe_difficulty of
-        Nothing → habitPage habit_id name_error importance_error difficulty_error def
+      (unparsed_importance, maybe_importance, importance_error) ← getScale "importance"
+      case Habit <$> maybe_name <*> (Difficulty <$> maybe_difficulty) <*> (Importance <$> maybe_importance) of
+        Nothing → habitPage habit_id name_error difficulty_error importance_error def
         Just new_habit → habits . at habit_id <<.= Nothing >> returnNothing noContent204
 -------------------------------- Delete Habit ---------------------------------
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
