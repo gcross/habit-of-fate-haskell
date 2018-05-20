@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -23,6 +24,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Main where
@@ -30,26 +32,35 @@ module Main where
 import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Monad.Catch
+import qualified Data.ByteString.Char8 as BS8
+import Data.Char (toLower)
 import Data.Data.Lens (uniplate)
 import Data.IORef
+import Data.List (cycle)
 import qualified Data.Map as Map
 import Data.Time.Clock
-import Data.UUID (UUID)
+import Data.Text (strip)
+import Data.Text.Strict.Lens (utf8)
+import qualified Data.Text.Lazy as Lazy
+import Data.UUID (UUID, fromText)
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Simple
 import Network.Wai.Handler.Warp
-import System.IO
+import System.IO hiding (utf8)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
 import Text.XML.Lens
   ( Document
   , (./)
+  , attribute
   , elementAttributes
   , named
   , root
   , text
   )
+import qualified Text.XML.Lens as XML
+import Web.Scotty (parseParam)
 
 import HabitOfFate.API
 import HabitOfFate.Credits
@@ -338,6 +349,63 @@ main = defaultMain $ testGroup "All Tests"
                   [ ("username",username)
                   , ("password",password)
                   ]
+            createHabit habit_id habit = void $
+              requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
+              $
+              setRequestBodyURLEncoded
+                [ ("name", habit ^. name . re utf8)
+                , ("importance", habit ^. importance . to (show >>> BS8.pack))
+                , ("difficulty", habit ^. difficulty . to (show >>> BS8.pack))
+                ]
+            readHabitsIn doc = liftIO $ do
+              let rows = doc ^.. root ./ named "body" ./ named "table" ./ named "tr"
+                  number_of_rows = length rows
+                  observed_classes = map (^. attribute "class") rows
+                  expected_classes = take number_of_rows (cycle [Just "row even", Just "row odd"])
+              observed_classes @?= expected_classes
+
+              forM (zip [(0∷Int)..] rows) $ \(i, row) → do
+                case row ^.. uniplate . named "td" of
+                  [name, difficulty, importance] → do
+                    habit_id_unparsed ←
+                      maybe
+                        (assertFailure "No link to the habit page.")
+                        (drop (olength ("/habits/" ∷ Text)) >>> pure)
+                        (name ^. uniplate . named "a" . attribute "href")
+                    habit_id ←
+                      maybe
+                        (assertFailure $ printf "UUID %s did not parse sucessfully." habit_id_unparsed)
+                        pure
+                        (fromText habit_id_unparsed)
+                    let parseColumn name =
+                          (^.. text)
+                          >>>
+                          mconcat
+                          >>>
+                          words
+                          >>>
+                          unwords
+                          >>>
+                          fromStrict
+                          >>>
+                          (\column_text →
+                            column_text
+                            |> parseParam
+                            |> either
+                                (\error_message → Lazy.unpack >>> assertFailure $
+                                  "Error parsing \"" ⊕ column_text ⊕ "\": " ⊕ error_message)
+                                pure
+                          )
+                    difficulty_scale ← parseColumn "difficulty" difficulty
+                    importance_scale ← parseColumn "importance" importance
+                    pure
+                      ( habit_id
+                      , Habit
+                          (maybe "(no name)" (^. text) (name ^? uniplate . named "a"))
+                          difficulty_scale
+                          importance_scale
+                      )
+                  x → assertFailure $ printf "Row %i has %i columns" i (length x)
         in
     ----------------------------------------------------------------------------
         [ webTestCase "GET / redirects to /habits" $ do
@@ -374,6 +442,12 @@ main = defaultMain $ testGroup "All Tests"
             (response, doc) ← createTestAccount "username" "password"
             liftIO $ getResponseStatusCode response @?= 409
             assertTextIs doc "error-message" "This account already exists."
+        , webTestCase "Create an account and then a habit and check /habits" $ do
+            _ ← createTestAccount "username" "password"
+            createHabit test_habit_id test_habit
+            (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+            habits ← readHabitsIn doc
+            liftIO $ habits @?= [(test_habit_id, test_habit)]
         ]
         ------------------------------------------------------------------------
     ]

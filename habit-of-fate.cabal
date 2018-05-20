@@ -120,6 +120,7 @@ test-suite test
   main-is:             test.hs
   build-depends:       habit-of-fate
                      , base
+                     , bytestring
                      , containers
                      , exceptions
                      , html-conduit
@@ -128,9 +129,11 @@ test-suite test
                      , http-types
                      , jwt
                      , lens
+                     , scotty
                      , tasty
                      , tasty-hunit
                      , temporary
+                     , text
                      , time
                      , uuid
                      , warp

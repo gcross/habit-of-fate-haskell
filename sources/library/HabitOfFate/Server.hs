@@ -708,7 +708,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
         habitPage habit_id name_error difficulty_error importance_error habit = returnHTML ok200 [hamlet|
 <head>
-  <title>Editing a habit
+  <title>Habit of Fate - Editing a Habit
 <body>
   <form method="post">
     <div>
@@ -765,9 +765,15 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       (unparsed_difficulty, maybe_difficulty, difficulty_error) ← getScale "difficulty"
       (unparsed_importance, maybe_importance, importance_error) ← getScale "importance"
       case Habit <$> maybe_name <*> (Difficulty <$> maybe_difficulty) <*> (Importance <$> maybe_importance) of
-        Nothing → habitPage habit_id name_error difficulty_error importance_error def
-        Just new_habit → habits . at habit_id <<.= Nothing >> returnNothing noContent204
--------------------------------- Delete Habit ---------------------------------
+        Nothing → do
+          log [i|Failed to update habit #{habit_id}:|]
+          log [i|    Name error: #{name_error}|]
+          log [i|    Difficulty error: #{difficulty_error}|]
+          log [i|    Importance error: #{importance_error}|]
+          habitPage habit_id name_error difficulty_error importance_error def
+        Just new_habit → do
+          log [i|Updating habit #{habit_id} to #{new_habit}|]
+          habits . at habit_id <<.= Just new_habit >> returnNothing noContent204
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]

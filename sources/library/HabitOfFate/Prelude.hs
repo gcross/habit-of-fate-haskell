@@ -210,12 +210,14 @@ import Data.Sequences
   , encodeUtf8
   , filter
   , fromList
+  , fromStrict
   , lines
   , pack
   , repack
   , replicate
   , singleton
   , stripSuffix
+  , take
   , takeWhile
   , unlines
   , unpack
