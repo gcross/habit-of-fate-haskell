@@ -359,7 +359,7 @@ readerWith actionWhenAuthFails environment (ReaderProgram program) = do
       interpret (ReaderCommonInstruction GetParamsInstruction) = pure params_
       interpret (ReaderCommonInstruction (RaiseStatusInstruction s)) = throwError s
       interpret (ReaderCommonInstruction (LogInstruction message)) =
-        void ([i|[#{username}]: #{message}|] |> singleton |> tell)
+        void ([i|[#{unwrapUsername username}]: #{message}|] |> singleton |> tell)
       interpret ReaderViewInstruction = pure account
       (error_or_result, logs) =
         program
@@ -405,7 +405,7 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
       interpret (WriterCommonInstruction GetParamsInstruction) = pure params_
       interpret (WriterCommonInstruction (RaiseStatusInstruction s)) = throwError s
       interpret (WriterCommonInstruction (LogInstruction message)) =
-        void ([i|[#{username}]: #{message}|] |> singleton |> tell)
+        void ([i|[#{unwrapUsername username}]: #{message}|] |> singleton |> tell)
       interpret WriterGetAccountInstruction = get
       interpret (WriterPutAccountInstruction new_account) = put new_account
   initial_generator ← liftIO newStdGen
