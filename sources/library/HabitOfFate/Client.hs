@@ -204,7 +204,7 @@ main_menu =
     [interaction 'a' "Add a habit." $ do
       habit_id ← liftIO randomIO
       habit ← Habit
-        <$> prompt readNonEmpty "What is the name of the habit?"
+        <$> (pack <$> prompt readNonEmpty "What is the name of the habit?")
         <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
         <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
       liftSession >>> void $ putHabit habit_id habit
@@ -218,7 +218,8 @@ main_menu =
           (printAndCancel "No such habit.")
           return
       habit ← Habit
-        <$> promptWithDefault readNonEmpty (old_habit ^. name) "What is the name of the habit?"
+        <$> (pack <$>
+               promptWithDefault readNonEmpty (old_habit ^. name . to unpack) "What is the name of the habit?")
         <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
         <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
       liftSession >>> void $ putHabit habit_id habit

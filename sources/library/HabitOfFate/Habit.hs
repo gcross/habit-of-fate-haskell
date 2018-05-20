@@ -145,13 +145,13 @@ scaleFactor High = 2
 scaleFactor VeryHigh = 4
 
 data Habit = Habit
-  { _name ∷ String
+  { _name ∷ Text
   , _difficulty ∷ Difficulty
   , _importance ∷ Importance
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
-name ∷ Lens' Habit String
+name ∷ Lens' Habit Text
 name = lens _name (\old new_name → old { _name = new_name })
 
 difficulty ∷ Lens' Habit Scale

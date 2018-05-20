@@ -749,7 +749,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
             Nothing → ("", Nothing, "No value for the name was present.")
             Just unparsed_name
               | onull unparsed_name → (unparsed_name, Nothing, "Name must not be blank.")
-              | otherwise → (unparsed_name, Just unparsed_name, "")
+              | otherwise → (unparsed_name, Just (pack unparsed_name), "")
       let getScale param_name = getParamMaybe param_name <&> \case
             Nothing → ("", Nothing, "No value for the " ⊕ param_name ⊕ " was present.")
             Just unparsed_value →
