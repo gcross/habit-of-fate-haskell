@@ -43,12 +43,11 @@ data Scale = VeryLow | Low | Medium | High | VeryHigh
 deriveJSON ''Scale
 
 instance Parsable Scale where
-  parseParam =
-    unpack
-    >>>
-    readMaybe
-    >>>
-    maybe (Left "Unrecognized scale.") Right
+  parseParam p =
+    p
+    |> unpack
+    |> readMaybe
+    |> maybe (Left $ "Unrecognized scale \"" ⊕ p ⊕ "\".") Right
 
 instance ToMarkup Scale where
   toMarkup = displayScale >>> toMarkup
@@ -85,7 +84,12 @@ parseParamScale ∷ (Wrapped α, Unwrapped α ~ Scale) ⇒ Lazy.Text → Lazy.Te
 parseParamScale name p =
   case words p of
     [scale_text, name_]
-      | name_ == name → parseParam scale_text <&> (^. _Unwrapped')
+      | name_ == name →
+          parseParam scale_text
+          |> bimap
+              (\error_message →
+                 "Error parsing scale \"" ⊕ scale_text ⊕ "\" in \"" ⊕ p ⊕ "\": " ⊕ error_message)
+              (^. _Unwrapped')
       | otherwise → Left $ "Second word in \"%" ⊕ p ⊕ "\" was not " ⊕ name
     _ → Left $ "Wrong number of words in \"" ⊕ p ⊕ "\""
 
