@@ -689,14 +689,20 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       view habits >>= returnJSON ok200
     Scotty.get "/habits" <<< wwwReader $ do
       habits_ ← view habits
+      let habit_list =
+            [ (if even n then ("even" ∷ Text) else "odd", uuid, habit)
+            | (n, (uuid, habit)) ← zip [(0 ∷ Int)..] (mapToList habits_)
+            ]
       returnHTML ok200 [hamlet|
 <head>
   <title>Habit of Fate - List of Habits
 <body>
   <table>
-    $forall (uuid, habit) <- mapToList habits_
-      <tr>
-        <td> <a href="/habits/#{show uuid}">#{habit ^. name}
+    $forall (evenodd, uuid, habit) <- habit_list
+      <tr class="row #{evenodd}">
+        <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
+        <td class="difficulty"> #{displayScale $ habit ^. difficulty} Difficulty
+        <td class="importance"> #{displayScale $ habit ^. importance} Importance
 |]
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
