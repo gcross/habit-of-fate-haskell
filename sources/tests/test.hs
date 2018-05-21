@@ -182,9 +182,7 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ------------------------------------------------------------------------
-            getHabits
-            >>=
-            ((@?= Map.empty) >>> liftIO)
+            getHabits >>= (view habit_count >>> (@?= 0) >>> liftIO)
         ------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ------------------------------------------------------------------------
@@ -202,13 +200,25 @@ main = defaultMain $ testGroup "All Tests"
             , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabits >>= ((@?= Map.singleton test_habit_id test_habit) >>> liftIO)
+                getHabits
+                  >>=
+                  (
+                    (@?= Habits (singletonMap test_habit_id test_habit) (singleton test_habit_id))
+                    >>>
+                    liftIO
+                  )
             --------------------------------------------------------------------
             , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 replaceHabit test_habit_id test_habit_2
-                getHabits >>= ((@?= Map.singleton test_habit_id test_habit_2) >>> liftIO)
+                getHabits
+                  >>=
+                  (
+                    (@?= Habits (singletonMap test_habit_id test_habit_2) (singleton test_habit_id))
+                    >>>
+                    liftIO
+                  )
             ]
         ------------------------------------------------------------------------
         , testGroup "deleteHabit"
@@ -221,14 +231,12 @@ main = defaultMain $ testGroup "All Tests"
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 deleteHabit test_habit_id >>= ((@?= HabitDeleted) >>> liftIO)
-                getHabits >>= ((@?= Map.empty) >>> liftIO)
+                getHabits >>= (view habit_count >>> (@?= 0) >>> liftIO)
             ]
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ----------------------------------------------------------------------------
-            getHabits
-            >>=
-            ((@?= Map.empty) >>> liftIO)
+            getHabits >>= (view habit_count >>> (@?= 0) >>> liftIO)
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ----------------------------------------------------------------------------
@@ -246,7 +254,13 @@ main = defaultMain $ testGroup "All Tests"
             , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabits >>= ((@?= Map.singleton test_habit_id test_habit) >>> liftIO)
+                getHabits
+                  >>=
+                  (
+                    (@?= Habits (singletonMap test_habit_id test_habit) (singleton test_habit_id))
+                    >>>
+                    liftIO
+                  )
             ------------------------------------------------------------------------
             , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
             ------------------------------------------------------------------------
@@ -361,10 +375,10 @@ main = defaultMain $ testGroup "All Tests"
               let rows = doc ^.. root ./ named "body" ./ named "table" ./ named "tr"
                   number_of_rows = length rows
                   observed_classes = map (^. attribute "class") rows
-                  expected_classes = take number_of_rows (cycle [Just "row even", Just "row odd"])
+                  expected_classes = take number_of_rows (cycle [Just "row odd", Just "row even"])
               observed_classes @?= expected_classes
 
-              forM (zip [(0∷Int)..] rows) $ \(i, row) → do
+              forM (zip [(1∷Int)..] rows) $ \(i, row) → do
                 case row ^.. uniplate . named "td" of
                   [name, difficulty, importance] → do
                     habit_id_unparsed ←

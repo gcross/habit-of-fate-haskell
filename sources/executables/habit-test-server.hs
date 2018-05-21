@@ -88,22 +88,24 @@ makeInitialAccounts ∷ IO (Map Username Account)
 makeInitialAccounts =
   [ ( ("a", "a")
     ,
-      [ ("d6d95381-9a66-453f-a134-64667cb0ef63", Habit "Test 1" Medium Medium)
-      , ("4e512d1e-99f2-4953-9c9c-9fcbc1e61018", Habit "Test 2" Low High)
+      [ ("d6d95381-9a66-453f-a134-64667cb0ef63", Habit "Test 1" (Difficulty Medium) (Importance Medium))
+      , ("4e512d1e-99f2-4953-9c9c-9fcbc1e61018", Habit "Test 2" (Difficulty Low) (Importance High))
       ]
     )
   , ( ("b", "c")
     ,
-      [ ("4ea70d5f-b225-4364-a1e5-26693599b221", Habit "Test A" Medium Medium)
+      [ ("4ea70d5f-b225-4364-a1e5-26693599b221", Habit "Test A" (Difficulty Medium) (Importance Medium))
       ]
     )
   ]
   |> mapM
       (
-        \((name, password), habit_list) → do
+        \((name, password), habit_list_with_unparsed_ids) → do
+          let habit_list = map (first read) habit_list_with_unparsed_ids
+              habit_map = habit_list |> mapFromList
+              habit_id_seq = unzip habit_list ^. _1 |> fromList
           account ← newAccount password
-          let habit_map = habit_list |> map (first read) |> mapFromList
-          pure (Username name, account & habits .~ habit_map)
+          pure (Username name, account & habits .~ Habits habit_map habit_id_seq)
       )
   |> fmap mapFromList
 

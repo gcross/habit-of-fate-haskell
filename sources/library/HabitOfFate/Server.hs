@@ -25,6 +25,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -51,6 +52,7 @@ import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as Lazy
+import Data.List (zipWith)
 import Data.Set (minView)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
@@ -250,9 +252,9 @@ returnText s = view (from strict) >>> returnLazyText s
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = JSONContent >>> ProgramResult s >>> return
 
-data Page = Habits
+data Page = HabitsPage
 renderPageURL ∷ Page → Text
-renderPageURL Habits = "/habits"
+renderPageURL HabitsPage = "/habits"
 
 returnHTML ∷ Monad m ⇒ Status → ((Page → Text) → Html) → m ProgramResult
 returnHTML s = ($ renderPageURL) >>> HtmlContent >>> ProgramResult s >>> return
@@ -688,17 +690,19 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       log "Requested all habits."
       view habits >>= returnJSON ok200
     Scotty.get "/habits" <<< wwwReader $ do
-      habits_ ← view habits
-      let habit_list =
-            [ (if even n then ("even" ∷ Text) else "odd", uuid, habit)
-            | (n, (uuid, habit)) ← zip [(0 ∷ Int)..] (mapToList habits_)
-            ]
+      habits_to_display ←
+        view (habits . habit_list)
+        <&>
+        zipWith
+          (\n (uuid, habit) →
+             (if even n then ("even" ∷ Text) else "odd", uuid, habit))
+          [(1∷Int)..]
       returnHTML ok200 [hamlet|
 <head>
   <title>Habit of Fate - List of Habits
 <body>
   <table>
-    $forall (evenodd, uuid, habit) <- habit_list
+    $forall (evenodd, uuid, habit) <- habits_to_display
       <tr class="row #{evenodd}">
         <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
         <td class="difficulty"> #{displayScale $ habit ^. difficulty} Difficulty
@@ -739,13 +743,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested habit with id #{habit_id}.|]
-      (view habits <&> lookup habit_id)
+      (view $ habits . at habit_id)
         >>= maybe raiseNoSuchHabit (returnJSON ok200)
 
     Scotty.get "/habits/:habit_id" <<< wwwReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Web GET request for habit with id #{habit_id}.|]
-      (view habits <&> (lookup habit_id >>> fromMaybe def))
+      (view (habits . at habit_id) <&> fromMaybe def)
         >>= habitPage habit_id "" "" ""
 
     Scotty.post "/habits/:habit_id" <<< wwwWriter $ do

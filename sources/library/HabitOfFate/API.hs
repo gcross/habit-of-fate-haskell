@@ -253,7 +253,7 @@ getHabit habit_id = do
     404 → pure Nothing
     code → throwM $ UnexpectedStatus [200,404] code
 
-getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Map UUID Habit)
+getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Habits
 getHabits = do
   response ← requestForJSON GET "habits"
   case responseStatusCode response of

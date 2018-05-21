@@ -30,7 +30,9 @@ module HabitOfFate.Habit where
 import HabitOfFate.Prelude
 
 import Data.Aeson
+import Data.HashMap.Strict (HashMap)
 import qualified Data.Text.Lazy as Lazy
+import Data.UUID
 
 import Text.Blaze (Markup, ToMarkup(..))
 
@@ -172,3 +174,49 @@ importance =
 
 instance Default Habit where
   def = Habit "" (Difficulty Medium) (Importance Medium)
+
+data Habits = Habits
+  { _habit_map ∷ HashMap UUID Habit
+  , _habit_id_seq ∷ Seq UUID
+  } deriving (Eq,Read,Show,Ord)
+deriveJSON ''Habits
+makeLenses ''Habits
+
+habit_count ∷ Getter Habits Int
+habit_count = habit_id_seq . to length
+
+habit_list ∷ Getter Habits [(UUID, Habit)]
+habit_list = to $ \habits@(Habits h_map h_id_seq) →
+  [ let error_message =
+          "Habit id " ⊕ show habit_id ⊕ " was in the sequence but not in the map (habits = " ⊕ show habits ⊕ ")"
+    in (habit_id, fromMaybe (error error_message) (lookup habit_id h_map))
+  | habit_id ← toList h_id_seq
+  ]
+
+instance Default Habits where
+  def = Habits mempty mempty
+
+type instance Index Habits = UUID
+type instance IxValue Habits = Habit
+
+instance Ixed Habits where
+  ix habit_id = habit_map . ix habit_id
+
+instance At Habits where
+  at habit_id f habits@(Habits h_map h_id_seq) =
+    f maybe_old_habit
+    <&>
+    \case
+      Nothing
+        | isJust maybe_old_habit →
+            Habits (deleteMap habit_id h_map) (delete habit_id h_id_seq)
+        | otherwise → habits
+      Just new_habit →
+        let new_h_map = insertMap habit_id new_habit h_map
+            new_h_id_seq -- only append to the sequence if it doesn't exist
+              | isNothing maybe_old_habit = h_id_seq `snoc` habit_id
+              | otherwise = h_id_seq
+        in Habits new_h_map new_h_id_seq
+    where
+      maybe_old_habit = lookup habit_id h_map
+  {-# INLINE at #-}

@@ -48,7 +48,7 @@ instance FromJSON StdGen where
 
 data Account = Account
   {   _password ∷ Text
-  ,   _habits ∷ Map UUID Habit
+  ,   _habits ∷ Habits
   ,   _game ∷ GameState
   ,   _quest ∷ Maybe CurrentQuestState
   ,   _rng :: StdGen
@@ -64,7 +64,7 @@ newAccount password =
           >>=
           (decodeUtf8 >>> evaluate)
         )
-    <*> pure mempty
+    <*> pure def
     <*> pure newGame
     <*> pure Nothing
     <*> newStdGen

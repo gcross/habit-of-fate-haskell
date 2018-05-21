@@ -250,11 +250,11 @@ main_menu =
     scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
 
     printHabits = do
-      habits ← liftSession getHabits
+      habits_to_display ← liftSession getHabits <&> view habit_list
       liftIO $
-        if null habits
+        if null habits_to_display
           then putStrLn "There are no habits."
-          else forM_ (mapToList habits) $ \(uuid, habit) →
+          else forM_ habits_to_display $ \(uuid, habit) →
             printf "%s %s [+%s/-%s]\n"
               (show uuid)
               (habit ^. name)

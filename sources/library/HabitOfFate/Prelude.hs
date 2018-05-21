@@ -205,6 +205,7 @@ import Data.Sequence (Seq)
 import Data.Sequences
   ( break
   , decodeUtf8
+  , delete
   , drop
   , dropWhile
   , encodeUtf8
