@@ -262,6 +262,41 @@ main = defaultMain $ testGroup "All Tests"
                     liftIO
                   )
             ------------------------------------------------------------------------
+            , testGroup "Putting two habits causes them to be returned in order of creation" $
+            ------------------------------------------------------------------------
+              [ apiTestCase "Test habit 1 followed by test habit 2" $ do
+              ------------------------------------------------------------------------
+                  createHabit test_habit_id test_habit
+                  createHabit test_habit_id_2 test_habit_2
+                  getHabits
+                    >>=
+                    (
+                      (@?=
+                        Habits
+                          (mapFromList [(test_habit_id, test_habit), (test_habit_id_2, test_habit_2)])
+                          (fromList [test_habit_id, test_habit_id_2])
+                      )
+                      >>>
+                      liftIO
+                    )
+              ------------------------------------------------------------------------
+              , apiTestCase "Test habit 2 followed by test habit 1" $ do
+              ------------------------------------------------------------------------
+                  createHabit test_habit_id_2 test_habit_2
+                  createHabit test_habit_id test_habit
+                  getHabits
+                    >>=
+                    (
+                      (@?=
+                        Habits
+                          (mapFromList [(test_habit_id_2, test_habit_2), (test_habit_id, test_habit)])
+                          (fromList [test_habit_id_2, test_habit_id])
+                      )
+                      >>>
+                      liftIO
+                    )
+              ]
+            ------------------------------------------------------------------------
             , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
