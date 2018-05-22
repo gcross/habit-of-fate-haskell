@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -29,9 +30,14 @@ module HabitOfFate.Habit where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch
+
 import Data.Aeson
 import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
+import Data.Sequence (deleteAt, insertAt)
 import qualified Data.Text.Lazy as Lazy
+import Data.Typeable
 import Data.UUID
 
 import Text.Blaze (Markup, ToMarkup(..))
@@ -220,3 +226,45 @@ instance At Habits where
     where
       maybe_old_habit = lookup habit_id h_map
   {-# INLINE at #-}
+
+data ReorderException =
+    MismatchedLength
+  | DuplicateIds
+  | MissingId
+  | MissingIndex
+  deriving (Eq,Read,Show,Ord,Typeable)
+
+instance Exception ReorderException where
+
+reorderHabitsByUUID ∷ MonadThrow m ⇒ [UUID] → Habits → m Habits
+reorderHabitsByUUID new_h_id_seq (Habits h_map old_h_id_seq) = do
+  let number_of_old_ids = length old_h_id_seq
+      number_of_new_ids = length new_h_id_seq
+  when (number_of_old_ids /= number_of_new_ids) $ throwM MismatchedLength
+  let new_h_id_set = setFromList new_h_id_seq ∷ HashSet UUID
+  when (length new_h_id_set /= number_of_new_ids) $ throwM DuplicateIds
+  forM_ new_h_id_seq $ \habit_id →
+    unless (member habit_id h_map) $ throwM MissingId
+  pure $ Habits h_map (fromList new_h_id_seq)
+
+reorderHabitsByIndex ∷ MonadThrow m ⇒ [Int] → Habits → m Habits
+reorderHabitsByIndex indices habits@(Habits _ h_id_seq) =
+  forM indices (\index → maybe (throwM MissingIndex) pure (h_id_seq ^? ix index))
+  >>=
+  flip reorderHabitsByUUID habits
+
+moveHabitFromToIndex ∷ MonadThrow m ⇒ Int → Int → Habits → m Habits
+moveHabitFromToIndex old_index new_index habits@(Habits h_map old_h_id_seq) = do
+  old_habit_id ← maybe (throwM MissingIndex) pure (old_h_id_seq ^? ix old_index)
+  when (new_index < 0 || new_index >= habits ^. habit_count) $ throwM MissingIndex
+  pure $ if old_index < new_index
+    then
+      old_h_id_seq
+      |> insertAt new_index old_habit_id
+      |> deleteAt old_index
+      |> Habits h_map
+    else
+      old_h_id_seq
+      |> deleteAt old_index
+      |> insertAt new_index old_habit_id
+      |> Habits h_map
