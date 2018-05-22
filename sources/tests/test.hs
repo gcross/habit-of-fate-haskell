@@ -281,7 +281,7 @@ main = defaultMain $ testGroup "All Tests"
                 readIORef write_requested_ref >>= assertBool "Write was not requested."
             ]
         ----------------------------------------------------------------------------
-        , testGroup "putHabit"
+        , testGroup "markHabits"
         ----------------------------------------------------------------------------
             [ apiTestCase "Marking a habit gets the right credits" $ do
             ------------------------------------------------------------------------
