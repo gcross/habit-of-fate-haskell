@@ -708,13 +708,18 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       returnHTML ok200 [hamlet|
 <head>
   <title>Habit of Fate - List of Habits
+  <link rel="stylesheet" type="text/css" href="css/common.css"/>
+  <link rel="stylesheet" type="text/css" href="css/list.css"/>
 <body>
   <table>
+    <th>Name
+    <th>Difficulty
+    <th>Importance
     $forall (evenodd, uuid, habit) <- habits_to_display
       <tr class="row #{evenodd}">
         <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
-        <td class="difficulty"> #{displayScale $ habit ^. difficulty} Difficulty
-        <td class="importance"> #{displayScale $ habit ^. importance} Importance
+        <td class="difficulty"> #{displayScale $ habit ^. difficulty}
+        <td class="importance"> #{displayScale $ habit ^. importance}
 |]
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
@@ -932,6 +937,25 @@ form
   #error-message
     color: #9b0000
     padding-bottom: 10px
+|]
+    addCSS "list" $ [cassius|
+table
+  background: #728fff
+  border-collapse: collapse
+  font-size: 24
+  justify-content: center
+  padding: 8% 0 0
+  margin: auto
+  width: 600px
+
+th
+  text-align: left
+
+tr:nth-child(even)
+  background-color: #c3d0ff
+
+tr:nth-child(odd)
+  background-color: #94aaff
 |]
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
