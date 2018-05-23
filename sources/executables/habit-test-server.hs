@@ -92,6 +92,7 @@ makeInitialAccounts =
     ,
       [ ("d6d95381-9a66-453f-a134-64667cb0ef63", Habit "Test 1" (Difficulty Medium) (Importance Medium))
       , ("4e512d1e-99f2-4953-9c9c-9fcbc1e61018", Habit "Test 2" (Difficulty Low) (Importance High))
+      , ("7709fdc1-caaf-4c3a-93ee-5ab4137ab653", Habit "Test 3" (Difficulty VeryHigh) (Importance Medium))
       ]
     )
   , ( ("b", "c")
