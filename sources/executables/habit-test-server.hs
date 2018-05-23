@@ -99,6 +99,13 @@ makeInitialAccounts =
       [ ("4ea70d5f-b225-4364-a1e5-26693599b221", Habit "Test A" (Difficulty Medium) (Importance Medium))
       ]
     )
+  , ( ("c", "b")
+    ,
+      [ ("b2bfb271-a4ac-4dd8-8974-8055258c858d", Habit "Test α" (Difficulty Low) (Importance Low))
+      , ("728b4e0e-a6c3-43ad-9a97-e55d585ab48c", Habit "Test β" (Difficulty Medium) (Importance Medium))
+      , ("04fe33fe-048f-4875-9f4d-bfe7ea71013f", Habit "Test c" (Difficulty High) (Importance High))
+      ]
+    )
   ]
   |> mapM
       (
