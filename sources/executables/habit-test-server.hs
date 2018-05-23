@@ -24,13 +24,15 @@ module Main where
 
 import HabitOfFate.Prelude
 
+import Data.List
+import Network.Wai.Handler.Warp
+import Network.Wai.Handler.WarpTLS
+
 import HabitOfFate.Account
 import HabitOfFate.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Server
 import HabitOfFate.TH (textChar8)
-import Network.Wai.Handler.Warp
-import Network.Wai.Handler.WarpTLS
 
 testing_certificate = [textChar8|
 -----BEGIN CERTIFICATE-----
