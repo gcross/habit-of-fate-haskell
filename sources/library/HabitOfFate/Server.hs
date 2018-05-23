@@ -54,6 +54,7 @@ import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as Lazy
 import Data.List (zipWith)
 import Data.Set (minView)
+import qualified Data.String as String
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
 import Data.UUID hiding (null)
@@ -63,7 +64,7 @@ import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import Text.Blaze.Html (Html, toHtml)
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
-import Text.Cassius (cassius, renderCss)
+import Text.Cassius (Css, cassius, renderCss)
 import Text.Hamlet (hamlet)
 import Web.Cookie
 import Web.Scotty
@@ -127,6 +128,11 @@ readTVarMonadIO = readTVarIO >>> liftIO
 
 scottyHTML = ($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html
 scottyCSS = ($ renderPageURL) >>> renderCss >>> Scotty.text
+
+addCSS ∷ String → ((Page → Text) → Css) → Scotty.ScottyM ()
+addCSS name contents = Scotty.get (String.fromString $ "/css/" ⊕ name ⊕ ".css") $ do
+  addHeader "Content-Type" "text/css"
+  scottyCSS contents
 
 --------------------------------------------------------------------------------
 ---------------------------- Shared Scotty Actions -----------------------------
@@ -577,6 +583,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           scottyHTML [hamlet|
 <head>
   <title>Habit of Fate - Account Creation
+  <link rel="stylesheet" type="text/css" href="css/common.css"/>
   <link rel="stylesheet" type="text/css" href="css/enter.css"/>
 <body>
   <div class="enter">
@@ -643,6 +650,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           scottyHTML [hamlet|
 <head>
   <title>Habit of Fate - Login
+  <link rel="stylesheet" type="text/css" href="css/common.css"/>
   <link rel="stylesheet" type="text/css" href="css/enter.css"/>
 <body>
   <div class="enter">
@@ -864,13 +872,12 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 --------------------------------- Style Sheets ---------------------------------
-    Scotty.get "/css/enter.css" $ do
-      addHeader "Content-Type" "text/css"
-      scottyCSS [cassius|
+    addCSS "common" $ [cassius|
 body
   background: #a2aeff
   font-family: Arial
-
+|]
+    addCSS "enter" $ [cassius|
 .enter
   display: flex
   flex-direction: column
