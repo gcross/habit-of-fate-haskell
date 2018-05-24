@@ -712,14 +712,17 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
   <link rel="stylesheet" type="text/css" href="css/list.css"/>
 <body>
   <table>
-    <th>Name
-    <th>Difficulty
-    <th>Importance
-    $forall (evenodd, uuid, habit) <- habits_to_display
-      <tr class="row #{evenodd}">
-        <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
-        <td class="difficulty"> #{displayScale $ habit ^. difficulty}
-        <td class="importance"> #{displayScale $ habit ^. importance}
+    <thead>
+      <tr>
+        <th>Name
+        <th>Difficulty
+        <th>Importance
+    <tbody>
+      $forall (evenodd, uuid, habit) <- habits_to_display
+        <tr class="row #{evenodd}">
+          <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
+          <td class="difficulty"> #{displayScale $ habit ^. difficulty}
+          <td class="importance"> #{displayScale $ habit ^. importance}
 |]
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
@@ -886,8 +889,9 @@ body
 .enter
   display: flex
   flex-direction: column
-  padding: 8% 0 0
-  margin: auto
+  margin-top: 100px
+  margin-left: auto
+  margin-right: auto
   width: 600px
 
 .tabs
@@ -939,22 +943,23 @@ form
 |]
     addCSS "list" $ [cassius|
 table
-  background: #728fff
+  background-color: #728fff
   border-collapse: collapse
   font-size: 24
-  justify-content: center
-  padding: 8% 0 0
-  margin: auto
+  margin-top: 100px
+  margin-left: auto
+  margin-right: auto
+  padding: 10px
   width: 600px
 
-th
+thead
   text-align: left
 
-tr:nth-child(even)
-  background-color: #c3d0ff
-
-tr:nth-child(odd)
-  background-color: #94aaff
+tbody
+  tr:nth-child(even)
+    background-color: #c3d0ff
+  tr:nth-child(odd)
+    background-color: #94aaff
 |]
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
