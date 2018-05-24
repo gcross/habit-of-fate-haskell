@@ -726,7 +726,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 |]
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
-        habitPage habit_id name_error difficulty_error importance_error habit = returnHTML ok200 [hamlet|
+        habitPage habit_id name_error difficulty_error importance_error habit =
+          let isSelected ∷ Lens' Habit Scale → Scale → Bool
+              isSelected l scale = habit ^. l == scale
+          in returnHTML ok200 [hamlet|
 <head>
   <title>Habit of Fate - Editing a Habit
 <body>
@@ -741,16 +744,22 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
         <tr>
           <td> Difficulty:
           <td>
-            <select>
+            <select required="true">
               $forall scale <- scales
-                <option value="#{scale}"> #{displayScale scale} Difficulty
+                $if isSelected difficulty scale
+                  <option value="#{scale}" selected="selected"> #{displayScale scale}
+                $else
+                  <option value="#{scale}"> #{displayScale scale}
           <td> #{difficulty_error}
         <tr>
           <td> Importance:
           <td>
-            <select>
+            <select required="true">
               $forall scale <- scales
-                <option value="#{scale}"> #{displayScale scale} Importance
+                $if isSelected importance scale
+                  <option value="#{scale}" selected="selected"> #{displayScale scale}
+                $else
+                  <option value="#{scale}"> #{displayScale scale}
           <td> #{importance_error}
     <div>
       <input type="submit"/> Submit
