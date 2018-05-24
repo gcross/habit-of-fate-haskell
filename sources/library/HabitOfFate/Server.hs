@@ -886,7 +886,6 @@ body
 .enter
   display: flex
   flex-direction: column
-  justify-content: center;
   padding: 8% 0 0
   margin: auto
   width: 600px
