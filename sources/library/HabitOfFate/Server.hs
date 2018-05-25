@@ -716,7 +716,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
         <&>
         zipWith
           (\n (uuid, habit) →
-             (if even n then ("even" ∷ Text) else "odd", uuid, habit))
+             (n, if even n then ("even" ∷ Text) else "odd", uuid, habit))
           [(1∷Int)..]
       returnHTML ok200 [hamlet|
 <head>
@@ -728,12 +728,14 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     <table>
       <thead>
         <tr>
+          <th>#
           <th>Name
           <th>Difficulty
           <th>Importance
       <tbody>
-        $forall (evenodd, uuid, habit) <- habits_to_display
+        $forall (n, evenodd, uuid, habit) <- habits_to_display
           <tr class="row #{evenodd}">
+            <td> #{n}.
             <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
             <td class="difficulty"> #{displayScale $ habit ^. difficulty}
             <td class="importance"> #{displayScale $ habit ^. importance}
