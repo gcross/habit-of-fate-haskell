@@ -35,7 +35,7 @@ import Control.Monad.Catch
 import Data.Aeson
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
-import Data.Sequence (deleteAt, insertAt)
+import Data.Sequence (deleteAt, elemIndexL, insertAt)
 import qualified Data.Text.Lazy as Lazy
 import Data.Typeable
 import Data.UUID
@@ -229,6 +229,7 @@ instance At Habits where
 
 data ReorderException =
     MismatchedLength
+  | IdPositionMismatch
   | DuplicateIds
   | MissingId
   | MissingIndex
@@ -236,16 +237,20 @@ data ReorderException =
 
 instance Exception ReorderException where
 
+assertValidUUIDSequence ∷ MonadThrow m ⇒ Habits → m Habits
+assertValidUUIDSequence habits@(Habits h_map h_id_seq) = do
+  let h_id_set = h_id_seq |> toList |> setFromList ∷ HashSet UUID
+  unless (length h_id_set == length h_id_seq) $ throwM DuplicateIds
+  forM_ h_id_seq $ \habit_id →
+    unless (member habit_id h_map) $ throwM MissingId
+  pure habits
+
 reorderHabitsByUUID ∷ MonadThrow m ⇒ [UUID] → Habits → m Habits
 reorderHabitsByUUID new_h_id_seq (Habits h_map old_h_id_seq) = do
   let number_of_old_ids = length old_h_id_seq
       number_of_new_ids = length new_h_id_seq
   when (number_of_old_ids /= number_of_new_ids) $ throwM MismatchedLength
-  let new_h_id_set = setFromList new_h_id_seq ∷ HashSet UUID
-  when (length new_h_id_set /= number_of_new_ids) $ throwM DuplicateIds
-  forM_ new_h_id_seq $ \habit_id →
-    unless (member habit_id h_map) $ throwM MissingId
-  pure $ Habits h_map (fromList new_h_id_seq)
+  assertValidUUIDSequence $ Habits h_map (fromList new_h_id_seq)
 
 reorderHabitsByIndex ∷ MonadThrow m ⇒ [Int] → Habits → m Habits
 reorderHabitsByIndex indices habits@(Habits _ h_id_seq) =
@@ -253,18 +258,33 @@ reorderHabitsByIndex indices habits@(Habits _ h_id_seq) =
   >>=
   flip reorderHabitsByUUID habits
 
-moveHabitFromToIndex ∷ MonadThrow m ⇒ Int → Int → Habits → m Habits
-moveHabitFromToIndex old_index new_index habits@(Habits h_map old_h_id_seq) = do
-  old_habit_id ← maybe (throwM MissingIndex) pure (old_h_id_seq ^? ix old_index)
+_moveHabitWithIdFromToIndex ∷ MonadThrow m ⇒ UUID → Int → Int → Habits → m Habits
+_moveHabitWithIdFromToIndex habit_id old_index new_index habits@(Habits h_map old_h_id_seq) = do
+  unless (old_h_id_seq ^? ix old_index == Just habit_id) $ throwM IdPositionMismatch
   when (new_index < 0 || new_index >= habits ^. habit_count) $ throwM MissingIndex
-  pure $ if old_index < new_index
-    then
-      old_h_id_seq
-      |> insertAt new_index old_habit_id
-      |> deleteAt old_index
-      |> Habits h_map
-    else
-      old_h_id_seq
-      |> deleteAt old_index
-      |> insertAt new_index old_habit_id
-      |> Habits h_map
+  assertValidUUIDSequence $
+    if old_index < new_index
+      then
+        old_h_id_seq
+        |> deleteAt old_index
+        |> insertAt new_index habit_id
+        |> Habits h_map
+      else
+        old_h_id_seq
+        |> insertAt new_index habit_id
+        |> deleteAt (old_index+1)
+        |> Habits h_map
+
+moveHabitWithIdToIndex ∷ MonadThrow m ⇒ UUID → Int → Habits → m Habits
+moveHabitWithIdToIndex habit_id new_index habits@(Habits _ h_id_seq) =
+  maybe
+    (throwM MissingId)
+    (\old_index → _moveHabitWithIdFromToIndex habit_id old_index new_index habits)
+    (elemIndexL habit_id h_id_seq)
+
+moveHabitWithIndexToIndex ∷ MonadThrow m ⇒ Int → Int → Habits → m Habits
+moveHabitWithIndexToIndex old_index new_index habits@(Habits _ h_id_seq) =
+  maybe
+    (throwM MissingIndex)
+    (\habit_id → _moveHabitWithIdFromToIndex habit_id old_index new_index habits)
+    (h_id_seq ^? ix old_index)
