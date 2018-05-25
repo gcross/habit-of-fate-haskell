@@ -51,7 +51,7 @@ import Control.Monad.Random
 import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
-import qualified Data.ByteString.Lazy as Lazy
+import qualified Data.ByteString.Lazy as LazyBS
 import Data.List (zipWith)
 import Data.Set (minView)
 import qualified Data.String as String
@@ -280,7 +280,7 @@ logRequest = do
 ------------------------------------ Common ------------------------------------
 
 data CommonInstruction α where
-  GetBodyInstruction ∷ CommonInstruction Lazy.ByteString
+  GetBodyInstruction ∷ CommonInstruction LazyBS.ByteString
   GetParamsInstruction ∷ CommonInstruction [Param]
   RaiseStatusInstruction ∷ Status → CommonInstruction α
   LogInstruction ∷ String → CommonInstruction ()
@@ -288,7 +288,7 @@ data CommonInstruction α where
 class Monad m ⇒ ActionMonad m where
   singletonCommon ∷ CommonInstruction α → m α
 
-getBody ∷ ActionMonad m ⇒ m Lazy.ByteString
+getBody ∷ ActionMonad m ⇒ m LazyBS.ByteString
 getBody = singletonCommon GetBodyInstruction
 
 getBodyJSON ∷ (FromJSON α, ActionMonad m) ⇒ m α
@@ -706,6 +706,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.get "/api/habits" <<< apiReader $ do
       log "Requested all habits."
       view habits >>= returnJSON ok200
+    Scotty.get "/habits/new" $
+      liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
+      >>=
+      Scotty.redirect
     Scotty.get "/habits" <<< wwwReader $ do
       habits_to_display ←
         view (habits . habit_list)
@@ -720,18 +724,20 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
   <link rel="stylesheet" type="text/css" href="css/common.css"/>
   <link rel="stylesheet" type="text/css" href="css/list.css"/>
 <body>
-  <table>
-    <thead>
-      <tr>
-        <th>Name
-        <th>Difficulty
-        <th>Importance
-    <tbody>
-      $forall (evenodd, uuid, habit) <- habits_to_display
-        <tr class="row #{evenodd}">
-          <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
-          <td class="difficulty"> #{displayScale $ habit ^. difficulty}
-          <td class="importance"> #{displayScale $ habit ^. importance}
+  <div class="list">
+    <table>
+      <thead>
+        <tr>
+          <th>Name
+          <th>Difficulty
+          <th>Importance
+      <tbody>
+        $forall (evenodd, uuid, habit) <- habits_to_display
+          <tr class="row #{evenodd}">
+            <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
+            <td class="difficulty"> #{displayScale $ habit ^. difficulty}
+            <td class="importance"> #{displayScale $ habit ^. importance}
+    <a href="/habits/new">New
 |]
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
@@ -960,14 +966,18 @@ form
     padding-bottom: 10px
 |]
     addCSS "list" $ [cassius|
-table
+.list
   background-color: #728fff
-  border-collapse: collapse
   font-size: 24
   margin-top: 100px
   margin-left: auto
   margin-right: auto
   padding: 10px
+  width: 600px
+
+table
+  border-collapse: collapse
+  font-size: 24
   width: 600px
 
 thead
