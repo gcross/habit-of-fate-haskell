@@ -238,7 +238,7 @@ setStatusAndLog status_@(Status code message) = do
         | otherwise = "succeeded"
   logIO $ [i|Request #{result} - #{code} #{decodeUtf8 >>> unpack $ message}|]
 
-data ProgramResult = ProgramResult Status Content
+data ProgramResult = ProgramRedirectsTo Lazy.Text | ProgramResult Status Content
 
 data Content =
     NoContent
@@ -257,6 +257,9 @@ returnText s = view (from strict) >>> returnLazyText s
 
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = JSONContent >>> ProgramResult s >>> return
+
+redirectTo ∷ Monad m ⇒ Lazy.Text → m ProgramResult
+redirectTo = ProgramRedirectsTo >>> return
 
 data Page = HabitsPage
 renderPageURL ∷ Page → Text
@@ -378,6 +381,7 @@ readerWith actionWhenAuthFails environment (ReaderProgram program) = do
   case error_or_result of
     Left status_ →
       setStatusAndLog status_
+    Right (ProgramRedirectsTo href) → Scotty.redirect href
     Right (ProgramResult status_ content) → do
       setStatusAndLog status_
       setContent content
@@ -417,7 +421,7 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
       interpret WriterGetAccountInstruction = get
       interpret (WriterPutAccountInstruction new_account) = put new_account
   initial_generator ← liftIO newStdGen
-  (status_, maybe_content, logs) ← atomically >>> liftIO $ do
+  (redirect_or_content, logs) ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs) =
           interpretWithMonad interpret program
@@ -426,14 +430,19 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
             |> flip evalRandT initial_generator
             |> runWriter
     case error_or_result of
-      Left status_ → pure (status_, Nothing, logs)
-      Right (ProgramResult status_ content, new_account) → do
+      Left status_ → pure (Right (status_, Nothing), logs)
+      Right (result, new_account) → do
         writeTVar account_tvar new_account
         tryPutTMVar write_request_var ()
-        pure (status_, Just content, logs)
+        pure $ case result of
+          ProgramRedirectsTo href → (Left href, logs)
+          ProgramResult status_ content → (Right (status_, Just content), logs)
   traverse_ logIO logs
-  setStatusAndLog status_
-  maybe (pure ()) setContent maybe_content
+  case redirect_or_content of
+    Left href → Scotty.redirect href
+    Right (status_, maybe_content) → do
+      setStatusAndLog status_
+      maybe (pure ()) setContent maybe_content
 
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
@@ -744,25 +753,25 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
         <tr>
           <td> Difficulty:
           <td>
-            <select required="true">
+            <select name="difficulty" required="true">
               $forall scale <- scales
                 $if isSelected difficulty scale
-                  <option value="#{scale}" selected="selected"> #{displayScale scale}
+                  <option value="#{show scale}" selected="selected"> #{displayScale scale}
                 $else
-                  <option value="#{scale}"> #{displayScale scale}
+                  <option value="#{show scale}"> #{displayScale scale}
           <td> #{difficulty_error}
         <tr>
           <td> Importance:
           <td>
-            <select required="true">
+            <select name="importance" required="true">
               $forall scale <- scales
                 $if isSelected importance scale
-                  <option value="#{scale}" selected="selected"> #{displayScale scale}
+                  <option value="#{show scale}" selected="selected"> #{displayScale scale}
                 $else
-                  <option value="#{scale}"> #{displayScale scale}
+                  <option value="#{show scale}"> #{displayScale scale}
           <td> #{importance_error}
     <div>
-      <input type="submit"/> Submit
+      <input type="submit"/>
       <button onclick="window.location.href='/habits'"> Cancel
 |]
     Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
@@ -802,7 +811,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           habitPage habit_id name_error difficulty_error importance_error def
         Just new_habit → do
           log [i|Updating habit #{habit_id} to #{new_habit}|]
-          habits . at habit_id <<.= Just new_habit >> returnNothing noContent204
+          habits . at habit_id <<.= Just new_habit >> redirectTo "/habits"
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
