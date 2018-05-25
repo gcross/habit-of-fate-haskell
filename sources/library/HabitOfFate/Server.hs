@@ -339,7 +339,7 @@ raiseStatus code =
 raiseNoSuchHabit = raiseStatus 404 "Not found: No such habit"
 
 log ∷ ActionMonad m ⇒ String → m ()
-log = LogInstruction >>> singletonCommon 
+log = LogInstruction >>> singletonCommon
 
 ------------------------------------ Reader ------------------------------------
 
