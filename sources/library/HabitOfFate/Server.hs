@@ -740,13 +740,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
             $if n > 1
               <td>
                 <form method="post" action="/move/#{show uuid}/#{n - 1}">
-                  <input type="submit" value="Up">
+                  <input type="submit" value="↑" class="up">
             $else
               <td>
             $if n < length habits_to_display
               <td>
                 <form method="post" action="/move/#{show uuid}/#{n + 1}">
-                  <input type="submit" value="Down">
+                  <input type="submit" value="↓" class="down">
             $else
               <td>
             <td> #{n}.
@@ -1000,6 +1000,13 @@ form
   margin-right: auto
   padding: 10px
   width: 600px
+
+.up, .down
+  font-size: 24
+  margin-bottom: -20px
+
+.down
+  margin-left: -20px
 
 table
   border-collapse: collapse
