@@ -772,7 +772,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           <td> #{importance_error}
     <div>
       <input type="submit"/>
-      <button onclick="window.location.href='/habits'"> Cancel
+      <a href="/habits">Cancel
 |]
     Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
       habit_id ← getParam "habit_id"
