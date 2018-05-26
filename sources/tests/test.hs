@@ -407,7 +407,7 @@ main = defaultMain $ testGroup "All Tests"
                 , ("difficulty", habit ^. difficulty . to (show >>> BS8.pack))
                 ]
             readHabitsIn doc = liftIO $ do
-              let rows = doc ^.. root ./ named "body" ./ named "table" ./ named "tr"
+              let rows = doc ^.. root ./ named "body" ./  named "div" ./ named "table" ./ named "tbody" ./ named "tr"
                   number_of_rows = length rows
                   observed_classes = map (^. attribute "class") rows
                   expected_classes = take number_of_rows (cycle [Just "row odd", Just "row even"])
@@ -415,7 +415,8 @@ main = defaultMain $ testGroup "All Tests"
 
               forM (zip [(1∷Int)..] rows) $ \(i, row) → do
                 case row ^.. uniplate . named "td" of
-                  [name, difficulty, importance] → do
+                  [_, _, position, name, difficulty, importance] → do
+                    strip (position ^. text) @?= pack (show i ⊕ ".")
                     habit_id_unparsed ←
                       maybe
                         (assertFailure "No link to the habit page.")
@@ -451,8 +452,8 @@ main = defaultMain $ testGroup "All Tests"
                       ( habit_id
                       , Habit
                           (maybe "(no name)" (^. text) (name ^? uniplate . named "a"))
-                          difficulty_scale
-                          importance_scale
+                          (Difficulty difficulty_scale)
+                          (Importance importance_scale)
                       )
                   x → assertFailure $ printf "Row %i has %i columns" i (length x)
         in
