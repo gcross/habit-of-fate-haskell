@@ -53,6 +53,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Account
 import HabitOfFate.Habit
 import HabitOfFate.Story
+import HabitOfFate.Story.Parser.XML
 
 data SecureMode = Testing | Secure
 

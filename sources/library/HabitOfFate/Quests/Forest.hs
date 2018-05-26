@@ -38,6 +38,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Game
 import HabitOfFate.Quest
 import HabitOfFate.Story
+import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.TH
 import HabitOfFate.Trial
 

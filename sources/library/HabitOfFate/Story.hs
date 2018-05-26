@@ -41,14 +41,10 @@ import HabitOfFate.Prelude
 import Data.Aeson hiding ((.=))
 import qualified Data.Char as Char
 import Data.String (IsString(..))
-import qualified Data.Text.Lazy as LazyText
 import Instances.TH.Lift ()
 import GHC.Generics hiding (from, to)
 import Language.Haskell.TH.Lift (Lift)
-import qualified Language.Haskell.TH.Lift as Lift
-import Language.Haskell.TH.Quote
 import Rainbow
-import Text.XML
 import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.TH
@@ -160,123 +156,8 @@ instance GenText α ⇒ Monoid (GenParagraph α) where
 textFromParagraph ∷ Paragraph → Text
 textFromParagraph = fold
 
-insertMarkers ∷ String → String
-insertMarkers =
-  lines
-  >>>
-  fmap (
-    dropWhile (∈ " \t")
-    >>>
-    \case
-      "" → "</p><p>"
-      '=':_ → "</p></event><event><p>"
-      line → line
-  )
-  >>>
-  (\x → ["<story><quest><event><p>"] ⊕ x ⊕ ["</p></event></quest></story>"])
-  >>>
-  unlines
-
 allSpaces ∷ Text → Bool
 allSpaces = allOf text (∈ " \t\r\n")
-
-parseContainer ∷ Text → ([Node] → Either String α) → Node → Either String α
-parseContainer expected_tag parseChildren node =
-  case node of
-    NodeInstruction _ → fail "unexpected XML instruction"
-    NodeComment _ → parseChildren []
-    NodeContent t
-      | allSpaces t → parseChildren []
-      | otherwise → fail $ "unexpected non-whitespace text outside of <p>"
-    NodeElement (Element (Name tag _ _) attrs children)
-      | tag /= expected_tag →
-          fail [i|expected <#{expected_tag}> but got <#{tag}>|]
-      | attrs |> (not <<< null) →
-          fail [i|expected no attributes in <#{tag}>"|]
-      | otherwise → parseChildren children
-
-parseStoryFromNodes ∷ [Node] → Either String Story
-parseStoryFromNodes =
-  mapM (parseContainer "quest" parseQuestFromNodes)
-  >>>
-  fmap GenStory
-
-parseQuestFromNodes ∷ [Node] → Either String Quest
-parseQuestFromNodes =
-  mapM (parseContainer "event" parseEventFromNodes)
-  >>>
-  fmap GenQuest
-
-parseEventFromNodes ∷ [Node] → Either String Event
-parseEventFromNodes =
-  mapM (parseContainer "p" parseParagraphFromNodes)
-  >>>
-  fmap (GenEvent <<< filter (not <<< nullOf folded))
-
-parseParagraphFromNodes ∷ [Node] → Either String Paragraph
-parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
-  where
-    parseParagraphChild ∷ Node → Either String Paragraph
-    parseParagraphChild (NodeInstruction _) = fail "unexpected XML instruction"
-    parseParagraphChild (NodeComment _) = return mempty
-    parseParagraphChild (NodeContent t) = return $ Text_ t
-    parseParagraphChild (NodeElement (Element (Name tag _ _) attrs children)) =
-      case lookup tag tags of
-        Nothing → fail [i|unexpected tag <#{tag}>|]
-        Just style
-          | not <<< null $ attrs → fail [i|<#{tag}> had unexpected attributes|]
-          | otherwise → Style style <$> parseParagraphFromNodes children
-      where
-        tags ∷ Map Text Style
-        tags = mapFromList
-          [ ("b", Bold)
-          , ("u", Underline)
-          , ("red", Color Red)
-          , ("blue", Color Blue)
-          , ("green", Color Green)
-          , ("introduce", Introduce)
-          ]
-
-parseStoryFromDocument ∷ Document → Either String Story
-parseStoryFromDocument =
-  documentRoot
-  >>>
-  NodeElement
-  >>>
-  parseContainer "story" parseStoryFromNodes
-
-parseStoryFromText ∷ LazyText.Text → Either String Story
-parseStoryFromText = (parseText def >>> _Left %~ show) >=> parseStoryFromDocument
-
-parseSubstitutions ∷ Paragraph → WriterT (Set Text) (Either String) SubParagraph
-parseSubstitutions =
-  replaceTextM parseSubstitutionsIn
-  where
-    parseSubstitutionsIn ∷ Text → WriterT (Set Text) (Either String) SubParagraph
-    parseSubstitutionsIn chunk =
-      runParserT parser () "" chunk
-      >>=
-      either
-        (\msg → fail [i|Error parsing substitutions for text chunk "%{chunk}": #{msg}|])
-        return
-
-    parser =
-      mappend
-        <$> takeTillNextSub
-        <*> (mconcat <$> (many $ mappend <$> parseAnotherSub <*> takeTillNextSub))
-
-    takeTillNextSub = (pack >>> Literal >>> Text_) <$> many (satisfy (/='{'))
-
-    parseAnotherSub = do
-      key ←
-        pack
-        <$>
-        between
-          (char '{')
-          (char '}')
-          ((rewords >>> pack) <$> (many1 $ letter <|> char '|' <|> space))
-      tell >>> lift $ singletonSet key
-      key |> Key |> Text_ |> return
 
 data Gender = Male | Female deriving (Enum,Eq,Ord,Read,Show)
 
@@ -400,6 +281,15 @@ makeSubstitutor lookupGendered lookupNeutered key =
                   tryName name [i|unable to find entity with name "#{name}"|]
       )
 
+data RenderState = RenderState
+  { _render_number_of_columns ∷ Int
+  , _render_current_word ∷ Seq Char
+  , _render_saw_spaces_last ∷ Bool
+  , _render_pending_chunks ∷ Seq (Chunk Text)
+  , _render_pending_length ∷ Int
+  }
+makeLenses ''RenderState
+
 clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
 clearNullElements isNull = _Wrapped' %~ filter (not <<< isNull)
 
@@ -410,74 +300,6 @@ dropEmptyThingsFromStory =
   quests %~ clearNullElements (nullOf paragraphs)
   >>>
   clearNullElements (nullOf events)
-
-parseQuote ∷ String → [SubEvent]
-parseQuote =
-  insertMarkers
-  >>>
-  LazyText.pack
-  >>>
-  (
-    parseStoryFromText
-    >=>
-    (dropEmptyThingsFromStory >>> pure)
-    >=>
-    (
-      traverseOf (quests . events . paragraphs) parseSubstitutions
-      >>>
-      runWriterT
-      >>>
-      fmap fst
-    )
-    >=>
-    (
-      dropEmptyThingsFromStory
-      >>>
-      \case
-        GenStory [quest] → return $ unwrapGenQuest quest
-        GenStory xs → fail [i|saw #{olength xs} quests instead of 1|]
-    )
-  )
-  >>>
-  either (show >>> error) identity
-
-s = QuasiQuoter
-  (parseQuote >>> Lift.lift)
-  (error "Cannot use s as a pattern")
-  (error "Cannot use s as a type")
-  (error "Cannot use s as a dec")
-
-s_fixed = QuasiQuoter
-  (
-    parseQuote
-    >>>
-    (\case
-      [] → [|()|]
-      [x1] → [|x1|]
-      [x1,x2] → [|(x1,x2)|]
-      [x1,x2,x3] → [|(x1,x2,x3)|]
-      [x1,x2,x3,x4] → [|(x1,x2,x3,x4)|]
-      [x1,x2,x3,x4,x5] → [|(x1,x2,x3,x4,x5)|]
-      [x1,x2,x3,x4,x5,x6] → [|(x1,x2,x3,x4,x5,x6)|]
-      [x1,x2,x3,x4,x5,x6,x7] → [|(x1,x2,x3,x4,x5,x6,x7)|]
-      [x1,x2,x3,x4,x5,x6,x7,x8] → [|(x1,x2,x3,x4,x5,x6,x7,x8)|]
-      [x1,x2,x3,x4,x5,x6,x7,x8,x9] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9)|]
-      [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)|]
-      xs → error [i|saw #{olength xs} events, which is too many (> 10)|]
-    )
-  )
-  (error "Cannot use s1 as a pattern")
-  (error "Cannot use s1 as a type")
-  (error "Cannot use s1 as a dec")
-
-data RenderState = RenderState
-  { _render_number_of_columns ∷ Int
-  , _render_current_word ∷ Seq Char
-  , _render_saw_spaces_last ∷ Bool
-  , _render_pending_chunks ∷ Seq (Chunk Text)
-  , _render_pending_length ∷ Int
-  }
-makeLenses ''RenderState
 
 renderStoryToChunks ∷ Story → [Chunk Text]
 renderStoryToChunks =

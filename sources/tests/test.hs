@@ -67,6 +67,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
+import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Story.Renderer.XML
 
 withTestApp ∷ (Int → IO ()) → IO ()

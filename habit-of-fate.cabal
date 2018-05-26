@@ -73,6 +73,8 @@ library
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Server
                      , HabitOfFate.Story
+                     , HabitOfFate.Story.Parser.Quote
+                     , HabitOfFate.Story.Parser.XML
                      , HabitOfFate.Story.Renderer.XML
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
