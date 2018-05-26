@@ -67,6 +67,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
+import HabitOfFate.Story.Renderer.XML
 
 withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp = withApplication (makeAppRunningInTestMode mempty (const $ pure ()))
@@ -600,9 +601,9 @@ hopeless task, but {she} has no other choice.
     , testGroup "rendering"
     ----------------------------------------------------------------------------
         [ testCase "three Text_, middle space" $
-            (renderStoryToText $ GenStory [GenQuest [GenEvent ["X Y"]]])
+            (renderStoryToXMLText $ GenStory [GenQuest [GenEvent ["X Y"]]])
             @?=
-            (renderStoryToText $ GenStory [GenQuest [GenEvent [mconcat ["X", " ", "Y"]]]])
+            (renderStoryToXMLText $ GenStory [GenQuest [GenEvent [mconcat ["X", " ", "Y"]]]])
         ]
     ]
   ]

@@ -34,6 +34,8 @@ import qualified Test.Tasty.SmallCheck as S
 import Test.SmallCheck.Series
 
 import HabitOfFate.Story
+import HabitOfFate.Story.Parser.XML
+import HabitOfFate.Story.Renderer.XML
 
 instance Arbitrary Text where
   arbitrary = pack <$> arbitrary
@@ -128,11 +130,11 @@ main = defaultMain $ testGroup "All Tests"
                 , message
                 )
                 where
-                  xml_text = renderStoryToText story
+                  xml_text = renderStoryToXMLText story
                   round_trip_story = parseStoryFromText xml_text
-                  round_trip_xml_text = renderStoryToText <$> round_trip_story
+                  round_trip_xml_text = renderStoryToXMLText <$> round_trip_story
                   double_round_trip_story = round_trip_xml_text >>= parseStoryFromText
-                  double_round_trip_xml_text = renderStoryToText <$> double_round_trip_story
+                  double_round_trip_xml_text = renderStoryToXMLText <$> double_round_trip_story
                   message = unlines
                     ["ORIGINAL STORY:"
                     ,"    Right " ⊕ show (storyToLists story)

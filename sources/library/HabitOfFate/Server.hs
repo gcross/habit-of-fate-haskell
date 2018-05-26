@@ -87,6 +87,7 @@ import HabitOfFate.Game
 import HabitOfFate.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Story
+import HabitOfFate.Story.Renderer.XML
 
 import Paths_habit_of_fate (getDataFileName)
 
@@ -918,7 +919,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       returnLazyText ok200 $!! (
         s ^. run_quests ⊢ s ^. run_quest_events . to createQuest
         |> createStory
-        |> renderStoryToText
+        |> renderStoryToXMLText
        )
 ------------------------------------- Home -------------------------------------
     Scotty.get "/home" <<< scottyHTML $ [hamlet|

@@ -73,6 +73,7 @@ library
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Server
                      , HabitOfFate.Story
+                     , HabitOfFate.Story.Renderer.XML
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   other-modules:       Paths_habit_of_fate

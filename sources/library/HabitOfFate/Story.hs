@@ -470,62 +470,6 @@ s_fixed = QuasiQuoter
   (error "Cannot use s1 as a type")
   (error "Cannot use s1 as a dec")
 
-renderParagraphToNodes ∷ Paragraph → [Node]
-renderParagraphToNodes paragraph =
-  case recurse paragraph of
-    [] → []
-    nodes → [NodeElement $ Element "p" mempty nodes]
-  where
-    recurse ∷ Paragraph → [Node]
-    recurse (Style style p)
-      | null nested = []
-      | otherwise =
-          let tag = case style of
-                Bold → "b"
-                Underline → "u"
-                Color Red → "red"
-                Color Blue → "blue"
-                Color Green → "green"
-                Introduce → "introduce"
-          in Element tag mempty nested |> NodeElement |> singleton
-      where
-        nested = recurse p
-    recurse (Merged children) = concatMap recurse children
-    recurse (Text_ t) = [NodeContent t]
-
-renderEventToNode ∷ Event → Node
-renderEventToNode =
-  unwrapGenEvent
-  >>>
-  concatMap renderParagraphToNodes
-  >>>
-  Element "event" mempty
-  >>>
-  NodeElement
-
-renderQuestToNode ∷ Quest → Node
-renderQuestToNode =
-  unwrapGenQuest
-  >>>
-  foldr (renderEventToNode >>> (:)) []
-  >>>
-  Element "quest" mempty
-  >>>
-  NodeElement
-
-renderStoryToDocument ∷ Story → Document
-renderStoryToDocument =
-  unwrapGenStory
-  >>>
-  foldr (renderQuestToNode >>> (:)) []
-  >>>
-  Element "story" mempty
-  >>>
-  (\n → Document (Prologue [] Nothing []) n [])
-
-renderStoryToText ∷ Story → LazyText.Text
-renderStoryToText = renderStoryToDocument >>> renderText def
-
 data RenderState = RenderState
   { _render_number_of_columns ∷ Int
   , _render_current_word ∷ Seq Char
