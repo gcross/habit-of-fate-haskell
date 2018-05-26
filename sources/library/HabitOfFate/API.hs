@@ -283,8 +283,5 @@ runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Story
 runGame = do
   response ← request POST "run"
   case responseStatusCode response of
-    200 →
-      (response |> responseBody |> decodeUtf8 |> parseText def |> either throwM return)
-      >>=
-      (parseStoryFromDocument >>> either error return)
+    200 → response |> responseBody |> decodeUtf8 |> parseStoryFromText
     code → throwM $ UnexpectedStatus [200] code

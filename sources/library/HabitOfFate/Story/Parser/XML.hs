@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -27,56 +28,62 @@ module HabitOfFate.Story.Parser.XML
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow(throwM))
+import Control.Exception (Exception)
 import qualified Data.Text.Lazy as Lazy
+import Data.Typeable (Typeable)
 import Text.XML
 
 import HabitOfFate.Story
 
-parseContainer ∷ Text → ([Node] → Either String α) → Node → Either String α
+data StoryParseException = StoryParseException String deriving (Eq,Show,Typeable)
+instance Exception StoryParseException where
+
+parseContainer ∷ MonadThrow m ⇒ Text → ([Node] → m α) → Node → m α
 parseContainer expected_tag parseChildren node =
   case node of
-    NodeInstruction _ → fail "unexpected XML instruction"
+    NodeInstruction _ →  throwM $ StoryParseException "unexpected XML instruction"
     NodeComment _ → parseChildren []
     NodeContent t
       | allSpaces t → parseChildren []
-      | otherwise → fail $ "unexpected non-whitespace text outside of <p>"
+      | otherwise →  throwM $ StoryParseException $ "unexpected non-whitespace text outside of <p>"
     NodeElement (Element (Name tag _ _) attrs childs)
       | tag /= expected_tag →
-          fail [i|expected <#{expected_tag}> but got <#{tag}>|]
+           throwM $ StoryParseException [i|expected <#{expected_tag}> but got <#{tag}>|]
       | attrs |> (not <<< null) →
-          fail [i|expected no attributes in <#{tag}>"|]
+           throwM $ StoryParseException [i|expected no attributes in <#{tag}>"|]
       | otherwise → parseChildren childs
 
-parseStoryFromNodes ∷ [Node] → Either String Story
+parseStoryFromNodes ∷ MonadThrow m ⇒ [Node] → m Story
 parseStoryFromNodes =
   mapM (parseContainer "quest" parseQuestFromNodes)
   >>>
   fmap GenStory
 
-parseQuestFromNodes ∷ [Node] → Either String Quest
+parseQuestFromNodes ∷ MonadThrow m ⇒ [Node] → m Quest
 parseQuestFromNodes =
   mapM (parseContainer "event" parseEventFromNodes)
   >>>
   fmap GenQuest
 
-parseEventFromNodes ∷ [Node] → Either String Event
+parseEventFromNodes ∷ MonadThrow m ⇒ [Node] → m Event
 parseEventFromNodes =
   mapM (parseContainer "p" parseParagraphFromNodes)
   >>>
   fmap (GenEvent <<< filter (not <<< nullOf folded))
 
-parseParagraphFromNodes ∷ [Node] → Either String Paragraph
+parseParagraphFromNodes ∷ MonadThrow m ⇒ [Node] → m Paragraph
 parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
   where
-    parseParagraphChild ∷ Node → Either String Paragraph
-    parseParagraphChild (NodeInstruction _) = fail "unexpected XML instruction"
+    parseParagraphChild ∷ MonadThrow m ⇒ Node → m Paragraph
+    parseParagraphChild (NodeInstruction _) =  throwM $ StoryParseException "unexpected XML instruction"
     parseParagraphChild (NodeComment _) = return mempty
     parseParagraphChild (NodeContent t) = return $ Text_ t
     parseParagraphChild (NodeElement (Element (Name tag _ _) attrs childs)) =
       case lookup tag tags of
-        Nothing → fail [i|unexpected tag <#{tag}>|]
+        Nothing →  throwM $ StoryParseException [i|unexpected tag <#{tag}>|]
         Just style
-          | not <<< null $ attrs → fail [i|<#{tag}> had unexpected attributes|]
+          | not <<< null $ attrs →  throwM $ StoryParseException [i|<#{tag}> had unexpected attributes|]
           | otherwise → Style style <$> parseParagraphFromNodes childs
       where
         tags ∷ Map Text Style
@@ -89,7 +96,7 @@ parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
           , ("introduce", Introduce)
           ]
 
-parseStoryFromDocument ∷ Document → Either String Story
+parseStoryFromDocument ∷ MonadThrow m ⇒ Document → m Story
 parseStoryFromDocument =
   documentRoot
   >>>
@@ -97,5 +104,5 @@ parseStoryFromDocument =
   >>>
   parseContainer "story" parseStoryFromNodes
 
-parseStoryFromText ∷ Lazy.Text → Either String Story
-parseStoryFromText = (parseText def >>> _Left %~ show) >=> parseStoryFromDocument
+parseStoryFromText ∷ MonadThrow m ⇒ Lazy.Text → m Story
+parseStoryFromText = (parseText def >>> either throwM pure) >=> parseStoryFromDocument

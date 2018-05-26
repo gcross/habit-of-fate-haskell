@@ -14,9 +14,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -24,7 +26,10 @@ module HabitOfFate.Story.Parser.Quote (s, s_fixed) where
 
 import HabitOfFate.Prelude
 
+import Control.Exception (Exception)
+import Control.Monad.Catch (MonadThrow(throwM))
 import qualified Data.Text.Lazy as Lazy
+import Data.Typeable (Typeable)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import Text.Parsec hiding ((<|>), optional, uncons)
@@ -49,16 +54,20 @@ insertMarkers =
   >>>
   unlines
 
-parseSubstitutions ∷ Paragraph → Either String SubParagraph
+data ParseSubstitutionException = ParseSubstitutionException String deriving (Eq,Show,Typeable)
+instance Exception ParseSubstitutionException where
+
+parseSubstitutions ∷ ∀ m. MonadThrow m ⇒ Paragraph → m SubParagraph
 parseSubstitutions =
   replaceTextM parseSubstitutionsIn >>> runWriterT >>> fmap fst
   where
-    parseSubstitutionsIn ∷ Text → WriterT (Set Text) (Either String) SubParagraph
+    parseSubstitutionsIn ∷ Text → WriterT (Set Text) m SubParagraph
     parseSubstitutionsIn chunk =
       runParserT parser () "" chunk
       >>=
       either
-        (\msg → fail [i|Error parsing substitutions for text chunk "%{chunk}": #{msg}|])
+        (\msg → throwM $
+          ParseSubstitutionException [i|Error parsing substitutions for text chunk "%{chunk}": #{msg}|])
         return
 
     parser =
@@ -92,7 +101,7 @@ parseQuote =
     >=>
     \case
       GenStory [quest] → return $ unwrapGenQuest quest
-      GenStory xs → fail [i|saw #{olength xs} quests instead of 1|]
+      GenStory xs → throwM $ ParseSubstitutionException [i|saw #{olength xs} quests instead of 1|]
   )
   >>>
   either (show >>> error) identity

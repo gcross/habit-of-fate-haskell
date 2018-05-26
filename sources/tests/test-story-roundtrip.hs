@@ -126,7 +126,8 @@ main = defaultMain $ testGroup "All Tests"
           let doTest story =
                 ( is _Right double_round_trip_xml_text
                   &&
-                  double_round_trip_xml_text == round_trip_xml_text
+                  (double_round_trip_xml_text & _Left %~ show) ==
+                    (round_trip_xml_text & _Left %~ show)
                 , message
                 )
                 where
