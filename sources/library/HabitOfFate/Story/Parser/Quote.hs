@@ -49,9 +49,9 @@ insertMarkers =
   >>>
   unlines
 
-parseSubstitutions ∷ Paragraph → WriterT (Set Text) (Either String) SubParagraph
+parseSubstitutions ∷ Paragraph → Either String SubParagraph
 parseSubstitutions =
-  replaceTextM parseSubstitutionsIn
+  replaceTextM parseSubstitutionsIn >>> runWriterT >>> fmap fst
   where
     parseSubstitutionsIn ∷ Text → WriterT (Set Text) (Either String) SubParagraph
     parseSubstitutionsIn chunk =
@@ -86,25 +86,13 @@ parseQuote =
   Lazy.pack
   >>>
   (
-    parseStoryFromText
+    (parseStoryFromText >>> fmap dropEmptyThingsFromStory)
     >=>
-    (dropEmptyThingsFromStory >>> pure)
+    (traverseOf (quests . events . paragraphs) parseSubstitutions >>> fmap dropEmptyThingsFromStory)
     >=>
-    (
-      traverseOf (quests . events . paragraphs) parseSubstitutions
-      >>>
-      runWriterT
-      >>>
-      fmap fst
-    )
-    >=>
-    (
-      dropEmptyThingsFromStory
-      >>>
-      \case
-        GenStory [quest] → return $ unwrapGenQuest quest
-        GenStory xs → fail [i|saw #{olength xs} quests instead of 1|]
-    )
+    \case
+      GenStory [quest] → return $ unwrapGenQuest quest
+      GenStory xs → fail [i|saw #{olength xs} quests instead of 1|]
   )
   >>>
   either (show >>> error) identity
