@@ -843,7 +843,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           habitPage habit_id name_error difficulty_error importance_error def
         Just new_habit → do
           log [i|Updating habit #{habit_id} to #{new_habit}|]
-          habits . at habit_id <<.= Just new_habit >> redirectTo "/habits"
+          habits . at habit_id <<.= Just new_habit
+          redirectTo "/habits"
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
