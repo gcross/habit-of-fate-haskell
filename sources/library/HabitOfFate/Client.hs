@@ -59,6 +59,7 @@ import HabitOfFate.API
 import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Story
+import HabitOfFate.Story.Renderer.Console
 
 data Cancel = Cancel deriving (Show, Typeable)
 instance Exception Cancel where

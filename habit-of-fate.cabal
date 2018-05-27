@@ -75,6 +75,7 @@ library
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
                      , HabitOfFate.Story.Parser.XML
+                     , HabitOfFate.Story.Renderer.Console
                      , HabitOfFate.Story.Renderer.XML
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
