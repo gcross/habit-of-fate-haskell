@@ -165,7 +165,6 @@ looks up, the fairy is gone.
 won ∷ ForestAction ()
 won = do
   forestEvent won_story
-  game . belief += 1
   questHasEnded
   where
     won_story = [s_fixed|
@@ -201,7 +200,6 @@ makeLenses ''FailureEvent
 lost ∷ ForestAction ()
 lost = do
   uniform failure_stories >>= runFailureEvent FailureHappened
-  game . belief -= 1
   questHasEnded
 
 averted ∷ ForestAction ()

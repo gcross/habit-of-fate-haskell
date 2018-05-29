@@ -38,8 +38,7 @@ import HabitOfFate.Story.Substitution
 import HabitOfFate.TH
 
 data GameState = GameState
-  { _belief ∷ Int
-  , _credits ∷ Credits
+  { _credits ∷ Credits
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''GameState
 makeLenses ''GameState
@@ -72,7 +71,7 @@ instance MonadGame m ⇒ MonadGame (StateT s m) where
   addParagraph = lift . addParagraph
 
 newGame ∷ GameState
-newGame = GameState 0 (Credits 0 0)
+newGame = GameState (Credits 0 0)
 
 runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
 runGame state =
