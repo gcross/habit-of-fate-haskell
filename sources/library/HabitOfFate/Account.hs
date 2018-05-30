@@ -98,12 +98,12 @@ runAccount d =
 
 stillHasCredits ∷ Account → Bool
 stillHasCredits d = (||)
-  (d ^. game . credits . success /= 0)
-  (d ^. game . credits . failure /= 0)
+  (d ^. game . credits . successes /= 0)
+  (d ^. game . credits . failures /= 0)
 
 data HabitsToMark = HabitsToMark
-  { _successes ∷ [UUID]
-  , _failures ∷ [UUID]
+  { _succeeded ∷ [UUID]
+  , _failed ∷ [UUID]
   } deriving (Eq, Ord, Read, Show)
 deriveJSON ''HabitsToMark
 makeLenses ''HabitsToMark

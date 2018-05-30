@@ -305,7 +305,7 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits [test_habit_id] [test_habit_id_2]
-                getCredits >>= ((@?= Credits 0.5 4) >>> liftIO)
+                getCredits >>= ((@?= Credits (Successes 0.5) (Failures 4)) >>> liftIO)
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
@@ -333,10 +333,10 @@ main = defaultMain $ testGroup "All Tests"
                 liftIO $ do
                   assertBool
                     ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
-                    (abs (actual_successes - expected_successes) < 0.1)
+                    (abs ((credits ^. successes) - expected_successes) < 0.1)
                   assertBool
                     ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
-                    (abs (actual_failures - expected_failures) < 0.1)
+                    (abs ((credits ^. failures ) - expected_failures ) < 0.1)
             ]
         ]
     ----------------------------------------------------------------------------

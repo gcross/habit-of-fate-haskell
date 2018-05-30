@@ -71,7 +71,7 @@ instance MonadGame m ⇒ MonadGame (StateT s m) where
   addParagraph = lift . addParagraph
 
 newGame ∷ GameState
-newGame = GameState (Credits 0 0)
+newGame = GameState (Credits (Successes 0) (Failures 0))
 
 runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
 runGame state =

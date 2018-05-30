@@ -874,22 +874,22 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.post "/api/mark" <<< apiWriter $ do
       marks ← getBodyJSON
       let markHabits ∷
-            (HabitsToMark → [UUID]) →
-            (Habit → Scale) →
+            Getter HabitsToMark [UUID] →
+            Getter Habit Scale →
             Lens' Account Double →
             WriterProgram Double
-          markHabits getUUIDs getScale value_lens = do
+          markHabits uuids_getter scale_getter value_lens = do
             old_value ← use value_lens
             increment ∷ Double ←
               marks
-                |> getUUIDs
-                |> mapM (lookupHabit >>> fmap (getScale >>> scaleFactor))
+                |> (^. uuids_getter)
+                |> mapM (lookupHabit >>> fmap ((^. scale_getter) >>> scaleFactor))
                 |> fmap sum
             value_lens <.= old_value + increment
-      log $ [i|Marking #{marks ^. successes} successes and #{marks ^. failures} failures.|]
+      log $ [i|Marking #{marks ^. succeeded} successes and #{marks ^. failed} failures.|]
       (Credits
-          <$> (markHabits (^. successes) (^. difficulty) (game . credits . success))
-          <*> (markHabits (^. failures ) (^. importance) (game . credits . failure))
+          <$> (Successes <$> markHabits succeeded difficulty (game . credits . successes))
+          <*> (Failures  <$> markHabits failed    importance (game . credits . failures ))
        ) >>= returnJSON ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do

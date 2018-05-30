@@ -236,8 +236,8 @@ main_menu =
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
       credits ← liftSession getCredits
-      liftIO $ putStrLn [i|    Success credits: #{credits ^. success}|]
-      liftIO $ putStrLn [i|    Failure credits: #{credits ^. failure}|]
+      liftIO $ putStrLn [i|    Success credits: #{credits ^. successes}|]
+      liftIO $ putStrLn [i|    Failure credits: #{credits ^. failures}|]
   ,interaction 'r' "Run game." $ do
       story ← liftSession runGame
       printer ← liftIO byteStringMakerFromEnvironment

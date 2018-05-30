@@ -338,7 +338,7 @@ run ∷ ForestAction ()
 run = do
   spendCredits
     (quest . credits_until_failure)
-    (game . credits . failure)
+    (game . credits . failures)
     >>=
     \case
       SomethingHappened → lost
@@ -346,7 +346,7 @@ run = do
       NoCredits → return ()
   spendCredits
     (quest . credits_until_success)
-    (game . credits . success)
+    (game . credits . successes)
     >>=
     \case
       SomethingHappened → (use $ quest . herb_found) >>= bool found won

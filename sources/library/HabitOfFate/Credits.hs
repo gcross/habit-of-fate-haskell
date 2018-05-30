@@ -14,18 +14,48 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Credits where
 
-import Control.Lens
+import HabitOfFate.Prelude
+
+import Data.Aeson
 
 import HabitOfFate.TH
 
+newtype Successes = Successes { unwrapSuccesses ∷ Double }
+  deriving (Eq,FromJSON,Ord,Read,Show,ToJSON)
+
+instance Wrapped Successes where
+  type Unwrapped Successes = Double
+  _Wrapped' = iso unwrapSuccesses Successes
+
+newtype Failures = Failures { unwrapFailures ∷ Double }
+  deriving (Eq,FromJSON,Ord,Read,Show,ToJSON)
+
+instance Wrapped Failures where
+  type Unwrapped Failures = Double
+  _Wrapped' = iso unwrapFailures Failures
+
 data Credits = Credits
-  { _success ∷ Double
-  , _failure ∷ Double
+  { _successes ∷ Successes
+  , _failures ∷ Failures
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Credits
-makeLenses ''Credits
+
+successes ∷ Lens' Credits Double
+successes =
+  lens
+    (_successes >>> unwrapSuccesses)
+    (\old new → old { _successes = Successes new })
+
+failures ∷ Lens' Credits Double
+failures =
+  lens
+    (_failures >>> unwrapFailures)
+    (\old new → old { _failures = Failures new })
