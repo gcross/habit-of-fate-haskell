@@ -69,6 +69,7 @@ import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Story.Renderer.XML
+import HabitOfFate.Story.Substitution
 
 withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp = withApplication (makeAppRunningInTestMode mempty (const $ pure ()))

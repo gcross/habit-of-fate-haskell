@@ -39,6 +39,7 @@ import HabitOfFate.Game
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
+import HabitOfFate.Story.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
 

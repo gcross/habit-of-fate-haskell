@@ -34,6 +34,7 @@ import qualified Control.Monad.Random as Random
 
 import HabitOfFate.Credits
 import HabitOfFate.Story
+import HabitOfFate.Story.Substitution
 import HabitOfFate.TH
 
 data GameState = GameState
