@@ -65,13 +65,15 @@ findNounConverter "" = Nothing
 findNounConverter word
   | word ∈ ["His", "Her"] = Just $ \case { Male → "His"; Female → "Her" }
   | otherwise =
-      (\(m,f) gender →
-        case gender of { Male → m; Female → f }
-          |> (first_case .~ (word ^?! first_case))
-          |> takeWhile (/= '|')
-      )
-      <$>
       find (elemOf both (word & first_case .~ False)) nouns
+      <&>
+      (\(m,f) →
+        \case { Male → m; Female → f }
+        >>>
+        first_case .~ (word ^?! first_case)
+        >>>
+        takeWhile (/= '|')
+      )
   where
     nouns =
       [ ("he","she")
