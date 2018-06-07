@@ -529,26 +529,6 @@ main = defaultMain $ testGroup "All Tests"
           "{x} {y}" @?= originalFromSubEvent [s_fixed|{x} {y}|]
       ]
     ----------------------------------------------------------------------------
-    , testGroup "makeSubstitutor"
-    ----------------------------------------------------------------------------
-      [ testGroup "name" $
-          [ testCase "gendered"
-              <| (Right "Y" @=?)
-              <| _Right %~ textFromParagraph
-              <| makeSubstitutor
-                  (mapFromList [("X", Gendered "Y" (error "should not be using the gender"))])
-                  mempty
-                  "X"
-          , testCase "neutered"
-              <| (Right "Y" @=?)
-              <| _Right %~ textFromParagraph
-              <| makeSubstitutor
-                  mempty
-                  (mapFromList [("X","Y")])
-                  "X"
-          ]
-      ]
-    ----------------------------------------------------------------------------
     , testGroup "substitute"
     ----------------------------------------------------------------------------
         [ testCase "single letter" $ do
@@ -557,7 +537,7 @@ main = defaultMain $ testGroup "All Tests"
             Right "X" @=? (
               (textFromParagraph >>> rewords)
               <$>
-              substitute ("X" |> Text_ |> Right |> const) subparagraph
+              substitute mempty (mapFromList [("x", "X")]) subparagraph
              )
         ------------------------------------------------------------------------
         , testCase "two keys separated by a space" $ do
@@ -566,37 +546,7 @@ main = defaultMain $ testGroup "All Tests"
             Right "X Y" @=? (
               (textFromParagraph >>> rewords)
               <$>
-              substitute (
-                  \case {"x" → Right "X"; "y" → Right "Y"; _ → Left "not found"}
-                  >>>
-                  fmap Text_
-              ) subparagraph
-             )
-        ------------------------------------------------------------------------
-        , testCase "paragraph" $ do
-        ------------------------------------------------------------------------
-            let GenEvent [subparagraph] = [s_fixed|
-The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
-to wander alone in the Wicked Forest at night, but {her|pos} {son}, little
-<introduce>{Tommy}</introduce>, was sick and would not live through the night
-unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
-hopeless task, but {she} has no other choice.
-|]
-            Right "The last thing in the world that Mark wanted to do was to wander alone in the Wicked Forest at night, but his daughter, little Sally, was sick and would not live through the night unless Mark could find a Wolfsbane plant. It is a hopeless task, but he has no other choice." @=? (
-              (textFromParagraph >>> rewords)
-              <$>
-              substitute (
-                  \case
-                    "Susie" → Right "Mark"
-                    "her|pos" → Right "his"
-                    "son" → Right "daughter"
-                    "Tommy" → Right "Sally"
-                    "an Illsbane" → Right "a Wolfsbane"
-                    "she" → Right "he"
-                    other → Left ("not found: " ⊕ show other)
-                  >>>
-                  fmap Text_
-              ) subparagraph
+              substitute mempty (mapFromList [("x", "X"), ("y", "Y")]) subparagraph
              )
         ]
     ----------------------------------------------------------------------------

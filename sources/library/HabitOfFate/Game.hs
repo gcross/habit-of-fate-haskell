@@ -86,9 +86,9 @@ runGame state =
 gameAddParagraph ∷ Paragraph → Game ()
 gameAddParagraph = singleton >>> tell
 
-substituteAndAddParagraphs ∷ MonadGame m ⇒ Substitutor → [SubParagraph] → m ()
-substituteAndAddParagraphs subs =
-  traverse (substitute subs)
+substituteAndAddParagraphs ∷ MonadGame m ⇒ HashMap Text Gendered → HashMap Text Text → [SubParagraph] → m ()
+substituteAndAddParagraphs gendered neutered =
+  traverse (substitute gendered neutered)
   >>>
   either error identity
   >>>

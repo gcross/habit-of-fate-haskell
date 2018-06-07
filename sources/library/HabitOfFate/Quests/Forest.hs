@@ -66,10 +66,8 @@ type ForestAction = QuestAction State
 storyForState ∷ MonadGame m ⇒ State → SubEvent → m ()
 storyForState forest event =
   substituteAndAddParagraphs
-    (makeSubstitutor
-      (forest ^. gendered_substitutions)
-      (forest ^. neutered_substitutions)
-    )
+    (forest ^. gendered_substitutions)
+    (forest ^. neutered_substitutions)
     (event ^.. paragraphs)
 
 storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()

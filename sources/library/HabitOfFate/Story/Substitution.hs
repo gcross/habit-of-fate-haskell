@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -85,73 +86,70 @@ findNounConverter word
       , ("son","daughter")
       ]
 
-type Substitutor = Text → Either String Paragraph
+isVowel ∷ Char → Bool
+isVowel = (∈ "aeiouAEIOU")
 
-substitute ∷ Substitutor → SubParagraph → Either String Paragraph
-substitute substitutor = replaceTextM substituteIn
+substitute ∷ HashMap Text Gendered → HashMap Text Text → SubParagraph → Either String Paragraph
+substitute gendered neutered = replaceTextM substituteIn
   where
     substituteIn (Literal t) = return $ Text_ t
     substituteIn (Key key) = substitutor key
 
-isVowel ∷ Char → Bool
-isVowel = (∈ "aeiouAEIOU")
-
-makeSubstitutor ∷ HashMap Text Gendered → HashMap Text Text → Substitutor
-makeSubstitutor _ _ "" = error "empty keys are not supported"
-makeSubstitutor gendered neutered key =
-  key
-    |> runParser parser () ""
-    |> bimap show Text_
-  where
-    parser =
-      (do starts_with_uppercase ← try $ do
-            starts_with_uppercase ← Char.isUpper <$> oneOf "Aa"
-            _ ← optional (char 'n')
-            _ ← space
-            return starts_with_uppercase
-          neutered_name ← (rewords >>> pack) <$> many1 letter
-          name ←
-            maybe
-              (fail [i|Unable to find neuter entity with name "#{neutered_name}".|])
-              return
-            $
-            lookup neutered_name neutered
-          return $ mconcat
-            [ if starts_with_uppercase then "A" else "a"
-            , if fromMaybe False (isVowel <$> name ^? _head) then "n " else " "
-            , name
-            ]
-      )
-      <|>
-      (do word ← pack <$> many1 (letter <|> char '|')
-          maybe_name ←
-            optionMaybe
-            $
-            between
-              (char '[')
-              (char ']')
-              ((rewords >>> pack) <$> many (letter <|> space))
-          case findNounConverter word of
-            Nothing →
-              maybe (fail [i|unrecognized word "#{word}"|]) return
-              $
-              (view gendered_name <$> lookup word gendered) <|> lookup word neutered
-            Just convertNoun → do
-              let tryName name message =
-                    lookup name gendered
-                    |>
-                    maybe
-                      (fail message)
-                      (
-                        view gendered_gender
-                        >>>
-                        convertNoun
-                        >>>
-                        return
-                      )
-              case maybe_name of
+    substitutor "" = error "empty keys are not supported"
+    substitutor key =
+      key
+        |> runParser parser () ""
+        |> bimap show Text_
+      where
+        parser =
+          (do starts_with_uppercase ← try $ do
+                starts_with_uppercase ← Char.isUpper <$> oneOf "Aa"
+                _ ← optional (char 'n')
+                _ ← space
+                return starts_with_uppercase
+              neutered_name ← (rewords >>> pack) <$> many1 letter
+              name ←
+                maybe
+                  (fail [i|Unable to find neuter entity with name "#{neutered_name}".|])
+                  return
+                $
+                lookup neutered_name neutered
+              return $ mconcat
+                [ if starts_with_uppercase then "A" else "a"
+                , if fromMaybe False (isVowel <$> name ^? _head) then "n " else " "
+                , name
+                ]
+          )
+          <|>
+          (do word ← pack <$> many1 (letter <|> char '|')
+              maybe_name ←
+                optionMaybe
+                $
+                between
+                  (char '[')
+                  (char ']')
+                  ((rewords >>> pack) <$> many (letter <|> space))
+              case findNounConverter word of
                 Nothing →
-                  tryName "" "no default entity provided"
-                Just name →
-                  tryName name [i|unable to find entity with name "#{name}"|]
-      )
+                  maybe (fail [i|unrecognized word "#{word}"|]) return
+                  $
+                  (view gendered_name <$> lookup word gendered) <|> lookup word neutered
+                Just convertNoun → do
+                  let tryName name message =
+                        lookup name gendered
+                        |>
+                        maybe
+                          (fail message)
+                          (
+                            view gendered_gender
+                            >>>
+                            convertNoun
+                            >>>
+                            return
+                          )
+                  case maybe_name of
+                    Nothing →
+                      tryName "" "no default entity provided"
+                    Just name →
+                      tryName name [i|unable to find entity with name "#{name}"|]
+          )
