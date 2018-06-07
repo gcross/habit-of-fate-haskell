@@ -48,9 +48,8 @@ import HabitOfFate.Trial
 --------------------------------------------------------------------------------
 
 data State = State
-  { _parent ∷ Gendered
-  , _patient ∷ Gendered
-  , _herb ∷ Text
+  { _gendered_substitutions ∷ HashMap Text Gendered
+  , _neutered_substitutions ∷ HashMap Text Text
   , _herb_found ∷ Bool
   , _credits_until_success ∷ Double
   , _credits_until_failure ∷ Double
@@ -64,24 +63,13 @@ type ForestAction = QuestAction State
 -------------------------------- Text Functions --------------------------------
 --------------------------------------------------------------------------------
 
-forestSubstitutor ∷ State → Substitutor
-forestSubstitutor forest =
-  makeSubstitutor
-    (flip lookup
-      [("",forest ^. parent)
-      ,("Susie",forest ^. parent)
-      ,("Tommy",forest ^. patient)
-      ]
-    )
-    (flip lookup
-      [("Illsbane",forest ^. herb)
-      ]
-    )
-
 storyForState ∷ MonadGame m ⇒ State → SubEvent → m ()
 storyForState forest event =
   substituteAndAddParagraphs
-    (forestSubstitutor forest)
+    (makeSubstitutor
+      (forest ^. gendered_substitutions)
+      (forest ^. neutered_substitutions)
+    )
     (event ^.. paragraphs)
 
 storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
@@ -103,9 +91,15 @@ new ∷ Game State
 new =
   (
     State
-      (Gendered "Susie" Female)
-      (Gendered "Tommy" Male)
-      "Illsbane"
+      (mapFromList
+        [ ("Susie", Gendered "Sally" Female)
+        , ("Tommy", Gendered "Billy" Female)
+        ]
+      )
+      (mapFromList
+        [ ("Illsbane", "Rootsbane")
+        ]
+      )
       False
     <$> numberUntilEvent 5
     <*> numberUntilEvent 1

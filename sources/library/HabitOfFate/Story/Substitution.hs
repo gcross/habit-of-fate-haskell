@@ -96,9 +96,9 @@ substitute substitutor = replaceTextM substituteIn
 isVowel ∷ Char → Bool
 isVowel = (∈ "aeiouAEIOU")
 
-makeSubstitutor ∷ (Text → Maybe Gendered) → (Text → Maybe Text) → Substitutor
+makeSubstitutor ∷ HashMap Text Gendered → HashMap Text Text → Substitutor
 makeSubstitutor _ _ "" = error "empty keys are not supported"
-makeSubstitutor lookupGendered lookupNeutered key =
+makeSubstitutor gendered neutered key =
   key
     |> runParser parser () ""
     |> bimap show Text_
@@ -115,7 +115,7 @@ makeSubstitutor lookupGendered lookupNeutered key =
               (fail [i|Unable to find neuter entity with name "#{neutered_name}".|])
               return
             $
-            lookupNeutered neutered_name
+            lookup neutered_name neutered
           return $ mconcat
             [ if starts_with_uppercase then "A" else "a"
             , if fromMaybe False (isVowel <$> name ^? _head) then "n " else " "
@@ -135,10 +135,10 @@ makeSubstitutor lookupGendered lookupNeutered key =
             Nothing →
               maybe (fail [i|unrecognized word "#{word}"|]) return
               $
-              (view gendered_name <$> lookupGendered word) <|> lookupNeutered word
+              (view gendered_name <$> lookup word gendered) <|> lookup word neutered
             Just convertNoun → do
               let tryName name message =
-                    lookupGendered name
+                    lookup name gendered
                     |>
                     maybe
                       (fail message)

@@ -536,15 +536,15 @@ main = defaultMain $ testGroup "All Tests"
               <| (Right "Y" @=?)
               <| _Right %~ textFromParagraph
               <| makeSubstitutor
-                  (flip lookup [("X", Gendered "Y" (error "should not be using the gender"))])
-                  (const Nothing)
+                  (mapFromList [("X", Gendered "Y" (error "should not be using the gender"))])
+                  mempty
                   "X"
           , testCase "neutered"
               <| (Right "Y" @=?)
               <| _Right %~ textFromParagraph
               <| makeSubstitutor
-                  (const Nothing)
-                  (flip lookup [("X","Y")])
+                  mempty
+                  (mapFromList [("X","Y")])
                   "X"
           ]
       ]
