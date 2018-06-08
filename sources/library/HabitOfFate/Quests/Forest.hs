@@ -73,17 +73,25 @@ storyForState forest event =
 storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
 storyForLens lens template = use lens >>= \forest → storyForState forest template
 
-forestEvent ∷ SubEvent → ForestAction ()
-forestEvent = storyForLens quest
+questStory ∷ SubEvent → ForestAction ()
+questStory = storyForLens quest
 
-forestEvents ∷ [SubEvent] → ForestAction ()
-forestEvents = fmap forestEvent >>> uniformAction
+randomQuestStory ∷ [SubEvent] → ForestAction ()
+randomQuestStory = fmap questStory >>> uniformAction
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-introStory = storyForLens identity
+intro_story = [s_fixed|
+================================================================================
+The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
+to wander alone in the Wicked Forest at night, but {her|pos} {son}, little
+<introduce>{Tommy}</introduce>, was sick and would not live through the night
+unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
+hopeless task, but {she} has no other choice.
+================================================================================
+|]
 
 new ∷ Game State
 new =
@@ -103,78 +111,7 @@ new =
     <*> numberUntilEvent 1
   )
   >>=
-  execStateT (introStory [s_fixed|
-================================================================================
-The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
-to wander alone in the Wicked Forest at night, but {her|pos} {son}, little
-<introduce>{Tommy}</introduce>, was sick and would not live through the night
-unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
-hopeless task, but {she} has no other choice.
-================================================================================
-|])
-
---------------------------------------------------------------------------------
------------------------------------- Found -------------------------------------
---------------------------------------------------------------------------------
-
-found ∷ ForestAction ()
-found = do
-  forestEvents found_stories
-  quest . herb_found .= True
-  numberUntilEvent 5 >>= (quest . credits_until_success .=)
-  where
-    found_stories = [s|
-================================================================================
-
-After searching for what feels like hours, {Susie} nearly steps on an {Illsbane}
-plant. {Her} heart leaps and {she} gives a short prayer of thanks. {She}
-reaches down carefully to pick it up, and then starts heading back to {her|pos}
-home.
-
-================================================================================
-
-{Susie} starts to hear a sound and {she} can't tell whether it is a buzzing or
-the most beautiful music {she} has ever heard. As it gets louder {she} notices
-the area around her starting to get brighter. {She} looks around and sees a
-fairy, glowing brightly in the dark. The fairy beckons to {her|obj}, and then
-flies away. {Susie} hesitates briefly, and then runs after the fairy.
-
-{Susie} chases the fairy for about an hour, starting to doubt whether this is
-such a good idea, when the fairy stops. {She} catches up to it and sees {an
-Illsbane} plant under it. Carefully, {she} reaches down and picks it. When she
-looks up, the fairy is gone.
-
-{She} falls to {her|pos} knees and thanks you for guiding {her|obj} to the plan.
-{She} then gets up and starts heading back to {her|pos} home.
-
-================================================================================
-|]
-
---------------------------------------------------------------------------------
-------------------------------------- Won --------------------------------------
---------------------------------------------------------------------------------
-
-won ∷ ForestAction ()
-won = do
-  forestEvent won_story
-  questHasEnded
-  where
-    won_story = [s_fixed|
-================================================================================
-{Susie} is starting to feel like {she} will never make it back when {she}
-notices that things are starting to get brighter -- {she} must be getting close
-to the vilage! {She} gives you thanks for guiding {her|obj} home.
-
-A little bit further, and {she} is back to {her|pos} house. Without a moment to
-spare, {she} immediately starts brewing medicine for {Tommy}! {She} brings the
-medicine to {Tommy}, and wakes {him} up long enough to ladel it down his throat.
-{He} immediately falls back asleep. As {Susie} is filled with relief, exhaustion
-catches up to {her|obj} and {she} falls asleep on the floor.
-
-{She} sleeps peacefully, with a smile on {her|pos} face. The next day, {she}
-builds an alter to you out of gratitude.
-================================================================================
-|]
+  execStateT (storyForLens identity intro_story)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -199,8 +136,8 @@ averted = uniform failure_stories >>= runFailureEvent FailureAverted
 
 runFailureEvent ∷ FailureResult → FailureEvent → ForestAction ()
 runFailureEvent failure_result event = do
-  forestEvent $ event ^. common_failure_event
-  (forestEvent <<< (event ^.)) $
+  questStory $ event ^. common_failure_event
+  (questStory <<< (event ^.)) $
     case failure_result of
       FailureAverted → failure_averted_event
       FailureHappened → failure_happened_event
@@ -241,8 +178,7 @@ now.
 ------------------------------------ Wander ------------------------------------
 --------------------------------------------------------------------------------
 
-wander ∷ ForestAction ()
-wander = forestEvents [s|
+wander_stories = [s|
 ================================================================================
 Nothing happens as {Susie} wanders through the forest.
 ================================================================================
@@ -321,10 +257,70 @@ off.
 {Susie} bows {her|pos} head in shock and disappointment, and resumes searching.
 |]
 
+--------------------------------------------------------------------------------
+------------------------------------ Found -------------------------------------
+--------------------------------------------------------------------------------
+
+found_stories = [s|
+================================================================================
+
+After searching for what feels like hours, {Susie} nearly steps on an {Illsbane}
+plant. {Her} heart leaps and {she} gives a short prayer of thanks. {She}
+reaches down carefully to pick it up, and then starts heading back to {her|pos}
+home.
+
+================================================================================
+
+{Susie} starts to hear a sound and {she} can't tell whether it is a buzzing or
+the most beautiful music {she} has ever heard. As it gets louder {she} notices
+the area around her starting to get brighter. {She} looks around and sees a
+fairy, glowing brightly in the dark. The fairy beckons to {her|obj}, and then
+flies away. {Susie} hesitates briefly, and then runs after the fairy.
+
+{Susie} chases the fairy for about an hour, starting to doubt whether this is
+such a good idea, when the fairy stops. {She} catches up to it and sees {an
+Illsbane} plant under it. Carefully, {she} reaches down and picks it. When she
+looks up, the fairy is gone.
+
+{She} falls to {her|pos} knees and thanks you for guiding {her|obj} to the plan.
+{She} then gets up and starts heading back to {her|pos} home.
+
+================================================================================
+|]
+
+--------------------------------------------------------------------------------
+------------------------------------- Won --------------------------------------
+--------------------------------------------------------------------------------
+
+won_story = [s_fixed|
+================================================================================
+{Susie} is starting to feel like {she} will never make it back when {she}
+notices that things are starting to get brighter -- {she} must be getting close
+to the vilage! {She} gives you thanks for guiding {her|obj} home.
+
+A little bit further, and {she} is back to {her|pos} house. Without a moment to
+spare, {she} immediately starts brewing medicine for {Tommy}! {She} brings the
+medicine to {Tommy}, and wakes {him} up long enough to ladel it down his throat.
+{He} immediately falls back asleep. As {Susie} is filled with relief, exhaustion
+catches up to {her|obj} and {she} falls asleep on the floor.
+
+{She} sleeps peacefully, with a smile on {her|pos} face. The next day, {she}
+builds an alter to you out of gratitude.
+================================================================================
+|]
 
 --------------------------------------------------------------------------------
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
+
+found ∷ ForestAction ()
+found = do
+  randomQuestStory found_stories
+  quest . herb_found .= True
+  numberUntilEvent 5 >>= (quest . credits_until_success .=)
+
+won ∷ ForestAction ()
+won = questStory won_story >> questHasEnded
 
 run ∷ ForestAction ()
 run = do
@@ -342,5 +338,5 @@ run = do
     >>=
     \case
       SomethingHappened → (use $ quest . herb_found) >>= bool found won
-      NothingHappened → wander
+      NothingHappened → randomQuestStory wander_stories
       NoCredits → return ()
