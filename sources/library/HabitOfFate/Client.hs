@@ -64,17 +64,12 @@ import HabitOfFate.Story.Renderer.Console
 data Cancel = Cancel deriving (Show, Typeable)
 instance Exception Cancel where
 
-type InteractionMonad = SessionIO
-
-cancel ∷ InteractionMonad α
+cancel ∷ SessionIO α
 cancel = liftIO (putStrLn "") >> throwM Cancel
-
-liftSession ∷ SessionIO α → InteractionMonad α
-liftSession = id
 
 data MenuAction =
     SubMenu String [MenuItem]
-  | Interaction (InteractionMonad ())
+  | Interaction (SessionIO ())
 
 data MenuItem = MenuItem
   { keyOf ∷ Char
@@ -86,7 +81,7 @@ subMenu ∷ Char → String → String → Menu → MenuItem
 subMenu key description sublabel subitems =
   MenuItem key description (SubMenu sublabel subitems)
 
-interaction ∷ Char → String → InteractionMonad () → MenuItem
+interaction ∷ Char → String → SessionIO () → MenuItem
 interaction key description interaction' =
   MenuItem key description (Interaction interaction')
 
@@ -117,7 +112,7 @@ readNonEmpty ∷ String → Maybe String
 readNonEmpty "" = Nothing
 readNonEmpty x = Just x
 
-prompt ∷ (String → Maybe α) → String → InteractionMonad α
+prompt ∷ (String → Maybe α) → String → SessionIO α
 prompt parseValue p =
   promptForString
   >>=
@@ -149,7 +144,7 @@ prompt parseValue p =
           return
           (return <$> getLine)
 
-promptWithDefault ∷ Show α ⇒ (String → Maybe α) → α → String → InteractionMonad α
+promptWithDefault ∷ Show α ⇒ (String → Maybe α) → α → String → SessionIO α
 promptWithDefault parseValue default_value p =
     prompt parseValue' [i|#{p} [#{show default_value}]|]
   where
@@ -196,7 +191,7 @@ runMenu labels items = go
         Just (SubMenu sublabel subitems) → runMenu (labels ⊕ [sublabel]) subitems >> go
         Just (Interaction action) → (action `catch` (\Cancel → pure ())) >> go
 
-printAndCancel ∷ String → InteractionMonad α
+printAndCancel ∷ String → SessionIO α
 printAndCancel = putStrLn >>> liftIO >>> (>> cancel)
 
 main_menu ∷ Menu
@@ -208,12 +203,12 @@ main_menu =
         <$> (pack <$> prompt readNonEmpty "What is the name of the habit?")
         <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
         <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
-      liftSession >>> void $ putHabit habit_id habit
+      void $ putHabit habit_id habit
       "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
     ,interaction 'e' "Edit a habit." $ do
       habit_id ← prompt readMaybe "Which habit?"
       old_habit ←
-        liftSession (getHabit habit_id)
+        getHabit habit_id
         >>=
         maybe
           (printAndCancel "No such habit.")
@@ -223,23 +218,23 @@ main_menu =
                promptWithDefault readNonEmpty (old_habit ^. name . to unpack) "What is the name of the habit?")
         <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
         <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
-      liftSession >>> void $ putHabit habit_id habit
+      void $ putHabit habit_id habit
     ,interaction 'f' "Mark habits as failed." $
-       prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> liftSession >>> void)
+       prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> void)
     ,interaction 'p' "Print habits." $ printHabits
     ,interaction 's' "Mark habits as successful." $
-       prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> liftSession >>> void)
+       prompt parseUUIDs "Which habits succeeded?" >>= (flip markHabits [] >>> void)
     ]
   ,interaction 'p' "Print data." $ do
       liftIO $ putStrLn "Habits:"
       printHabits
       liftIO $ putStrLn ""
       liftIO $ putStrLn "Game:"
-      credits ← liftSession getCredits
+      credits ← getCredits
       liftIO $ putStrLn [i|    Success credits: #{credits ^. successes}|]
       liftIO $ putStrLn [i|    Failure credits: #{credits ^. failures}|]
   ,interaction 'r' "Run game." $ do
-      story ← liftSession runGame
+      story ← runGame
       printer ← liftIO byteStringMakerFromEnvironment
       story
         |> renderStoryToChunks
@@ -251,7 +246,7 @@ main_menu =
     scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
 
     printHabits = do
-      habits_to_display ← liftSession getHabits <&> view habit_list
+      habits_to_display ← getHabits <&> view habit_list
       liftIO $
         if null habits_to_display
           then putStrLn "There are no habits."
