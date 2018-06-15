@@ -534,7 +534,7 @@ main = defaultMain $ testGroup "All Tests"
         [ testCase "single letter" $ do
         ------------------------------------------------------------------------
             let GenEvent [subparagraph] = [s_fixed|{x}|]
-            Right "X" @=? (
+            Right "X" @=? bimap show id (
               (textFromParagraph >>> rewords)
               <$>
               substitute mempty (mapFromList [("x", "X")]) subparagraph
@@ -543,7 +543,7 @@ main = defaultMain $ testGroup "All Tests"
         , testCase "two keys separated by a space" $ do
         ------------------------------------------------------------------------
             let GenEvent [subparagraph] = [s_fixed|{x} {y}|]
-            Right "X Y" @=? (
+            Right "X Y" @=? bimap show id (
               (textFromParagraph >>> rewords)
               <$>
               substitute mempty (mapFromList [("x", "X"), ("y", "Y")]) subparagraph

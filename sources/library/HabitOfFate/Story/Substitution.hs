@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -26,8 +27,11 @@ module HabitOfFate.Story.Substitution where
 
 import HabitOfFate.Prelude
 
+import Control.Exception (Exception)
+import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding ((.=))
 import qualified Data.Char as Char
+import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.Story
@@ -89,17 +93,25 @@ findNounConverter word
 isVowel ∷ Char → Bool
 isVowel = (∈ "aeiouAEIOU")
 
-substitute ∷ HashMap Text Gendered → HashMap Text Text → SubParagraph → Either String Paragraph
+data SubstitutionException =
+    EmptyKeysNotSupported
+  | ParseError String
+  deriving (Show, Typeable)
+instance Exception SubstitutionException
+
+substitute ∷ MonadThrow m ⇒ HashMap Text Gendered → HashMap Text Text → SubParagraph → m Paragraph
 substitute gendered neutered = replaceTextM substituteIn
   where
+    substituteIn ∷ MonadThrow m ⇒ SubText → m Paragraph
     substituteIn (Literal t) = return $ Text_ t
     substituteIn (Key key) = substitutor key
 
-    substitutor "" = error "empty keys are not supported"
+    substitutor ∷ MonadThrow m ⇒ Text → m Paragraph
+    substitutor "" = throwM EmptyKeysNotSupported
     substitutor key =
       key
         |> runParser parser () ""
-        |> bimap show Text_
+        |> either (show >>> ParseError >>> throwM) (Text_ >>> pure)
       where
         parser =
           (do starts_with_uppercase ← try $ do

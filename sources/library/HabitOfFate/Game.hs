@@ -90,7 +90,7 @@ substituteAndAddParagraphs ∷ MonadGame m ⇒ HashMap Text Gendered → HashMap
 substituteAndAddParagraphs gendered neutered =
   traverse (substitute gendered neutered)
   >>>
-  either error identity
+  either (show >>> error) identity
   >>>
   traverse_ addParagraph
 
