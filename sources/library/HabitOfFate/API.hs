@@ -57,10 +57,7 @@ import HabitOfFate.Story.Parser.XML
 
 data SecureMode = Testing | Secure
 
-data SessionInfo = SessionInfo
-  { _request_template ∷ Request
-  }
-makeLenses ''SessionInfo
+type SessionInfo = Request
 
 loginOrCreateAccount ∷ String → String → String → SecureMode → ByteString → Int → IO (Either Status SessionInfo)
 loginOrCreateAccount route username password secure_mode hostname port = do
@@ -93,7 +90,7 @@ loginOrCreateAccount route username password secure_mode hostname port = do
       then
         maybe
           (Left internalServerError500)
-          (\token → Right $ SessionInfo $
+          (\token → Right $
             request_template_without_authorization
             { requestHeaders =
               [("Cookie", toLazyByteString >>> view strict $
@@ -156,7 +153,7 @@ instance MonadBaseControl IO SessionIO where
   restoreM = restoreM >>> SessionT
 
 getRequestTemplate ∷ Monad m ⇒ SessionT m Request
-getRequestTemplate = view request_template |> SessionT
+getRequestTemplate = ask |> SessionT
 
 decodeUtf8InResponse ∷ Response LBS.ByteString → Text
 decodeUtf8InResponse = responseBody >>> LBS.toStrict >>> decodeUtf8
