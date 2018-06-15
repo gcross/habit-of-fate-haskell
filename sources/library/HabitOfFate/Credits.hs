@@ -43,19 +43,19 @@ instance Wrapped Failures where
   _Wrapped' = iso unwrapFailures Failures
 
 data Credits = Credits
-  { _successes ∷ Successes
-  , _failures ∷ Failures
+  { _successes_ ∷ Successes
+  , _failures_ ∷ Failures
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Credits
 
-successes ∷ Lens' Credits Double
-successes =
+successes_ ∷ Lens' Credits Double
+successes_ =
   lens
-    (_successes >>> unwrapSuccesses)
-    (\old new → old { _successes = Successes new })
+    (_successes_ >>> unwrapSuccesses)
+    (\old new → old { _successes_ = Successes new })
 
-failures ∷ Lens' Credits Double
-failures =
+failures_ ∷ Lens' Credits Double
+failures_ =
   lens
-    (_failures >>> unwrapFailures)
-    (\old new → old { _failures = Failures new })
+    (_failures_ >>> unwrapFailures)
+    (\old new → old { _failures_ = Failures new })

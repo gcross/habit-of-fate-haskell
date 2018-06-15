@@ -53,8 +53,8 @@ instance FromJSON Gender where
       parseGender wrong = fail [i|gender must be "male" or "female", not "#{wrong}"|]
 
 data Gendered = Gendered
-  { _gendered_name ∷ Text
-  , _gendered_gender ∷ Gender
+  { _gendered_name_ ∷ Text
+  , _gendered_gender_ ∷ Gender
   } deriving (Eq,Ord,Read,Show)
 deriveJSONDropping 10 ''Gendered
 makeLenses ''Gendered
@@ -145,7 +145,7 @@ substitute gendered neutered = replaceTextM substituteIn
                 Nothing →
                   maybe (fail [i|unrecognized word "#{word}"|]) return
                   $
-                  (view gendered_name <$> lookup word gendered) <|> lookup word neutered
+                  (view gendered_name_ <$> lookup word gendered) <|> lookup word neutered
                 Just convertNoun → do
                   let tryName name message =
                         lookup name gendered
@@ -153,7 +153,7 @@ substitute gendered neutered = replaceTextM substituteIn
                         maybe
                           (fail message)
                           (
-                            view gendered_gender
+                            view gendered_gender_
                             >>>
                             convertNoun
                             >>>

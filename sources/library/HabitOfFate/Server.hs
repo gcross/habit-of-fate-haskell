@@ -143,7 +143,7 @@ addCSS name contents = Scotty.get (String.fromString $ "/css/" ⊕ name ⊕ ".cs
 
 lookupHabit ∷ (ActionMonad m, MonadState Account m) ⇒ UUID → m Habit
 lookupHabit habit_id = do
-  use (habits . at habit_id)
+  use (habits_ . at habit_id)
   >>=
   maybe raiseNoSuchHabit return
 
@@ -450,8 +450,8 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
 --------------------------------------------------------------------------------
 
 data RunGameState = RunGameState
-  { _run_quests ∷ Seq Quest
-  , _run_quest_events ∷ Seq Event
+  { _run_quests_ ∷ Seq Quest
+  , _run_quest_events_ ∷ Seq Event
   }
 makeLenses ''RunGameState
 
@@ -706,14 +706,14 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" <<< apiReader $ do
       log "Requested all habits."
-      view habits >>= returnJSON ok200
+      view habits_ >>= returnJSON ok200
     Scotty.get "/habits/new" $
       liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
       >>=
       Scotty.redirect
     Scotty.get "/habits" <<< wwwReader $ do
       habits_to_display ←
-        view (habits . habit_list)
+        view (habits_ . habit_list)
         <&>
         zipWith
           (\n (uuid, habit) →
@@ -761,10 +761,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       habit_id ← getParam "habit_id"
       new_index ← getParam "new_index" <&> (\n → n-1)
       log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
-      old_habits ← use habits
+      old_habits ← use habits_
       case moveHabitWithIdToIndex habit_id new_index old_habits of
         Left exc → log [i|Exception moving habit: #{exc}|]
-        Right new_habits → habits .= new_habits
+        Right new_habits → habits_ .= new_habits
       redirectTo "/"
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
@@ -810,13 +810,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested habit with id #{habit_id}.|]
-      (view $ habits . at habit_id)
+      (view $ habits_ . at habit_id)
         >>= maybe raiseNoSuchHabit (returnJSON ok200)
 
     Scotty.get "/habits/:habit_id" <<< wwwReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Web GET request for habit with id #{habit_id}.|]
-      (view (habits . at habit_id) <&> fromMaybe def)
+      (view (habits_ . at habit_id) <&> fromMaybe def)
         >>= habitPage habit_id "" "" ""
 
     Scotty.post "/habits/:habit_id" <<< wwwWriter $ do
@@ -844,12 +844,12 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           habitPage habit_id name_error difficulty_error importance_error def
         Just new_habit → do
           log [i|Updating habit #{habit_id} to #{new_habit}|]
-          habits . at habit_id <<.= Just new_habit
+          habits_ . at habit_id <<.= Just new_habit
           redirectTo "/habits"
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
-      habit_was_there ← isJust <$> (habits . at habit_id <<.= Nothing)
+      habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Nothing)
       returnNothing $
         if habit_was_there
           then noContent204
@@ -859,7 +859,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           habit_id ← getParam "habit_id"
           log $ [i|Requested to put habit with id #{habit_id}.|]
           habit ← getBodyJSON
-          habit_was_there ← isJust <$> (habits . at habit_id <<.= Just habit)
+          habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Just habit)
           returnNothing $
             if habit_was_there
               then noContent204
@@ -869,7 +869,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 --------------------------------- Get Credits ----------------------------------
     Scotty.get "/api/credits" <<< apiReader $ do
       log $ "Requested credits."
-      view (game . credits) >>= returnJSON ok200
+      view (game_ . credits_) >>= returnJSON ok200
 --------------------------------- Mark Habits ----------------------------------
     Scotty.post "/api/mark" <<< apiWriter $ do
       marks ← getBodyJSON
@@ -888,22 +888,22 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
             value_lens <.= old_value + increment
       log $ [i|Marking #{marks ^. succeeded} successes and #{marks ^. failed} failures.|]
       (Credits
-          <$> (Successes <$> markHabits succeeded difficulty (game . credits . successes))
-          <*> (Failures  <$> markHabits failed    importance (game . credits . failures ))
+          <$> (Successes <$> markHabits succeeded difficulty (game_ . credits_ . successes_))
+          <*> (Failures  <$> markHabits failed    importance (game_ . credits_ . failures_ ))
        ) >>= returnJSON ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       let go d = do
             let r = runAccount d
-            run_quest_events %= (⊢ r ^. story . to createEvent)
-            if stillHasCredits (r ^. new_data)
+            run_quest_events_ %= (⊢ r ^. story_ . to createEvent)
+            if stillHasCredits (r ^. new_data_)
               then do
-                when (r ^. quest_completed) $
-                  (run_quest_events <<.= mempty)
+                when (r ^. quest_completed_) $
+                  (run_quest_events_ <<.= mempty)
                   >>=
-                  (createQuest >>> (⊣) >>> (run_quests %=))
-                go (r ^. new_data)
-              else return (r ^. new_data)
+                  (createQuest >>> (⊣) >>> (run_quests_ %=))
+                go (r ^. new_data_)
+              else return (r ^. new_data_)
       (new_d, s) ←
         get
         >>=
@@ -911,13 +911,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           go
           >>>
           flip runStateT (RunGameState
-            { _run_quests = mempty
-            , _run_quest_events = mempty
+            { _run_quests_ = mempty
+            , _run_quest_events_ = mempty
             })
         )
       put new_d
       returnLazyText ok200 $!! (
-        s ^. run_quests ⊢ s ^. run_quest_events . to createQuest
+        s ^. run_quests_ ⊢ s ^. run_quest_events_ . to createQuest
         |> createStory
         |> renderStoryToXMLText
        )

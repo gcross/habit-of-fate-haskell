@@ -47,11 +47,11 @@ instance FromJSON StdGen where
   parseJSON = parseJSON >>> fmap read
 
 data Account = Account
-  {   _password ∷ Text
-  ,   _habits ∷ Habits
-  ,   _game ∷ GameState
-  ,   _quest ∷ Maybe CurrentQuestState
-  ,   _rng :: StdGen
+  {   _password_ ∷ Text
+  ,   _habits_ ∷ Habits
+  ,   _game_ ∷ GameState
+  ,   _quest_ ∷ Maybe CurrentQuestState
+  ,   _rng_ :: StdGen
   } deriving (Read,Show)
 deriveJSON ''Account
 makeLenses ''Account
@@ -70,36 +70,36 @@ newAccount password =
     <*> newStdGen
 
 passwordIsValid ∷ Text → Account → Bool
-passwordIsValid password_ account =
-  verifyPassword (encodeUtf8 password_) (encodeUtf8 $ account ^. password)
+passwordIsValid password account =
+  verifyPassword (encodeUtf8 password) (encodeUtf8 $ account ^. password_)
 
 data RunAccountResult = RunAccountResult
-  { _story ∷ Seq Paragraph
-  , _quest_completed ∷ Bool
-  , _new_data ∷ Account
+  { _story_ ∷ Seq Paragraph
+  , _quest_completed_ ∷ Bool
+  , _new_data_ ∷ Account
   }
 makeLenses ''RunAccountResult
 
 runAccount ∷ Account → RunAccountResult
 runAccount d =
-  (flip runRand (d ^. rng)
+  (flip runRand (d ^. rng_)
    $
-   runGame (d ^. game) (runCurrentQuest (d ^. quest))
+   runGame (d ^. game_) (runCurrentQuest (d ^. quest_))
   )
   &
   \(r, new_rng) →
     RunAccountResult
-      (r ^. game_paragraphs)
-      (isNothing (r ^. returned_value))
-      (d & game .~ r ^. new_game
-         & quest .~ r ^. returned_value
-         & rng .~ new_rng
+      (r ^. game_paragraphs_)
+      (isNothing (r ^. returned_value_))
+      (d & game_ .~ r ^. new_game_
+         & quest_ .~ r ^. returned_value_
+         & rng_ .~ new_rng
       )
 
 stillHasCredits ∷ Account → Bool
 stillHasCredits d = (||)
-  (d ^. game . credits . successes /= 0)
-  (d ^. game . credits . failures /= 0)
+  (d ^. game_ . credits_ . successes_ /= 0)
+  (d ^. game_ . credits_ . failures_ /= 0)
 
 data HabitsToMark = HabitsToMark
   { _succeeded ∷ [UUID]

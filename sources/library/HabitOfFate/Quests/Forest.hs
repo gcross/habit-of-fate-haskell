@@ -48,11 +48,11 @@ import HabitOfFate.Trial
 --------------------------------------------------------------------------------
 
 data State = State
-  { _gendered_substitutions ∷ HashMap Text Gendered
-  , _neutered_substitutions ∷ HashMap Text Text
-  , _herb_found ∷ Bool
-  , _credits_until_success ∷ Double
-  , _credits_until_failure ∷ Double
+  { _gendered_substitutions_ ∷ HashMap Text Gendered
+  , _neutered_substitutions_ ∷ HashMap Text Text
+  , _herb_found_ ∷ Bool
+  , _credits_until_success_ ∷ Double
+  , _credits_until_failure_ ∷ Double
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makeLenses ''State
@@ -66,15 +66,15 @@ type ForestAction = QuestAction State
 storyForState ∷ MonadGame m ⇒ State → SubEvent → m ()
 storyForState forest event =
   substituteAndAddParagraphs
-    (forest ^. gendered_substitutions)
-    (forest ^. neutered_substitutions)
+    (forest ^. gendered_substitutions_)
+    (forest ^. neutered_substitutions_)
     (event ^.. paragraphs)
 
 storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
 storyForLens lens template = use lens >>= \forest → storyForState forest template
 
 questStory ∷ SubEvent → ForestAction ()
-questStory = storyForLens quest
+questStory = storyForLens quest_
 
 randomQuestStory ∷ [SubEvent] → ForestAction ()
 randomQuestStory = fmap questStory >>> uniformAction
@@ -120,9 +120,9 @@ new =
 data FailureResult = FailureAverted | FailureHappened
 
 data FailureEvent = FailureEvent
-  { _common_failure_event ∷ SubEvent
-  , _failure_averted_event ∷ SubEvent
-  , _failure_happened_event ∷ SubEvent
+  { _common_failure_event_ ∷ SubEvent
+  , _failure_averted_event_ ∷ SubEvent
+  , _failure_happened_event_ ∷ SubEvent
   }
 makeLenses ''FailureEvent
 
@@ -136,11 +136,11 @@ averted = uniform failure_stories >>= runFailureEvent FailureAverted
 
 runFailureEvent ∷ FailureResult → FailureEvent → ForestAction ()
 runFailureEvent failure_result event = do
-  questStory $ event ^. common_failure_event
+  questStory $ event ^. common_failure_event_
   (questStory <<< (event ^.)) $
     case failure_result of
-      FailureAverted → failure_averted_event
-      FailureHappened → failure_happened_event
+      FailureAverted → failure_averted_event_
+      FailureHappened → failure_happened_event_
 
 makeFailureEvent (common,averted,happened) = FailureEvent common averted happened
 
@@ -316,8 +316,8 @@ builds an alter to you out of gratitude.
 found ∷ ForestAction ()
 found = do
   randomQuestStory found_stories
-  quest . herb_found .= True
-  numberUntilEvent 5 >>= (quest . credits_until_success .=)
+  quest_ . herb_found_ .= True
+  numberUntilEvent 5 >>= (quest_ . credits_until_success_ .=)
 
 won ∷ ForestAction ()
 won = questStory won_story >> questHasEnded
@@ -325,18 +325,18 @@ won = questStory won_story >> questHasEnded
 run ∷ ForestAction ()
 run = do
   spendCredits
-    (quest . credits_until_failure)
-    (game . credits . failures)
+    (quest_ . credits_until_failure_)
+    (game_ . credits_ . failures_)
     >>=
     \case
       SomethingHappened → lost
       NothingHappened → averted
       NoCredits → return ()
   spendCredits
-    (quest . credits_until_success)
-    (game . credits . successes)
+    (quest_ . credits_until_success_)
+    (game_ . credits_ . successes_)
     >>=
     \case
-      SomethingHappened → (use $ quest . herb_found) >>= bool found won
+      SomethingHappened → (use $ quest_ . herb_found_) >>= bool found won
       NothingHappened → randomQuestStory wander_stories
       NoCredits → return ()

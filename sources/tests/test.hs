@@ -333,10 +333,10 @@ main = defaultMain $ testGroup "All Tests"
                 liftIO $ do
                   assertBool
                     ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
-                    (abs ((credits ^. successes) - expected_successes) < 0.1)
+                    (abs ((credits ^. successes_) - expected_successes) < 0.1)
                   assertBool
                     ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
-                    (abs ((credits ^. failures ) - expected_failures ) < 0.1)
+                    (abs ((credits ^. failures_ ) - expected_failures ) < 0.1)
             ]
         ]
     ----------------------------------------------------------------------------

@@ -38,7 +38,7 @@ import HabitOfFate.Story.Substitution
 import HabitOfFate.TH
 
 data GameState = GameState
-  { _credits ∷ Credits
+  { _credits_ ∷ Credits
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''GameState
 makeLenses ''GameState
@@ -55,9 +55,9 @@ newtype Game α =
     )
 
 data RunGameResult α = RunGameResult
-  { _returned_value ∷ α
-  , _new_game ∷ GameState
-  , _game_paragraphs ∷ Seq Paragraph
+  { _returned_value_ ∷ α
+  , _new_game_ ∷ GameState
+  , _game_paragraphs_ ∷ Seq Paragraph
   } deriving (Eq,Ord,Read,Show)
 makeLenses ''RunGameResult
 

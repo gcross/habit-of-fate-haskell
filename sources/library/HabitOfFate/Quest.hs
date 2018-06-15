@@ -30,8 +30,8 @@ import Control.Monad.Random
 import HabitOfFate.Game
 
 data QuestState α = QuestState
-  { _game ∷ GameState
-  , _quest ∷ α
+  { _game_ ∷ GameState
+  , _quest_ ∷ α
   }
 makeLenses ''QuestState
 

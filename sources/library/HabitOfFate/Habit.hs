@@ -157,39 +157,39 @@ scaleFactor High = 2
 scaleFactor VeryHigh = 4
 
 data Habit = Habit
-  { _name ∷ Text
-  , _difficulty ∷ Difficulty
-  , _importance ∷ Importance
+  { _name_ ∷ Text
+  , _difficulty_ ∷ Difficulty
+  , _importance_ ∷ Importance
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
 name ∷ Lens' Habit Text
-name = lens _name (\old new_name → old { _name = new_name })
+name = lens _name_ (\old new_name → old { _name_ = new_name })
 
 difficulty ∷ Lens' Habit Scale
 difficulty =
   lens
-    (_difficulty >>> unwrapDifficulty)
-    (\old new_scale → old { _difficulty = Difficulty new_scale })
+    (_difficulty_ >>> unwrapDifficulty)
+    (\old new_scale → old { _difficulty_ = Difficulty new_scale })
 
 importance ∷ Lens' Habit Scale
 importance =
   lens
-    (_importance >>> unwrapImportance)
-    (\old new_scale → old { _importance = Importance new_scale })
+    (_importance_ >>> unwrapImportance)
+    (\old new_scale → old { _importance_ = Importance new_scale })
 
 instance Default Habit where
   def = Habit "" (Difficulty Medium) (Importance Medium)
 
 data Habits = Habits
-  { _habit_map ∷ HashMap UUID Habit
-  , _habit_id_seq ∷ Seq UUID
+  { _habit_map_ ∷ HashMap UUID Habit
+  , _habit_id_seq_ ∷ Seq UUID
   } deriving (Eq,Read,Show,Ord)
 deriveJSON ''Habits
 makeLenses ''Habits
 
 habit_count ∷ Getter Habits Int
-habit_count = habit_id_seq . to length
+habit_count = habit_id_seq_ . to length
 
 habit_list ∷ Getter Habits [(UUID, Habit)]
 habit_list = to $ \habits@(Habits h_map h_id_seq) →
@@ -206,7 +206,7 @@ type instance Index Habits = UUID
 type instance IxValue Habits = Habit
 
 instance Ixed Habits where
-  ix habit_id = habit_map . ix habit_id
+  ix habit_id = habit_map_ . ix habit_id
 
 instance At Habits where
   at habit_id f habits@(Habits h_map h_id_seq) =

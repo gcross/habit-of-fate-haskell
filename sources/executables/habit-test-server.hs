@@ -115,7 +115,7 @@ makeInitialAccounts =
               habit_map = habit_list |> mapFromList
               habit_id_seq = unzip habit_list ^. _1 |> fromList
           account ← newAccount password
-          pure (Username name, account & habits .~ Habits habit_map habit_id_seq)
+          pure (Username name, account & habits_ .~ Habits habit_map habit_id_seq)
       )
   |> fmap mapFromList
 
