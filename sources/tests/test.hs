@@ -512,10 +512,6 @@ main = defaultMain $ testGroup "All Tests"
       [ testCase "just a substitution" $ olength [s|{test}|] @?= 1
       , testCase "single story plain text" $
           olength [s|line1|] @?= 1
-      , testCase "2 stories: 1 empty, 1 non-empty" $
-          olength [s|line1
-                    =
-                   |] @?= 1
       , testCase "2 stories: both non-empty" $
           olength [s|line1
                     =

@@ -95,9 +95,9 @@ parseQuote =
   Lazy.pack
   >>>
   (
-    (parseStoryFromText >>> fmap dropEmptyThingsFromStory)
+    parseStoryFromText
     >=>
-    (traverseOf (quests . events . paragraphs) parseSubstitutions >>> fmap dropEmptyThingsFromStory)
+    traverseOf (quests . events . paragraphs) parseSubstitutions
     >=>
     \case
       GenStory [quest] → return $ unwrapGenQuest quest

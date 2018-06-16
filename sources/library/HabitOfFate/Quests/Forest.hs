@@ -84,13 +84,11 @@ randomQuestStory = fmap questStory >>> uniformAction
 --------------------------------------------------------------------------------
 
 intro_story = [s_fixed|
-================================================================================
 The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
 to wander alone in the Wicked Forest at night, but {her|pos} {son}, little
 <introduce>{Tommy}</introduce>, was sick and would not live through the night
 unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
 hopeless task, but {she} has no other choice.
-================================================================================
 |]
 
 new ∷ Game State
@@ -148,7 +146,6 @@ failure_stories ∷ [FailureEvent]
 failure_stories = fmap makeFailureEvent
 ------------------------------ Gingerbread House -------------------------------
   [[s_fixed|
-================================================================================
 {Susie} sees a house made out of... gingerbread?
 
 {She} feels a strange compulsion to approach it.
@@ -170,7 +167,6 @@ nowhere to be found.
 
 {She} sobs -- there is no way that {she} will be able to make it home in time
 now.
-================================================================================
      |]
   ]
 
@@ -179,7 +175,6 @@ now.
 --------------------------------------------------------------------------------
 
 wander_stories = [s|
-================================================================================
 Nothing happens as {Susie} wanders through the forest.
 ================================================================================
 As {Susie} continues to search {she} hears wolves howling in the distance, which
@@ -262,15 +257,11 @@ off.
 --------------------------------------------------------------------------------
 
 found_stories = [s|
-================================================================================
-
 After searching for what feels like hours, {Susie} nearly steps on an {Illsbane}
 plant. {Her} heart leaps and {she} gives a short prayer of thanks. {She}
 reaches down carefully to pick it up, and then starts heading back to {her|pos}
 home.
-
 ================================================================================
-
 {Susie} starts to hear a sound and {she} can't tell whether it is a buzzing or
 the most beautiful music {she} has ever heard. As it gets louder {she} notices
 the area around her starting to get brighter. {She} looks around and sees a
@@ -284,7 +275,6 @@ looks up, the fairy is gone.
 
 {She} falls to {her|pos} knees and thanks you for guiding {her|obj} to the plan.
 {She} then gets up and starts heading back to {her|pos} home.
-
 ================================================================================
 |]
 
@@ -293,7 +283,6 @@ looks up, the fairy is gone.
 --------------------------------------------------------------------------------
 
 won_story = [s_fixed|
-================================================================================
 {Susie} is starting to feel like {she} will never make it back when {she}
 notices that things are starting to get brighter -- {she} must be getting close
 to the vilage! {She} gives you thanks for guiding {her|obj} home.
@@ -306,7 +295,6 @@ catches up to {her|obj} and {she} falls asleep on the floor.
 
 {She} sleeps peacefully, with a smile on {her|pos} face. The next day, {she}
 builds an alter to you out of gratitude.
-================================================================================
 |]
 
 --------------------------------------------------------------------------------

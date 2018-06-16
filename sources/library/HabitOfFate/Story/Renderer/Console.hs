@@ -39,8 +39,6 @@ makeLenses ''RenderState
 
 renderStoryToChunks ∷ Story → [Chunk Text]
 renderStoryToChunks =
-  dropEmptyThingsFromStory
-  >>>
   unwrapGenStory
   >>>
   uncons

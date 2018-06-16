@@ -151,14 +151,3 @@ textFromParagraph = fold
 
 allSpaces ∷ Text → Bool
 allSpaces = allOf text (∈ " \t\r\n")
-
-clearNullElements ∷ (Wrapped s, Unwrapped s ~ [t]) ⇒ (t → Bool) → s → s
-clearNullElements isNull = _Wrapped' %~ filter (not <<< isNull)
-
-dropEmptyThingsFromStory ∷ GenText α ⇒ GenStory α → GenStory α
-dropEmptyThingsFromStory =
-  quests . events %~ clearNullElements (all textIsAllSpaces)
-  >>>
-  quests %~ clearNullElements (nullOf paragraphs)
-  >>>
-  clearNullElements (nullOf events)
