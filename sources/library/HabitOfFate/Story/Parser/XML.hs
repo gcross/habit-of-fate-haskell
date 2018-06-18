@@ -55,10 +55,7 @@ parseContainer expected_tag parseChildren node =
       | otherwise → parseChildren childs
 
 parseStoryFromNodes ∷ MonadThrow m ⇒ [Node] → m Story
-parseStoryFromNodes =
-  mapM (parseContainer "quest" parseQuestFromNodes)
-  >>>
-  fmap GenStory
+parseStoryFromNodes = mapM (parseContainer "quest" parseQuestFromNodes)
 
 parseQuestFromNodes ∷ MonadThrow m ⇒ [Node] → m Quest
 parseQuestFromNodes =

@@ -549,9 +549,9 @@ main = defaultMain $ testGroup "All Tests"
     , testGroup "rendering"
     ----------------------------------------------------------------------------
         [ testCase "three Text_, middle space" $
-            (renderStoryToXMLText $ GenStory [GenQuest [GenEvent ["X Y"]]])
+            (renderStoryToXMLText [GenQuest [GenEvent ["X Y"]]])
             @?=
-            (renderStoryToXMLText $ GenStory [GenQuest [GenEvent [mconcat ["X", " ", "Y"]]]])
+            (renderStoryToXMLText [GenQuest [GenEvent [mconcat ["X", " ", "Y"]]]])
         ]
     ]
   ]

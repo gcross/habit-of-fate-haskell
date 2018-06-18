@@ -65,18 +65,11 @@ newtype GenQuest α = GenQuest { unwrapGenQuest ∷ [GenEvent α] }
   deriving (Eq,Generic,Lift,Monoid,Ord,Read,Show)
 makeWrapped ''GenQuest
 
-newtype GenStory α = GenStory { unwrapGenStory ∷ [GenQuest α] }
-  deriving (Eq,Generic,Lift,Monoid,Ord,Read,Show)
-makeWrapped ''GenStory
-
 paragraphs ∷ IndexedTraversal Int (GenEvent α) (GenEvent β) (GenParagraph α) (GenParagraph β)
 paragraphs f (GenEvent ps) = GenEvent <$> (traversed f ps)
 
 events ∷ IndexedTraversal Int (GenQuest α) (GenQuest β) (GenEvent α) (GenEvent β)
 events f (GenQuest ps) = GenQuest <$> (traversed f ps)
-
-quests ∷ IndexedTraversal Int (GenStory α) (GenStory β) (GenQuest α) (GenQuest β)
-quests f (GenStory ps) = GenStory <$> (traversed f ps)
 
 createEvent ∷ Foldable t ⇒ t Paragraph → Event
 createEvent = toList >>> GenEvent
@@ -84,22 +77,16 @@ createEvent = toList >>> GenEvent
 createQuest ∷ Foldable t ⇒ t Event → Quest
 createQuest = toList >>> GenQuest
 
-createStory ∷ Foldable t ⇒ t Quest → Story
-createStory = toList >>> GenStory
-
 eventToLists ∷ GenEvent α → [GenParagraph α]
 eventToLists = unwrapGenEvent
 
 questToLists ∷ GenQuest α → [[GenParagraph α]]
 questToLists = unwrapGenQuest >>> fmap eventToLists
 
-storyToLists ∷ GenStory α → [[[GenParagraph α]]]
-storyToLists = unwrapGenStory >>> fmap questToLists
-
 type Paragraph = GenParagraph Text
 type Event = GenEvent Text
 type Quest = GenQuest Text
-type Story = GenStory Text
+type Story = [Quest]
 
 instance IsString Paragraph where
   fromString = pack >>> Text_
@@ -110,7 +97,7 @@ makePrisms ''SubText
 type SubParagraph = GenParagraph SubText
 type SubEvent = GenEvent SubText
 type SubQuest = GenQuest SubText
-type SubStory = GenStory SubText
+type SubStory = [SubText]
 
 class HasLiterals α where
   literals ∷ IndexedFold Int (GenParagraph α) Text

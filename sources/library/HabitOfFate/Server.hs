@@ -918,7 +918,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       put new_d
       returnLazyText ok200 $!! (
         s ^. run_quests_ ⊢ s ^. run_quest_events_ . to createQuest
-        |> createStory
+        |> toList
         |> renderStoryToXMLText
        )
 ------------------------------------- Home -------------------------------------

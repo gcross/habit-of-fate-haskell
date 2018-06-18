@@ -72,8 +72,6 @@ renderQuestToNode =
 
 renderStoryToDocument ∷ Story → Document
 renderStoryToDocument =
-  unwrapGenStory
-  >>>
   foldr (renderQuestToNode >>> (:)) []
   >>>
   Element "story" mempty
