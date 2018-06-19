@@ -64,7 +64,7 @@ parseEventFromNodes ∷ MonadThrow m ⇒ [Node] → m Event
 parseEventFromNodes =
   mapM (parseContainer "p" parseParagraphFromNodes)
   >>>
-  fmap (GenEvent <<< filter (not <<< nullOf folded))
+  fmap (filter (not <<< null))
 
 parseParagraphFromNodes ∷ MonadThrow m ⇒ [Node] → m Paragraph
 parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat

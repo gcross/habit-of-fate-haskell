@@ -106,8 +106,6 @@ originalFromSubParagraph =
 
 originalFromSubEvent ∷ SubEvent → Text
 originalFromSubEvent =
-  unwrapGenEvent
-  >>>
   map originalFromSubParagraph
   >>>
   intersperse "\n"
@@ -529,7 +527,7 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
         [ testCase "single letter" $ do
         ------------------------------------------------------------------------
-            let GenEvent [subparagraph] = [s_fixed|{x}|]
+            let [subparagraph] = [s_fixed|{x}|]
             Right "X" @=? bimap show id (
               (textFromParagraph >>> rewords)
               <$>
@@ -538,7 +536,7 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
         , testCase "two keys separated by a space" $ do
         ------------------------------------------------------------------------
-            let GenEvent [subparagraph] = [s_fixed|{x} {y}|]
+            let [subparagraph] = [s_fixed|{x} {y}|]
             Right "X Y" @=? bimap show id (
               (textFromParagraph >>> rewords)
               <$>
@@ -549,9 +547,9 @@ main = defaultMain $ testGroup "All Tests"
     , testGroup "rendering"
     ----------------------------------------------------------------------------
         [ testCase "three Text_, middle space" $
-            (renderStoryToXMLText [[GenEvent ["X Y"]]])
+            (renderStoryToXMLText [[["X Y"]]])
             @?=
-            (renderStoryToXMLText [[GenEvent [mconcat ["X", " ", "Y"]]]])
+            (renderStoryToXMLText [[[mconcat ["X", " ", "Y"]]]])
         ]
     ]
   ]

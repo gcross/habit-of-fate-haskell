@@ -52,8 +52,6 @@ renderParagraphToNodes paragraph =
 
 renderEventToNode ∷ Event → Node
 renderEventToNode =
-  unwrapGenEvent
-  >>>
   concatMap renderParagraphToNodes
   >>>
   Element "event" mempty

@@ -895,7 +895,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.post "/api/run" <<< apiWriter $ do
       let go d = do
             let r = runAccount d
-            run_quest_events_ %= (⊢ r ^. story_ . to createEvent)
+            run_quest_events_ %= (⊢ r ^. story_ . to toList)
             if stillHasCredits (r ^. new_data_)
               then do
                 when (r ^. quest_completed_) $

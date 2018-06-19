@@ -57,21 +57,8 @@ replaceTextM f (Style s x) = Style s <$> replaceTextM f x
 replaceTextM f (Merged xs) = Merged <$> traverse (replaceTextM f) xs
 replaceTextM f (Text_ t) = f t
 
-newtype GenEvent α = GenEvent { unwrapGenEvent ∷ [GenParagraph α] }
-  deriving (Eq,Generic,Lift,Monoid,Ord,Read,Show)
-makeWrapped ''GenEvent
-
-paragraphs ∷ IndexedTraversal Int (GenEvent α) (GenEvent β) (GenParagraph α) (GenParagraph β)
-paragraphs f (GenEvent ps) = GenEvent <$> (traversed f ps)
-
-createEvent ∷ Foldable t ⇒ t Paragraph → Event
-createEvent = toList >>> GenEvent
-
-eventToLists ∷ GenEvent α → [GenParagraph α]
-eventToLists = unwrapGenEvent
-
 type Paragraph = GenParagraph Text
-type Event = GenEvent Text
+type Event = [Paragraph]
 type Quest = [Event]
 type Story = [Quest]
 
@@ -82,7 +69,7 @@ data SubText = Key Text | Literal Text deriving (Eq,Generic,Lift,Ord,Read,Show)
 makePrisms ''SubText
 
 type SubParagraph = GenParagraph SubText
-type SubEvent = GenEvent SubText
+type SubEvent = [SubParagraph]
 type SubQuest = [SubEvent]
 type SubStory = [SubText]
 

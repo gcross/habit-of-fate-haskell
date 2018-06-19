@@ -97,7 +97,7 @@ parseQuote =
   (
     parseStoryFromText
     >=>
-    (mapM . mapM $ traverseOf paragraphs parseSubstitutions)
+    (mapM >>> mapM >>> mapM $ parseSubstitutions)
     >=>
     \case
       [quest] → pure quest

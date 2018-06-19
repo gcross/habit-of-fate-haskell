@@ -68,7 +68,7 @@ storyForState forest event =
   substituteAndAddParagraphs
     (forest ^. gendered_substitutions_)
     (forest ^. neutered_substitutions_)
-    (event ^.. paragraphs)
+    event
 
 storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
 storyForLens lens template = use lens >>= \forest → storyForState forest template

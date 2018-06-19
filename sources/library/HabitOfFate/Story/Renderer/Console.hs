@@ -83,7 +83,7 @@ renderStoryToChunks =
           tellEventSeparator
           go xs
 
-    renderEvent = unwrapGenEvent >>> go
+    renderEvent = go
       where
         go [] = return ()
         go (x:[]) = do
