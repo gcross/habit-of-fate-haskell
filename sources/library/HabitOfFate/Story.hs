@@ -59,8 +59,7 @@ replaceTextM f (Text_ t) = f t
 
 type Paragraph = GenParagraph Text
 type Event = [Paragraph]
-type Quest = [Event]
-type Story = [Quest]
+type Story = [Event]
 
 instance IsString Paragraph where
   fromString = pack >>> Text_
@@ -70,7 +69,6 @@ makePrisms ''SubText
 
 type SubParagraph = GenParagraph SubText
 type SubEvent = [SubParagraph]
-type SubQuest = [SubEvent]
 
 class HasLiterals α where
   literals ∷ IndexedFold Int (GenParagraph α) Text

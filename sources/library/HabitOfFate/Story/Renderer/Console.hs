@@ -38,26 +38,16 @@ data RenderState = RenderState
 makeLenses ''RenderState
 
 renderStoryToChunks ∷ Story → [Chunk Text]
-renderStoryToChunks =
-  uncons
-  >>>
-  maybe
-    (return ())
-    (
-      \(first, rest) → do
-        tellEventSeparator
-        renderQuest first
-        forM_ rest $ \quest → do
-          tellQuestSeparator
-          tellLine "A new quest begins..."
-          tellQuestSeparator
-          renderQuest quest
-        tellEventSeparator
-    )
-  >>>
-  execWriter
-  >>>
-  toList
+renderStoryToChunks events =
+  (case events of
+    [] → pure ()
+    [event] → renderEvent event
+    (first:rest) → do
+      renderEvent first
+      mapM_ (\event → tellEventSeparator >> renderEvent event) rest
+  )
+  |> execWriter
+  |> toList
   where
     tellChunk ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Chunk Text → m ()
     tellChunk = singleton >>> tell
@@ -72,16 +62,6 @@ renderStoryToChunks =
     tellSeparator = replicate 80 >>> tellLine
 
     tellEventSeparator = tellSeparator '―'
-    tellQuestSeparator = tellSeparator '═'
-
-    renderQuest = go
-      where
-        go [] = return ()
-        go (x:[]) = renderEvent x
-        go (x:xs) = do
-          renderEvent x
-          tellEventSeparator
-          go xs
 
     renderEvent = go
       where

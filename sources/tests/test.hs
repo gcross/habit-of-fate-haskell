@@ -547,9 +547,9 @@ main = defaultMain $ testGroup "All Tests"
     , testGroup "rendering"
     ----------------------------------------------------------------------------
         [ testCase "three Text_, middle space" $
-            (renderStoryToXMLText [[["X Y"]]])
+            (renderStoryToXMLText [["X Y"]])
             @?=
-            (renderStoryToXMLText [[[mconcat ["X", " ", "Y"]]]])
+            (renderStoryToXMLText [[mconcat ["X", " ", "Y"]]])
         ]
     ]
   ]

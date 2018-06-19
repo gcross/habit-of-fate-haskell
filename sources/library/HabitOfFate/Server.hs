@@ -450,7 +450,7 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
 --------------------------------------------------------------------------------
 
 data RunGameState = RunGameState
-  { _run_quests_ ∷ Seq Quest
+  { _run_quests_ ∷ Seq [Event]
   , _run_quest_events_ ∷ Seq Event
   }
 makeLenses ''RunGameState
@@ -919,6 +919,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       returnLazyText ok200 $!! (
         s ^. run_quests_ ⊢ s ^. run_quest_events_ . to toList
         |> toList
+        |> concat
         |> renderStoryToXMLText
        )
 ------------------------------------- Home -------------------------------------

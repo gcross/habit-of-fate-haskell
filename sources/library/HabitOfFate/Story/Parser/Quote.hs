@@ -50,7 +50,7 @@ insertMarkers =
       line → line
   )
   >>>
-  (\x → ["<story><quest><event><p>"] ⊕ x ⊕ ["</p></event></quest></story>"])
+  (\x → ["<story><event><p>"] ⊕ x ⊕ ["</p></event></story>"])
   >>>
   unlines
 
@@ -97,11 +97,7 @@ parseQuote =
   (
     parseStoryFromText
     >=>
-    (mapM >>> mapM >>> mapM $ parseSubstitutions)
-    >=>
-    \case
-      [quest] → pure quest
-      xs → throwM $ ParseSubstitutionException [i|saw #{olength xs} quests instead of 1|]
+    (mapM >>> mapM $ parseSubstitutions)
   )
   >>>
   either (show >>> error) identity

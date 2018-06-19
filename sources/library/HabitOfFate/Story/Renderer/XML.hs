@@ -58,17 +58,9 @@ renderEventToNode =
   >>>
   NodeElement
 
-renderQuestToNode ∷ Quest → Node
-renderQuestToNode =
-  foldr (renderEventToNode >>> (:)) []
-  >>>
-  Element "quest" mempty
-  >>>
-  NodeElement
-
 renderStoryToDocument ∷ Story → Document
 renderStoryToDocument =
-  foldr (renderQuestToNode >>> (:)) []
+  foldr (renderEventToNode >>> (:)) []
   >>>
   Element "story" mempty
   >>>
