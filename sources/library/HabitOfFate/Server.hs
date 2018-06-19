@@ -901,7 +901,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                 when (r ^. quest_completed_) $
                   (run_quest_events_ <<.= mempty)
                   >>=
-                  (createQuest >>> (⊣) >>> (run_quests_ %=))
+                  (toList >>> (⊣) >>> (run_quests_ %=))
                 go (r ^. new_data_)
               else return (r ^. new_data_)
       (new_d, s) ←
@@ -917,7 +917,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
         )
       put new_d
       returnLazyText ok200 $!! (
-        s ^. run_quests_ ⊢ s ^. run_quest_events_ . to createQuest
+        s ^. run_quests_ ⊢ s ^. run_quest_events_ . to toList
         |> toList
         |> renderStoryToXMLText
        )

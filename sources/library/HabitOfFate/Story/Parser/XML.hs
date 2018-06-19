@@ -58,10 +58,7 @@ parseStoryFromNodes ∷ MonadThrow m ⇒ [Node] → m Story
 parseStoryFromNodes = mapM (parseContainer "quest" parseQuestFromNodes)
 
 parseQuestFromNodes ∷ MonadThrow m ⇒ [Node] → m Quest
-parseQuestFromNodes =
-  mapM (parseContainer "event" parseEventFromNodes)
-  >>>
-  fmap GenQuest
+parseQuestFromNodes = mapM (parseContainer "event" parseEventFromNodes)
 
 parseEventFromNodes ∷ MonadThrow m ⇒ [Node] → m Event
 parseEventFromNodes =

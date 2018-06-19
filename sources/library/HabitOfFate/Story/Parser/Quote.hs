@@ -97,10 +97,10 @@ parseQuote =
   (
     parseStoryFromText
     >=>
-    (mapM $ traverseOf (events . paragraphs) parseSubstitutions)
+    (mapM . mapM $ traverseOf paragraphs parseSubstitutions)
     >=>
     \case
-      [quest] → return $ unwrapGenQuest quest
+      [quest] → pure quest
       xs → throwM $ ParseSubstitutionException [i|saw #{olength xs} quests instead of 1|]
   )
   >>>

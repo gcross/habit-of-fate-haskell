@@ -74,7 +74,7 @@ renderStoryToChunks =
     tellEventSeparator = tellSeparator '―'
     tellQuestSeparator = tellSeparator '═'
 
-    renderQuest = unwrapGenQuest >>> go
+    renderQuest = go
       where
         go [] = return ()
         go (x:[]) = renderEvent x

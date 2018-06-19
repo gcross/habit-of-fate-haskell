@@ -62,8 +62,6 @@ renderEventToNode =
 
 renderQuestToNode ∷ Quest → Node
 renderQuestToNode =
-  unwrapGenQuest
-  >>>
   foldr (renderEventToNode >>> (:)) []
   >>>
   Element "quest" mempty
