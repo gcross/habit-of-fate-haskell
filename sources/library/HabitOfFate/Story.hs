@@ -71,7 +71,6 @@ makePrisms ''SubText
 type SubParagraph = GenParagraph SubText
 type SubEvent = [SubParagraph]
 type SubQuest = [SubEvent]
-type SubStory = [SubText]
 
 class HasLiterals α where
   literals ∷ IndexedFold Int (GenParagraph α) Text
