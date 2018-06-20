@@ -41,12 +41,9 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Typeable
 import Data.UUID hiding (toByteString)
 import qualified Data.UUID as UUID
-import Network.Connection
 import Network.HTTP.Client
-import Network.HTTP.Client.TLS
 import Network.HTTP.Simple
 import Network.HTTP.Types
-import Text.XML
 import Web.Cookie
 
 import HabitOfFate.Credits
