@@ -58,10 +58,6 @@ type SessionInfo = Request
 
 loginOrCreateAccount ∷ String → String → String → SecureMode → ByteString → Int → IO (Either Status SessionInfo)
 loginOrCreateAccount route username password secure_mode hostname port = do
-  manager ← newManager $
-    case secure_mode of
-      Testing → defaultManagerSettings
-      Secure → mkManagerSettings (TLSSettingsSimple True False False) Nothing
   let request_template_without_authorization = defaultRequest
         { method = renderStdMethod POST
         , host = hostname
