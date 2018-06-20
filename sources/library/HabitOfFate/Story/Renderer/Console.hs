@@ -41,10 +41,14 @@ renderStoryToChunks ∷ Story → [Chunk Text]
 renderStoryToChunks events =
   (case events of
     [] → pure ()
-    [event] → renderEvent event
+    [event]
+      | null event → pure ()
+      | otherwise → tellEventSeparator >> renderEvent event >> tellEventSeparator
     (first:rest) → do
+      tellEventSeparator
       renderEvent first
       mapM_ (\event → tellEventSeparator >> renderEvent event) rest
+      tellEventSeparator
   )
   |> execWriter
   |> toList
