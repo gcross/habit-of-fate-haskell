@@ -84,7 +84,9 @@ runGame state =
   fmap (RunGameResult |> uncurry |> uncurry)
 
 gameAddParagraph ∷ Paragraph → Game ()
-gameAddParagraph = singleton >>> tell
+gameAddParagraph p
+  | p |> textFromParagraph |> allSpaces = pure ()
+  | otherwise = p |> singleton |> tell
 
 substituteAndAddParagraphs ∷ MonadGame m ⇒ HashMap Text Gendered → HashMap Text Text → [SubParagraph] → m ()
 substituteAndAddParagraphs gendered neutered =
