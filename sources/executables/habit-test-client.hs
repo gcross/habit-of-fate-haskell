@@ -19,42 +19,10 @@
 
 module Main where
 
-import HabitOfFate.Prelude hiding (argument)
+import HabitOfFate.Prelude
 
-import Options.Applicative
-
-import HabitOfFate.API (SecureMode(Secure))
+import HabitOfFate.API (SecureMode(Testing))
 import HabitOfFate.Client (Configuration(..), doMain)
 
-configuration_parser ∷ Parser Configuration
-configuration_parser = Configuration
-  <$> strArgument (mconcat
-        [ metavar "HOSTNAME"
-        , help "Name of the host to connect to."
-        , value "localhost"
-        ])
-  <*> argument auto (mconcat
-        [ metavar "PORT"
-        , help "Port to connect to."
-        , value 8081
-        ])
-  <*> switch (mconcat
-        [ help "Create a new account."
-        , long "create"
-        , short 'c'
-        ])
-
 main ∷ IO ()
-main =
-  (
-    execParser
-    $
-    info
-      (configuration_parser <**> helper)
-      (
-          fullDesc
-        ⊕ header "habit-client - a client program for habit-of-fate"
-      )
-  )
-  >>=
-  doMain Secure
+main = doMain Testing (Configuration "localhost" 8081 True)

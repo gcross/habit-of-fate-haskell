@@ -22,9 +22,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Client (doMain) where
+module HabitOfFate.Client (Configuration(..), doMain) where
 
-import HabitOfFate.Prelude hiding (argument)
+import HabitOfFate.Prelude
 
 import Control.Exception (AsyncException(UserInterrupt))
 import Control.Monad.Catch
@@ -32,23 +32,6 @@ import qualified Data.ByteString as BS
 import Data.Char
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
-import Options.Applicative
-  ( Parser
-  , argument
-  , auto
-  , execParser
-  , fullDesc
-  , header
-  , help
-  , helper
-  , info
-  , long
-  , metavar
-  , short
-  , strArgument
-  , switch
-  , value
-  )
 import Rainbow.Translate
 import System.Exit (exitSuccess)
 import System.IO
@@ -263,24 +246,6 @@ data Configuration = Configuration
   , create_account_mode ∷ Bool
   }
 
-configuration_parser ∷ Parser Configuration
-configuration_parser = Configuration
-  <$> strArgument (mconcat
-        [ metavar "HOSTNAME"
-        , help "Name of the host to connect to."
-        , value "localhost"
-        ])
-  <*> argument auto (mconcat
-        [ metavar "PORT"
-        , help "Port to connect to."
-        , value 8081
-        ])
-  <*> switch (mconcat
-        [ help "Create a new account."
-        , long "create"
-        , short 'c'
-        ])
-
 runSession ∷ SessionInfo → IO ()
 runSession session_info =
   main_menu
@@ -288,14 +253,8 @@ runSession session_info =
     |> flip runSessionT session_info
     |> void
 
-doMain ∷ IO ()
-doMain = do
-  Configuration{..} ←
-    execParser $ info
-      (configuration_parser <**> helper)
-      (   fullDesc
-       <> header "habit-client - a client program for habit-of-fate"
-      )
+doMain ∷ SecureMode → Configuration → IO ()
+doMain secure_mode Configuration{..} = do
   putStr "Username: "
   hFlush stdout
   username ← getLine
@@ -306,7 +265,7 @@ doMain = do
   hSetEcho stdout True
   putStrLn ""
   let doLogin =
-        login username password Secure "localhost" 8081
+        login username password secure_mode "localhost" 8081
         >>=
         either
           (\case
@@ -316,7 +275,7 @@ doMain = do
           runSession
   if create_account_mode
     then
-      createAccount username password Secure "localhost" 8081
+      createAccount username password secure_mode "localhost" 8081
       >>=
       maybe
         (putStrLn "Account already exists. Logging in..." >> doLogin)
