@@ -523,27 +523,6 @@ main = defaultMain $ testGroup "All Tests"
           "{x} {y}" @?= originalFromSubEvent [s_fixed|{x} {y}|]
       ]
     ----------------------------------------------------------------------------
-    , testGroup "substitute"
-    ----------------------------------------------------------------------------
-        [ testCase "single letter" $ do
-        ------------------------------------------------------------------------
-            let [subparagraph] = [s_fixed|{x}|]
-            Right "X" @=? bimap show id (
-              (textFromParagraph >>> rewords)
-              <$>
-              substitute mempty (mapFromList [("x", "X")]) subparagraph
-             )
-        ------------------------------------------------------------------------
-        , testCase "two keys separated by a space" $ do
-        ------------------------------------------------------------------------
-            let [subparagraph] = [s_fixed|{x} {y}|]
-            Right "X Y" @=? bimap show id (
-              (textFromParagraph >>> rewords)
-              <$>
-              substitute mempty (mapFromList [("x", "X"), ("y", "Y")]) subparagraph
-             )
-        ]
-    ----------------------------------------------------------------------------
     , testGroup "rendering"
     ----------------------------------------------------------------------------
         [ testCase "three Text_, middle space" $
