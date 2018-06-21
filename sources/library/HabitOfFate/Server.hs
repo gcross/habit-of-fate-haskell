@@ -893,18 +893,18 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
        ) >>= returnJSON ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
-      let go d = do
-            let r = runAccount d
-            run_quest_events_ %= (⊢ r ^. story_ . to toList)
-            if stillHasCredits (r ^. new_data_)
+      let go account = do
+            let (result, new_account) = runState runAccount account
+            run_quest_events_ %= (⊢ result ^. story_ . to toList)
+            if stillHasCredits new_account
               then do
-                when (r ^. quest_completed_) $
+                when (result ^. quest_completed_) $
                   (run_quest_events_ <<.= mempty)
                   >>=
                   (toList >>> (⊣) >>> (run_quests_ %=))
-                go (r ^. new_data_)
-              else return (r ^. new_data_)
-      (new_d, s) ←
+                go new_account
+              else return new_account
+      (new_account, new_game_state) ←
         get
         >>=
         (
@@ -915,9 +915,9 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
             , _run_quest_events_ = mempty
             })
         )
-      put new_d
+      put new_account
       returnLazyText ok200 $!! (
-        s ^. run_quests_ ⊢ s ^. run_quest_events_ . to toList
+        new_game_state ^. run_quests_ ⊢ (new_game_state ^. run_quest_events_ . to toList)
         |> toList
         |> concat
         |> renderStoryToXMLText

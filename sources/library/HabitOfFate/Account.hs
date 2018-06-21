@@ -76,25 +76,27 @@ passwordIsValid password account =
 data RunAccountResult = RunAccountResult
   { _story_ ∷ Seq Paragraph
   , _quest_completed_ ∷ Bool
-  , _new_data_ ∷ Account
   }
 makeLenses ''RunAccountResult
 
-runAccount ∷ Account → RunAccountResult
-runAccount d =
-  (flip runRand (d ^. rng_)
-   $
-   runGame (d ^. game_) (runCurrentQuest (d ^. quest_))
-  )
-  &
-  \(r, new_rng) →
-    RunAccountResult
-      (r ^. game_paragraphs_)
-      (isNothing (r ^. returned_value_))
-      (d & game_ .~ r ^. new_game_
-         & quest_ .~ r ^. returned_value_
-         & rng_ .~ new_rng
+runAccount ∷ State Account RunAccountResult
+runAccount = StateT $ \account →
+  (account ^. quest_)
+  |> runCurrentQuest
+  |> runGame (account ^. game_)
+  |> flip runRand (account ^. rng_)
+  |> (
+    \(result, new_rng) → Identity $
+      (
+        RunAccountResult
+          (result ^. game_paragraphs_)
+          (isNothing (result ^. returned_value_))
+      , account
+          & game_ .~ result ^. new_game_
+          & quest_ .~ result ^. returned_value_
+          & rng_ .~ new_rng
       )
+  )
 
 stillHasCredits ∷ Account → Bool
 stillHasCredits d = (||)
