@@ -37,18 +37,11 @@ data RenderState = RenderState
   }
 makeLenses ''RenderState
 
-renderStoryToChunks ∷ Story → [Chunk Text]
-renderStoryToChunks events =
-  (case events of
-    [] → pure ()
-    [event]
-      | null event → pure ()
-      | otherwise → tellEventSeparator >> renderEvent event >> tellEventSeparator
-    (first:rest) → do
-      tellEventSeparator
-      renderEvent first
-      mapM_ (\event → tellEventSeparator >> renderEvent event) rest
-      tellEventSeparator
+renderStoryToChunks ∷ Event → [Chunk Text]
+renderStoryToChunks [] = []
+renderStoryToChunks paragraphs =
+  (do mapM_ renderParagraph (intersperse "\n\n" paragraphs)
+      tellNewline
   )
   |> execWriter
   |> toList
@@ -61,23 +54,6 @@ renderStoryToChunks events =
 
     tellNewline ∷ MonadWriter (Seq (Chunk Text)) m ⇒ m ()
     tellNewline = tellLine ""
-
-    tellSeparator ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Char → m ()
-    tellSeparator = replicate 80 >>> tellLine
-
-    tellEventSeparator = tellSeparator '―'
-
-    renderEvent = go
-      where
-        go [] = return ()
-        go (x:[]) = do
-          renderParagraph x
-          tellNewline
-        go (x:xs) = do
-          renderParagraph x
-          tellNewline
-          tellNewline
-          go xs
 
     renderParagraph ∷ Paragraph → Writer (Seq (Chunk Text)) ()
     renderParagraph =

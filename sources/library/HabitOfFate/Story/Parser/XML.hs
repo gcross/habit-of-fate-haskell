@@ -22,7 +22,9 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Story.Parser.XML
-  ( parseStoryFromDocument
+  ( parseEventFromDocument
+  , parseEventFromText
+  , parseStoryFromDocument
   , parseStoryFromText
   ) where
 
@@ -95,5 +97,16 @@ parseStoryFromDocument =
   >>>
   parseContainer "story" parseStoryFromNodes
 
+parseEventFromDocument ∷ MonadThrow m ⇒ Document → m Event
+parseEventFromDocument =
+  documentRoot
+  >>>
+  NodeElement
+  >>>
+  parseContainer "event" parseEventFromNodes
+
 parseStoryFromText ∷ MonadThrow m ⇒ Lazy.Text → m Story
 parseStoryFromText = (parseText def >>> either throwM pure) >=> parseStoryFromDocument
+
+parseEventFromText ∷ MonadThrow m ⇒ Lazy.Text → m Event
+parseEventFromText = (parseText def >>> either throwM pure) >=> parseEventFromDocument

@@ -74,7 +74,7 @@ passwordIsValid password account =
   verifyPassword (encodeUtf8 password) (encodeUtf8 $ account ^. password_)
 
 data RunAccountResult = RunAccountResult
-  { _story_ ∷ Seq Paragraph
+  { _event_ ∷ Seq Paragraph
   , _quest_completed_ ∷ Bool
   }
 makeLenses ''RunAccountResult

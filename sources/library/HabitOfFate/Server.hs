@@ -893,34 +893,15 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
        ) >>= returnJSON ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
-      let go account = do
-            let (result, new_account) = runState runAccount account
-            run_quest_events_ %= (⊢ result ^. story_ . to toList)
-            if stillHasCredits new_account
-              then do
-                when (result ^. quest_completed_) $
-                  (run_quest_events_ <<.= mempty)
-                  >>=
-                  (toList >>> (⊣) >>> (run_quests_ %=))
-                go new_account
-              else return new_account
-      (new_account, new_game_state) ←
-        get
-        >>=
-        (
-          go
-          >>>
-          flip runStateT (RunGameState
-            { _run_quests_ = mempty
-            , _run_quest_events_ = mempty
-            })
-        )
+      account ← get
+      log [i|Old quest state is #{account ^. quest_}|]
+      let (result, new_account) = runState runAccount account
+      log [i|New quest state is #{new_account ^. quest_}|]
       put new_account
       returnLazyText ok200 $!! (
-        new_game_state ^. run_quests_ ⊢ (new_game_state ^. run_quest_events_ . to toList)
+        (result ^. event_)
         |> toList
-        |> concat
-        |> renderStoryToXMLText
+        |> renderEventToXMLText
        )
 ------------------------------------- Home -------------------------------------
     Scotty.get "/home" <<< scottyHTML $ [hamlet|

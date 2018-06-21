@@ -269,9 +269,9 @@ markHabits success_habits failure_habits = do
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Story
+runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Event
 runGame = do
   response ← request POST "run"
   case responseStatusCode response of
-    200 → response |> responseBody |> decodeUtf8 |> parseStoryFromText
+    200 → response |> responseBody |> decodeUtf8 |> parseEventFromText
     code → throwM $ UnexpectedStatus [200] code

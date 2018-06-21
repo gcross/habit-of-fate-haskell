@@ -18,9 +18,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Story.Renderer.XML (renderStoryToXMLText) where
+module HabitOfFate.Story.Renderer.XML
+  ( renderEventToXMLText
+  , renderStoryToXMLText
+  ) where
 
-import HabitOfFate.Prelude
+import HabitOfFate.Prelude hiding (Element)
 
 import qualified Data.Text.Lazy as Lazy
 import Text.XML
@@ -50,13 +53,26 @@ renderParagraphToNodes paragraph =
     recurse (Merged children) = concatMap recurse children
     recurse (Text_ t) = [NodeContent t]
 
-renderEventToNode ∷ Event → Node
-renderEventToNode =
+renderEventToElement ∷ Event → Element
+renderEventToElement =
   concatMap renderParagraphToNodes
   >>>
   Element "event" mempty
+
+renderEventToNode ∷ Event → Node
+renderEventToNode =
+  renderEventToElement
   >>>
   NodeElement
+
+renderEventToDocument ∷ Event → Document
+renderEventToDocument =
+  renderEventToElement
+  >>>
+  (\n → Document (Prologue [] Nothing []) n [])
+
+renderEventToXMLText ∷ Event → Lazy.Text
+renderEventToXMLText = renderEventToDocument >>> renderText def
 
 renderStoryToDocument ∷ Story → Document
 renderStoryToDocument =
