@@ -41,6 +41,9 @@ import HabitOfFate.Story
 data StoryParseException = StoryParseException String deriving (Eq,Show,Typeable)
 instance Exception StoryParseException where
 
+allSpaces ∷ Text → Bool
+allSpaces = allOf text (∈ " \t\r\n")
+
 parseContainer ∷ MonadThrow m ⇒ Text → ([Node] → m α) → Node → m α
 parseContainer expected_tag parseChildren node =
   case node of

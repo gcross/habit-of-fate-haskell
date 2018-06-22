@@ -91,5 +91,3 @@ instance GenText α ⇒ Monoid (GenParagraph α) where
 textFromParagraph ∷ Paragraph → Text
 textFromParagraph = fold
 
-allSpaces ∷ Text → Bool
-allSpaces = allOf text (∈ " \t\r\n")
