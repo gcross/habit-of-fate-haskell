@@ -59,7 +59,6 @@ replaceTextM f (Text_ t) = f t
 
 type Paragraph = GenParagraph Text
 type Event = [Paragraph]
-type Story = [Event]
 
 instance IsString Paragraph where
   fromString = pack >>> Text_

@@ -522,13 +522,5 @@ main = defaultMain $ testGroup "All Tests"
       , testCase "two keys separated by a space" $
           "{x} {y}" @?= originalFromSubEvent [s_fixed|{x} {y}|]
       ]
-    ----------------------------------------------------------------------------
-    , testGroup "rendering"
-    ----------------------------------------------------------------------------
-        [ testCase "three Text_, middle space" $
-            (renderStoryToXMLText [["X Y"]])
-            @?=
-            (renderStoryToXMLText [[mconcat ["X", " ", "Y"]]])
-        ]
     ]
   ]

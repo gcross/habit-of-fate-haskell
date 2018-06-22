@@ -50,7 +50,7 @@ insertMarkers =
       line → line
   )
   >>>
-  (\x → ["<story><event><p>"] ⊕ x ⊕ ["</p></event></story>"])
+  (\x → ["<events><event><p>"] ⊕ x ⊕ ["</p></event></events>"])
   >>>
   unlines
 
@@ -95,7 +95,7 @@ parseQuote =
   Lazy.pack
   >>>
   (
-    parseStoryFromText
+    parseEventsFromText
     >=>
     (mapM >>> mapM $ parseSubstitutions)
   )

@@ -18,10 +18,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Story.Renderer.XML
-  ( renderEventToXMLText
-  , renderStoryToXMLText
-  ) where
+module HabitOfFate.Story.Renderer.XML (renderEventToXMLText) where
 
 import HabitOfFate.Prelude hiding (Element)
 
@@ -73,14 +70,3 @@ renderEventToDocument =
 
 renderEventToXMLText ∷ Event → Lazy.Text
 renderEventToXMLText = renderEventToDocument >>> renderText def
-
-renderStoryToDocument ∷ Story → Document
-renderStoryToDocument =
-  foldr (renderEventToNode >>> (:)) []
-  >>>
-  Element "story" mempty
-  >>>
-  (\n → Document (Prologue [] Nothing []) n [])
-
-renderStoryToXMLText ∷ Story → Lazy.Text
-renderStoryToXMLText = renderStoryToDocument >>> renderText def

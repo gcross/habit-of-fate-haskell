@@ -24,8 +24,8 @@
 module HabitOfFate.Story.Parser.XML
   ( parseEventFromDocument
   , parseEventFromText
-  , parseStoryFromDocument
-  , parseStoryFromText
+  , parseEventsFromDocument
+  , parseEventsFromText
   ) where
 
 import HabitOfFate.Prelude
@@ -56,8 +56,8 @@ parseContainer expected_tag parseChildren node =
            throwM $ StoryParseException [i|expected no attributes in <#{tag}>"|]
       | otherwise → parseChildren childs
 
-parseStoryFromNodes ∷ MonadThrow m ⇒ [Node] → m Story
-parseStoryFromNodes = mapM (parseContainer "event" parseEventFromNodes)
+parseEventsFromNodes ∷ MonadThrow m ⇒ [Node] → m [Event]
+parseEventsFromNodes = mapM (parseContainer "event" parseEventFromNodes)
 
 parseEventFromNodes ∷ MonadThrow m ⇒ [Node] → m Event
 parseEventFromNodes =
@@ -89,13 +89,13 @@ parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
           , ("introduce", Introduce)
           ]
 
-parseStoryFromDocument ∷ MonadThrow m ⇒ Document → m Story
-parseStoryFromDocument =
+parseEventsFromDocument ∷ MonadThrow m ⇒ Document → m [Event]
+parseEventsFromDocument =
   documentRoot
   >>>
   NodeElement
   >>>
-  parseContainer "story" parseStoryFromNodes
+  parseContainer "events" parseEventsFromNodes
 
 parseEventFromDocument ∷ MonadThrow m ⇒ Document → m Event
 parseEventFromDocument =
@@ -105,8 +105,8 @@ parseEventFromDocument =
   >>>
   parseContainer "event" parseEventFromNodes
 
-parseStoryFromText ∷ MonadThrow m ⇒ Lazy.Text → m Story
-parseStoryFromText = (parseText def >>> either throwM pure) >=> parseStoryFromDocument
+parseEventsFromText ∷ MonadThrow m ⇒ Lazy.Text → m [Event]
+parseEventsFromText = (parseText def >>> either throwM pure) >=> parseEventsFromDocument
 
 parseEventFromText ∷ MonadThrow m ⇒ Lazy.Text → m Event
 parseEventFromText = (parseText def >>> either throwM pure) >=> parseEventFromDocument

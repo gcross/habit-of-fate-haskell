@@ -99,14 +99,11 @@ originalFromSubEvent =
   >>>
   mconcat
 
-storyToLists = toList >>> map questToLists
-questToLists = toList
-
 main = defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Story"
     [ testGroup "round-trip"
       [ testGroup "Paragraph -> [Node] -> Paragraph" $
-          let doTest story =
+          let doTest event =
                 ( is _Right double_round_trip_xml_text
                   &&
                   (double_round_trip_xml_text & _Left %~ show) ==
@@ -114,18 +111,18 @@ main = defaultMain $ testGroup "All Tests"
                 , message
                 )
                 where
-                  xml_text = renderStoryToXMLText story
-                  round_trip_story = parseStoryFromText xml_text
-                  round_trip_xml_text = renderStoryToXMLText <$> round_trip_story
-                  double_round_trip_story = round_trip_xml_text >>= parseStoryFromText
-                  double_round_trip_xml_text = renderStoryToXMLText <$> double_round_trip_story
+                  xml_text = renderEventToXMLText event
+                  round_trip_event = parseEventFromText xml_text
+                  round_trip_xml_text = renderEventToXMLText <$> round_trip_event
+                  double_round_trip_event = round_trip_xml_text >>= parseEventFromText
+                  double_round_trip_xml_text = renderEventToXMLText <$> double_round_trip_event
                   message = unlines
-                    ["ORIGINAL STORY:"
-                    ,"    Right " ⊕ show (storyToLists story)
-                    ,"ROUND-TRIP STORY:"
-                    ,"    " ⊕ show (fmap storyToLists round_trip_story)
-                    ,"DOUBLE ROUND-TRIP STORY:"
-                    ,"    " ⊕ show (fmap storyToLists double_round_trip_story)
+                    ["ORIGINAL EVENT:"
+                    ,"    Right " ⊕ show event
+                    ,"ROUND-TRIP EVENT:"
+                    ,"    " ⊕ show round_trip_event
+                    ,"DOUBLE ROUND-TRIP EVENT:"
+                    ,"    " ⊕ show double_round_trip_event
                     ,"ORIGINAL XML:"
                     ,"    Right " ⊕ show xml_text
                     ,"ROUND-TRIP XML:"
@@ -134,13 +131,13 @@ main = defaultMain $ testGroup "All Tests"
                     ,"    " ⊕ show double_round_trip_xml_text
                     ]
           in
-          [ S.testProperty "SmallCheck" $ \story →
-              let (result, message) = doTest story
+          [ S.testProperty "SmallCheck" $ \event →
+              let (result, message) = doTest event
               in if result then Right ("" ∷ String) else Left message
           , localOption (QuickCheckMaxSize 20)
             $
-            testProperty "QuickCheck" $ \story →
-              let (result, message) = doTest story
+            testProperty "QuickCheck" $ \event →
+              let (result, message) = doTest event
               in counterexample message result
           ]
       ]
