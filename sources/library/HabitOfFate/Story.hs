@@ -71,19 +71,13 @@ type SubEvent = [SubParagraph]
 
 class GenText α where
   textIsNull ∷ α → Bool
-  textIsAllSpaces ∷ α → Bool
 
 instance GenText Text where
   textIsNull = onull
 
-  textIsAllSpaces = allSpaces
-
 instance GenText SubText where
   textIsNull (Literal t) = onull t
   textIsNull _ = False
-
-  textIsAllSpaces (Literal t) = allSpaces t
-  textIsAllSpaces _ = False
 
 instance GenText α ⇒ Monoid (GenParagraph α) where
   mempty = Merged mempty
