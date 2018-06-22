@@ -69,15 +69,6 @@ makePrisms ''SubText
 type SubParagraph = GenParagraph SubText
 type SubEvent = [SubParagraph]
 
-class HasLiterals α where
-  literals ∷ IndexedFold Int (GenParagraph α) Text
-
-instance HasLiterals Text where
-  literals = folded
-
-instance HasLiterals SubText where
-  literals = folded . _Literal
-
 class GenText α where
   textIsNull ∷ α → Bool
   textIsAllSpaces ∷ α → Bool
