@@ -29,7 +29,7 @@ import HabitOfFate.Prelude
 
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow(throwM))
-import Data.Aeson hiding ((.=))
+import Data.Aeson hiding (Object, (.=))
 import qualified Data.Char as Char
 import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
