@@ -37,20 +37,22 @@ import Text.Parsec hiding ((<|>), optional, uncons)
 import HabitOfFate.Story
 import HabitOfFate.TH
 
-data Gender = Male | Female deriving (Enum,Eq,Ord,Read,Show)
+data Gender = Male | Female | Neuter deriving (Enum,Eq,Ord,Read,Show)
 
 instance ToJSON Gender where
   toJSON gender = String $
     case gender of
       Male → "male"
       Female → "female"
+      Neuter → "neuter"
 
 instance FromJSON Gender where
   parseJSON = withText "expected text" parseGender
     where
       parseGender "male" = return Male
       parseGender "female" = return Female
-      parseGender wrong = fail [i|gender must be "male" or "female", not "#{wrong}"|]
+      parseGender "neuter" = return Female
+      parseGender wrong = fail [i|gender must be "male", "female", or "neuter", not "#{wrong}"|]
 
 data Gendered = Gendered
   { _gendered_name_ ∷ Text
@@ -99,8 +101,8 @@ data SubstitutionException =
   deriving (Show, Typeable)
 instance Exception SubstitutionException
 
-substitute ∷ MonadThrow m ⇒ HashMap Text Gendered → HashMap Text Text → SubParagraph → m Paragraph
-substitute _ _ = replaceTextM substituteIn
+substitute ∷ MonadThrow m ⇒ HashMap Text Gendered → SubParagraph → m Paragraph
+substitute _ = replaceTextM substituteIn
   where
     substituteIn ∷ MonadThrow m ⇒ SubText → m Paragraph
     substituteIn (Literal t) = return $ Text_ t

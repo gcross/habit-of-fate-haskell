@@ -88,9 +88,9 @@ gameAddParagraph p
   | p |> textFromParagraph |> allSpaces = pure ()
   | otherwise = p |> singleton |> tell
 
-substituteAndAddParagraphs ∷ MonadGame m ⇒ HashMap Text Gendered → HashMap Text Text → [SubParagraph] → m ()
-substituteAndAddParagraphs gendered neutered =
-  traverse (substitute gendered neutered)
+substituteAndAddParagraphs ∷ MonadGame m ⇒ HashMap Text Gendered → [SubParagraph] → m ()
+substituteAndAddParagraphs gendered =
+  traverse (substitute gendered)
   >>>
   either (show >>> error) identity
   >>>

@@ -48,8 +48,7 @@ import HabitOfFate.Trial
 --------------------------------------------------------------------------------
 
 data State = State
-  { _gendered_substitutions_ ∷ HashMap Text Gendered
-  , _neutered_substitutions_ ∷ HashMap Text Text
+  { _substitutions_ ∷ HashMap Text Gendered
   , _herb_found_ ∷ Bool
   , _credits_until_success_ ∷ Double
   , _credits_until_failure_ ∷ Double
@@ -67,8 +66,7 @@ type ForestEvent = ForestAction QuestStatus
 storyForState ∷ MonadGame m ⇒ State → SubEvent → m ()
 storyForState forest event =
   substituteAndAddParagraphs
-    (forest ^. gendered_substitutions_)
-    (forest ^. neutered_substitutions_)
+    (forest ^. substitutions_)
     event
 
 storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
@@ -99,10 +97,7 @@ new =
       (mapFromList
         [ ("Susie", Gendered "Sally" Female)
         , ("Tommy", Gendered "Billy" Female)
-        ]
-      )
-      (mapFromList
-        [ ("Illsbane", "Rootsbane")
+        , ("Illsbane", Gendered "Rootsbane" Neuter)
         ]
       )
       False
