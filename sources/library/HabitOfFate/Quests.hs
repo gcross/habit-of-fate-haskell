@@ -39,7 +39,7 @@ makePrisms ''CurrentQuestState
 data Quest = ∀ α. Quest
   (Prism' CurrentQuestState α)
   (Game α)
-  (QuestAction α ())
+  (QuestAction α QuestStatus)
 
 quests ∷ [Quest]
 quests =

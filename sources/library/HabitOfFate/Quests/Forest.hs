@@ -58,6 +58,7 @@ deriveJSON ''State
 makeLenses ''State
 
 type ForestAction = QuestAction State
+type ForestEvent = ForestAction QuestStatus
 
 --------------------------------------------------------------------------------
 -------------------------------- Text Functions --------------------------------
@@ -124,13 +125,15 @@ data FailureEvent = FailureEvent
   }
 makeLenses ''FailureEvent
 
-lost ∷ ForestAction ()
+lost ∷ ForestEvent
 lost = do
   uniform failure_stories >>= runFailureEvent FailureHappened
-  questHasEnded
+  pure QuestHasEnded
 
-averted ∷ ForestAction ()
-averted = uniform failure_stories >>= runFailureEvent FailureAverted
+averted ∷ ForestEvent
+averted = do
+  uniform failure_stories >>= runFailureEvent FailureAverted
+  pure QuestInProgress
 
 runFailureEvent ∷ FailureResult → FailureEvent → ForestAction ()
 runFailureEvent failure_result event = do
@@ -301,16 +304,17 @@ builds an alter to you out of gratitude.
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
-found ∷ ForestAction ()
+found ∷ ForestEvent
 found = do
   randomQuestStory found_stories
   quest_ . herb_found_ .= True
   numberUntilEvent 5 >>= (quest_ . credits_until_success_ .=)
+  pure QuestInProgress
 
-won ∷ ForestAction ()
-won = questStory won_story >> questHasEnded
+won ∷ ForestEvent
+won = questStory won_story >> pure QuestHasEnded
 
-run ∷ ForestAction ()
+run ∷ ForestEvent
 run = do
   spendCredits
     (quest_ . credits_until_failure_)
@@ -319,12 +323,12 @@ run = do
     \case
       SomethingHappened → lost
       NothingHappened → averted
-      NoCredits → return ()
+      NoCredits → pure QuestInProgress
   spendCredits
     (quest_ . credits_until_success_)
     (game_ . credits_ . successes_)
     >>=
     \case
       SomethingHappened → (use $ quest_ . herb_found_) >>= bool found won
-      NothingHappened → randomQuestStory wander_stories
-      NoCredits → return ()
+      NothingHappened → randomQuestStory wander_stories >> pure QuestInProgress
+      NoCredits → pure QuestInProgress

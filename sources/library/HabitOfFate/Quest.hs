@@ -35,10 +35,8 @@ data QuestState α = QuestState
   }
 makeLenses ''QuestState
 
-type GameWithCont s = ContT (Maybe s) Game
-
 newtype QuestAction s α = QuestAction
-  { unwrapQuestAction ∷ ReaderT (GameWithCont s ()) (StateT s (GameWithCont s)) α }
+  { unwrapQuestAction ∷ StateT s Game α }
   deriving
     (Applicative
     ,Functor
@@ -47,28 +45,29 @@ newtype QuestAction s α = QuestAction
     )
 
 instance MonadGame (QuestAction s) where
-  addParagraph = addParagraph >>> lift >>> lift >>> lift >>> QuestAction
+  addParagraph = addParagraph >>> lift >>> QuestAction
 
 instance MonadState (QuestState s) (QuestAction s) where
   get =
     QuestAction
     $
     (QuestState
-      <$> (lift >>> lift) get
+      <$> lift get
       <*> get
     )
 
   put (QuestState game quest) = QuestAction $ do
-    game |> put |> lift |> lift
+    game |> put |> lift
     put quest
 
-runQuest ∷ s → QuestAction s () → Game (Maybe s)
-runQuest state action =
-  flip runContT return $ callCC $ \quit →
+data QuestStatus = QuestInProgress | QuestHasEnded
+
+runQuest ∷ s → QuestAction s QuestStatus → Game (Maybe s)
+runQuest state action = do
+  (new_status, new_state) ←
     action
       |> unwrapQuestAction
-      |> flip runReaderT (quit Nothing)
-      |> flip execStateT state
-      |> fmap Just
-
-questHasEnded = ask >>= (lift >>> lift) |> QuestAction
+      |> flip runStateT state
+  pure $ case new_status of
+    QuestInProgress → Just new_state
+    QuestHasEnded → Nothing
