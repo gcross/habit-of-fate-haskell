@@ -69,7 +69,6 @@ import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Story.Renderer.XML
-import HabitOfFate.Story.Substitution
 
 withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp = withApplication (makeAppRunningInTestMode mempty (const $ pure ()))
@@ -93,24 +92,6 @@ test_habit_2 = Habit "test" (Difficulty Medium) (Importance VeryHigh)
 test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
-
-originalFromSubParagraph ∷ SubParagraph → Text
-originalFromSubParagraph =
-  foldMap (
-    \case
-      Literal t → t
-      Key k → "{" ⊕ k ⊕ "}"
-  )
-  >>>
-  rewords
-
-originalFromSubEvent ∷ SubEvent → Text
-originalFromSubEvent =
-  map originalFromSubParagraph
-  >>>
-  intersperse "\n"
-  >>>
-  mconcat
 
 createHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitCreated) >>> liftIO)
 replaceHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitReplaced) >>> liftIO)
@@ -515,12 +496,6 @@ main = defaultMain $ testGroup "All Tests"
                     =
                     line2
                    |] @?= 2
-      , testCase "single literal letter round trip" $
-          "x" @?= originalFromSubEvent [s_fixed|x|]
-      , testCase "single key letter round trip" $
-          "{x}" @?= originalFromSubEvent [s_fixed|{x}|]
-      , testCase "two keys separated by a space" $
-          "{x} {y}" @?= originalFromSubEvent [s_fixed|{x} {y}|]
       ]
     ]
   ]

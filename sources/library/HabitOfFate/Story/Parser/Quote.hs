@@ -54,51 +54,13 @@ insertMarkers =
   >>>
   unlines
 
-data ParseSubstitutionException = ParseSubstitutionException String deriving (Eq,Show,Typeable)
-instance Exception ParseSubstitutionException where
-
-parseSubstitutions ∷ ∀ m. MonadThrow m ⇒ Paragraph → m SubParagraph
-parseSubstitutions =
-  replaceTextM parseSubstitutionsIn >>> runWriterT >>> fmap fst
-  where
-    parseSubstitutionsIn ∷ Text → WriterT (Set Text) m SubParagraph
-    parseSubstitutionsIn chunk =
-      runParserT parser () "" chunk
-      >>=
-      either
-        (\msg → throwM $
-          ParseSubstitutionException [i|Error parsing substitutions for text chunk "%{chunk}": #{msg}|])
-        return
-
-    parser =
-      mappend
-        <$> takeTillNextSub
-        <*> (mconcat <$> (many $ mappend <$> parseAnotherSub <*> takeTillNextSub))
-
-    takeTillNextSub = (pack >>> Literal >>> Text_) <$> many (satisfy (/='{'))
-
-    parseAnotherSub = do
-      key ←
-        pack
-        <$>
-        between
-          (char '{')
-          (char '}')
-          ((rewords >>> pack) <$> (many1 $ letter <|> char '|' <|> space))
-      tell >>> lift $ singletonSet key
-      key |> Key |> Text_ |> return
-
-parseQuote ∷ String → [SubEvent]
+parseQuote ∷ String → [Event]
 parseQuote =
   insertMarkers
   >>>
   Lazy.pack
   >>>
-  (
-    parseEventsFromText
-    >=>
-    (mapM >>> mapM $ parseSubstitutions)
-  )
+  parseEventsFromText
   >>>
   either (show >>> error) identity
 

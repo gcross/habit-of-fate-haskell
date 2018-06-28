@@ -34,7 +34,6 @@ import qualified Control.Monad.Random as Random
 
 import HabitOfFate.Credits
 import HabitOfFate.Story
-import HabitOfFate.Story.Substitution
 import HabitOfFate.TH
 
 data GameState = GameState
@@ -84,17 +83,10 @@ runGame state =
   fmap (RunGameResult |> uncurry |> uncurry)
 
 gameAddParagraph ∷ Paragraph → Game ()
-gameAddParagraph p
-  | p |> textFromParagraph |> allSpaces = pure ()
-  | otherwise = p |> singleton |> tell
+gameAddParagraph = singleton >>> tell
 
-substituteAndAddParagraphs ∷ MonadGame m ⇒ HashMap Text Gendered → [SubParagraph] → m ()
-substituteAndAddParagraphs gendered =
-  traverse (substitute gendered)
-  >>>
-  either (show >>> error) identity
-  >>>
-  traverse_ addParagraph
+addParagraphs ∷ MonadGame m ⇒ [Paragraph] → m ()
+addParagraphs = traverse_ addParagraph
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform

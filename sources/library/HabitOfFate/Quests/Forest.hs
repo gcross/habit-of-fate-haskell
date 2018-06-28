@@ -39,7 +39,6 @@ import HabitOfFate.Game
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
-import HabitOfFate.Story.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
 
@@ -48,8 +47,7 @@ import HabitOfFate.Trial
 --------------------------------------------------------------------------------
 
 data State = State
-  { _substitutions_ ∷ HashMap Text Gendered
-  , _herb_found_ ∷ Bool
+  { _herb_found_ ∷ Bool
   , _credits_until_success_ ∷ Double
   , _credits_until_failure_ ∷ Double
   } deriving (Eq,Ord,Read,Show)
@@ -58,25 +56,6 @@ makeLenses ''State
 
 type ForestAction = QuestAction State
 type ForestEvent = ForestAction QuestStatus
-
---------------------------------------------------------------------------------
--------------------------------- Text Functions --------------------------------
---------------------------------------------------------------------------------
-
-storyForState ∷ MonadGame m ⇒ State → SubEvent → m ()
-storyForState forest event =
-  substituteAndAddParagraphs
-    (forest ^. substitutions_)
-    event
-
-storyForLens ∷ (MonadState s m, MonadGame m) ⇒ Lens' s State → SubEvent → m ()
-storyForLens lens template = use lens >>= \forest → storyForState forest template
-
-questStory ∷ SubEvent → ForestAction ()
-questStory = storyForLens quest_
-
-randomQuestStory ∷ [SubEvent] → ForestAction ()
-randomQuestStory = fmap questStory >>> uniformAction
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
@@ -94,18 +73,12 @@ new ∷ Game State
 new =
   (
     State
-      (mapFromList
-        [ ("Susie", Gendered "Sally" Female)
-        , ("Tommy", Gendered "Billy" Female)
-        , ("Illsbane", Gendered "Rootsbane" Neuter)
-        ]
-      )
       False
-    <$> numberUntilEvent 5
-    <*> numberUntilEvent 1
+      <$> numberUntilEvent 5
+      <*> numberUntilEvent 1
   )
   >>=
-  execStateT (storyForLens identity intro_story)
+  execStateT (addParagraphs intro_story)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -114,9 +87,9 @@ new =
 data FailureResult = FailureAverted | FailureHappened
 
 data FailureEvent = FailureEvent
-  { _common_failure_event_ ∷ SubEvent
-  , _failure_averted_event_ ∷ SubEvent
-  , _failure_happened_event_ ∷ SubEvent
+  { _common_failure_event_ ∷ Event
+  , _failure_averted_event_ ∷ Event
+  , _failure_happened_event_ ∷ Event
   }
 makeLenses ''FailureEvent
 
@@ -132,8 +105,8 @@ averted = do
 
 runFailureEvent ∷ FailureResult → FailureEvent → ForestAction ()
 runFailureEvent failure_result event = do
-  questStory $ event ^. common_failure_event_
-  (questStory <<< (event ^.)) $
+  addParagraphs $ event ^. common_failure_event_
+  (addParagraphs <<< (event ^.)) $
     case failure_result of
       FailureAverted → failure_averted_event_
       FailureHappened → failure_happened_event_
@@ -301,13 +274,13 @@ builds an alter to you out of gratitude.
 
 found ∷ ForestEvent
 found = do
-  randomQuestStory found_stories
+  uniform found_stories >>= addParagraphs
   quest_ . herb_found_ .= True
   numberUntilEvent 5 >>= (quest_ . credits_until_success_ .=)
   pure QuestInProgress
 
 won ∷ ForestEvent
-won = questStory won_story >> pure QuestHasEnded
+won = addParagraphs won_story >> pure QuestHasEnded
 
 run ∷ ForestEvent
 run = do
@@ -325,5 +298,7 @@ run = do
     >>=
     \case
       SomethingHappened → (use $ quest_ . herb_found_) >>= bool found won
-      NothingHappened → randomQuestStory wander_stories >> pure QuestInProgress
+      NothingHappened → do
+        uniform wander_stories >>= addParagraphs
+        pure QuestInProgress
       NoCredits → pure QuestInProgress

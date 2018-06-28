@@ -55,7 +55,7 @@ instance Arbitrary Style where
 
 instance Monad m ⇒ Serial m Style where
 
-instance Arbitrary α ⇒ Arbitrary (GenParagraph α) where
+instance Arbitrary Paragraph where
   arbitrary = sized $ \n →
     if n <= 1
       then Text_ <$> arbitrary
@@ -77,27 +77,7 @@ instance (Monad m, Serial m α) ⇒ Serial m (Seq α) where
 instance Monad m ⇒ Serial m Text where
   series = pack <$> series
 
-instance Monad m ⇒ Serial m SubText where
-
-instance (Monad m, Serial m α) ⇒ Serial m (GenParagraph α) where
-
-originalFromSubParagraph ∷ SubParagraph → Text
-originalFromSubParagraph =
-  foldMap (
-    \case
-      Literal t → t
-      Key k → "{" ⊕ k ⊕ "}"
-  )
-  >>>
-  rewords
-
-originalFromSubEvent ∷ SubEvent → Text
-originalFromSubEvent =
-  map originalFromSubParagraph
-  >>>
-  intersperse "\n"
-  >>>
-  mconcat
+instance Monad m ⇒ Serial m Paragraph where
 
 main = defaultMain $ testGroup "All Tests"
   [ testGroup "HabitOfFate.Story"
