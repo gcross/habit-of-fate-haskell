@@ -90,13 +90,13 @@ runGame state game = do
       (result ^. run_quest_event_)
 
 runAccount ∷ State Account Event
-runAccount = StateT $ \account →
+runAccount = state $ \account →
   (account ^. quest_)
   |> runCurrentQuest
   |> runGame (account ^. game_)
   |> flip runRand (account ^. rng_)
   |> (
-    \(result, new_rng) → Identity $
+    \(result, new_rng) →
       ( result ^. run_game_event_
       , account
           & game_ .~ result ^. run_game_game_state_
