@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -24,10 +25,10 @@ module HabitOfFate.Quest where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Cont
 import Control.Monad.Random
 
 import HabitOfFate.Game
+import HabitOfFate.Story
 
 data QuestState α = QuestState
   { _game_ ∷ GameState
@@ -44,9 +45,6 @@ newtype QuestAction s α = QuestAction
     ,MonadRandom
     )
 
-instance MonadGame (QuestAction s) where
-  addParagraph = addParagraph >>> lift >>> QuestAction
-
 instance MonadState (QuestState s) (QuestAction s) where
   get =
     QuestAction
@@ -60,14 +58,36 @@ instance MonadState (QuestState s) (QuestAction s) where
     game |> put |> lift
     put quest
 
+data InitialQuestResult α = InitialQuestResult
+  { _initial_quest_state_ ∷ α
+  , _initial_quest_event_ ∷ Event
+  }
+makeLenses ''InitialQuestResult
+
+data RunQuestResult s = RunQuestResult
+  { _maybe_run_quest_state_ ∷ Maybe s
+  , _run_quest_event_ ∷ Event
+  } deriving (Functor)
+makeLenses ''RunQuestResult
+
 data QuestStatus = QuestInProgress | QuestHasEnded
 
-runQuest ∷ s → QuestAction s QuestStatus → Game (Maybe s)
+data QuestResult = QuestResult
+  { _quest_status_ ∷ QuestStatus
+  , _quest_event_ ∷ Event
+  }
+makeLenses ''QuestResult
+
+runQuest ∷ s → QuestAction s QuestResult → Game (RunQuestResult s)
 runQuest state action = do
-  (new_status, new_state) ←
+  (result, new_state) ←
     action
       |> unwrapQuestAction
       |> flip runStateT state
-  pure $ case new_status of
-    QuestInProgress → Just new_state
-    QuestHasEnded → Nothing
+  pure $
+    RunQuestResult
+      (case result ^. quest_status_ of
+        QuestInProgress → Just new_state
+        QuestHasEnded → Nothing
+      )
+      (result ^. quest_event_)

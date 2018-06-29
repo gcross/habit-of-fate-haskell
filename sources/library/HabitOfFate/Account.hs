@@ -36,6 +36,7 @@ import Data.UUID (UUID)
 import HabitOfFate.Credits
 import HabitOfFate.Game
 import HabitOfFate.Habit
+import HabitOfFate.Quest (maybe_run_quest_state_, run_quest_event_)
 import HabitOfFate.Quests
 import HabitOfFate.Story
 import HabitOfFate.TH
@@ -73,13 +74,23 @@ passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password account =
   verifyPassword (encodeUtf8 password) (encodeUtf8 $ account ^. password_)
 
-data RunAccountResult = RunAccountResult
-  { _event_ ∷ Seq Paragraph
-  , _quest_completed_ ∷ Bool
-  }
-makeLenses ''RunAccountResult
+data RunGameResult = RunGameResult
+  { _maybe_run_game_quest_state_ ∷ Maybe CurrentQuestState
+  , _run_game_game_state_ ∷ GameState
+  , _run_game_event_ ∷ Event
+  } deriving (Eq,Ord,Read,Show)
+makeLenses ''RunGameResult
 
-runAccount ∷ State Account RunAccountResult
+runGame ∷ GameState → Game RunCurrentQuestResult → Rand StdGen RunGameResult
+runGame state game = do
+  (result, new_state) ← runStateT (unwrapGame game) state
+  pure $
+    RunGameResult
+      (result ^. maybe_run_quest_state_)
+       new_state
+      (result ^. run_quest_event_)
+
+runAccount ∷ State Account Event
 runAccount = StateT $ \account →
   (account ^. quest_)
   |> runCurrentQuest
@@ -87,13 +98,10 @@ runAccount = StateT $ \account →
   |> flip runRand (account ^. rng_)
   |> (
     \(result, new_rng) → Identity $
-      (
-        RunAccountResult
-          (result ^. game_paragraphs_)
-          (isNothing (result ^. returned_value_))
+      ( result ^. run_game_event_
       , account
-          & game_ .~ result ^. new_game_
-          & quest_ .~ result ^. returned_value_
+          & game_ .~ result ^. run_game_game_state_
+          & quest_ .~ result ^. maybe_run_game_quest_state_
           & rng_ .~ new_rng
       )
   )

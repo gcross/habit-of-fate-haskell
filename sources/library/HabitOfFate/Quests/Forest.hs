@@ -55,7 +55,7 @@ deriveJSON ''State
 makeLenses ''State
 
 type ForestAction = QuestAction State
-type ForestEvent = ForestAction QuestStatus
+type ForestEvent = ForestAction QuestResult
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
@@ -69,16 +69,15 @@ unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
 hopeless task, but {she} has no other choice.
 |]
 
-new ∷ Game State
+new ∷ Game (InitialQuestResult State)
 new =
-  (
-    State
-      False
-      <$> numberUntilEvent 5
-      <*> numberUntilEvent 1
-  )
-  >>=
-  execStateT (addParagraphs intro_story)
+  InitialQuestResult
+    <$> (State
+          False
+          <$> numberUntilEvent 5
+          <*> numberUntilEvent 1
+        )
+    <*> pure intro_story
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -87,29 +86,11 @@ new =
 data FailureResult = FailureAverted | FailureHappened
 
 data FailureEvent = FailureEvent
-  { _common_failure_event_ ∷ Event
-  , _failure_averted_event_ ∷ Event
-  , _failure_happened_event_ ∷ Event
+  { _failure_common_paragraphs_ ∷ Event
+  , _failure_averted_paragraphs_ ∷ Event
+  , _failure_happened_paragraphs_ ∷ Event
   }
 makeLenses ''FailureEvent
-
-lost ∷ ForestEvent
-lost = do
-  uniform failure_stories >>= runFailureEvent FailureHappened
-  pure QuestHasEnded
-
-averted ∷ ForestEvent
-averted = do
-  uniform failure_stories >>= runFailureEvent FailureAverted
-  pure QuestInProgress
-
-runFailureEvent ∷ FailureResult → FailureEvent → ForestAction ()
-runFailureEvent failure_result event = do
-  addParagraphs $ event ^. common_failure_event_
-  (addParagraphs <<< (event ^.)) $
-    case failure_result of
-      FailureAverted → failure_averted_event_
-      FailureHappened → failure_happened_event_
 
 makeFailureEvent (common,averted,happened) = FailureEvent common averted happened
 
@@ -274,13 +255,26 @@ builds an alter to you out of gratitude.
 
 found ∷ ForestEvent
 found = do
-  uniform found_stories >>= addParagraphs
   quest_ . herb_found_ .= True
   numberUntilEvent 5 >>= (quest_ . credits_until_success_ .=)
-  pure QuestInProgress
+  uniform found_stories >>= (QuestResult QuestInProgress >>> pure)
 
 won ∷ ForestEvent
-won = addParagraphs won_story >> pure QuestHasEnded
+won = pure $ QuestResult QuestHasEnded won_story
+
+failure_averted ∷ ForestEvent
+failure_averted = do
+  failure_event ← uniform failure_stories
+  pure $ QuestResult QuestInProgress $
+    failure_event ^. failure_common_paragraphs_
+      ⊕ failure_event ^. failure_averted_paragraphs_
+
+failure_happened ∷ ForestEvent
+failure_happened = do
+  failure_event ← uniform failure_stories
+  pure $ QuestResult QuestHasEnded $
+    failure_event ^. failure_common_paragraphs_
+      ⊕ failure_event ^. failure_happened_paragraphs_
 
 run ∷ ForestEvent
 run = do
@@ -289,16 +283,15 @@ run = do
     (game_ . credits_ . failures_)
     >>=
     \case
-      SomethingHappened → lost
-      NothingHappened → averted
-      NoCredits → pure QuestInProgress
+      SomethingHappened → failure_happened
+      NothingHappened → failure_averted
+      NoCredits → pure $ QuestResult QuestInProgress mempty
   spendCredits
     (quest_ . credits_until_success_)
     (game_ . credits_ . successes_)
     >>=
     \case
       SomethingHappened → (use $ quest_ . herb_found_) >>= bool found won
-      NothingHappened → do
-        uniform wander_stories >>= addParagraphs
-        pure QuestInProgress
-      NoCredits → pure QuestInProgress
+      NothingHappened →
+        uniform wander_stories >>= (QuestResult QuestInProgress >>> pure)
+      NoCredits → pure $ QuestResult QuestInProgress mempty

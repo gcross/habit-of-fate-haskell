@@ -27,6 +27,7 @@ import HabitOfFate.Prelude
 import HabitOfFate.Game
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest
+import HabitOfFate.Story
 import HabitOfFate.TH
 
 data CurrentQuestState =
@@ -35,27 +36,35 @@ data CurrentQuestState =
 deriveJSON ''CurrentQuestState
 makePrisms ''CurrentQuestState
 
-
 data Quest = ∀ α. Quest
   (Prism' CurrentQuestState α)
-  (Game α)
-  (QuestAction α QuestStatus)
+  (Game (InitialQuestResult α))
+  (QuestAction α QuestResult)
 
 quests ∷ [Quest]
 quests =
   [Quest _Forest Forest.new Forest.run
   ]
 
-runCurrentQuest ∷ Maybe CurrentQuestState → Game (Maybe CurrentQuestState)
+type RunCurrentQuestResult = RunQuestResult CurrentQuestState
+
+runCurrentQuest ∷ Maybe CurrentQuestState → Game RunCurrentQuestResult
 runCurrentQuest Nothing =
   uniform quests
   >>=
-  (\(Quest prism new _) → (Just . (^.re prism)) <$> new)
+  (\(Quest prism new _) →
+    new
+    <&>
+    (\result →
+      RunQuestResult
+        (Just $ result ^. initial_quest_state_ . re prism)
+        (result ^. initial_quest_event_)
+    )
+  )
 runCurrentQuest (Just state) = go quests
   where
-    go ∷ [Quest] → Game (Maybe CurrentQuestState)
     go [] = error "Unrecognized quest type"
     go (Quest prism _ action:rest) =
       case state ^? prism of
         Nothing → go rest
-        Just x → fmap (^.re prism) <$> runQuest x action
+        Just x → runQuest x action <&> fmap (^. re prism)

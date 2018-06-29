@@ -899,7 +899,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       log [i|New quest state is #{new_account ^. quest_}|]
       put new_account
       returnLazyText ok200 $!! (
-        (result ^. event_)
+        result
         |> toList
         |> renderEventToXMLText
        )

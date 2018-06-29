@@ -33,7 +33,6 @@ import Control.Monad.Random hiding (split, uniform)
 import qualified Control.Monad.Random as Random
 
 import HabitOfFate.Credits
-import HabitOfFate.Story
 import HabitOfFate.TH
 
 data GameState = GameState
@@ -43,50 +42,17 @@ deriveJSON ''GameState
 makeLenses ''GameState
 
 newtype Game α =
-    Game { unwrapGame ∷ StateT GameState (WriterT (Seq Paragraph) (Rand StdGen)) α }
+    Game { unwrapGame ∷ StateT GameState (Rand StdGen) α }
   deriving
     (Applicative
     ,Functor
     ,Monad
     ,MonadRandom
     ,MonadState GameState
-    ,MonadWriter (Seq Paragraph)
     )
-
-data RunGameResult α = RunGameResult
-  { _returned_value_ ∷ α
-  , _new_game_ ∷ GameState
-  , _game_paragraphs_ ∷ Seq Paragraph
-  } deriving (Eq,Ord,Read,Show)
-makeLenses ''RunGameResult
-
-class MonadRandom m ⇒ MonadGame m where
-  addParagraph ∷ Paragraph → m ()
-
-instance MonadGame Game where
-  addParagraph = gameAddParagraph
-
-instance MonadGame m ⇒ MonadGame (StateT s m) where
-  addParagraph = lift . addParagraph
 
 newGame ∷ GameState
 newGame = GameState (Credits (Successes 0) (Failures 0))
-
-runGame ∷ GameState → Game α → Rand StdGen (RunGameResult α)
-runGame state =
-  unwrapGame
-  >>>
-  flip runStateT state
-  >>>
-  runWriterT
-  >>>
-  fmap (RunGameResult |> uncurry |> uncurry)
-
-gameAddParagraph ∷ Paragraph → Game ()
-gameAddParagraph = singleton >>> tell
-
-addParagraphs ∷ MonadGame m ⇒ [Paragraph] → m ()
-addParagraphs = traverse_ addParagraph
 
 uniform ∷ MonadRandom m ⇒ [α] → m α
 uniform = Random.uniform
