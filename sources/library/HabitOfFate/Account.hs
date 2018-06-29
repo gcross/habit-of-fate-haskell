@@ -30,7 +30,6 @@ import Control.Exception
 import Control.Monad.Random
 import Crypto.PasswordStore
 import Data.Aeson
-import Data.Map (Map)
 import Data.UUID (UUID)
 
 import HabitOfFate.Credits
