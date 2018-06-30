@@ -34,6 +34,8 @@ module HabitOfFate.Quests.Forest where
 
 import HabitOfFate.Prelude hiding (State)
 
+import Control.Monad.Random
+
 import HabitOfFate.Credits
 import HabitOfFate.Game
 import HabitOfFate.Quest

@@ -91,3 +91,9 @@ runQuest state action = do
         QuestHasEnded → Nothing
       )
       (result ^. quest_event_)
+
+uniformAction ∷ MonadRandom m ⇒ [m α] → m α
+uniformAction = uniform >>> join
+
+weightedAction ∷ MonadRandom m ⇒ [(m α, Rational)] → m α
+weightedAction = weighted >>> join

@@ -24,6 +24,8 @@ module HabitOfFate.Quests where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Random
+
 import HabitOfFate.Game
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest

@@ -54,11 +54,3 @@ newtype Game α =
 newGame ∷ GameState
 newGame = GameState (Credits (Successes 0) (Failures 0))
 
-uniform ∷ MonadRandom m ⇒ [α] → m α
-uniform = Random.uniform
-
-uniformAction ∷ MonadRandom m ⇒ [m α] → m α
-uniformAction = uniform >>> join
-
-weightedAction ∷ MonadRandom m ⇒ [(m α, Rational)] → m α
-weightedAction = weighted >>> join
