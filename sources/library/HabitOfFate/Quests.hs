@@ -26,10 +26,10 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Random
 
-import HabitOfFate.Game
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest
 import HabitOfFate.Story
+import HabitOfFate.Tag
 import HabitOfFate.TH
 
 data CurrentQuestState =
@@ -38,35 +38,49 @@ data CurrentQuestState =
 deriveJSON ''CurrentQuestState
 makePrisms ''CurrentQuestState
 
-data Quest = ∀ α. Quest
-  (Prism' CurrentQuestState α)
-  (Game (InitialQuestResult α))
-  (QuestAction α QuestResult)
+data Quest s = Quest
+  { _quest_prism_ ∷ Prism' CurrentQuestState s
+  , _start_quest_ ∷ InitialQuestRunner s
+  , _progress_to_milestones_ ∷ Tagged (ProgressToMilestoneQuestRunner s)
+  , _attained_milestones_ ∷ Tagged (AttainedMilestoneQuestRunner s)
+  }
 
-quests ∷ [Quest]
+start_quest_ ∷ Lens' (Quest s) (InitialQuestRunner s)
+start_quest_ = lens _start_quest_ (\old new → old { _start_quest_ = new })
+
+progress_to_milestones_ ∷ Lens' (Quest s) (Tagged (ProgressToMilestoneQuestRunner s))
+progress_to_milestones_ = lens _progress_to_milestones_ (\old new → old { _progress_to_milestones_ = new })
+
+attained_milestones_ ∷ Lens' (Quest s) (Tagged (AttainedMilestoneQuestRunner s))
+attained_milestones_ = lens _attained_milestones_ (\old new → old { _attained_milestones_ = new })
+
+data WrappedQuest = ∀ s. WrappedQuest (Quest s)
+
+quests ∷ [WrappedQuest]
 quests =
-  [Quest _Forest Forest.new Forest.run
+  [WrappedQuest $
+     Quest
+       _Forest
+       Forest.start
+       (Tagged
+         (Success (Forest.runProgressToSuccessMilestone))
+         (Failure Forest.runProgressToFailureMilestone)
+       )
+       (Tagged
+         (Success Forest.runAttainedSuccessMilestone)
+         (Failure Forest.runAttainedFailureMilestone)
+       )
   ]
 
 type RunCurrentQuestResult = RunQuestResult CurrentQuestState
 
-runCurrentQuest ∷ Maybe CurrentQuestState → Game RunCurrentQuestResult
-runCurrentQuest Nothing =
-  uniform quests
-  >>=
-  (\(Quest prism new _) →
-    new
-    <&>
-    (\result →
-      RunQuestResult
-        (Just $ result ^. initial_quest_state_ . re prism)
-        (result ^. initial_quest_event_)
+runCurrentQuest ∷ CurrentQuestState → (∀ s. Quest s → s → α) → α
+runCurrentQuest current_quest_state f =
+  foldr
+    (\(WrappedQuest (quest@(Quest quest_prism _ _ _))) rest →
+      case current_quest_state ^? quest_prism of
+        Nothing → rest
+        Just quest_state → f quest quest_state
     )
-  )
-runCurrentQuest (Just state) = go quests
-  where
-    go [] = error "Unrecognized quest type"
-    go (Quest prism _ action:rest) =
-      case state ^? prism of
-        Nothing → go rest
-        Just x → runQuest x action <&> fmap (^. re prism)
+    (error "Unrecognized quest type")
+    quests

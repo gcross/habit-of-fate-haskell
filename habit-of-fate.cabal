@@ -64,7 +64,6 @@ library
                      , HabitOfFate.API
                      , HabitOfFate.Client
                      , HabitOfFate.Credits
-                     , HabitOfFate.Game
                      , HabitOfFate.Habit
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
@@ -77,6 +76,7 @@ library
                      , HabitOfFate.Story.Parser.XML
                      , HabitOfFate.Story.Renderer.Console
                      , HabitOfFate.Story.Renderer.XML
+                     , HabitOfFate.Tag
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   other-modules:       Paths_habit_of_fate

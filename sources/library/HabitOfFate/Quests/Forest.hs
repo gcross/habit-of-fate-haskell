@@ -37,7 +37,6 @@ import HabitOfFate.Prelude hiding (State)
 import Control.Monad.Random
 
 import HabitOfFate.Credits
-import HabitOfFate.Game
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
@@ -50,14 +49,9 @@ import HabitOfFate.Trial
 
 data State = State
   { _herb_found_ ∷ Bool
-  , _credits_until_success_ ∷ Double
-  , _credits_until_failure_ ∷ Double
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makeLenses ''State
-
-type ForestAction = QuestAction State
-type ForestEvent = ForestAction QuestResult
 
 --------------------------------------------------------------------------------
 ------------------------------------ Intro -------------------------------------
@@ -71,13 +65,13 @@ unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
 hopeless task, but {she} has no other choice.
 |]
 
-new ∷ Game (InitialQuestResult State)
-new =
+start ∷ InitialQuestRunner State
+start =
   InitialQuestResult
-    <$> (State
-          False
-          <$> numberUntilEvent 5
-          <*> numberUntilEvent 1
+    <$> pure (State False)
+    <*> (Credits
+          <$> (Successes <$> numberUntilEvent 5)
+          <*> (Failures <$> numberUntilEvent 1)
         )
     <*> pure intro_story
 
@@ -255,45 +249,30 @@ builds an alter to you out of gratitude.
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
-found ∷ ForestEvent
-found = do
-  quest_ . herb_found_ .= True
-  numberUntilEvent 5 >>= (quest_ . credits_until_success_ .=)
-  uniform found_stories >>= (QuestResult QuestInProgress >>> pure)
+runProgressToSuccessMilestone ∷ ProgressToMilestoneQuestRunner State
+runProgressToSuccessMilestone = uniform wander_stories
 
-won ∷ ForestEvent
-won = pure $ QuestResult QuestHasEnded won_story
-
-failure_averted ∷ ForestEvent
-failure_averted = do
+runProgressToFailureMilestone ∷ ProgressToMilestoneQuestRunner State
+runProgressToFailureMilestone = do
   failure_event ← uniform failure_stories
-  pure $ QuestResult QuestInProgress $
+  pure $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_averted_paragraphs_
 
-failure_happened ∷ ForestEvent
-failure_happened = do
+runAttainedSuccessMilestone ∷ AttainedMilestoneQuestRunner State
+runAttainedSuccessMilestone = do
+  herb_found ← use herb_found_
+  if herb_found
+    then pure $ QuestResult QuestHasEnded won_story
+    else do
+      herb_found_ .= True
+      QuestResult
+        <$> (QuestInProgress <$> numberUntilEvent 5)
+        <*> (uniform found_stories)
+
+runAttainedFailureMilestone ∷ AttainedMilestoneQuestRunner State
+runAttainedFailureMilestone = do
   failure_event ← uniform failure_stories
   pure $ QuestResult QuestHasEnded $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_happened_paragraphs_
-
-run ∷ ForestEvent
-run = do
-  spendCredits
-    (quest_ . credits_until_failure_)
-    (game_ . credits_ . failures_)
-    >>=
-    \case
-      SomethingHappened → failure_happened
-      NothingHappened → failure_averted
-      NoCredits → pure $ QuestResult QuestInProgress mempty
-  spendCredits
-    (quest_ . credits_until_success_)
-    (game_ . credits_ . successes_)
-    >>=
-    \case
-      SomethingHappened → (use $ quest_ . herb_found_) >>= bool found won
-      NothingHappened →
-        uniform wander_stories >>= (QuestResult QuestInProgress >>> pure)
-      NoCredits → pure $ QuestResult QuestInProgress mempty

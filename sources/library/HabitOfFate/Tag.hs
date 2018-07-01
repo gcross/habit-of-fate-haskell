@@ -20,45 +20,42 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Credits where
+module HabitOfFate.Tag where
 
 import HabitOfFate.Prelude
 
-import Data.Aeson
+import Data.Aeson (FromJSON(), ToJSON())
 
 import HabitOfFate.TH
 
-newtype Successes = Successes { unwrapSuccesses ∷ Double }
+newtype Success α = Success { unwrapSuccess ∷ α }
   deriving (Eq,FromJSON,Ord,Read,Show,ToJSON)
 
-instance Wrapped Successes where
-  type Unwrapped Successes = Double
-  _Wrapped' = iso unwrapSuccesses Successes
+instance Wrapped (Success α) where
+  type Unwrapped (Success α) = α
+  _Wrapped' = iso unwrapSuccess Success
 
-newtype Failures = Failures { unwrapFailures ∷ Double }
+newtype Failure α = Failure { unwrapFailure ∷ α }
   deriving (Eq,FromJSON,Ord,Read,Show,ToJSON)
 
-instance Wrapped Failures where
-  type Unwrapped Failures = Double
-  _Wrapped' = iso unwrapFailures Failures
+instance Wrapped (Failure α) where
+  type Unwrapped (Failure α) = α
+  _Wrapped' = iso unwrapFailure Failure
 
-data Credits = Credits
-  { _successes_ ∷ Successes
-  , _failures_ ∷ Failures
+data Tagged α = Tagged
+  { _success_ ∷ Success α
+  , _failure_ ∷ Failure α
   } deriving (Eq,Ord,Read,Show)
-deriveJSON ''Credits
+deriveJSON ''Tagged
 
-instance Default Credits where
-  def = Credits (Successes 0) (Failures 0)
-
-successes_ ∷ Lens' Credits Double
-successes_ =
+success_ ∷ Lens' (Tagged α) α
+success_ =
   lens
-    (_successes_ >>> unwrapSuccesses)
-    (\old new → old { _successes_ = Successes new })
+    (_success_ >>> unwrapSuccess)
+    (\old new → old { _success_ = Success new })
 
-failures_ ∷ Lens' Credits Double
-failures_ =
+failure_ ∷ Lens' (Tagged α) α
+failure_ =
   lens
-    (_failures_ >>> unwrapFailures)
-    (\old new → old { _failures_ = Failures new })
+    (_failure_ >>> unwrapFailure)
+    (\old new → old { _failure_ = Failure new })

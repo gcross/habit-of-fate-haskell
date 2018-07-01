@@ -83,7 +83,6 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Account hiding (_habits)
 import HabitOfFate.Credits
-import HabitOfFate.Game
 import HabitOfFate.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Story
@@ -869,7 +868,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 --------------------------------- Get Credits ----------------------------------
     Scotty.get "/api/credits" <<< apiReader $ do
       log $ "Requested credits."
-      view (game_ . credits_) >>= returnJSON ok200
+      view (stored_credits_) >>= returnJSON ok200
 --------------------------------- Mark Habits ----------------------------------
     Scotty.post "/api/mark" <<< apiWriter $ do
       marks ← getBodyJSON
@@ -888,15 +887,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
             value_lens <.= old_value + increment
       log $ [i|Marking #{marks ^. succeeded} successes and #{marks ^. failed} failures.|]
       (Credits
-          <$> (Successes <$> markHabits succeeded difficulty (game_ . credits_ . successes_))
-          <*> (Failures  <$> markHabits failed    importance (game_ . credits_ . failures_ ))
+          <$> (Successes <$> markHabits succeeded difficulty (stored_credits_ . successes_))
+          <*> (Failures  <$> markHabits failed    importance (stored_credits_ . failures_ ))
        ) >>= returnJSON ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       account ← get
-      log [i|Old quest state is #{account ^. quest_}|]
       let (result, new_account) = runState runAccount account
-      log [i|New quest state is #{new_account ^. quest_}|]
       put new_account
       returnLazyText ok200 $!! (
         result
