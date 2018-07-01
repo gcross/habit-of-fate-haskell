@@ -70,6 +70,7 @@ module HabitOfFate.Prelude
   , (≥)
   , (⊢)
   , (⊣)
+  , allSpaces
   , identity
   , rewords
   , showText
@@ -289,6 +290,9 @@ infixr  5 ⊢
 
 infixr  5 ⊣
 (⊣) = Control.Lens.cons
+
+allSpaces ∷ Text → Bool
+allSpaces = allOf text (∈ " \t\r\n")
 
 identity ∷ α → α
 identity = id

@@ -77,6 +77,7 @@ library
                      , HabitOfFate.Story.Renderer.Console
                      , HabitOfFate.Story.Renderer.XML
                      , HabitOfFate.Tag
+                     , HabitOfFate.Substitution
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   other-modules:       Paths_habit_of_fate

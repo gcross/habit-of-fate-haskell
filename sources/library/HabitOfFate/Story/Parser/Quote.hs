@@ -17,6 +17,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -26,28 +27,24 @@ module HabitOfFate.Story.Parser.Quote (s, s_fixed) where
 
 import HabitOfFate.Prelude
 
-import Control.Exception (Exception)
-import Control.Monad.Catch (MonadThrow(throwM))
 import qualified Data.Text.Lazy as Lazy
-import Data.Typeable (Typeable)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
-import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.XML
+import HabitOfFate.Substitution
 
-insertMarkers ∷ String → String
+insertMarkers ∷ Text → Text
 insertMarkers =
   lines
   >>>
   fmap (
-    dropWhile (∈ " \t")
-    >>>
-    \case
-      "" → "</p><p>"
-      '=':_ → "</p></event><event><p>"
-      line → line
+    \line → case dropWhile (∈ " \t") line ^? _head of
+      Nothing → "</p><p>"
+      Just '=' → "</p></event><event><p>"
+      _ → line
+    ∷ Text
   )
   >>>
   (\x → ["<events><event><p>"] ⊕ x ⊕ ["</p></event></events>"])
@@ -56,11 +53,11 @@ insertMarkers =
 
 parseQuote ∷ String → [Event]
 parseQuote =
-  insertMarkers
-  >>>
-  Lazy.pack
-  >>>
-  parseEventsFromText
+  (
+    convertSubstitutionsToTags
+    >=>
+    (insertMarkers >>> Lazy.fromStrict >>> parseEventsFromText)
+  )
   >>>
   either (show >>> error) identity
 

@@ -37,6 +37,7 @@ import Data.Typeable (Typeable)
 import Text.XML
 
 import HabitOfFate.Story
+import HabitOfFate.Substitution
 
 data StoryParseException = StoryParseException String deriving (Eq,Show,Typeable)
 instance Exception StoryParseException where
@@ -49,7 +50,7 @@ parseContainer expected_tag parseChildren node =
     NodeContent t
       | allSpaces t → parseChildren []
       | otherwise →  throwM $ StoryParseException $ "unexpected non-whitespace text outside of <p>"
-    NodeElement (Element (Name tag _ _) attrs childs)
+    NodeElement (Element (Text.XML.Name tag _ _) attrs childs)
       | tag /= expected_tag →
            throwM $ StoryParseException [i|expected <#{expected_tag}> but got <#{tag}>|]
       | attrs |> (not <<< null) →
@@ -62,19 +63,97 @@ parseEventsFromNodes = mapM (parseContainer "event" parseEventFromNodes)
 parseEventFromNodes ∷ MonadThrow m ⇒ [Node] → m Event
 parseEventFromNodes = mapM (parseContainer "p" parseParagraphFromNodes)
 
+data XMLParserException =
+    SubTagIsMissingAttribute String
+  | SubTagIsMissingValueFor String String
+  | SubTagHasInvalidValueFor String String
+  | SubTagMayNotHaveChildren
+  deriving (Show, Typeable)
+instance Exception XMLParserException
+
 parseParagraphFromNodes ∷ MonadThrow m ⇒ [Node] → m Paragraph
 parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
   where
     parseParagraphChild ∷ MonadThrow m ⇒ Node → m Paragraph
     parseParagraphChild (NodeInstruction _) =  throwM $ StoryParseException "unexpected XML instruction"
     parseParagraphChild (NodeComment _) = return mempty
-    parseParagraphChild (NodeContent t) = return $ Text_ t
-    parseParagraphChild (NodeElement (Element (Name tag _ _) attrs childs)) =
-      case lookup tag tags of
-        Nothing →  throwM $ StoryParseException [i|unexpected tag <#{tag}>|]
-        Just style
-          | not <<< null $ attrs →  throwM $ StoryParseException [i|<#{tag}> had unexpected attributes|]
-          | otherwise → Style style <$> parseParagraphFromNodes childs
+    parseParagraphChild (NodeContent t) = return $ TextP t
+    parseParagraphChild (NodeElement (Element (Text.XML.Name tag _ _) attrs childs))
+      | tag == "sub" = do
+          unless (null childs) $ throwM SubTagMayNotHaveChildren
+          SubstitutionP <$>
+            (SubstitutionData
+              <$> maybe
+                  (throwM $ SubTagIsMissingAttribute "has_article")
+                  (
+                    unpack
+                    >>>
+                    readEither
+                    >>>
+                    either
+                      (
+                        SubTagHasInvalidValueFor "has_article"
+                        >>>
+                        throwM
+                      )
+                      pure
+                  )
+                  (lookup "has_article" attrs)
+              <*> maybe
+                  (throwM $ SubTagIsMissingAttribute "case")
+                  (
+                    unpack
+                    >>>
+                    readEither
+                    >>>
+                    either
+                      (
+                        SubTagHasInvalidValueFor "case"
+                        >>>
+                        throwM
+                      )
+                      pure
+                  )
+                  (lookup "case" attrs)
+              <*> maybe
+                  (throwM $ SubTagIsMissingAttribute "kind")
+                  (
+                    unpack
+                    >>>
+                    readEither
+                    >>>
+                    either
+                      (
+                        SubTagHasInvalidValueFor "kind"
+                        >>>
+                        throwM
+                      )
+                      pure
+                  )
+                  (lookup "kind" attrs)
+              <*> maybe
+                  (throwM $ SubTagIsMissingAttribute "key")
+                  (
+                    unpack
+                    >>>
+                    readEither
+                    >>>
+                    either
+                      (
+                        SubTagHasInvalidValueFor "key"
+                        >>>
+                        throwM
+                      )
+                      pure
+                  )
+                  (lookup "key" attrs)
+            )
+      | otherwise =
+          case lookup tag tags of
+            Nothing →  throwM $ StoryParseException [i|unexpected tag <#{tag}>|]
+            Just style
+              | not <<< null $ attrs →  throwM $ StoryParseException [i|<#{tag}> had unexpected attributes|]
+              | otherwise → StyleP style <$> parseParagraphFromNodes childs
       where
         tags ∷ Map Text Style
         tags = mapFromList

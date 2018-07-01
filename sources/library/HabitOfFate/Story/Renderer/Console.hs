@@ -40,7 +40,7 @@ makeLenses ''RenderState
 renderStoryToChunks ∷ Event → [Chunk Text]
 renderStoryToChunks [] = []
 renderStoryToChunks paragraphs =
-  (do mapM_ renderParagraph (intersperse "\n\n" paragraphs)
+  (do mapM_ renderParagraph (intersperse (TextP "\n\n") paragraphs)
       tellNewline
   )
   |> execWriter
@@ -67,7 +67,8 @@ renderStoryToChunks paragraphs =
         , _render_pending_length_ = 0
         })
       where
-        go formatting (Style style rest) = go (addFormat formatting) rest
+        go formatting (SubstitutionP _) = go formatting (TextP "<unexpected sub>")
+        go formatting (StyleP style rest) = go (addFormat formatting) rest
           where
             addFormat =
               case style of
@@ -77,8 +78,8 @@ renderStoryToChunks paragraphs =
                 Color Blue → fore blue
                 Color Green → fore green
                 Introduce → bold
-        go formatting (Merged paragraphs) = mapM_ (go formatting) paragraphs
-        go formatting (Text_ t) =
+        go formatting (MergedP paragraphs) = mapM_ (go formatting) paragraphs
+        go formatting (TextP t) =
           (forMOf_ text t $ \c →
             if c ∈ " \t\r\n"
               then do

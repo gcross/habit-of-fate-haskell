@@ -26,15 +26,16 @@ import qualified Data.Text.Lazy as Lazy
 import Text.XML
 
 import HabitOfFate.Story
+import HabitOfFate.Substitution
 
-renderParagraphToNodes ∷ Paragraph → [Node]
-renderParagraphToNodes paragraph =
+renderParagraphToNodes ∷ HashMap Text Gendered → Paragraph → [Node]
+renderParagraphToNodes substitutions paragraph =
   case recurse paragraph of
     [] → []
     nodes → [NodeElement $ Element "p" mempty nodes]
   where
     recurse ∷ Paragraph → [Node]
-    recurse (Style style p)
+    recurse (StyleP style p)
       | null nested = []
       | otherwise =
           let tag = case style of
@@ -47,26 +48,32 @@ renderParagraphToNodes paragraph =
           in Element tag mempty nested |> NodeElement |> singleton
       where
         nested = recurse p
-    recurse (Merged children) = concatMap recurse children
-    recurse (Text_ t) = [NodeContent t]
+    recurse (MergedP children) = concatMap recurse children
+    recurse (SubstitutionP substitution) =
+      lookupAndApplySubstitution substitutions substitution
+      |> either (show >>> error) (NodeContent >>> (:[]))
+    recurse (TextP t) = [NodeContent t]
 
-renderEventToElement ∷ Event → Element
-renderEventToElement =
-  concatMap renderParagraphToNodes
+renderEventToElement ∷ HashMap Text Gendered → Event → Element
+renderEventToElement substitutions =
+  concatMap (renderParagraphToNodes substitutions)
   >>>
   Element "event" mempty
 
-renderEventToNode ∷ Event → Node
-renderEventToNode =
-  renderEventToElement
+renderEventToNode ∷ HashMap Text Gendered → Event → Node
+renderEventToNode substitutions =
+  renderEventToElement substitutions
   >>>
   NodeElement
 
-renderEventToDocument ∷ Event → Document
-renderEventToDocument =
-  renderEventToElement
+renderEventToDocument ∷ HashMap Text Gendered → Event → Document
+renderEventToDocument substitutions =
+  renderEventToElement substitutions
   >>>
   (\n → Document (Prologue [] Nothing []) n [])
 
-renderEventToXMLText ∷ Event → Lazy.Text
-renderEventToXMLText = renderEventToDocument >>> renderText def
+renderEventToXMLText ∷ HashMap Text Gendered → Event → Lazy.Text
+renderEventToXMLText substitutions =
+  renderEventToDocument substitutions
+  >>>
+  renderText def

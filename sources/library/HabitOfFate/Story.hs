@@ -37,34 +37,42 @@ module HabitOfFate.Story where
 
 import HabitOfFate.Prelude
 
-import Data.String (IsString(..))
 import Instances.TH.Lift ()
 import GHC.Generics hiding (from, to)
 import Language.Haskell.TH.Lift (Lift)
+
+import HabitOfFate.Substitution
 
 data Color = Red | Green | Blue deriving (Enum,Eq,Generic,Lift,Ord,Read,Show)
 
 data Style = Bold | Underline | Color Color | Introduce deriving (Eq,Generic,Lift,Ord,Read,Show)
 
 data Paragraph =
-    Style Style Paragraph
-  | Merged (Seq Paragraph)
-  | Text_ Text
+    StyleP Style Paragraph
+  | MergedP (Seq Paragraph)
+  | SubstitutionP SubstitutionData
+  | TextP Text
   deriving (Eq,Generic,Lift,Ord,Read,Show)
 
 type Event = [Paragraph]
 
-instance IsString Paragraph where
-  fromString = pack >>> Text_
-
-instance Monoid Paragraph where
-  mempty = Merged mempty
-  mappend (Text_ x) ys | onull x = ys
-  mappend xs (Text_ y) | onull y = xs
-  mappend (Merged xs) (Merged ys) = xs ⊕ ys |> Merged
-  mappend (Merged xs) y = xs ⊢ y |> Merged
-  mappend x (Merged ys) = x ⊣ ys |> Merged
-  mappend x y = [x,y] |> fromList |> Merged
-
 allSpaces ∷ Text → Bool
 allSpaces = allOf text (∈ " \t\r\n")
+
+instance Monoid Paragraph where
+  -- Drop empty sequences when possible
+  mempty = MergedP mempty
+
+  -- Drop empty blocks of text when possible
+  mappend (TextP x) ys | allSpaces x = ys
+  mappend xs (TextP y) | allSpaces y = xs
+
+  -- Merge MergedP lists of nodes when possible
+  mappend (MergedP xs) (MergedP ys) = MergedP $ xs ⊕ ys
+
+  -- Append or prepend to an existing MergeP node when possible
+  mappend (MergedP xs) y = MergedP $ xs ⊢ y
+  mappend x (MergedP ys) = MergedP $ x ⊣ ys
+
+  -- Create a new MergeP node when nothing else is possible
+  mappend x y = MergedP $ singleton x ⊕ singleton y
