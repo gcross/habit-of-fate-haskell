@@ -65,6 +65,3 @@ instance Monoid Paragraph where
   mappend (Merged xs) y = xs ⊢ y |> Merged
   mappend x (Merged ys) = x ⊣ ys |> Merged
   mappend x y = [x,y] |> fromList |> Merged
-
-allSpaces ∷ Text → Bool
-allSpaces = allOf text (∈ " \t\r\n")
