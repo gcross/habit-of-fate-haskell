@@ -50,6 +50,7 @@ import System.IO hiding (utf8)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Text.HTML.DOM (sinkDoc)
+import Text.Parsec (many, runParser)
 import Text.XML.Lens
   ( Document
   , (./)
@@ -69,6 +70,7 @@ import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Story.Renderer.XML
+import HabitOfFate.Substitution
 
 withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp = withApplication (makeAppRunningInTestMode mempty (const $ pure ()))
@@ -496,6 +498,35 @@ main = defaultMain $ testGroup "All Tests"
                     =
                     line2
                    |] @?= 2
+      ]
+    ]
+  ------------------------------------------------------------------------------
+  , testGroup "HabitOfFate.Substitution"
+  ------------------------------------------------------------------------------
+    [ testGroup "parseAtom"
+    ----------------------------------------------------------------------------
+      [ testCase "literal, one char" $
+          runParser parseAtom () "<story>" "literal" @?= Right (Literal 'l')
+      , testCase "literal, whole string" $
+          runParser (many parseAtom) () "<story>" "xyz" @?= Right [Literal 'x', Literal 'y', Literal 'z']
+      , testCase "substitution, name" $
+          runParser parseAtom () "<story>" "[]" @?=
+            Right (Substitution $ SubstitutionData False False Name "")
+      , testCase "substitution, subject" $
+          runParser parseAtom () "<story>" "he/she[x]" @?=
+            Right (Substitution $ SubstitutionData False False (Referrent Subject) "x")
+      , testCase "substitution, subject, multiparse" $
+          runParser (many parseAtom) () "<story>" "he/she[x]" @?=
+            Right [Substitution $ SubstitutionData False False (Referrent Subject) "x"]
+      , testCase "substitution, proper possessive" $
+          runParser parseAtom () "<story>" "his/hers[Sue]" @?=
+            Right (Substitution $ SubstitutionData False False (Referrent ProperPossessive) "Sue")
+      , testCase "substitution, with article" $
+          runParser parseAtom () "<story>" "an [illsbane]" @?=
+            Right (Substitution $ SubstitutionData True False Name "illsbane")
+      , testCase "substitution, uppercase" $
+          runParser parseAtom () "<story>" "His/hers[Katie]" @?=
+            Right (Substitution $ SubstitutionData False True (Referrent ProperPossessive) "Katie")
       ]
     ]
   ]

@@ -76,6 +76,7 @@ library
                      , HabitOfFate.Story.Parser.XML
                      , HabitOfFate.Story.Renderer.Console
                      , HabitOfFate.Story.Renderer.XML
+                     , HabitOfFate.Substitution
                      , HabitOfFate.Tag
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
@@ -139,6 +140,7 @@ test-suite test
                      , http-types
                      , jwt
                      , lens
+                     , parsec
                      , scotty
                      , tasty
                      , tasty-hunit
