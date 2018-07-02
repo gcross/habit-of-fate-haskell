@@ -54,19 +54,17 @@ insertMarkers =
   >>>
   unlines
 
-parseQuote ∷ String → [Event]
+parseQuote ∷ MonadThrow m ⇒ String → m [Event]
 parseQuote =
   insertMarkers
   >>>
   Lazy.pack
   >>>
   parseEventsFromText
-  >>>
-  either (show >>> error) identity
 
 s ∷ QuasiQuoter
 s = QuasiQuoter
-  (parseQuote >>> Lift.lift)
+  (parseQuote >=> Lift.lift)
   (error "Cannot use s as a pattern")
   (error "Cannot use s as a type")
   (error "Cannot use s as a dec")
@@ -75,7 +73,7 @@ s_fixed ∷ QuasiQuoter
 s_fixed = QuasiQuoter
   (
     parseQuote
-    >>>
+    >=>
     (\case
       [] → [|()|]
       [x1] → [|x1|]
