@@ -10,7 +10,7 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Affero General Public License for more details.
 
-    You should have received a copy of the GNU Affero General Public License
+    You should hae received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
@@ -36,6 +36,7 @@ import Data.Char
 import Data.Typeable (Typeable)
 import Language.Haskell.TH.Lift (Lift)
 import Text.Parsec hiding ((<|>), optional, uncons)
+import Text.XML (Element(..), Name)
 
 import HabitOfFate.TH
 
@@ -60,7 +61,7 @@ data Referrent =
   | ProperPossessive
   | Category
   | CategoryPlural
-  deriving (Eq, Lift, Ord, Read, Show)
+  deriving (Bounded, Enum, Eq, Lift, Ord, Read, Show)
 
 referrents ∷ [(String, Referrent)]
 referrents =
@@ -72,9 +73,11 @@ referrents =
   , ( "men/women", CategoryPlural)
   ]
 
-data HasArticle = HasArticle | HasNoArticle deriving (Eq, Ord, Read, Show)
+data HasArticle = HasArticle | HasNoArticle
+  deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
-data Case = Upper | Lower deriving (Eq, Ord, Read, Show)
+data Case = Upper | Lower
+  deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 data SubstitutionData = SubstitutionData
   { _has_article_ ∷ Bool
@@ -130,7 +133,7 @@ instance Exception ParseError
 
 convertSubstitutionDataToTag ∷ SubstitutionData → Text
 convertSubstitutionDataToTag s =
-  pack [i|<sub has_article="#{s ^. has_article_}" case="#{s ^. is_uppercase_} kind="#{s ^. kind_}" key="#{s ^. key_}/>|]
+  pack [i|<sub has_article="#{s ^. has_article_}" case="#{s ^. is_uppercase_}" kind="#{s ^. kind_}" key="#{s ^. key_}"/>|]
 
 convertSubstitutionsToTags ∷ MonadThrow m ⇒ String → m Text
 convertSubstitutionsToTags story =
@@ -146,6 +149,41 @@ convertSubstitutionsToTags story =
         Substitution s → convertSubstitutionDataToTag s
     )
   )
+
+data SubstitutionTagParseError =
+    SubstitutionTagMustHaveTagSub
+  | SubstitutionTagMayNotHaveChildren
+  | SubstitutionTagIsMissingAttribute Name
+  | SubstitutionTagHasInvalidValueFor Name String
+  deriving (Eq, Show, Typeable)
+instance Exception SubstitutionTagParseError where
+
+parseSubstitutionTag ∷ MonadThrow m ⇒ Element → m SubstitutionData
+parseSubstitutionTag (Element tag attrs childs)
+  | tag /= "sub" = throwM SubstitutionTagMustHaveTagSub
+  | (not <<< null) childs = throwM SubstitutionTagMayNotHaveChildren
+  | otherwise =
+      SubstitutionData
+        <$> attribute "has_article" (unpack >>> readEither)
+        <*> attribute "case" (unpack >>> readEither)
+        <*> attribute "kind" (unpack >>> readEither)
+        <*> attribute "key" Right
+  where
+    attribute name reader =
+      maybe
+        (throwM $ SubstitutionTagIsMissingAttribute name)
+        (
+          reader
+          >>>
+          either
+            (
+              SubstitutionTagHasInvalidValueFor name
+              >>>
+              throwM
+            )
+            pure
+        )
+        (lookup name attrs)
 
 data Gender = Male | Female | Neuter deriving (Enum,Eq,Ord,Read,Show)
 

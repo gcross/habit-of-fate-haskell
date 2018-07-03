@@ -40,6 +40,7 @@ import Data.List (cycle)
 import qualified Data.Map as Map
 import Data.Time.Clock
 import Data.Text (strip)
+import Data.Text.Arbitrary
 import Data.Text.Strict.Lens (utf8)
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID, fromText)
@@ -47,10 +48,13 @@ import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Simple
 import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
+import Test.QuickCheck
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 import Text.HTML.DOM (sinkDoc)
 import Text.Parsec (many, runParser)
+import Text.XML (documentRoot, parseText)
 import Text.XML.Lens
   ( Document
   , (./)
@@ -71,6 +75,23 @@ import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Story.Renderer.XML
 import HabitOfFate.Substitution
+
+instance Arbitrary SubstitutionData where
+  arbitrary =
+    SubstitutionData
+      <$> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> (pack <$> (listOf $ choose ('a', 'z')))
+
+instance Arbitrary Kind where
+  arbitrary = oneof
+    [ pure Name
+    , Referrent <$> arbitrary
+    ]
+
+instance Arbitrary Referrent where
+  arbitrary = elements [minBound..maxBound]
 
 withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp = withApplication (makeAppRunningInTestMode mempty (const $ pure ()))
@@ -528,5 +549,16 @@ main = defaultMain $ testGroup "All Tests"
           runParser parseAtom () "<story>" "His/hers[Katie]" @?=
             Right (Substitution $ SubstitutionData False True (Referrent ProperPossessive) "Katie")
       ]
+    ----------------------------------------------------------------------------
+    , testProperty "round-trip" $ \x →
+        x |> convertSubstitutionDataToTag
+          |> Lazy.fromStrict
+          |> parseText def
+          |> fmap documentRoot
+          |> (>>= parseSubstitutionTag)
+          |> (_Left %~ show)
+          |> (@?= Right x)
+          |> ioProperty
+    ----------------------------------------------------------------------------
     ]
   ]

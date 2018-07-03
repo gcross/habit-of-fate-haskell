@@ -141,9 +141,12 @@ test-suite test
                      , jwt
                      , lens
                      , parsec
+                     , QuickCheck
+                     , quickcheck-text
                      , scotty
                      , tasty
                      , tasty-hunit
+                     , tasty-quickcheck
                      , temporary
                      , text
                      , time
