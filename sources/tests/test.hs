@@ -545,6 +545,9 @@ main = defaultMain $ testGroup "All Tests"
       , testCase "substitution, with article" $
           runParser parseAtom () "<story>" "an [illsbane]" @?=
             Right (Substitution $ SubstitutionData True False Name "illsbane")
+      , testCase "substitution, with article and a newline" $
+          runParser parseAtom () "<story>" "an\n[illsbane]" @?=
+            Right (Substitution $ SubstitutionData True False Name "illsbane")
       , testCase "substitution, uppercase" $
           runParser parseAtom () "<story>" "His/hers[Katie]" @?=
             Right (Substitution $ SubstitutionData False True (Referrent ProperPossessive) "Katie")

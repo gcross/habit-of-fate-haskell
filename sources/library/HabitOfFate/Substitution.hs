@@ -122,7 +122,9 @@ parseAtom ∷ Parser Atom
 parseAtom = do
   case_ ← (lookAhead letter <&> getCase) <|> pure Lower
   (try $ do
-    char 'a' >> void (char ' ') <|> void (string "n ")
+    _ ← char 'a'
+    _ ← optional $ char 'n'
+    _ ← many1 <<< choice $ map char " \t\r\n"
     parseSubstitutionAtom HasArticle case_
    )
     <|> (parseSubstitutionAtom HasNoArticle case_)
