@@ -20,7 +20,7 @@
 
 module HabitOfFate.Story.Renderer.XML (renderEventToXMLText) where
 
-import HabitOfFate.Prelude hiding (Element)
+import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
 import Text.XML

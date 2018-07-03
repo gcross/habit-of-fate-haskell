@@ -199,7 +199,7 @@ import Data.Maybe hiding (catMaybes)
 
 import Data.Monoid
 
-import Data.MonoTraversable
+import Data.MonoTraversable hiding (Element)
 
 import Data.Sequence (Seq)
 
