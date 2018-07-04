@@ -46,7 +46,7 @@ instance Exception StoryParseException where
 parseContainer ∷ MonadThrow m ⇒ Text → ([Node] → m α) → Node → m α
 parseContainer expected_tag parseChildren node =
   case node of
-    NodeInstruction _ →  throwM $ StoryParseException "unexpected XML instruction"
+    NodeInstruction _ → throwM $ StoryParseException "unexpected XML instruction"
     NodeComment _ → parseChildren []
     NodeContent t
       | allSpaces t → parseChildren []
