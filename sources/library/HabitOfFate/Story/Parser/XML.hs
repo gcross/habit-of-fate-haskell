@@ -18,6 +18,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -37,6 +38,7 @@ import Data.Typeable (Typeable)
 import Text.XML
 
 import HabitOfFate.Story
+import HabitOfFate.Substitution hiding (Name)
 
 data StoryParseException = StoryParseException String deriving (Eq,Show,Typeable)
 instance Exception StoryParseException where
@@ -56,25 +58,26 @@ parseContainer expected_tag parseChildren node =
            throwM $ StoryParseException [i|expected no attributes in <#{tag}>"|]
       | otherwise → parseChildren childs
 
-parseEventsFromNodes ∷ MonadThrow m ⇒ [Node] → m [Event]
-parseEventsFromNodes = mapM (parseContainer "event" parseEventFromNodes)
+parseEventsFromNodes ∷ MonadThrow m ⇒ (Element → m sub) → [Node] → m [GenEvent sub]
+parseEventsFromNodes parseSubstitutionTag = mapM (parseContainer "event" (parseEventFromNodes parseSubstitutionTag))
 
-parseEventFromNodes ∷ MonadThrow m ⇒ [Node] → m Event
-parseEventFromNodes = mapM (parseContainer "p" parseParagraphFromNodes)
+parseEventFromNodes ∷ MonadThrow m ⇒ (Element → m sub) → [Node] → m (GenEvent sub)
+parseEventFromNodes parseSubstitutionTag = mapM (parseContainer "p" (parseParagraphFromNodes parseSubstitutionTag))
 
-parseParagraphFromNodes ∷ MonadThrow m ⇒ [Node] → m Paragraph
-parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
+parseParagraphFromNodes ∷ MonadThrow m ⇒ (Element → m sub) → [Node] → m (GenParagraph sub)
+parseParagraphFromNodes parseSubstitutionTag = mapM parseParagraphChild >>> fmap mconcat
   where
-    parseParagraphChild ∷ MonadThrow m ⇒ Node → m Paragraph
     parseParagraphChild (NodeInstruction _) =  throwM $ StoryParseException "unexpected XML instruction"
     parseParagraphChild (NodeComment _) = return mempty
-    parseParagraphChild (NodeContent t) = return $ Text_ t
+    parseParagraphChild (NodeContent t) = return $ TextP t
+    parseParagraphChild (NodeElement element@(Element (Name "sub" _ _) _ _)) =
+      SubstitutionP <$> parseSubstitutionTag element
     parseParagraphChild (NodeElement (Element (Name tag _ _) attrs childs)) =
       case lookup tag tags of
         Nothing →  throwM $ StoryParseException [i|unexpected tag <#{tag}>|]
         Just style
-          | not <<< null $ attrs →  throwM $ StoryParseException [i|<#{tag}> had unexpected attributes|]
-          | otherwise → Style style <$> parseParagraphFromNodes childs
+          | not <<< null $ attrs → throwM $ StoryParseException [i|<#{tag}> had unexpected attributes|]
+          | otherwise → StyleP style <$> (parseParagraphFromNodes parseSubstitutionTag) childs
       where
         tags ∷ Map Text Style
         tags = mapFromList
@@ -86,13 +89,13 @@ parseParagraphFromNodes = mapM parseParagraphChild >>> fmap mconcat
           , ("introduce", Introduce)
           ]
 
-parseEventsFromDocument ∷ MonadThrow m ⇒ Document → m [Event]
+parseEventsFromDocument ∷ MonadThrow m ⇒ Document → m [SubEvent]
 parseEventsFromDocument =
   documentRoot
   >>>
   NodeElement
   >>>
-  parseContainer "events" parseEventsFromNodes
+  parseContainer "events" (parseEventsFromNodes parseSubstitutionTag)
 
 parseEventFromDocument ∷ MonadThrow m ⇒ Document → m Event
 parseEventFromDocument =
@@ -100,9 +103,9 @@ parseEventFromDocument =
   >>>
   NodeElement
   >>>
-  parseContainer "event" parseEventFromNodes
+  parseContainer "event" (parseEventFromNodes parseSubstitutionTagNotAllowed)
 
-parseEventsFromText ∷ MonadThrow m ⇒ Lazy.Text → m [Event]
+parseEventsFromText ∷ MonadThrow m ⇒ Lazy.Text → m [SubEvent]
 parseEventsFromText = (parseText def >>> either throwM pure) >=> parseEventsFromDocument
 
 parseEventFromText ∷ MonadThrow m ⇒ Lazy.Text → m Event

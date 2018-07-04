@@ -36,6 +36,7 @@ import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.XML
+import HabitOfFate.Substitution
 
 insertMarkers ∷ String → String
 insertMarkers =
@@ -54,7 +55,7 @@ insertMarkers =
   >>>
   unlines
 
-parseQuote ∷ MonadThrow m ⇒ String → m [Event]
+parseQuote ∷ MonadThrow m ⇒ String → m [SubEvent]
 parseQuote =
   insertMarkers
   >>>

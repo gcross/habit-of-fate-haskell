@@ -38,30 +38,48 @@ module HabitOfFate.Story where
 import HabitOfFate.Prelude
 
 import Data.String (IsString(..))
+import Data.Void
 import Instances.TH.Lift ()
 import GHC.Generics hiding (from, to)
 import Language.Haskell.TH.Lift (Lift)
+
+import HabitOfFate.Substitution
 
 data Color = Red | Green | Blue deriving (Enum,Eq,Generic,Lift,Ord,Read,Show)
 
 data Style = Bold | Underline | Color Color | Introduce deriving (Eq,Generic,Lift,Ord,Read,Show)
 
-data Paragraph =
-    Style Style Paragraph
-  | Merged (Seq Paragraph)
-  | Text_ Text
+data GenParagraph sub =
+    StyleP Style (GenParagraph sub)
+  | MergedP (Seq (GenParagraph sub))
+  | TextP Text
+  | SubstitutionP sub
   deriving (Eq,Generic,Lift,Ord,Read,Show)
 
-type Event = [Paragraph]
+type GenEvent sub = [GenParagraph sub]
 
-instance IsString Paragraph where
-  fromString = pack >>> Text_
+type Paragraph = GenParagraph Void
+type SubParagraph = GenParagraph SubstitutionData
 
-instance Monoid Paragraph where
-  mempty = Merged mempty
-  mappend (Text_ x) ys | onull x = ys
-  mappend xs (Text_ y) | onull y = xs
-  mappend (Merged xs) (Merged ys) = xs ⊕ ys |> Merged
-  mappend (Merged xs) y = xs ⊢ y |> Merged
-  mappend x (Merged ys) = x ⊣ ys |> Merged
-  mappend x y = [x,y] |> fromList |> Merged
+type Event = GenEvent Void
+type SubEvent = GenEvent SubstitutionData
+
+instance IsString (GenParagraph s) where
+  fromString = pack >>> TextP
+
+instance Monoid (GenParagraph s) where
+  mempty = MergedP mempty
+  mappend (TextP x) ys | onull x = ys
+  mappend xs (TextP y) | onull y = xs
+  mappend (MergedP xs) (MergedP ys) = xs ⊕ ys |> MergedP
+  mappend (MergedP xs) y = xs ⊢ y |> MergedP
+  mappend x (MergedP ys) = x ⊣ ys |> MergedP
+  mappend x y = [x,y] |> fromList |> MergedP
+
+replaceSubstitutionsWithKeys ∷ SubEvent → Event
+replaceSubstitutionsWithKeys = map go
+  where
+    go (StyleP style p) = StyleP style (go p)
+    go (MergedP ps) = MergedP (fmap go ps)
+    go (TextP t) = TextP t
+    go (SubstitutionP s) = TextP $ "[" ⊕ (s ^. key_) ⊕ "]"

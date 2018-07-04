@@ -40,6 +40,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
+import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
 
@@ -58,11 +59,12 @@ makeLenses ''State
 --------------------------------------------------------------------------------
 
 intro_story = [s_fixed|
-The last thing in the world that <introduce>{Susie}</introduce> wanted to do was
-to wander alone in the Wicked Forest at night, but {her} {son}, little
-<introduce>{Tommy}</introduce>, was sick and would not live through the night
-unless {Susie} could find <introduce>{an Illsbane}</introduce> plant. It is a
-hopeless task, but {she} has no other choice.
+The last thing in the world that <introduce>[Susie]</introduce> wanted to do was
+to wander alone in the Wicked Forest at night, but his/her[Susie]
+son/daughter[Tommy], little <introduce>{Tommy}</introduce>, was sick and would
+not live through the night unless {Susie} could find <introduce>an
+[Illsbane]</introduce> plant. It is a hopeless task, but he/she[Susie] has no
+other choice.
 |]
 
 start ∷ InitialQuestRunner State
@@ -82,9 +84,9 @@ start =
 data FailureResult = FailureAverted | FailureHappened
 
 data FailureEvent = FailureEvent
-  { _failure_common_paragraphs_ ∷ Event
-  , _failure_averted_paragraphs_ ∷ Event
-  , _failure_happened_paragraphs_ ∷ Event
+  { _failure_common_paragraphs_ ∷ SubEvent
+  , _failure_averted_paragraphs_ ∷ SubEvent
+  , _failure_happened_paragraphs_ ∷ SubEvent
   }
 makeLenses ''FailureEvent
 
@@ -255,7 +257,7 @@ runProgressToSuccessMilestone = uniform wander_stories
 runProgressToFailureMilestone ∷ ProgressToMilestoneQuestRunner State
 runProgressToFailureMilestone = do
   failure_event ← uniform failure_stories
-  pure $
+  pure $ replaceSubstitutionsWithKeys $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_averted_paragraphs_
 
@@ -263,7 +265,7 @@ runAttainedSuccessMilestone ∷ AttainedMilestoneQuestRunner State
 runAttainedSuccessMilestone = do
   herb_found ← use herb_found_
   if herb_found
-    then pure $ QuestResult QuestHasEnded won_story
+    then pure $ QuestResult QuestHasEnded $ replaceSubstitutionsWithKeys $ won_story
     else do
       herb_found_ .= True
       QuestResult
@@ -273,6 +275,6 @@ runAttainedSuccessMilestone = do
 runAttainedFailureMilestone ∷ AttainedMilestoneQuestRunner State
 runAttainedFailureMilestone = do
   failure_event ← uniform failure_stories
-  pure $ QuestResult QuestHasEnded $
+  pure $ QuestResult QuestHasEnded $ replaceSubstitutionsWithKeys $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_happened_paragraphs_

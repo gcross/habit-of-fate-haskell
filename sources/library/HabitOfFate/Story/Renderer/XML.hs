@@ -23,6 +23,7 @@ module HabitOfFate.Story.Renderer.XML (renderEventToXMLText) where
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
+import Data.Void
 import Text.XML
 
 import HabitOfFate.Story
@@ -34,7 +35,7 @@ renderParagraphToNodes paragraph =
     nodes → [NodeElement $ Element "p" mempty nodes]
   where
     recurse ∷ Paragraph → [Node]
-    recurse (Style style p)
+    recurse (StyleP style p)
       | null nested = []
       | otherwise =
           let tag = case style of
@@ -47,8 +48,9 @@ renderParagraphToNodes paragraph =
           in Element tag mempty nested |> NodeElement |> singleton
       where
         nested = recurse p
-    recurse (Merged children) = concatMap recurse children
-    recurse (Text_ t) = [NodeContent t]
+    recurse (MergedP children) = concatMap recurse children
+    recurse (TextP t) = [NodeContent t]
+    recurse (SubstitutionP sub) = absurd sub
 
 renderEventToElement ∷ Event → Element
 renderEventToElement =

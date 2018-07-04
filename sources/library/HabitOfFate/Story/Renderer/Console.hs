@@ -24,6 +24,7 @@ module HabitOfFate.Story.Renderer.Console (renderStoryToChunks) where
 
 import HabitOfFate.Prelude
 
+import Data.Void
 import Rainbow
 
 import HabitOfFate.Story
@@ -67,7 +68,7 @@ renderStoryToChunks paragraphs =
         , _render_pending_length_ = 0
         })
       where
-        go formatting (Style style rest) = go (addFormat formatting) rest
+        go formatting (StyleP style rest) = go (addFormat formatting) rest
           where
             addFormat =
               case style of
@@ -77,8 +78,8 @@ renderStoryToChunks paragraphs =
                 Color Blue → fore blue
                 Color Green → fore green
                 Introduce → bold
-        go formatting (Merged paragraphs) = mapM_ (go formatting) paragraphs
-        go formatting (Text_ t) =
+        go formatting (MergedP paragraphs) = mapM_ (go formatting) paragraphs
+        go formatting (TextP t) =
           (forMOf_ text t $ \c →
             if c ∈ " \t\r\n"
               then do
@@ -111,3 +112,4 @@ renderStoryToChunks paragraphs =
             render_pending_chunks_ %= (⊢ formatting ⊕ chunk word)
             render_pending_length_ += olength word
           )
+        go _ (SubstitutionP sub) = absurd sub

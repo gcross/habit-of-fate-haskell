@@ -34,6 +34,7 @@ import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
 import Data.Typeable (Typeable)
+import Data.Void
 import Language.Haskell.TH.Lift (Lift)
 import Text.Parsec hiding ((<|>), optional, uncons)
 import Text.XML (Element(..), Name)
@@ -157,6 +158,7 @@ data SubstitutionTagParseError =
   | SubstitutionTagMayNotHaveChildren
   | SubstitutionTagIsMissingAttribute Name
   | SubstitutionTagHasInvalidValueFor Name String
+  | SubstitutionTagNotAllowed
   deriving (Eq, Show, Typeable)
 instance Exception SubstitutionTagParseError where
 
@@ -186,3 +188,6 @@ parseSubstitutionTag (Element tag attrs childs)
             pure
         )
         (lookup name attrs)
+
+parseSubstitutionTagNotAllowed ∷ MonadThrow m ⇒ Element → m Void
+parseSubstitutionTagNotAllowed _ = throwM SubstitutionTagNotAllowed
