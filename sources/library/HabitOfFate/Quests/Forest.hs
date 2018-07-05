@@ -16,6 +16,7 @@
 
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -49,7 +50,8 @@ import HabitOfFate.Trial
 --------------------------------------------------------------------------------
 
 data State = State
-  { _herb_found_ ∷ Bool
+  { _substitutions_ ∷ HashMap Text Gendered
+  , _herb_found_ ∷ Bool
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makeLenses ''State
@@ -62,20 +64,26 @@ intro_story = [s_fixed|
 The last thing in the world that <introduce>[Susie]</introduce> wanted to do was
 to wander alone in the Wicked Forest at night, but his/her[Susie]
 son/daughter[Tommy], little <introduce>{Tommy}</introduce>, was sick and would
-not live through the night unless {Susie} could find <introduce>an
+not live through the night unless [Susie] could find <introduce>an
 [Illsbane]</introduce> plant. It is a hopeless task, but he/she[Susie] has no
 other choice.
 |]
 
 start ∷ InitialQuestRunner State
-start =
+start = do
+  let substitutions =
+        mapFromList
+          [ ( "Susie", Gendered "Sally" Female )
+          , ( "Tommy", Gendered "Mary" Female )
+          , ( "Illsbane", Gendered "Tigerlamp" Neuter )
+          ]
   InitialQuestResult
-    <$> pure (State False)
+    <$> pure (State substitutions False)
     <*> (Credits
           <$> (Successes <$> numberUntilEvent 5)
           <*> (Failures <$> numberUntilEvent 1)
         )
-    <*> pure (replaceSubstitutionsWithKeys intro_story)
+    <*> pure (substitute substitutions intro_story)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -252,20 +260,24 @@ builds an alter to you out of gratitude.
 --------------------------------------------------------------------------------
 
 runProgressToSuccessMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToSuccessMilestone = replaceSubstitutionsWithKeys <$> uniform wander_stories
+runProgressToSuccessMilestone = do
+  substitutions ← view substitutions_
+  substitute substitutions <$> uniform wander_stories
 
 runProgressToFailureMilestone ∷ ProgressToMilestoneQuestRunner State
 runProgressToFailureMilestone = do
+  substitutions ← view substitutions_
   failure_event ← uniform failure_stories
-  pure $ replaceSubstitutionsWithKeys $
+  pure $ substitute substitutions $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_averted_paragraphs_
 
 runAttainedSuccessMilestone ∷ AttainedMilestoneQuestRunner State
 runAttainedSuccessMilestone = do
+  substitutions ← use substitutions_
   herb_found ← use herb_found_
   if herb_found
-    then pure $ QuestResult QuestHasEnded $ replaceSubstitutionsWithKeys $ won_story
+    then pure $ QuestResult QuestHasEnded $ substitute substitutions $ won_story
     else do
       herb_found_ .= True
       QuestResult
@@ -274,7 +286,8 @@ runAttainedSuccessMilestone = do
 
 runAttainedFailureMilestone ∷ AttainedMilestoneQuestRunner State
 runAttainedFailureMilestone = do
+  substitutions ← use substitutions_
   failure_event ← uniform failure_stories
-  pure $ QuestResult QuestHasEnded $ replaceSubstitutionsWithKeys $
+  pure $ QuestResult QuestHasEnded $ substitute substitutions $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_happened_paragraphs_

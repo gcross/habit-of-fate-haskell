@@ -76,10 +76,21 @@ instance Monoid (GenParagraph s) where
   mappend x (MergedP ys) = MergedP $ x ⊣ ys
   mappend x y = MergedP $ fromList [x,y]
 
+mapOverEventSubstitutions ∷ (SubstitutionData → Text) → SubEvent → Event
+mapOverEventSubstitutions f = map go
+ where
+  go (StyleP style p) = StyleP style (go p)
+  go (MergedP ps) = MergedP (fmap go ps)
+  go (TextP t) = TextP t
+  go (SubstitutionP s) = TextP $ f s
+
+substitute ∷ HashMap Text Gendered → SubEvent → Event
+substitute table =
+  mapOverEventSubstitutions $ \s →
+    case lookupAndApplySubstitution table s of
+      Left e → "[" ⊕ (e |> show |> pack) ⊕ "]"
+      Right t → t
+
 replaceSubstitutionsWithKeys ∷ SubEvent → Event
-replaceSubstitutionsWithKeys = map go
-  where
-    go (StyleP style p) = StyleP style (go p)
-    go (MergedP ps) = MergedP (fmap go ps)
-    go (TextP t) = TextP t
-    go (SubstitutionP s) = TextP $ "[" ⊕ (s ^. key_) ⊕ "]"
+replaceSubstitutionsWithKeys =
+  mapOverEventSubstitutions $ \s → "[" ⊕ (s ^. key_) ⊕ "]"
