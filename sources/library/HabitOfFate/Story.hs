@@ -71,10 +71,10 @@ instance Monoid (GenParagraph s) where
   mempty = MergedP mempty
   mappend (TextP x) ys | onull x = ys
   mappend xs (TextP y) | onull y = xs
-  mappend (MergedP xs) (MergedP ys) = xs ⊕ ys |> MergedP
-  mappend (MergedP xs) y = xs ⊢ y |> MergedP
-  mappend x (MergedP ys) = x ⊣ ys |> MergedP
-  mappend x y = [x,y] |> fromList |> MergedP
+  mappend (MergedP xs) (MergedP ys) = MergedP $ xs ⊕ ys
+  mappend (MergedP xs) y = MergedP $ xs ⊢ y
+  mappend x (MergedP ys) = MergedP $ x ⊣ ys
+  mappend x y = MergedP $ fromList [x,y]
 
 replaceSubstitutionsWithKeys ∷ SubEvent → Event
 replaceSubstitutionsWithKeys = map go
