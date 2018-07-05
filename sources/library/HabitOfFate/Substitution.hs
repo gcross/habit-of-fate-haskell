@@ -62,6 +62,8 @@ data Referrent =
   | ProperPossessive
   | Category
   | CategoryPlural
+  | Offspring
+  | OffspringPlural
   deriving (Bounded, Enum, Eq, Lift, Ord, Read, Show)
 
 referrents ∷ [(String, Referrent)]
@@ -72,6 +74,8 @@ referrents =
   , ( "his/hers", ProperPossessive)
   , ( "man/woman", Category)
   , ( "men/women", CategoryPlural)
+  , ( "son/daughter", Offspring)
+  , ( "sons/daughters", OffspringPlural)
   ]
 
 data HasArticle = HasArticle | HasNoArticle
