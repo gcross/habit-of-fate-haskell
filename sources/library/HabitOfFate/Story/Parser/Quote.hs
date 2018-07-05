@@ -57,11 +57,9 @@ insertMarkers =
 
 parseQuote ∷ MonadThrow m ⇒ String → m [SubEvent]
 parseQuote =
-  insertMarkers
-  >>>
-  Lazy.pack
-  >>>
-  parseEventsFromText
+  (insertMarkers >>> convertSubstitutionsToTags)
+  >=>
+  (Lazy.fromStrict >>> parseEventsFromText)
 
 s ∷ QuasiQuoter
 s = QuasiQuoter

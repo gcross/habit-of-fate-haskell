@@ -75,7 +75,7 @@ start =
           <$> (Successes <$> numberUntilEvent 5)
           <*> (Failures <$> numberUntilEvent 1)
         )
-    <*> pure intro_story
+    <*> pure (replaceSubstitutionsWithKeys intro_story)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -252,7 +252,7 @@ builds an alter to you out of gratitude.
 --------------------------------------------------------------------------------
 
 runProgressToSuccessMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToSuccessMilestone = uniform wander_stories
+runProgressToSuccessMilestone = replaceSubstitutionsWithKeys <$> uniform wander_stories
 
 runProgressToFailureMilestone ∷ ProgressToMilestoneQuestRunner State
 runProgressToFailureMilestone = do
