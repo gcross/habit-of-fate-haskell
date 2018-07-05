@@ -532,7 +532,7 @@ main = defaultMain $ testGroup "All Tests"
           runParser (many parseAtom) () "<story>" "xyz" @?= Right [Literal 'x', Literal 'y', Literal 'z']
       , testCase "substitution, name" $
           runParser parseAtom () "<story>" "[]" @?=
-            Right (Substitution $ SubstitutionData False False Name "")
+            Right (Substitution $ SubstitutionData False True Name "")
       , testCase "substitution, subject" $
           runParser parseAtom () "<story>" "he/she[x]" @?=
             Right (Substitution $ SubstitutionData False False (Referrent Subject) "x")
@@ -548,9 +548,12 @@ main = defaultMain $ testGroup "All Tests"
       , testCase "substitution, with article and a newline" $
           runParser parseAtom () "<story>" "an\n[illsbane]" @?=
             Right (Substitution $ SubstitutionData True False Name "illsbane")
-      , testCase "substitution, uppercase" $
+      , testCase "substitution, uppercase referrant" $
           runParser parseAtom () "<story>" "His/hers[Katie]" @?=
             Right (Substitution $ SubstitutionData False True (Referrent ProperPossessive) "Katie")
+      , testCase "substitution, uppercase name" $
+          runParser parseAtom () "<story>" "[Katie]" @?=
+            Right (Substitution $ SubstitutionData False True Name "Katie")
       ]
     ----------------------------------------------------------------------------
     , testProperty "round-trip" $ \x →

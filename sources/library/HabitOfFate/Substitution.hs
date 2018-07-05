@@ -98,8 +98,13 @@ data Atom = Literal Char | Substitution SubstitutionData
 
 type Parser = Parsec String ()
 
-parseSubstitutionAtom ∷ HasArticle → Case → Parser Atom
-parseSubstitutionAtom article case_ = do
+getCase ∷ Char → Case
+getCase c
+  | isUpper c = Upper
+  | otherwise = Lower
+
+parseSubstitutionAtom ∷ HasArticle → Maybe Case → Parser Atom
+parseSubstitutionAtom article maybe_case = do
   kind ←
     try (string "[" >> pure Name)
     <|>
@@ -109,6 +114,11 @@ parseSubstitutionAtom article case_ = do
         (pure $ Referrent referrent)
       | (word, referrent) ← referrents
       ]
+  case_ ←
+    maybe
+      ((lookAhead letter <&> getCase) <|> pure Upper)
+      pure
+      maybe_case
   key ← many letter <&> pack
   _ ← char ']'
   pure $ Substitution $
@@ -118,21 +128,16 @@ parseSubstitutionAtom article case_ = do
       kind
       key
 
-getCase ∷ Char → Case
-getCase c
-  | isUpper c = Upper
-  | otherwise = Lower
-
 parseAtom ∷ Parser Atom
 parseAtom = do
-  case_ ← (lookAhead letter <&> getCase) <|> pure Lower
+  maybe_case_ ← (lookAhead letter <&> (getCase >>> Just)) <|> pure Nothing
   (try $ do
     _ ← char 'a'
     _ ← optional $ char 'n'
     _ ← many1 <<< choice $ map char " \t\r\n"
-    parseSubstitutionAtom HasArticle case_
+    parseSubstitutionAtom HasArticle maybe_case_
    )
-    <|> (parseSubstitutionAtom HasNoArticle case_)
+    <|> (parseSubstitutionAtom HasNoArticle maybe_case_)
     <|> (anyToken <&> Literal)
 
 deriving instance Typeable ParseError
@@ -195,3 +200,90 @@ parseSubstitutionTag (Element tag attrs childs)
 
 parseSubstitutionTagNotAllowed ∷ MonadThrow m ⇒ Element → m Void
 parseSubstitutionTagNotAllowed _ = throwM SubstitutionTagNotAllowed
+
+data Gender = Male | Female | Neuter deriving (Enum,Eq,Ord,Read,Show)
+
+instance ToJSON Gender where
+  toJSON gender = String $
+    case gender of
+      Male → "male"
+      Female → "female"
+      Neuter → "neuter"
+
+instance FromJSON Gender where
+  parseJSON = withText "expected text" parseGender
+    where
+      parseGender "male" = return Male
+      parseGender "female" = return Female
+      parseGender "neuter" = return Neuter
+      parseGender wrong = fail [i|gender must be "male", "female", or "neuter", not "#{wrong}"|]
+
+data Gendered = Gendered
+  { _gendered_name_ ∷ Text
+  , _gendered_gender_ ∷ Gender
+  } deriving (Eq,Ord,Read,Show)
+deriveJSONDropping 10 ''Gendered
+makeLenses ''Gendered
+
+data SubstitutionException =
+    NoSuchKeyException Text
+  | EmptyNameException
+  deriving (Eq, Ord, Read, Show)
+instance Exception SubstitutionException
+
+lookupAndApplySubstitution ∷ MonadThrow m ⇒ HashMap Text Gendered → SubstitutionData → m Text
+lookupAndApplySubstitution table s = do
+  gendered@(Gendered name _) ←
+    maybe
+      (throwM $ NoSuchKeyException $ s ^. key_)
+      pure
+      (lookup (s ^. key_) table)
+  when (onull name) $ throwM EmptyNameException
+  let article
+        | s ^. has_article_ =
+            if isVowel (name ^?! _head)
+              then "an "
+              else "a "
+        | otherwise = ""
+      word = applyKind (s ^. kind_) gendered
+  pure $
+    (article ⊕ word) & first_uppercase_ .~ (s ^. is_uppercase_)
+
+applyKind ∷ Kind → Gendered → Text
+applyKind Name (Gendered name _) = name
+applyKind (Referrent referrent) (Gendered _ gender) =
+  applyReferrent referrent gender
+
+applyReferrent ∷ Referrent → Gender → Text
+
+applyReferrent Subject Male = "he"
+applyReferrent Subject Female = "she"
+applyReferrent Subject Neuter = "it"
+
+applyReferrent Object Male = "him"
+applyReferrent Object Female = "her"
+applyReferrent Object Neuter = "it"
+
+applyReferrent Possessive Male = "his"
+applyReferrent Possessive Female = "her"
+applyReferrent Possessive Neuter = "its"
+
+applyReferrent ProperPossessive Male = "his"
+applyReferrent ProperPossessive Female = "hers"
+applyReferrent ProperPossessive Neuter = "its"
+
+applyReferrent Category Male = "man"
+applyReferrent Category Female = "woman"
+applyReferrent Category Neuter = "thing"
+
+applyReferrent CategoryPlural Male = "men"
+applyReferrent CategoryPlural Female = "women"
+applyReferrent CategoryPlural Neuter = "things"
+
+applyReferrent Offspring Male = "son"
+applyReferrent Offspring Female = "daughter"
+applyReferrent Offspring Neuter = "offspring"
+
+applyReferrent OffspringPlural Male = "sons"
+applyReferrent OffspringPlural Female = "daughters"
+applyReferrent OffspringPlural Neuter = "offspring"
