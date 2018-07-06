@@ -87,10 +87,10 @@ runAccount = do
           ((new_current_quest_state, new_awaited_credits, event), new_rng_2of2) =
             flip runRand new_rng_1of2 $ do
               case wrapped_quest of
-                WrappedQuest (quest@(Quest quest_prism _ _ _)) → do
-                  initial_quest_result ← quest ^. start_quest_
+                WrappedQuest quest → do
+                  initial_quest_result ← questStarter quest
                   pure
-                    ( initial_quest_result ^. initial_quest_state_ . re quest_prism
+                    ( initial_quest_result ^. initial_quest_state_ . re (questPrism quest)
                     , initial_quest_result ^. initial_quest_credits_
                     , initial_quest_result ^. initial_quest_event_
                     )
@@ -109,8 +109,8 @@ runAccount = do
                 (s → CurrentQuestState) →
                 s →
                 Lens' Credits Double →
-                Lens' (Quest s) (ProgressToMilestoneQuestRunner s) →
-                Lens' (Quest s) (AttainedMilestoneQuestRunner s) →
+                Getter (Quest s) (ProgressToMilestoneQuestRunner s) →
+                Getter (Quest s) (AttainedMilestoneQuestRunner s) →
                 State Account Event
               spend quest wrapQuestState quest_state credits_lens_ partial_lens_ complete_lens_
                 | awaited_credits ^. credits_lens_ > stored_credits ^. credits_lens_ = do
@@ -149,16 +149,16 @@ runAccount = do
                       (^. re quest_prism)
                       quest_state
                       successes_
-                      (progress_to_milestones_ . success_)
-                      (attained_milestones_ . success_)
+                      (to progressToMilestones . success_)
+                      (to attainedMilestones . success_)
                 | stored_credits ^. failures_ > 0 =
                     spend
                       quest
                       (^. re quest_prism)
                       quest_state
                       failures_
-                      (progress_to_milestones_ . failure_)
-                      (attained_milestones_ . failure_)
+                      (to progressToMilestones . failure_)
+                      (to attainedMilestones . failure_)
                 | otherwise = pure []
 
           runCurrentQuest current_quest_state run

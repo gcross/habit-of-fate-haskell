@@ -39,20 +39,11 @@ deriveJSON ''CurrentQuestState
 makePrisms ''CurrentQuestState
 
 data Quest s = Quest
-  { _quest_prism_ ∷ Prism' CurrentQuestState s
-  , _start_quest_ ∷ InitialQuestRunner s
-  , _progress_to_milestones_ ∷ Tagged (ProgressToMilestoneQuestRunner s)
-  , _attained_milestones_ ∷ Tagged (AttainedMilestoneQuestRunner s)
+  { questPrism ∷ Prism' CurrentQuestState s
+  , questStarter ∷ InitialQuestRunner s
+  , progressToMilestones ∷ Tagged (ProgressToMilestoneQuestRunner s)
+  , attainedMilestones ∷ Tagged (AttainedMilestoneQuestRunner s)
   }
-
-start_quest_ ∷ Lens' (Quest s) (InitialQuestRunner s)
-start_quest_ = lens _start_quest_ (\old new → old { _start_quest_ = new })
-
-progress_to_milestones_ ∷ Lens' (Quest s) (Tagged (ProgressToMilestoneQuestRunner s))
-progress_to_milestones_ = lens _progress_to_milestones_ (\old new → old { _progress_to_milestones_ = new })
-
-attained_milestones_ ∷ Lens' (Quest s) (Tagged (AttainedMilestoneQuestRunner s))
-attained_milestones_ = lens _attained_milestones_ (\old new → old { _attained_milestones_ = new })
 
 data WrappedQuest = ∀ s. WrappedQuest (Quest s)
 
@@ -77,8 +68,8 @@ type RunCurrentQuestResult = RunQuestResult CurrentQuestState
 runCurrentQuest ∷ CurrentQuestState → (∀ s. Quest s → s → α) → α
 runCurrentQuest current_quest_state f =
   foldr
-    (\(WrappedQuest (quest@(Quest quest_prism _ _ _))) rest →
-      case current_quest_state ^? quest_prism of
+    (\(WrappedQuest quest) rest →
+      case current_quest_state ^? (questPrism quest) of
         Nothing → rest
         Just quest_state → f quest quest_state
     )
