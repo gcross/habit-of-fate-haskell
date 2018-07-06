@@ -40,7 +40,8 @@ makePrisms ''CurrentQuestState
 
 data Quest s = Quest
   { questPrism ∷ Prism' CurrentQuestState s
-  , questStarter ∷ InitialQuestRunner s
+  , questNewState ∷ InitialQuestRunner s
+  , questIntro ∷ IntroQuestRunner s
   , questStatus ∷ StatusQuestRunner s
   , progressToMilestones ∷ Tagged (ProgressToMilestoneQuestRunner s)
   , attainedMilestones ∷ Tagged (AttainedMilestoneQuestRunner s)
@@ -53,7 +54,8 @@ quests =
   [WrappedQuest $
      Quest
        _Forest
-       Forest.start
+       Forest.newState
+       Forest.intro
        Forest.runStatus
        (Tagged
          (Success (Forest.runProgressToSuccessMilestone))

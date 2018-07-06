@@ -33,7 +33,6 @@ import HabitOfFate.Story
 data InitialQuestResult α = InitialQuestResult
   { _initial_quest_state_ ∷ α
   , _initial_quest_credits_ ∷ Credits
-  , _initial_quest_event_ ∷ Event
   }
 makeLenses ''InitialQuestResult
 
@@ -52,6 +51,7 @@ data QuestResult = QuestResult
 makeLenses ''QuestResult
 
 type InitialQuestRunner s = Rand StdGen (InitialQuestResult s)
+type IntroQuestRunner s = ReaderT s (Rand StdGen) Event
 type StatusQuestRunner s = Reader s Event
 type ProgressToMilestoneQuestRunner s = ReaderT s (Rand StdGen) Event
 type AttainedMilestoneQuestRunner s = StateT s (Rand StdGen) QuestResult

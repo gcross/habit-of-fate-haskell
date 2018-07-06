@@ -69,8 +69,8 @@ not live through the night unless [Susie] could find <introduce>an
 other choice.
 |]
 
-start ∷ InitialQuestRunner State
-start = do
+newState ∷ InitialQuestRunner State
+newState = do
   let substitutions =
         mapFromList
           [ ( "Susie", Gendered "Sally" Female )
@@ -83,7 +83,11 @@ start = do
           <$> (Successes <$> numberUntilEvent 5)
           <*> (Failures <$> numberUntilEvent 1)
         )
-    <*> pure (substitute substitutions intro_story)
+
+intro ∷ IntroQuestRunner State
+intro = do
+  substitutions ← view substitutions_
+  pure (substitute substitutions intro_story)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------

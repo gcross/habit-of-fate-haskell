@@ -93,20 +93,19 @@ runAccount = do
   rng ← use rng_
   case maybe_current_quest_state of
     Nothing → do
-      let (wrapped_quest, new_rng_1of2) = runRand (uniform quests) rng
-          ((new_current_quest_state, new_awaited_credits, event), new_rng_2of2) =
-            flip runRand new_rng_1of2 $ do
-              case wrapped_quest of
-                WrappedQuest quest → do
-                  initial_quest_result ← questStarter quest
-                  pure
-                    ( initial_quest_result ^. initial_quest_state_ . re (questPrism quest)
-                    , initial_quest_result ^. initial_quest_credits_
-                    , initial_quest_result ^. initial_quest_event_
-                    )
+      let ((new_current_quest_state, new_awaited_credits, event), new_rng) = flip runRand rng $ do
+            WrappedQuest quest ← uniform quests
+            initial_quest_result ← questNewState quest
+            let quest_state = initial_quest_result ^. initial_quest_state_
+            intro_event ← runReaderT (questIntro quest) quest_state
+            pure
+              ( quest_state ^. re (questPrism quest)
+              , initial_quest_result ^. initial_quest_credits_
+              , intro_event
+              )
       awaited_credits_ .= new_awaited_credits
       maybe_current_quest_state_ .= Just new_current_quest_state
-      rng_ .= new_rng_2of2
+      rng_ .= new_rng
       pure $ event
     Just current_quest_state → do
       stored_credits ← use stored_credits_
