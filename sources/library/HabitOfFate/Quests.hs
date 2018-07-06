@@ -42,7 +42,7 @@ data Quest s = Quest
   { questPrism ∷ Prism' CurrentQuestState s
   , questNewState ∷ InitialQuestRunner s
   , questIntro ∷ IntroQuestRunner s
-  , questStatus ∷ StatusQuestRunner s
+  , questGetStatus ∷ GetStatusQuestRunner s
   , progressToMilestones ∷ Tagged (ProgressToMilestoneQuestRunner s)
   , attainedMilestones ∷ Tagged (AttainedMilestoneQuestRunner s)
   }
@@ -56,7 +56,7 @@ quests =
        _Forest
        Forest.newState
        Forest.intro
-       Forest.runStatus
+       Forest.runGetStatus
        (Tagged
          (Success (Forest.runProgressToSuccessMilestone))
          (Failure Forest.runProgressToFailureMilestone)

@@ -85,7 +85,7 @@ getAccountStatus account =
     (account ^. maybe_current_quest_state_)
   where
    run ∷ ∀ s. Quest s → s → Event
-   run quest quest_state = runReader (questStatus quest) quest_state
+   run quest quest_state = runReader (questGetStatus quest) quest_state
 
 runAccount ∷ State Account Event
 runAccount = do
@@ -96,11 +96,11 @@ runAccount = do
       let ((new_current_quest_state, new_awaited_credits, event), new_rng) = flip runRand rng $ do
             WrappedQuest quest ← uniform quests
             initial_quest_result ← questNewState quest
-            let quest_state = initial_quest_result ^. initial_quest_state_
+            let quest_state = initialQuestState initial_quest_result
             intro_event ← runReaderT (questIntro quest) quest_state
             pure
               ( quest_state ^. re (questPrism quest)
-              , initial_quest_result ^. initial_quest_credits_
+              , initialQuestCredits initial_quest_result
               , intro_event
               )
       awaited_credits_ .= new_awaited_credits
@@ -141,14 +141,14 @@ runAccount = do
                             |> flip runStateT quest_state
                             |> flip runRand rng
                     rng_ .= new_rng
-                    case result ^. quest_status_ of
+                    case questStatus result of
                       QuestInProgress new_awaited_credits→ do
                         awaited_credits_ . credits_lens_ .= new_awaited_credits
                         maybe_current_quest_state_ .=
                           (Just $ wrapQuestState new_quest_state)
                       QuestHasEnded →
                         maybe_current_quest_state_ .= Nothing
-                    pure $ result ^. quest_event_
+                    pure $ questEvent result
 
               run ∷ ∀ s. Quest s → s → State Account Event
               run quest quest_state

@@ -280,8 +280,8 @@ An [Illsbane] plant in hand, [Susie] continues home.
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
-runStatus ∷ StatusQuestRunner State
-runStatus = do
+runGetStatus ∷ GetStatusQuestRunner State
+runGetStatus = do
   substitutions ← view substitutions_
   herb_found ← view herb_found_
   pure $ if herb_found

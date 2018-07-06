@@ -31,28 +31,27 @@ import HabitOfFate.Credits
 import HabitOfFate.Story
 
 data InitialQuestResult α = InitialQuestResult
-  { _initial_quest_state_ ∷ α
-  , _initial_quest_credits_ ∷ Credits
+  { initialQuestState ∷ α
+  , initialQuestCredits ∷ Credits
   }
 makeLenses ''InitialQuestResult
 
 data RunQuestResult s = RunQuestResult
-  { _maybe_run_quest_state_ ∷ Maybe s
-  , _run_quest_event_ ∷ Event
+  { maybeRunQuestState ∷ Maybe s
+  , runQuestEvent ∷ Event
   } deriving (Functor)
 makeLenses ''RunQuestResult
 
 data QuestStatus = QuestInProgress Double | QuestHasEnded
 
 data QuestResult = QuestResult
-  { _quest_status_ ∷ QuestStatus
-  , _quest_event_ ∷ Event
+  { questStatus ∷ QuestStatus
+  , questEvent ∷ Event
   }
-makeLenses ''QuestResult
 
 type InitialQuestRunner s = Rand StdGen (InitialQuestResult s)
 type IntroQuestRunner s = ReaderT s (Rand StdGen) Event
-type StatusQuestRunner s = Reader s Event
+type GetStatusQuestRunner s = Reader s Event
 type ProgressToMilestoneQuestRunner s = ReaderT s (Rand StdGen) Event
 type AttainedMilestoneQuestRunner s = StateT s (Rand StdGen) QuestResult
 
