@@ -234,14 +234,7 @@ main_menu =
               (show $ habit ^. difficulty)
               (show $ habit ^. importance)
 
-    getAndRunStory run = do
-      story ← run
-      printer ← liftIO byteStringMakerFromEnvironment
-      story
-        |> renderStoryToChunks
-        |> chunksToByteStrings printer
-        |> traverse_ BS.putStr
-        |> liftIO
+    getAndRunStory = (>>= (printEvent >>> liftIO))
 
 data Configuration = Configuration
   { hostname ∷ String

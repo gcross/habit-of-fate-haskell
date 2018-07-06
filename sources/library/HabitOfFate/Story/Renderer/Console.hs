@@ -20,10 +20,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Story.Renderer.Console (renderStoryToChunks) where
+module HabitOfFate.Story.Renderer.Console (printEvent) where
 
 import HabitOfFate.Prelude
 
+import qualified Data.ByteString as BS
 import Data.Void
 import Rainbow
 
@@ -113,3 +114,12 @@ renderStoryToChunks paragraphs =
             render_pending_length_ += olength word
           )
         go _ (SubstitutionP sub) = absurd sub
+
+printEvent ∷ Event → IO ()
+printEvent event = do
+  printer ← liftIO byteStringMakerFromEnvironment
+  event
+    |> renderStoryToChunks
+    |> chunksToByteStrings printer
+    |> traverse_ BS.putStr
+    |> liftIO
