@@ -77,6 +77,16 @@ passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password account =
   verifyPassword (encodeUtf8 password) (encodeUtf8 $ account ^. password_)
 
+getAccountStatus ∷ Account → Event
+getAccountStatus account =
+  maybe
+    ["No quest is active"]
+    (runCurrentQuest run)
+    (account ^. maybe_current_quest_state_)
+  where
+   run ∷ ∀ s. Quest s → s → Event
+   run quest quest_state = runReader (questStatus quest) quest_state
+
 runAccount ∷ State Account Event
 runAccount = do
   maybe_current_quest_state ← use maybe_current_quest_state_
@@ -142,11 +152,11 @@ runAccount = do
                     pure $ result ^. quest_event_
 
               run ∷ ∀ s. Quest s → s → State Account Event
-              run quest@(Quest quest_prism _ _ _) quest_state
+              run quest quest_state
                 | stored_credits ^. successes_ > 0 =
                     spend
                       quest
-                      (^. re quest_prism)
+                      (^. re (questPrism quest))
                       quest_state
                       successes_
                       (to progressToMilestones . success_)
@@ -154,14 +164,14 @@ runAccount = do
                 | stored_credits ^. failures_ > 0 =
                     spend
                       quest
-                      (^. re quest_prism)
+                      (^. re (questPrism quest))
                       quest_state
                       failures_
                       (to progressToMilestones . failure_)
                       (to attainedMilestones . failure_)
                 | otherwise = pure []
 
-          runCurrentQuest current_quest_state run
+          runCurrentQuest run current_quest_state
 
 data HabitsToMark = HabitsToMark
   { _succeeded ∷ [UUID]

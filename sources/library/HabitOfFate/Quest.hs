@@ -52,6 +52,7 @@ data QuestResult = QuestResult
 makeLenses ''QuestResult
 
 type InitialQuestRunner s = Rand StdGen (InitialQuestResult s)
+type StatusQuestRunner s = Reader s Event
 type ProgressToMilestoneQuestRunner s = ReaderT s (Rand StdGen) Event
 type AttainedMilestoneQuestRunner s = StateT s (Rand StdGen) QuestResult
 

@@ -41,6 +41,7 @@ makePrisms ''CurrentQuestState
 data Quest s = Quest
   { questPrism ∷ Prism' CurrentQuestState s
   , questStarter ∷ InitialQuestRunner s
+  , questStatus ∷ StatusQuestRunner s
   , progressToMilestones ∷ Tagged (ProgressToMilestoneQuestRunner s)
   , attainedMilestones ∷ Tagged (AttainedMilestoneQuestRunner s)
   }
@@ -53,6 +54,7 @@ quests =
      Quest
        _Forest
        Forest.start
+       Forest.runStatus
        (Tagged
          (Success (Forest.runProgressToSuccessMilestone))
          (Failure Forest.runProgressToFailureMilestone)
@@ -65,8 +67,8 @@ quests =
 
 type RunCurrentQuestResult = RunQuestResult CurrentQuestState
 
-runCurrentQuest ∷ CurrentQuestState → (∀ s. Quest s → s → α) → α
-runCurrentQuest current_quest_state f =
+runCurrentQuest ∷ (∀ s. Quest s → s → α) → CurrentQuestState → α
+runCurrentQuest f current_quest_state =
   foldr
     (\(WrappedQuest quest) rest →
       case current_quest_state ^? (questPrism quest) of

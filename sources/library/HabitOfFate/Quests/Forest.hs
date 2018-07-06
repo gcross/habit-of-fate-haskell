@@ -256,8 +256,29 @@ builds an alter to you out of gratitude.
 |]
 
 --------------------------------------------------------------------------------
+------------------------------------ Status ------------------------------------
+--------------------------------------------------------------------------------
+
+looking_for_herb_story = [s_fixed|
+[Susie] continues to search in the dark for an [Illsbane] plant.
+|]
+
+returning_home_story = [s_fixed|
+An [Illsbane] plant in hand, [Susie] continues home.
+|]
+
+
+--------------------------------------------------------------------------------
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
+
+runStatus ∷ StatusQuestRunner State
+runStatus = do
+  substitutions ← view substitutions_
+  herb_found ← view herb_found_
+  pure $ if herb_found
+    then substitute substitutions returning_home_story
+    else substitute substitutions looking_for_herb_story
 
 runProgressToSuccessMilestone ∷ ProgressToMilestoneQuestRunner State
 runProgressToSuccessMilestone = do
