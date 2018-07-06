@@ -132,7 +132,7 @@ parseAtom ∷ Parser Atom
 parseAtom = do
   maybe_case_ ← (lookAhead letter <&> (getCase >>> Just)) <|> pure Nothing
   (try $ do
-    _ ← char 'a'
+    _ ← (char 'a' <|> char 'A')
     _ ← optional $ char 'n'
     _ ← many1 <<< choice $ map char " \t\r\n"
     parseSubstitutionAtom HasArticle maybe_case_
