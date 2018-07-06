@@ -890,6 +890,11 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           <$> (Successes <$> markHabits succeeded difficulty (stored_credits_ . successes_))
           <*> (Failures  <$> markHabits failed    importance (stored_credits_ . failures_ ))
        ) >>= returnJSON ok200
+--------------------------------- Quest Status ---------------------------------
+    Scotty.get "/api/status" <<< apiReader $
+      ask
+      >>=
+      (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       account ← get

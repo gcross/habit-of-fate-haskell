@@ -216,14 +216,8 @@ main_menu =
       credits ← getCredits
       liftIO $ putStrLn [i|    Success credits: #{credits ^. successes_}|]
       liftIO $ putStrLn [i|    Failure credits: #{credits ^. failures_}|]
-  ,interaction 'r' "Run game." $ do
-      story ← runGame
-      printer ← liftIO byteStringMakerFromEnvironment
-      story
-        |> renderStoryToChunks
-        |> chunksToByteStrings printer
-        |> traverse_ BS.putStr
-        |> liftIO
+  ,interaction 'r' "Run game." $ getAndRunStory runGame
+  ,interaction 's' "Get quest status." $ getAndRunStory getQuestStatus
   ]
   where
     scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
@@ -239,6 +233,15 @@ main_menu =
               (habit ^. name)
               (show $ habit ^. difficulty)
               (show $ habit ^. importance)
+
+    getAndRunStory run = do
+      story ← run
+      printer ← liftIO byteStringMakerFromEnvironment
+      story
+        |> renderStoryToChunks
+        |> chunksToByteStrings printer
+        |> traverse_ BS.putStr
+        |> liftIO
 
 data Configuration = Configuration
   { hostname ∷ String

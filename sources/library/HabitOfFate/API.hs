@@ -269,6 +269,13 @@ markHabits success_habits failure_habits = do
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
+getQuestStatus ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Event
+getQuestStatus = do
+  response ← request GET "status"
+  case responseStatusCode response of
+    200 → response |> responseBody |> decodeUtf8 |> parseEventFromText
+    code → throwM $ UnexpectedStatus [200] code
+
 runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Event
 runGame = do
   response ← request POST "run"
