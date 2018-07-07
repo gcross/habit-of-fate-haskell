@@ -67,6 +67,7 @@ library
                      , HabitOfFate.Habit
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
+                     , HabitOfFate.Proofread
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
@@ -123,6 +124,13 @@ executable habit-test-server
                      , base
                      , warp
                      , warp-tls
+  default-language:    Haskell2010
+
+executable proofread
+  hs-source-dirs:      sources/executables
+  main-is:             proofread.hs
+  build-depends:       habit-of-fate
+                     , base
   default-language:    Haskell2010
 
 test-suite test

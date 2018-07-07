@@ -38,9 +38,11 @@ import HabitOfFate.Prelude hiding (State)
 import Control.Monad.Random
 
 import HabitOfFate.Credits
+import HabitOfFate.Proofread
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
+import HabitOfFate.Story.Renderer.Console
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
@@ -69,16 +71,18 @@ not live through the night unless [Susie] could find <introduce>an
 other choice.
 |]
 
+test_substitutions ∷ Substitutions
+test_substitutions =
+  mapFromList
+    [ ( "Susie", Gendered "Sally" Female )
+    , ( "Tommy", Gendered "Mary" Female )
+    , ( "Illsbane", Gendered "Tigerlamp" Neuter )
+    ]
+
 newState ∷ InitialQuestRunner State
 newState = do
-  let substitutions =
-        mapFromList
-          [ ( "Susie", Gendered "Sally" Female )
-          , ( "Tommy", Gendered "Mary" Female )
-          , ( "Illsbane", Gendered "Tigerlamp" Neuter )
-          ]
   InitialQuestResult
-    <$> pure (State substitutions False)
+    <$> pure (State test_substitutions False)
     <*> (Credits
           <$> (Successes <$> numberUntilEvent 5)
           <*> (Failures <$> numberUntilEvent 1)
@@ -316,3 +320,39 @@ runAttainedFailureMilestone = do
   pure $ QuestResult QuestHasEnded $ substitute substitutions $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_happened_paragraphs_
+
+--------------------------------------------------------------------------------
+--------------------------------- Proofreading ---------------------------------
+--------------------------------------------------------------------------------
+
+proofread ∷ IO ()
+proofread = do
+  printQuestBanner "Forest"
+  newline
+  printEventBanner "Intro Story"
+  newline
+  printEvent (substitute test_substitutions intro_story)
+  newline
+  printLine '='
+  printCentered '=' "Wandering Stories"
+  forM_ wander_stories $ \wander_story → do
+    printLine '-'
+    printEvent wander_story
+  newline
+  printLine '='
+  printCentered '=' "Found Stories"
+  forM_ found_stories $ \found_story → do
+    printLine '-'
+    printEvent found_story
+  newline
+  printEventBanner "Won Story"
+  newline
+  printEvent (substitute test_substitutions won_story)
+  newline
+  printEventBanner "Looking Status"
+  newline
+  printEvent (substitute test_substitutions looking_for_herb_story)
+  newline
+  printEventBanner "Returning Status"
+  newline
+  printEvent (substitute test_substitutions returning_home_story)

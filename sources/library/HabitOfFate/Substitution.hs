@@ -231,7 +231,9 @@ data SubstitutionException =
   deriving (Eq, Ord, Read, Show)
 instance Exception SubstitutionException
 
-lookupAndApplySubstitution ∷ MonadThrow m ⇒ HashMap Text Gendered → SubstitutionData → m Text
+type Substitutions = HashMap Text Gendered
+
+lookupAndApplySubstitution ∷ MonadThrow m ⇒ Substitutions → SubstitutionData → m Text
 lookupAndApplySubstitution table s = do
   gendered@(Gendered name _) ←
     maybe
