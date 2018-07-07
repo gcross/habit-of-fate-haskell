@@ -76,6 +76,7 @@ library
                      , HabitOfFate.Story.Parser.Quote
                      , HabitOfFate.Story.Parser.XML
                      , HabitOfFate.Story.Renderer.Console
+                     , HabitOfFate.Story.Renderer.HTML
                      , HabitOfFate.Story.Renderer.XML
                      , HabitOfFate.Substitution
                      , HabitOfFate.Tag

@@ -66,6 +66,7 @@ import Text.Blaze.Html (Html, toHtml)
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import Text.Cassius (Css, cassius, renderCss)
 import Text.Hamlet (hamlet)
+import Text.XML
 import Web.Cookie
 import Web.Scotty
   ( ActionM
@@ -86,6 +87,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Story
+import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
 import Paths_habit_of_fate (getDataFileName)
@@ -227,6 +229,7 @@ valueOrRedirectToLogin = maybe (Scotty.redirect "/login") pure
 setContent ∷ Content → ActionM ()
 setContent NoContent = pure ()
 setContent (TextContent t) = Scotty.text t
+setContent (TextContentAsHTML t) = Scotty.html t
 setContent (HtmlContent h) = h |> toHtml |> renderHtml |> decodeUtf8 |> Scotty.html
 setContent (JSONContent j) = Scotty.json j
 
@@ -243,6 +246,7 @@ data ProgramResult = ProgramRedirectsTo Lazy.Text | ProgramResult Status Content
 data Content =
     NoContent
   | TextContent Lazy.Text
+  | TextContentAsHTML Lazy.Text
   | HtmlContent Html
   | ∀ α. ToJSON α ⇒ JSONContent α
 
@@ -251,6 +255,9 @@ returnNothing s = return $ ProgramResult s NoContent
 
 returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
 returnLazyText s = TextContent >>> ProgramResult s >>> return
+
+returnLazyTextAsHTML ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
+returnLazyTextAsHTML s = TextContentAsHTML >>> ProgramResult s >>> return
 
 returnText ∷ Monad m ⇒ Status → Text → m ProgramResult
 returnText s = view (from strict) >>> returnLazyText s
@@ -888,6 +895,30 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       ask
       >>=
       (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
+    Scotty.get "/status" <<< wwwReader $ do
+      ask
+      >>=
+      (
+        getAccountStatus
+        >>>
+        renderEventToHTMLNodes
+        >>>
+        (\nodes →
+          Document
+            (Prologue [] Nothing [])
+            (Element "html" mempty
+              [ NodeElement $ Element "head" mempty
+                [ NodeElement $ Element "title" mempty
+                  [NodeContent "Habit of Fate - Quest Status"] ]
+              , NodeElement $ Element "body" mempty nodes ]
+            )
+            []
+        )
+        >>>
+        renderText def
+        >>>
+        returnLazyTextAsHTML ok200
+      )
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       account ← get
@@ -996,6 +1027,26 @@ tbody
 
 .new-index
   width: 40px
+|]
+    addCSS "story" [cassius|
+.bold-text
+  font-weight: bold
+
+.underlined-text
+  text-decoration: underline
+
+.red-text
+  text-decoration-color: red
+
+.blue-text
+  text-decoration-color: blue
+
+.green-text
+  text-decoration-color: green
+
+.introduce-text
+  font-weight: bold
+  text-decoration-color: cyan
 |]
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
