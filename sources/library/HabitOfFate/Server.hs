@@ -729,7 +729,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       <thead>
         <tr>
           <th>
-          <th>
           <th>#
           <th>Name
           <th>Difficulty
@@ -737,18 +736,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       <tbody>
         $forall (n, evenodd, uuid, habit) <- habits_to_display
           <tr class="row #{evenodd}">
-            $if n > 1
-              <td>
-                <form method="post" action="/move/#{show uuid}/#{n - 1}">
-                  <input type="submit" value="↑" class="up">
-            $else
-              <td>
-            $if n < length habits_to_display
-              <td>
-                <form method="post" action="/move/#{show uuid}/#{n + 1}">
-                  <input type="submit" value="↓" class="down">
-            $else
-              <td>
+            <td>
+              <form method="post" action="/move/#{show uuid}">
+                <input type="submit" value="Move To">
+                <input type="text" name="new_index" value="#{n}" class="new-index">
             <td> #{n}.
             <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
             <td class="difficulty"> #{displayScale $ habit ^. difficulty}
@@ -756,15 +747,17 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     <a href="/habits/new">New
 |]
 ---------------------------------- Move Habit ----------------------------------
-    Scotty.post "/move/:habit_id/:new_index" <<< wwwWriter $ do
-      habit_id ← getParam "habit_id"
-      new_index ← getParam "new_index" <&> (\n → n-1)
-      log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
-      old_habits ← use habits_
-      case moveHabitWithIdToIndex habit_id new_index old_habits of
-        Left exc → log [i|Exception moving habit: #{exc}|]
-        Right new_habits → habits_ .= new_habits
-      redirectTo "/"
+    let move = wwwWriter $ do
+          habit_id ← getParam "habit_id"
+          new_index ← getParam "new_index" <&> (\n → n-1)
+          log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
+          old_habits ← use habits_
+          case moveHabitWithIdToIndex habit_id new_index old_habits of
+            Left exc → log [i|Exception moving habit: #{exc}|]
+            Right new_habits → habits_ .= new_habits
+          redirectTo "/"
+    Scotty.post "/move/:habit_id" move
+    Scotty.post "/move/:habit_id/:new_index" move
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
         habitPage habit_id name_error difficulty_error importance_error habit =
@@ -987,13 +980,6 @@ form
   padding: 10px
   width: 600px
 
-.up, .down
-  font-size: 24
-  margin-bottom: -20px
-
-.down
-  margin-left: -20px
-
 table
   border-collapse: collapse
   font-size: 24
@@ -1007,6 +993,9 @@ tbody
     background-color: #c3d0ff
   tr:nth-child(odd)
     background-color: #94aaff
+
+.new-index
+  width: 40px
 |]
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
