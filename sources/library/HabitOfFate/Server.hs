@@ -63,7 +63,7 @@ import Network.HTTP.Types.Status
 import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
-import Text.Blaze.Html5 (Html, toHtml)
+import Text.Blaze.Html5 (Html, (!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Text.Cassius (Css, cassius, renderCss)
@@ -770,44 +770,35 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
         habitPage habit_id name_error difficulty_error importance_error habit =
-          let isSelected ∷ Lens' Habit Scale → Scale → Bool
-              isSelected l scale = habit ^. l == scale
-          in returnHTML ok200 [hamlet|
-<head>
-  <title>Habit of Fate - Editing a Habit
-<body>
-  <form method="post">
-    <div>
-      <table>
-        <tr>
-          <td> Name:
-          <td>
-            <input type="text" name="name" value="#{habit ^. name}"/>
-          <td> #{name_error}
-        <tr>
-          <td> Difficulty:
-          <td>
-            <select name="difficulty" required="true">
-              $forall scale <- scales
-                $if isSelected difficulty scale
-                  <option value="#{show scale}" selected="selected"> #{displayScale scale}
-                $else
-                  <option value="#{show scale}"> #{displayScale scale}
-          <td> #{difficulty_error}
-        <tr>
-          <td> Importance:
-          <td>
-            <select name="importance" required="true">
-              $forall scale <- scales
-                $if isSelected importance scale
-                  <option value="#{show scale}" selected="selected"> #{displayScale scale}
-                $else
-                  <option value="#{show scale}"> #{displayScale scale}
-          <td> #{importance_error}
-    <div>
-      <input type="submit"/>
-      <a href="/habits">Cancel
-|]
+          H.docTypeHtml >>> renderHtml >>> returnLazyTextAsHTML ok200 $ do
+            H.head $
+              H.title $ H.toHtml ("Habit of Fate - Editing a Habit" ∷ Text)
+            H.body $
+              H.form ! A.method "post" $ do
+                H.div $ H.table $ do
+                  H.tr $ do
+                    H.td $ H.toHtml ("Name:" ∷ Text)
+                    H.td $ H.input ! A.type_ "text" ! A.name "name" ! A.value (H.toValue $ habit ^. name)
+                    H.td $ H.toHtml name_error
+                  let generateScaleEntry name value_lens =
+                        H.select ! A.name name ! A.required "true" $
+                          flip foldMap scales $ \scale →
+                            let addSelectedFlag
+                                  | habit ^. value_lens == scale = (! A.selected "selected")
+                                  | otherwise = identity
+                                unselected_option = H.option ! A.value (scale |> show |> H.toValue)
+                            in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
+                  H.tr $ do
+                    H.td $ H.toHtml ("Difficulty:" ∷ Text)
+                    H.td $ generateScaleEntry "difficulty" difficulty
+                    H.td $ H.toHtml difficulty_error
+                  H.tr $ do
+                    H.td $ H.toHtml ("Importance:" ∷ Text)
+                    H.td $ generateScaleEntry "importance" importance
+                    H.td $ H.toHtml importance_error
+                H.div $ do
+                  H.input !  A.type_ "submit"
+                  H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
     Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested habit with id #{habit_id}.|]
