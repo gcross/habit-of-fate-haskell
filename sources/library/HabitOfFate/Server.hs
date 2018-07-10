@@ -756,9 +756,9 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                 <input type="submit" value="Move To">
                 <input type="text" name="new_index" value="#{n}" class="new-index">
             <td> #{n}.
-            <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name}
-            <td class="difficulty"> #{displayScale $ habit ^. difficulty}
-            <td class="importance"> #{displayScale $ habit ^. importance}
+            <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name_}
+            <td class="difficulty"> #{displayScale $ habit ^. difficulty_}
+            <td class="importance"> #{displayScale $ habit ^. importance_}
     <a href="/habits/new">New
 |]
 ---------------------------------- Move Habit ----------------------------------
@@ -781,7 +781,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
               H.div $ H.table $ do
                 H.tr $ do
                   H.td $ H.toHtml ("Name:" ∷ Text)
-                  H.td $ H.input ! A.type_ "text" ! A.name "name" ! A.value (H.toValue $ habit ^. name)
+                  H.td $ H.input ! A.type_ "text" ! A.name "name" ! A.value (H.toValue $ habit ^. name_)
                   H.td $ H.toHtml name_error
                 let generateScaleEntry name value_lens =
                       H.select ! A.name name ! A.required "true" $
@@ -793,11 +793,11 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                           in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
                 H.tr $ do
                   H.td $ H.toHtml ("Difficulty:" ∷ Text)
-                  H.td $ generateScaleEntry "difficulty" difficulty
+                  H.td $ generateScaleEntry "difficulty" difficulty_
                   H.td $ H.toHtml difficulty_error
                 H.tr $ do
                   H.td $ H.toHtml ("Importance:" ∷ Text)
-                  H.td $ generateScaleEntry "importance" importance
+                  H.td $ generateScaleEntry "importance" importance_
                   H.td $ H.toHtml importance_error
               H.div $ do
                 H.input !  A.type_ "submit"
@@ -883,8 +883,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
             value_lens <.= old_value + increment
       log $ [i|Marking #{marks ^. succeeded} successes and #{marks ^. failed} failures.|]
       (Credits
-          <$> (Successes <$> markHabits succeeded difficulty (stored_credits_ . successes_))
-          <*> (Failures  <$> markHabits failed    importance (stored_credits_ . failures_ ))
+          <$> (Successes <$> markHabits succeeded difficulty_ (stored_credits_ . successes_))
+          <*> (Failures  <$> markHabits failed    importance_ (stored_credits_ . failures_ ))
        ) >>= returnJSON ok200
 --------------------------------- Quest Status ---------------------------------
     Scotty.get "/api/status" <<< apiReader $

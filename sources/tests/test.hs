@@ -330,8 +330,8 @@ main = defaultMain $ testGroup "All Tests"
                 markHabits [test_habit_id] [test_habit_id_2]
                 credits @(Credits actual_successes actual_failures) ← getCredits
                 credits |> show |> putStrLn |> liftIO
-                let expected_successes = test_habit ^. difficulty |> scaleFactor
-                    expected_failures = test_habit_2 ^. importance |> scaleFactor
+                let expected_successes = test_habit ^. difficulty_ |> scaleFactor
+                    expected_failures = test_habit_2 ^. importance_ |> scaleFactor
                 liftIO $ do
                   assertBool
                     ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
@@ -407,9 +407,9 @@ main = defaultMain $ testGroup "All Tests"
               requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
               $
               setRequestBodyURLEncoded
-                [ ("name", habit ^. name . re utf8)
-                , ("importance", habit ^. importance . to (show >>> BS8.pack))
-                , ("difficulty", habit ^. difficulty . to (show >>> BS8.pack))
+                [ ("name", habit ^. name_ . re utf8)
+                , ("importance", habit ^. importance_ . to (show >>> BS8.pack))
+                , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
                 ]
             readHabitsIn doc = liftIO $ do
               let rows = doc ^.. root ./ named "body" ./  named "div" ./ named "table" ./ named "tbody" ./ named "tr"

@@ -163,17 +163,15 @@ data Habit = Habit
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
-name ∷ Lens' Habit Text
-name = lens _name_ (\old new_name → old { _name_ = new_name })
+name_ ∷ Lens' Habit Text
+name_ = lens _name_ (\old new_name → old { _name_ = new_name })
 
-difficulty ∷ Lens' Habit Scale
-difficulty =
+difficulty_, importance_ ∷ Lens' Habit Scale
+difficulty_ =
   lens
     (_difficulty_ >>> unwrapDifficulty)
     (\old new_scale → old { _difficulty_ = Difficulty new_scale })
-
-importance ∷ Lens' Habit Scale
-importance =
+importance_ =
   lens
     (_importance_ >>> unwrapImportance)
     (\old new_scale → old { _importance_ = Importance new_scale })

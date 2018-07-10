@@ -198,7 +198,7 @@ main_menu =
           return
       habit ← Habit
         <$> (pack <$>
-               promptWithDefault readNonEmpty (old_habit ^. name . to unpack) "What is the name of the habit?")
+               promptWithDefault readNonEmpty (old_habit ^. name_ . to unpack) "What is the name of the habit?")
         <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
         <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
       void $ putHabit habit_id habit
@@ -230,9 +230,9 @@ main_menu =
           else forM_ habits_to_display $ \(uuid, habit) →
             printf "%s %s [+%s/-%s]\n"
               (show uuid)
-              (habit ^. name)
-              (show $ habit ^. difficulty)
-              (show $ habit ^. importance)
+              (habit ^. name_)
+              (show $ habit ^. difficulty_)
+              (show $ habit ^. importance_)
 
     getAndRunStory = (>>= (printEvent >>> liftIO))
 
