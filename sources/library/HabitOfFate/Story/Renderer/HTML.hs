@@ -18,39 +18,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Story.Renderer.HTML (renderEventToHTMLNodes) where
+module HabitOfFate.Story.Renderer.HTML (renderEventToHTML) where
 
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
 import Data.Void
+import Text.Blaze.Html ((!))
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 import Text.XML
 
 import HabitOfFate.Story
 
-renderParagraphToNodes ∷ Paragraph → [Node]
-renderParagraphToNodes paragraph =
-  case recurse paragraph of
-    [] → []
-    nodes → [NodeElement $ Element "p" mempty nodes]
+renderEventToHTML ∷ Event → H.Html
+renderEventToHTML = foldMap (go >>> H.p)
   where
-    recurse ∷ Paragraph → [Node]
-    recurse (StyleP style p)
-      | null nested = []
-      | otherwise =
-          let cls = case style of
-                Bold → "bold-text"
-                Underline → "underlined-text"
-                Color Red → "red-text"
-                Color Blue → "blue-text"
-                Color Green → "green-text"
-                Introduce → "introduce-text"
-          in Element "span" (mapFromList [("class", cls)]) nested |> NodeElement |> singleton
-      where
-        nested = recurse p
-    recurse (MergedP children) = concatMap recurse children
-    recurse (TextP t) = [NodeContent t]
-    recurse (SubstitutionP sub) = absurd sub
-
-renderEventToHTMLNodes ∷ Event → [Node]
-renderEventToHTMLNodes = concatMap renderParagraphToNodes
+    go ∷ Paragraph → H.Html
+    go (StyleP style p) = H.span ! A.class_ cls $ go p
+     where
+      cls = case style of
+       Bold → "bold-text"
+       Underline → "underlined-text"
+       Color Red → "red-text"
+       Color Blue → "blue-text"
+       Color Green → "green-text"
+       Introduce → "introduce-text"
+    go (MergedP children) = foldMap go children
+    go (TextP t) = H.toHtml t
+    go (SubstitutionP sub) = absurd sub

@@ -62,8 +62,10 @@ import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
-import Text.Blaze.Html (Html, toHtml)
-import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import Text.Blaze.Html.Renderer.Text (renderHtml)
+import Text.Blaze.Html5 (Html, toHtml)
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 import Text.Cassius (Css, cassius, renderCss)
 import Text.Hamlet (hamlet)
 import Text.XML
@@ -128,7 +130,7 @@ data Environment = Environment
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
 
-scottyHTML = ($ renderPageURL) >>> renderHtml >>> decodeUtf8 >>> Scotty.html
+scottyHTML = ($ renderPageURL) >>> renderHtml >>> Scotty.html
 scottyCSS = ($ renderPageURL) >>> renderCss >>> Scotty.text
 
 addCSS ∷ String → ((Page → Text) → Css) → Scotty.ScottyM ()
@@ -230,7 +232,7 @@ setContent ∷ Content → ActionM ()
 setContent NoContent = pure ()
 setContent (TextContent t) = Scotty.text t
 setContent (TextContentAsHTML t) = Scotty.html t
-setContent (HtmlContent h) = h |> toHtml |> renderHtml |> decodeUtf8 |> Scotty.html
+setContent (HtmlContent h) = h |> toHtml |> renderHtml |> Scotty.html
 setContent (JSONContent j) = Scotty.json j
 
 setStatusAndLog ∷ Status → ActionM ()
@@ -896,29 +898,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       >>=
       (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
     Scotty.get "/status" <<< wwwReader $ do
-      ask
-      >>=
-      (
-        getAccountStatus
-        >>>
-        renderEventToHTMLNodes
-        >>>
-        (\nodes →
-          Document
-            (Prologue [] Nothing [])
-            (Element "html" mempty
-              [ NodeElement $ Element "head" mempty
-                [ NodeElement $ Element "title" mempty
-                  [NodeContent "Habit of Fate - Quest Status"] ]
-              , NodeElement $ Element "body" mempty nodes ]
-            )
-            []
-        )
-        >>>
-        renderText def
-        >>>
-        returnLazyTextAsHTML ok200
-      )
+      event ← ask <&> getAccountStatus
+      renderHtml >>> returnLazyTextAsHTML ok200 $
+        H.docTypeHtml $ do
+          H.head $
+            H.title $ H.toHtml ("Habit of Fate - Quest Status" ∷ Text)
+          H.body $
+            renderEventToHTML event
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       account ← get
