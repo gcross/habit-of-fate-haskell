@@ -277,6 +277,12 @@ renderPageURL HabitsPage = "/habits"
 returnHTML ∷ Monad m ⇒ Status → ((Page → Text) → Html) → m ProgramResult
 returnHTML s = ($ renderPageURL) >>> HtmlContent >>> ProgramResult s >>> return
 
+renderAndReturnHtml ∷  Monad m ⇒ Text → Html → m ProgramResult
+renderAndReturnHtml title body = renderHtml >>> returnLazyTextAsHTML ok200 $
+  H.docTypeHtml $ do
+    H.head $ H.title $ toHtml title
+    H.body body
+
 logRequest ∷ ActionM ()
 logRequest = do
   r ← Scotty.request
@@ -770,35 +776,32 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
         habitPage habit_id name_error difficulty_error importance_error habit =
-          H.docTypeHtml >>> renderHtml >>> returnLazyTextAsHTML ok200 $ do
-            H.head $
-              H.title $ H.toHtml ("Habit of Fate - Editing a Habit" ∷ Text)
-            H.body $
-              H.form ! A.method "post" $ do
-                H.div $ H.table $ do
-                  H.tr $ do
-                    H.td $ H.toHtml ("Name:" ∷ Text)
-                    H.td $ H.input ! A.type_ "text" ! A.name "name" ! A.value (H.toValue $ habit ^. name)
-                    H.td $ H.toHtml name_error
-                  let generateScaleEntry name value_lens =
-                        H.select ! A.name name ! A.required "true" $
-                          flip foldMap scales $ \scale →
-                            let addSelectedFlag
-                                  | habit ^. value_lens == scale = (! A.selected "selected")
-                                  | otherwise = identity
-                                unselected_option = H.option ! A.value (scale |> show |> H.toValue)
-                            in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
-                  H.tr $ do
-                    H.td $ H.toHtml ("Difficulty:" ∷ Text)
-                    H.td $ generateScaleEntry "difficulty" difficulty
-                    H.td $ H.toHtml difficulty_error
-                  H.tr $ do
-                    H.td $ H.toHtml ("Importance:" ∷ Text)
-                    H.td $ generateScaleEntry "importance" importance
-                    H.td $ H.toHtml importance_error
-                H.div $ do
-                  H.input !  A.type_ "submit"
-                  H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
+          renderAndReturnHtml "Editing a Habit" $
+            H.form ! A.method "post" $ do
+              H.div $ H.table $ do
+                H.tr $ do
+                  H.td $ H.toHtml ("Name:" ∷ Text)
+                  H.td $ H.input ! A.type_ "text" ! A.name "name" ! A.value (H.toValue $ habit ^. name)
+                  H.td $ H.toHtml name_error
+                let generateScaleEntry name value_lens =
+                      H.select ! A.name name ! A.required "true" $
+                        flip foldMap scales $ \scale →
+                          let addSelectedFlag
+                                | habit ^. value_lens == scale = (! A.selected "selected")
+                                | otherwise = identity
+                              unselected_option = H.option ! A.value (scale |> show |> H.toValue)
+                          in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
+                H.tr $ do
+                  H.td $ H.toHtml ("Difficulty:" ∷ Text)
+                  H.td $ generateScaleEntry "difficulty" difficulty
+                  H.td $ H.toHtml difficulty_error
+                H.tr $ do
+                  H.td $ H.toHtml ("Importance:" ∷ Text)
+                  H.td $ generateScaleEntry "importance" importance
+                  H.td $ H.toHtml importance_error
+              H.div $ do
+                H.input !  A.type_ "submit"
+                H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
     Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested habit with id #{habit_id}.|]
@@ -890,12 +893,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
     Scotty.get "/status" <<< wwwReader $ do
       event ← ask <&> getAccountStatus
-      renderHtml >>> returnLazyTextAsHTML ok200 $
-        H.docTypeHtml $ do
-          H.head $
-            H.title $ H.toHtml ("Habit of Fate - Quest Status" ∷ Text)
-          H.body $
-            renderEventToHTML event
+      renderAndReturnHtml "Quest Status" $ renderEventToHTML event
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       account ← get
