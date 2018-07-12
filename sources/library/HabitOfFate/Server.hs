@@ -277,11 +277,21 @@ renderPageURL HabitsPage = "/habits"
 returnHTML ∷ Monad m ⇒ Status → ((Page → Text) → Html) → m ProgramResult
 returnHTML s = ($ renderPageURL) >>> HtmlContent >>> ProgramResult s >>> return
 
-renderAndReturnHtml ∷  Monad m ⇒ Text → Html → m ProgramResult
-renderAndReturnHtml title body = renderHtml >>> returnLazyTextAsHTML ok200 $
-  H.docTypeHtml $ do
-    H.head $ H.title $ toHtml title
-    H.body body
+renderHTMLUsingTemplate ∷  Text → [Text] → Html → Lazy.Text
+renderHTMLUsingTemplate title stylesheets body =
+  renderHtml $
+    H.docTypeHtml $ do
+      H.head $
+        (H.title $ toHtml title)
+        ⊕
+        mconcat
+          [ H.link
+              ! A.rel "stylesheet"
+              ! A.type_ "text/css"
+              ! A.href (H.toValue $ mconcat ["css/", stylesheet, ".css"])
+          | stylesheet ← stylesheets
+          ]
+      H.body body
 
 logRequest ∷ ActionM ()
 logRequest = do
@@ -604,28 +614,35 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                       (_, "") → "Did not type the password twice."
                       _ | password1 == password2 → ""
                       _ | otherwise → "The passwords did not agree."
-          scottyHTML [hamlet|
-<head>
-  <title>Habit of Fate - Account Creation
-  <link rel="stylesheet" type="text/css" href="css/common.css"/>
-  <link rel="stylesheet" type="text/css" href="css/enter.css"/>
-<body>
-  <div class="enter">
-    <div class="tabs">
-      <span class="inactive"><a href="/login">Login</a>
-      <span class="active"> Create
-    <form method="post">
-      <div>
-        <div class="fields"> <input type="text" name="username" value="#{username_}" placeholder="Username">
-        <div class="fields"> <input type="password" name="password1" placeholder="Password">
-        <div class="fields"> <input type="password" name="password2" placeholder="Password (again)">
-      $if (not . onull) error_message
-        <div id="error-message">#{error_message}
-      <div>
-        <input class="submit" type="submit" formmethod="post" value="Create Account">
-|]
-    Scotty.get "/create" createAccountAction
-    Scotty.post "/create" createAccountAction
+          renderHTMLUsingTemplate "Habit of Fate - Account Creation" ["common", "enter"] >>> Scotty.html $
+            H.div ! A.class_ "enter" $ do
+              H.div ! A.class_ "tabs" $ do
+                H.span ! A.class_ "inactive" $ H.a ! A.href "/login" $ H.toHtml ("Login" ∷ Text)
+                H.span ! A.class_ "active" $ H.toHtml ("Create" ∷ Text)
+              H.form ! A.method "post" $ do
+                H.div $ do
+                  let enter type_ name placeholder x =
+                        x ! A.type_ type_
+                          ! A.name name
+                          ! A.placeholder placeholder
+                  foldMap
+                    (\setAttributes →
+                      H.input |> setAttributes |> (H.div ! A.class_ "fields")
+                    )
+                    [ enter "text" "username" "Username" >>> (! A.value (H.toValue username_))
+                    , enter "password" "password1" "Password"
+                    , enter "password" "password2" "Password (again)"
+                    ]
+                  when ((not <<< onull) error_message) $
+                    H.div ! A.id "error-message" $ H.toHtml error_message
+                  H.div $
+                    H.input
+                      ! A.class_ "submit"
+                      ! A.type_ "submit"
+                      ! A.formmethod "post"
+                      ! A.value "Create Account"
+    Scotty.get "/create" $ createAccountAction
+    Scotty.post "/create" $ createAccountAction
 ------------------------------------ Login -------------------------------------
     Scotty.post "/api/login" $ do
       logRequest
@@ -776,7 +793,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
         habitPage habit_id name_error difficulty_error importance_error habit =
-          renderAndReturnHtml "Editing a Habit" $
+          renderHTMLUsingTemplate "Habit of Fate - Editing a Habit" [] >>> returnLazyTextAsHTML ok200 $
             H.form ! A.method "post" $ do
               H.div $ H.table $ do
                 H.tr $ do
@@ -891,9 +908,16 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       ask
       >>=
       (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
-    Scotty.get "/status" <<< wwwReader $ do
-      event ← ask <&> getAccountStatus
-      renderAndReturnHtml "Quest Status" $ renderEventToHTML event
+    Scotty.get "/status" <<< wwwReader $
+      (ask <&> getAccountStatus)
+      >>=
+      (
+        renderEventToHTML
+        >>>
+        renderHTMLUsingTemplate "Habit of Fate - Quest Status" []
+        >>>
+        returnLazyTextAsHTML ok200
+      )
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       account ← get
