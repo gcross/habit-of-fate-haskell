@@ -277,7 +277,7 @@ renderPageURL HabitsPage = "/habits"
 returnHTML ∷ Monad m ⇒ Status → ((Page → Text) → Html) → m ProgramResult
 returnHTML s = ($ renderPageURL) >>> HtmlContent >>> ProgramResult s >>> return
 
-renderHTMLUsingTemplate ∷  Text → [Text] → Html → Lazy.Text
+renderHTMLUsingTemplate ∷ Text → [Text] → Html → Lazy.Text
 renderHTMLUsingTemplate title stylesheets body =
   renderHtml $
     H.docTypeHtml $ do
