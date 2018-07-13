@@ -67,7 +67,6 @@ import Text.Blaze.Html5 (Html, (!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Text.Cassius (Css, cassius, renderCss)
-import Text.Hamlet (hamlet)
 import Text.XML
 import Web.Cookie
 import Web.Scotty
@@ -130,13 +129,10 @@ data Environment = Environment
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
 
-scottyHTML = ($ renderPageURL) >>> renderHtml >>> Scotty.html
-scottyCSS = ($ renderPageURL) >>> renderCss >>> Scotty.text
-
-addCSS ∷ String → ((Page → Text) → Css) → Scotty.ScottyM ()
+addCSS ∷ String → ((() → Text) → Css) → Scotty.ScottyM ()
 addCSS name contents = Scotty.get (String.fromString $ "/css/" ⊕ name ⊕ ".css") $ do
   addHeader "Content-Type" "text/css"
-  scottyCSS contents
+  contents |> ($ (\() → "")) |> renderCss |> Scotty.text
 
 --------------------------------------------------------------------------------
 ---------------------------- Shared Scotty Actions -----------------------------
@@ -269,13 +265,6 @@ returnJSON s = JSONContent >>> ProgramResult s >>> return
 
 redirectTo ∷ Monad m ⇒ Lazy.Text → m ProgramResult
 redirectTo = ProgramRedirectsTo >>> return
-
-data Page = HabitsPage
-renderPageURL ∷ Page → Text
-renderPageURL HabitsPage = "/habits"
-
-returnHTML ∷ Monad m ⇒ Status → ((Page → Text) → Html) → m ProgramResult
-returnHTML s = ($ renderPageURL) >>> HtmlContent >>> ProgramResult s >>> return
 
 renderHTMLUsingTemplate ∷ Text → [Text] → Html → Lazy.Text
 renderHTMLUsingTemplate title stylesheets body =
