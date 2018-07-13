@@ -928,14 +928,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
         |> toList
         |> renderEventToXMLText
        )
-------------------------------------- Home -------------------------------------
-    Scotty.get "/home" <<< scottyHTML $ [hamlet|
-<head>
-  <title>Habit of Fate
-<body>
-  <a href="/login">Login
-  <a href="/create">Create
-|]
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 --------------------------------- Style Sheets ---------------------------------
