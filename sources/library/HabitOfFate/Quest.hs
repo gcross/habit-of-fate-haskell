@@ -50,9 +50,9 @@ data QuestResult = QuestResult
   }
 
 type InitialQuestRunner s = Rand StdGen (InitialQuestResult s)
-type IntroQuestRunner s = ReaderT s (Rand StdGen) Event
-type GetStatusQuestRunner s = Reader s Event
-type ProgressToMilestoneQuestRunner s = ReaderT s (Rand StdGen) Event
+type IntroQuestRunner s = s → (Rand StdGen) Event
+type GetStatusQuestRunner s = s → Event
+type ProgressToMilestoneQuestRunner s = s → (Rand StdGen) Event
 type AttainedMilestoneQuestRunner s = StateT s (Rand StdGen) QuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α

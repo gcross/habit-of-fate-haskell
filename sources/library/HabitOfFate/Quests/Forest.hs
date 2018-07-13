@@ -89,9 +89,7 @@ newState = do
         )
 
 intro ∷ IntroQuestRunner State
-intro = do
-  substitutions ← view substitutions_
-  pure (substitute substitutions intro_story)
+intro s = pure (substitute (s ^. substitutions_) intro_story)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -281,23 +279,20 @@ An [Illsbane] plant in hand, [Susie] continues home.
 --------------------------------------------------------------------------------
 
 runGetStatus ∷ GetStatusQuestRunner State
-runGetStatus = do
-  substitutions ← view substitutions_
-  herb_found ← view herb_found_
-  pure $ if herb_found
-    then substitute substitutions returning_home_story
-    else substitute substitutions looking_for_herb_story
+runGetStatus s = substitute (s ^. substitutions_) story
+ where
+  story
+   | s ^. herb_found_ = returning_home_story
+   | otherwise = looking_for_herb_story
 
 runProgressToSuccessMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToSuccessMilestone = do
-  substitutions ← view substitutions_
-  substitute substitutions <$> uniform wander_stories
+runProgressToSuccessMilestone s =
+  uniform wander_stories <&> substitute (s ^. substitutions_)
 
 runProgressToFailureMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToFailureMilestone = do
-  substitutions ← view substitutions_
+runProgressToFailureMilestone s = do
   failure_event ← uniform failure_stories
-  pure $ substitute substitutions $
+  pure $ substitute (s ^. substitutions_) $
     failure_event ^. failure_common_paragraphs_
       ⊕ failure_event ^. failure_averted_paragraphs_
 

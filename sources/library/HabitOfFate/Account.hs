@@ -85,7 +85,7 @@ getAccountStatus account =
     (account ^. maybe_current_quest_state_)
   where
    run ∷ ∀ s. Quest s → s → Event
-   run quest quest_state = runReader (questGetStatus quest) quest_state
+   run quest quest_state = questGetStatus quest quest_state
 
 runAccount ∷ State Account Event
 runAccount = do
@@ -97,7 +97,7 @@ runAccount = do
             WrappedQuest quest ← uniform quests
             initial_quest_result ← questNewState quest
             let quest_state = initialQuestState initial_quest_result
-            intro_event ← runReaderT (questIntro quest) quest_state
+            intro_event ← questIntro quest quest_state
             pure
               ( quest_state ^. re (questPrism quest)
               , initialQuestCredits initial_quest_result
@@ -128,7 +128,7 @@ runAccount = do
                     let (event, new_rng) =
                           quest
                             |> (^. partial_lens_)
-                            |> flip runReaderT quest_state
+                            |> ($ quest_state)
                             |> flip runRand rng
                     rng_ .= new_rng
                     pure event
