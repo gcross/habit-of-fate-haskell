@@ -691,25 +691,24 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                       else do
                         logIO [i|Incorrect password for #{username_}.|]
                         pure "No account has that username."
-          scottyHTML [hamlet|
-<head>
-  <title>Habit of Fate - Login
-  <link rel="stylesheet" type="text/css" href="css/common.css"/>
-  <link rel="stylesheet" type="text/css" href="css/enter.css"/>
-<body>
-  <div class="enter">
-    <div class="tabs">
-      <span class="active"> Login
-      <span class="inactive"><a href="/create">Create</a>
-    <form method="post">
-      <div>
-        <div class="fields"> <input type="text" name="username" value="#{username_}" placeholder="Username">
-        <div class="fields"> <input type="password" name="password" placeholder="Password">
-      $if (not . onull) error_message
-        <div id="error-message">#{error_message}
-      <div>
-        <input class="submit" type="submit" formmethod="post" value="Login">
-|]
+          renderHTMLUsingTemplate "Habit of Fate - Login" ["common", "enter"] >>> Scotty.html $
+            H.div ! A.class_ "enter" $ do
+              H.div ! A.class_ "tabs" $ do
+                H.span ! A.class_ "active" $ H.toHtml ("Login" ∷ Text)
+                H.span ! A.class_ "inactive" $ H.a ! A.href "/create" $ H.toHtml ("Create" ∷ Text)
+              H.form ! A.method "post" $ do
+                basicTextForm >>> H.div $
+                  [ basicTextInput "text" "username" "Username" >>> (! A.value (H.toValue username_))
+                  , basicTextInput "password" "password" "Password"
+                  ]
+                when ((not <<< onull) error_message) $
+                  H.div ! A.id "error-message" $ H.toHtml error_message
+                H.div $
+                  H.input
+                    ! A.class_ "submit"
+                    ! A.type_ "submit"
+                    ! A.formmethod "post"
+                    ! A.value "Login"
     Scotty.get "/login" loginAction
     Scotty.post "/login" loginAction
 ------------------------------------ Logout ------------------------------------
