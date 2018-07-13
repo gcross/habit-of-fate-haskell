@@ -293,6 +293,12 @@ renderHTMLUsingTemplate title stylesheets body =
           ]
       H.body body
 
+renderHTMLUsingTemplateAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m ProgramResult
+renderHTMLUsingTemplateAndReturn title stylesheets status =
+  renderHTMLUsingTemplate title stylesheets
+  >>>
+  returnLazyTextAsHTML status
+
 logRequest ∷ ActionM ()
 logRequest = do
   r ← Scotty.request
@@ -745,41 +751,33 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       >>=
       Scotty.redirect
     Scotty.get "/habits" <<< wwwReader $ do
-      habits_to_display ←
-        view (habits_ . habit_list_)
-        <&>
-        zipWith
-          (\n (uuid, habit) →
-             (n, if even n then ("even" ∷ Text) else "odd", uuid, habit))
-          [(1∷Int)..]
-      returnHTML ok200 [hamlet|
-<head>
-  <title>Habit of Fate - List of Habits
-  <link rel="stylesheet" type="text/css" href="css/common.css"/>
-  <link rel="stylesheet" type="text/css" href="css/list.css"/>
-<body>
-  <div class="list">
-    <table>
-      <thead>
-        <tr>
-          <th>
-          <th>#
-          <th>Name
-          <th>Difficulty
-          <th>Importance
-      <tbody>
-        $forall (n, evenodd, uuid, habit) <- habits_to_display
-          <tr class="row #{evenodd}">
-            <td>
-              <form method="post" action="/move/#{show uuid}">
-                <input type="submit" value="Move To">
-                <input type="text" name="new_index" value="#{n}" class="new-index">
-            <td> #{n}.
-            <td class="name"> <a href="/habits/#{show uuid}">#{habit ^. name_}
-            <td class="difficulty"> #{displayScale $ habit ^. difficulty_}
-            <td class="importance"> #{displayScale $ habit ^. importance_}
-    <a href="/habits/new">New
-|]
+      habit_list ← view (habits_ . habit_list_)
+      renderHTMLUsingTemplateAndReturn "Habit of Fate - List of Habits" ["common", "list"] ok200 $
+        H.div ! A.class_ "list" $ do
+          H.table $ do
+            H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance"]
+            H.tbody <<< mconcat $
+              [ H.tr ! A.class_ ("row " ⊕ if n `mod` 2 == 0 then "even" else "odd") $ do
+                  H.td $ H.form ! A.method "post" ! A.action (H.toValue $ "/move/" ⊕ show uuid) $ do
+                    H.input
+                      ! A.type_ "submit"
+                      ! A.value "Move To"
+                    H.input
+                      ! A.type_ "text"
+                      ! A.value (H.toValue n)
+                      ! A.name "new_index"
+                      ! A.class_ "new-index"
+                  H.td $ H.toHtml (show n ⊕ ".")
+                  H.td ! A.class_ "name" $
+                    H.a ! A.href (H.toValue ("/habits/" ⊕ pack (show uuid) ∷ Text)) $ H.toHtml (habit ^. name_)
+                  let addScaleElement scale_class scale_lens =
+                        H.td ! A.class_ scale_class $ H.toHtml $ displayScale $ habit ^. scale_lens
+                  addScaleElement "difficulty" difficulty_
+                  addScaleElement "importance" importance_
+              | n ← [1∷Int ..]
+              | (uuid, habit) ← habit_list
+              ]
+          H.a ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
 ---------------------------------- Move Habit ----------------------------------
     let move = wwwWriter $ do
           habit_id ← getParam "habit_id"

@@ -187,7 +187,7 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ------------------------------------------------------------------------
-            getHabits >>= (view habit_count >>> (@?= 0) >>> liftIO)
+            getHabits >>= (view habit_count_ >>> (@?= 0) >>> liftIO)
         ------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ------------------------------------------------------------------------
@@ -236,12 +236,12 @@ main = defaultMain $ testGroup "All Tests"
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 deleteHabit test_habit_id >>= ((@?= HabitDeleted) >>> liftIO)
-                getHabits >>= (view habit_count >>> (@?= 0) >>> liftIO)
+                getHabits >>= (view habit_count_ >>> (@?= 0) >>> liftIO)
             ]
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ----------------------------------------------------------------------------
-            getHabits >>= (view habit_count >>> (@?= 0) >>> liftIO)
+            getHabits >>= (view habit_count_ >>> (@?= 0) >>> liftIO)
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ----------------------------------------------------------------------------
