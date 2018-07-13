@@ -223,7 +223,7 @@ main_menu =
     scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
 
     printHabits = do
-      habits_to_display ← getHabits <&> view habit_list
+      habits_to_display ← getHabits <&> view habit_list_
       liftIO $
         if null habits_to_display
           then putStrLn "There are no habits."

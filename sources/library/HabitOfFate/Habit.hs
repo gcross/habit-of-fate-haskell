@@ -186,11 +186,11 @@ data Habits = Habits
 deriveJSON ''Habits
 makeLenses ''Habits
 
-habit_count ∷ Getter Habits Int
-habit_count = habit_id_seq_ . to length
+habit_count_ ∷ Getter Habits Int
+habit_count_ = habit_id_seq_ . to length
 
-habit_list ∷ Getter Habits [(UUID, Habit)]
-habit_list = to $ \habits@(Habits h_map h_id_seq) →
+habit_list_ ∷ Getter Habits [(UUID, Habit)]
+habit_list_ = to $ \habits@(Habits h_map h_id_seq) →
   [ let error_message =
           "Habit id " ⊕ show habit_id ⊕ " was in the sequence but not in the map (habits = " ⊕ show habits ⊕ ")"
     in (habit_id, fromMaybe (error error_message) (lookup habit_id h_map))
@@ -259,7 +259,7 @@ reorderHabitsByIndex indices habits@(Habits _ h_id_seq) =
 _moveHabitWithIdFromToIndex ∷ MonadThrow m ⇒ UUID → Int → Int → Habits → m Habits
 _moveHabitWithIdFromToIndex habit_id old_index new_index habits@(Habits h_map old_h_id_seq) = do
   unless (old_h_id_seq ^? ix old_index == Just habit_id) $ throwM IdPositionMismatch
-  when (new_index < 0 || new_index >= habits ^. habit_count) $ throwM MissingIndex
+  when (new_index < 0 || new_index >= habits ^. habit_count_) $ throwM MissingIndex
   assertValidUUIDSequence $
     if old_index < new_index
       then

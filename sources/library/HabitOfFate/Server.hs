@@ -746,7 +746,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       Scotty.redirect
     Scotty.get "/habits" <<< wwwReader $ do
       habits_to_display ←
-        view (habits_ . habit_list)
+        view (habits_ . habit_list_)
         <&>
         zipWith
           (\n (uuid, habit) →
