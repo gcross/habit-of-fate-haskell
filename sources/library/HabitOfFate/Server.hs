@@ -576,7 +576,18 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                 logIO $ [i|Account "#{username}" successfully created!|]
                 status created201
                 createAndReturnCookie username
-    let createAccountAction = do
+    let basicTextInput type_ name placeholder =
+          (! A.type_ type_)
+          >>>
+          (! A.name name)
+          >>>
+          (! A.placeholder placeholder)
+        basicTextForm =
+          foldMap
+            (\setAttributes →
+              H.input |> setAttributes |> (H.div ! A.class_ "fields")
+            )
+        createAccountAction = do
           logRequest
           username@(Username username_) ← Username <$> paramOrBlank "username"
           password1 ← paramOrBlank "password1"
@@ -620,27 +631,19 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                 H.span ! A.class_ "inactive" $ H.a ! A.href "/login" $ H.toHtml ("Login" ∷ Text)
                 H.span ! A.class_ "active" $ H.toHtml ("Create" ∷ Text)
               H.form ! A.method "post" $ do
-                H.div $ do
-                  let enter type_ name placeholder x =
-                        x ! A.type_ type_
-                          ! A.name name
-                          ! A.placeholder placeholder
-                  foldMap
-                    (\setAttributes →
-                      H.input |> setAttributes |> (H.div ! A.class_ "fields")
-                    )
-                    [ enter "text" "username" "Username" >>> (! A.value (H.toValue username_))
-                    , enter "password" "password1" "Password"
-                    , enter "password" "password2" "Password (again)"
-                    ]
-                  when ((not <<< onull) error_message) $
-                    H.div ! A.id "error-message" $ H.toHtml error_message
-                  H.div $
-                    H.input
-                      ! A.class_ "submit"
-                      ! A.type_ "submit"
-                      ! A.formmethod "post"
-                      ! A.value "Create Account"
+                basicTextForm >>> H.div $
+                  [ basicTextInput "text" "username" "Username" >>> (! A.value (H.toValue username_))
+                  , basicTextInput "password" "password1" "Password"
+                  , basicTextInput "password" "password2" "Password (again)"
+                  ]
+                when ((not <<< onull) error_message) $
+                  H.div ! A.id "error-message" $ H.toHtml error_message
+                H.div $
+                  H.input
+                    ! A.class_ "submit"
+                    ! A.type_ "submit"
+                    ! A.formmethod "post"
+                    ! A.value "Create Account"
     Scotty.get "/create" $ createAccountAction
     Scotty.post "/create" $ createAccountAction
 ------------------------------------ Login -------------------------------------
