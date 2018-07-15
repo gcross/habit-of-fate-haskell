@@ -935,13 +935,9 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
       account ← get
-      let (result, new_account) = runState runAccount account
+      let (event, new_account) = runState runAccount account
       put new_account
-      returnLazyText ok200 $!! (
-        result
-        |> toList
-        |> renderEventToXMLText
-       )
+      event |> renderEventToXMLText |> returnLazyText ok200
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 --------------------------------- Style Sheets ---------------------------------
