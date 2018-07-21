@@ -420,7 +420,7 @@ main = defaultMain $ testGroup "All Tests"
 
               forM (zip [(1∷Int)..] rows) $ \(i, row) → do
                 case row ^.. uniplate . named "td" of
-                  [_, position, name, difficulty, importance] → do
+                  [_, position, name, difficulty, importance, _, _] → do
                     strip (position ^. text) @?= pack (show i ⊕ ".")
                     habit_id_unparsed ←
                       maybe

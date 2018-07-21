@@ -744,7 +744,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       renderHTMLUsingTemplateAndReturn "Habit of Fate - List of Habits" ["common", "list"] ok200 $
         H.div ! A.class_ "list" $ do
           H.table $ do
-            H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance"]
+            H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance", "Success", "Failure"]
             H.tbody <<< mconcat $
               [ H.tr ! A.class_ ("row " ⊕ if n `mod` 2 == 0 then "even" else "odd") $ do
                   H.td $ H.form ! A.method "post" ! A.action (H.toValue $ "/move/" ⊕ show uuid) $ do
@@ -763,6 +763,12 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                         H.td ! A.class_ scale_class $ H.toHtml $ displayScale $ habit ^. scale_lens
                   addScaleElement "difficulty" difficulty_
                   addScaleElement "importance" importance_
+                  let addMarkElement name label =
+                        H.td $
+                          H.form ! A.method "post" ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid) $
+                            H.input ! A.type_ "submit" ! A.value label
+                  addMarkElement "success" "😃"
+                  addMarkElement "failure" "😞"
               | n ← [1∷Int ..]
               | (uuid, habit) ← habit_list
               ]
@@ -892,6 +898,25 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           <$> (Successes <$> markHabits succeeded difficulty_ (stored_credits_ . successes_))
           <*> (Failures  <$> markHabits failed    importance_ (stored_credits_ . failures_ ))
        ) >>= returnJSON ok200
+    let markHabit ∷
+          String →
+          Getter Habit Double →
+          Lens' Credits Double →
+          ActionM ()
+        markHabit status habit_scale_getter_ credits_lens_ = wwwWriter $ do
+          habits ← use habits_
+          habit_id ← getParam "habit_id"
+          log [i|Marking #{habit_id} as #{status}.|]
+          case habits ^. at habit_id of
+            Nothing →
+              renderHTMLUsingTemplateAndReturn "Habit of Fate - Marking a Habit" [] notFound404 $ do
+                H.h1 "Habit Not Found"
+                H.p $ H.toHtml [i|"Habit #{habit_id} was not found.|]
+            Just habit → do
+              stored_credits_ . credits_lens_ += habit ^. habit_scale_getter_
+              redirectTo "/habits"
+    Scotty.post "/mark/success/:habit_id" $ markHabit "succeeded" (difficulty_ . to scaleFactor) successes_
+    Scotty.post "/mark/failure/:habit_id" $ markHabit "failed"(importance_ . to scaleFactor) failures_
 --------------------------------- Quest Status ---------------------------------
     Scotty.get "/api/status" <<< apiReader $
       ask
