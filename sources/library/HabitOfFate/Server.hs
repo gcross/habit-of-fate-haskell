@@ -288,6 +288,11 @@ renderHTMLUsingTemplateAndReturn title stylesheets status =
   >>>
   returnLazyTextAsHTML status
 
+renderEventToHTMLAndReturn title stylesheets status =
+  renderEventToHTML
+  >>>
+  renderHTMLUsingTemplateAndReturn title stylesheets status
+
 logRequest ∷ ActionM ()
 logRequest = do
   r ← Scotty.request
@@ -463,6 +468,14 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
     Right (status_, maybe_content) → do
       setStatusAndLog status_
       maybe (pure ()) setContent maybe_content
+
+------------------------------------ Shared ------------------------------------
+
+runEvent = do
+  account ← get
+  let (event, new_account) = runState runAccount account
+  put new_account
+  pure event
 
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
@@ -898,7 +911,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           <$> (Successes <$> markHabits succeeded difficulty_ (stored_credits_ . successes_))
           <*> (Failures  <$> markHabits failed    importance_ (stored_credits_ . failures_ ))
        ) >>= returnJSON ok200
-    let markHabit ∷
+    let runGame = do
+          event ← runEvent
+          renderEventToHTMLAndReturn "Habit of Fate - Event" [] ok200 $
+            if (not <<< null) event
+              then event
+              else ["Nothing happened."]
+        markHabit ∷
           String →
           Getter Habit Double →
           Lens' Credits Double →
@@ -914,9 +933,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
                 H.p $ H.toHtml [i|"Habit #{habit_id} was not found.|]
             Just habit → do
               stored_credits_ . credits_lens_ += habit ^. habit_scale_getter_
-              redirectTo "/habits"
+              runGame
     Scotty.post "/mark/success/:habit_id" $ markHabit "succeeded" (difficulty_ . to scaleFactor) successes_
     Scotty.post "/mark/failure/:habit_id" $ markHabit "failed"(importance_ . to scaleFactor) failures_
+    Scotty.post "/run" <<< wwwWriter $ runGame
 --------------------------------- Quest Status ---------------------------------
     Scotty.get "/api/status" <<< apiReader $
       ask
@@ -925,19 +945,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.get "/status" <<< wwwReader $
       (ask <&> getAccountStatus)
       >>=
-      (
-        renderEventToHTML
-        >>>
-        renderHTMLUsingTemplate "Habit of Fate - Quest Status" []
-        >>>
-        returnLazyTextAsHTML ok200
-      )
+      renderEventToHTMLAndReturn  "Habit of Fate - Quest Status" [] ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter $ do
-      account ← get
-      let (event, new_account) = runState runAccount account
-      put new_account
-      event |> renderEventToXMLText |> returnLazyText ok200
+      runEvent >>= (renderEventToXMLText >>> returnLazyText ok200)
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 --------------------------------- Style Sheets ---------------------------------
