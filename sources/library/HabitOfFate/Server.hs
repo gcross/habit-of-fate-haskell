@@ -913,10 +913,15 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
        ) >>= returnJSON ok200
     let runGame = do
           event ← runEvent
-          renderEventToHTMLAndReturn "Habit of Fate - Event" [] ok200 $
-            if (not <<< null) event
-              then event
-              else ["Nothing happened."]
+          let rendered_event
+                | (not <<< null) event = renderEventToHTML event
+                | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
+          stored_credits ← use stored_credits_
+          renderHTMLUsingTemplateAndReturn "Habit of Fate - Event" [] ok200 $ do
+            rendered_event
+            if stored_credits ^. successes_ /= 0 || stored_credits ^. failures_ /= 0
+              then H.form ! A.method "post" $ H.input ! A.type_ "submit" ! A.value "Next"
+              else H.a ! A.href "/habits" $ H.toHtml ("Done" ∷ Text)
         markHabit ∷
           String →
           Getter Habit Double →
