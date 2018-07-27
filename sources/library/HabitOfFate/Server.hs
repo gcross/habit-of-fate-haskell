@@ -46,15 +46,13 @@ import HabitOfFate.Prelude hiding (div, id, log)
 import Data.Aeson hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.DeepSeq
 import Control.Monad.Random
 import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as LazyBS
-import Data.List (isSuffixOf, zipWith)
+import Data.List (isSuffixOf)
 import Data.Set (minView)
-import qualified Data.String as String
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
 import Data.UUID hiding (null)
@@ -67,7 +65,6 @@ import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Blaze.Html5 (Html, (!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Text.XML
 import Web.Cookie
 import Web.Scotty
   ( ActionM
@@ -83,7 +80,7 @@ import Web.Scotty
   )
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Account hiding (_habits)
+import HabitOfFate.Account
 import HabitOfFate.Credits
 import HabitOfFate.Habit
 import HabitOfFate.Logging
