@@ -455,12 +455,6 @@ runEvent = do
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
-data RunGameState = RunGameState
-  { _run_quests_ ∷ Seq [Event]
-  , _run_quest_events_ ∷ Seq Event
-  }
-makeLenses ''RunGameState
-
 makeAppWithTestMode ∷
   Bool →
   Map Username Account →
