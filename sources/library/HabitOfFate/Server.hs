@@ -52,7 +52,7 @@ import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as LazyBS
-import Data.List (zipWith)
+import Data.List (isSuffixOf, zipWith)
 import Data.Set (minView)
 import qualified Data.String as String
 import qualified Data.Text.Lazy as Lazy
@@ -61,12 +61,12 @@ import Data.UUID hiding (null)
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
+import System.FilePath ((</>))
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Blaze.Html5 (Html, (!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Text.Cassius (Css, cassius, renderCss)
 import Text.XML
 import Web.Cookie
 import Web.Scotty
@@ -128,11 +128,6 @@ data Environment = Environment
 
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
-
-addCSS ∷ String → ((() → Text) → Css) → Scotty.ScottyM ()
-addCSS name contents = Scotty.get (String.fromString $ "/css/" ⊕ name ⊕ ".css") $ do
-  addHeader "Content-Type" "text/css"
-  contents |> ($ (\() → "")) |> renderCss |> Scotty.text
 
 --------------------------------------------------------------------------------
 ---------------------------- Shared Scotty Actions -----------------------------
@@ -956,115 +951,22 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       runEvent >>= (renderEventToXMLText >>> returnLazyText ok200)
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
---------------------------------- Style Sheets ---------------------------------
-    addCSS "common" $ [cassius|
-body
-  background: #a2aeff
-  font-family: Arial
-|]
-    addCSS "enter" $ [cassius|
-.enter
-  display: flex
-  flex-direction: column
-  margin-top: 100px
-  margin-left: auto
-  margin-right: auto
-  width: 600px
-
-.tabs
-  bottom: 10px
-  color: white
-  display: flex
-  flex-direction: row
-  flex-wrap: nowrap
-  margin-bottom: -10px
-  margin-right: 20px
-  position: relative
-
-.active
-  background: #728fff
-  padding: 10px
-
-.inactive
-  background: #476bff
-  padding: 10px
-
-  a
-    color: white
-
-span.inactive:hover
-    background: #5d7dff
-
-form
-  background: #728fff
-  color: white
-  font-family: Arial
-  font-size: 20
-  padding: 10px
-
-  .fields
-    display: flex
-    flex-direction: column
-    padding-bottom: 10px
-
-    input
-      background: #c3d0ff
-      border: 0
-      font-family: Arial
-      font-size: 20
-      padding: 5px
-
-  #error-message
-    color: #9b0000
-    padding-bottom: 10px
-|]
-    addCSS "list" $ [cassius|
-.list
-  background-color: #728fff
-  font-size: 24
-  margin-top: 100px
-  margin-left: auto
-  margin-right: auto
-  padding: 10px
-  width: 600px
-
-table
-  border-collapse: collapse
-  font-size: 24
-  width: 600px
-
-thead
-  text-align: left
-
-tbody
-  tr:nth-child(even)
-    background-color: #c3d0ff
-  tr:nth-child(odd)
-    background-color: #94aaff
-
-.new-index
-  width: 40px
-|]
-    addCSS "story" [cassius|
-.bold-text
-  font-weight: bold
-
-.underlined-text
-  text-decoration: underline
-
-.red-text
-  text-decoration-color: red
-
-.blue-text
-  text-decoration-color: blue
-
-.green-text
-  text-decoration-color: green
-
-.introduce-text
-  font-weight: bold
-  text-decoration-color: cyan
-|]
+---------------------------------- Web Files -----------------------------------
+    let fetch ∷ FilePath → String → ActionM ()
+        fetch subdirectory extension = do
+          filepath ← param "filename"
+          logIO [i|Requested file #{filepath} in #{subdirectory}|]
+          when ('/' ∈ filepath) $ do
+            logIO [i|Filepath #{filepath} has a slash.|]
+            Scotty.next
+          unless (('.':extension) `isSuffixOf` filepath) $ do
+            logIO [i|Filename #{filepath} does not end with .#{extension}|]
+            Scotty.next
+          addHeader "Content-Type" "text/css"
+          file_to_return ← (subdirectory </> filepath) |> getDataFileName |> liftIO
+          logIO [i|Returning #{file_to_return}|]
+          Scotty.file file_to_return
+    Scotty.get "/css/:filename" $ fetch "css" "css"
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
