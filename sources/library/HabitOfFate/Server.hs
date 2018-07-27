@@ -152,15 +152,6 @@ param name =
 paramOrBlank ∷ Lazy.Text → ActionM Text
 paramOrBlank name = Scotty.param name `rescue` ("" |> pure |> const)
 
-bodyJSON ∷ FromJSON α ⇒ ActionM α
-bodyJSON = do
-  body_ ← Scotty.body
-  case eitherDecode' body_ of
-    Left message → do
-      logIO [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body_}|]
-      finishWithStatusMessage 400 "Bad request: Invalid JSON"
-    Right value → pure value
-
 authorizeWith ∷ (∀ α. String → ActionM α) → Environment → ActionM (Username, TVar Account)
 authorizeWith actionWhenAuthFails Environment{..} = do
   let handleForbidden ∷ String → Maybe α → ActionM α
@@ -213,9 +204,6 @@ finishWithStatus s = do
 finishWithStatusMessage ∷ Int → String → ActionM α
 finishWithStatusMessage code = pack >>> encodeUtf8 >>> Status code >>> finishWithStatus
 
-valueOrRedirectToLogin ∷ Maybe α → ActionM α
-valueOrRedirectToLogin = maybe (Scotty.redirect "/login") pure
-
 setContent ∷ Content → ActionM ()
 setContent NoContent = pure ()
 setContent (TextContent t) = Scotty.text t
@@ -248,9 +236,6 @@ returnLazyText s = TextContent >>> ProgramResult s >>> return
 
 returnLazyTextAsHTML ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
 returnLazyTextAsHTML s = TextContentAsHTML >>> ProgramResult s >>> return
-
-returnText ∷ Monad m ⇒ Status → Text → m ProgramResult
-returnText s = view (from strict) >>> returnLazyText s
 
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
 returnJSON s = JSONContent >>> ProgramResult s >>> return
@@ -337,9 +322,6 @@ getParamMaybe param_name =
   getParams
   <&>
   (lookup param_name >=> (parseParam >>> either (const Nothing) return))
-
-paramMaybe ∷ Parsable α ⇒ Lazy.Text → ActionM (Maybe α)
-paramMaybe param_name = (param param_name <&> Just) `rescue` (const $ pure Nothing)
 
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
 raiseStatus code =
