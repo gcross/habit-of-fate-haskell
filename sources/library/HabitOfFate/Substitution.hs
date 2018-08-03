@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -33,7 +32,6 @@ import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
-import Data.Typeable (Typeable)
 import Data.Void
 import Language.Haskell.TH.Lift (Lift)
 import Text.Parsec hiding ((<|>), optional, uncons)
@@ -140,7 +138,6 @@ parseAtom = do
     <|> (parseSubstitutionAtom HasNoArticle maybe_case_)
     <|> (anyToken <&> Literal)
 
-deriving instance Typeable ParseError
 instance Exception ParseError
 
 convertSubstitutionDataToTag ∷ SubstitutionData → Text
@@ -168,7 +165,7 @@ data SubstitutionTagParseError =
   | SubstitutionTagIsMissingAttribute Name
   | SubstitutionTagHasInvalidValueFor Name String
   | SubstitutionTagNotAllowed
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Show)
 instance Exception SubstitutionTagParseError where
 
 parseSubstitutionTag ∷ MonadThrow m ⇒ Element → m SubstitutionData

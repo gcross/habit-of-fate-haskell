@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -37,7 +36,6 @@ import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
 import Data.Sequence (deleteAt, elemIndexL, insertAt)
 import qualified Data.Text.Lazy as Lazy
-import Data.Typeable
 import Data.UUID
 
 import Text.Blaze (Markup, ToMarkup(..))
@@ -231,7 +229,7 @@ data ReorderException =
   | DuplicateIds
   | MissingId
   | MissingIndex
-  deriving (Eq,Read,Show,Ord,Typeable)
+  deriving (Eq,Read,Show,Ord)
 
 instance Exception ReorderException where
 

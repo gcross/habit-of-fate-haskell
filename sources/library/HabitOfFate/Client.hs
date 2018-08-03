@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -30,7 +29,6 @@ import Control.Exception (AsyncException(UserInterrupt))
 import Control.Monad.Catch
 import qualified Data.ByteString as BS
 import Data.Char
-import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Rainbow.Translate
 import System.Exit (exitSuccess)
@@ -44,7 +42,7 @@ import HabitOfFate.Habit
 import HabitOfFate.Story
 import HabitOfFate.Story.Renderer.Console
 
-data Cancel = Cancel deriving (Show, Typeable)
+data Cancel = Cancel deriving (Show)
 instance Exception Cancel where
 
 cancel ∷ SessionIO α

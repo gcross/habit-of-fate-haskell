@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -34,13 +33,12 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch (MonadThrow(throwM))
 import Control.Exception (Exception)
 import qualified Data.Text.Lazy as Lazy
-import Data.Typeable (Typeable)
 import Text.XML
 
 import HabitOfFate.Story
 import HabitOfFate.Substitution hiding (Name)
 
-data StoryParseException = StoryParseException String deriving (Eq,Show,Typeable)
+data StoryParseException = StoryParseException String deriving (Eq,Show)
 instance Exception StoryParseException where
 
 parseContainer ∷ MonadThrow m ⇒ Text → ([Node] → m α) → Node → m α

@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -29,7 +28,6 @@ import HabitOfFate.Prelude
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow(throwM))
 import qualified Data.Text.Lazy as Lazy
-import Data.Typeable (Typeable)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import Text.Parsec hiding ((<|>), optional, uncons)
