@@ -27,10 +27,8 @@ import HabitOfFate.Prelude
 
 import Control.Exception (AsyncException(UserInterrupt))
 import Control.Monad.Catch
-import qualified Data.ByteString as BS
 import Data.Char
 import Data.UUID (UUID)
-import Rainbow.Translate
 import System.Exit (exitSuccess)
 import System.IO
 import System.IO.Error (isEOFError)
@@ -39,7 +37,6 @@ import System.Random
 import HabitOfFate.API
 import HabitOfFate.Credits
 import HabitOfFate.Habit
-import HabitOfFate.Story
 import HabitOfFate.Story.Renderer.Console
 
 data Cancel = Cancel deriving (Show)
