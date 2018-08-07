@@ -9,9 +9,9 @@ copyright:           2016 Gregory Crosswhite
 build-type:          Simple
 cabal-version:       >=1.10
 data-dir:            web
-data-files:          css/common.css.gz
-                     css/enter.css.gz
-                     css/list.css.gz
+data-files:          css/common.css
+                     css/enter.css
+                     css/list.css
                      images/logo.svgz
 
 library

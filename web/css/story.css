@@ -1,0 +1,24 @@
+.bold-text {
+    font-weight: bold;
+}
+
+.underlined-text {
+    text-decoration: underline;
+}
+
+.red-text {
+    text-decoration-color: red;
+}
+
+.blue-text {
+    text-decoration-color: blue;
+}
+
+.green-text {
+    text-decoration-color: green;
+}
+
+.introduce-text {
+    font-weight: bold;
+    text-decoration-color: cyan;
+}

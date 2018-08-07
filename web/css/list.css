@@ -1,0 +1,30 @@
+.list {
+    background-color: #728fff;
+    font-size: 24;
+    margin-top: 100px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 10px;
+    width: 600px;
+}
+
+table {
+    border-collapse: collapse;
+    font-size: 24;
+    width: 600px;
+}
+
+thead {
+    text-align: left;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #c3d0ff;
+}
+tbody tr:nth-child(odd) {
+    background-color: #94aaff;
+}
+
+.new-index {
+  width: 40px
+}

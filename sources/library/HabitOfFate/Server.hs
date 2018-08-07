@@ -254,7 +254,7 @@ renderHTMLUsingTemplate title stylesheets body =
           [ H.link
               ! A.rel "stylesheet"
               ! A.type_ "text/css"
-              ! A.href (H.toValue $ mconcat ["css/", stylesheet, ".css.gz"])
+              ! A.href (H.toValue $ mconcat ["css/", stylesheet, ".css"])
           | stylesheet ← stylesheets
           ]
       H.body $ do
@@ -942,7 +942,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           addHeader "Content-Type" content_type
           maybe (pure ()) (addHeader "Content-Encoding") maybe_compression
           Scotty.file file_to_return
-    Scotty.get "/css/:filename" $ fetch "css" "css.gz" "text/css" (Just "gzip")
+    Scotty.get "/css/:filename" $ fetch "css" "css" "text/css" Nothing
     Scotty.get "/images/:filename" $ fetch "images" "svgz" "image/svg+xml" (Just "gzip")
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
