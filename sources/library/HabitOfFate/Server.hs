@@ -257,7 +257,9 @@ renderHTMLUsingTemplate title stylesheets body =
               ! A.href (H.toValue $ mconcat ["css/", stylesheet, ".css"])
           | stylesheet ← stylesheets
           ]
-      H.body body
+      H.body $ do
+        H.img ! A.src "images/logo.svgz"
+        body
 
 renderHTMLUsingTemplateAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m ProgramResult
 renderHTMLUsingTemplateAndReturn title stylesheets status =
@@ -925,8 +927,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Web Files -----------------------------------
-    let fetch ∷ FilePath → String → ActionM ()
-        fetch subdirectory extension = do
+    let fetch ∷ FilePath → String → Lazy.Text → Maybe Lazy.Text → ActionM ()
+        fetch subdirectory extension content_type maybe_compression = do
           filepath ← param "filename"
           logIO [i|Requested file #{filepath} in #{subdirectory}|]
           when ('/' ∈ filepath) $ do
@@ -935,11 +937,13 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           unless (('.':extension) `isSuffixOf` filepath) $ do
             logIO [i|Filename #{filepath} does not end with .#{extension}|]
             Scotty.next
-          addHeader "Content-Type" "text/css"
           file_to_return ← (subdirectory </> filepath) |> getDataFileName |> liftIO
           logIO [i|Returning #{file_to_return}|]
+          addHeader "Content-Type" content_type
+          maybe (pure ()) (addHeader "Content-Encoding") maybe_compression
           Scotty.file file_to_return
-    Scotty.get "/css/:filename" $ fetch "css" "css"
+    Scotty.get "/css/:filename" $ fetch "css" "css" "text/css" Nothing
+    Scotty.get "/images/:filename" $ fetch "images" "svgz" "image/svg+xml" (Just "gzip")
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request

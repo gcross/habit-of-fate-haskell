@@ -12,6 +12,7 @@ data-dir:            web
 data-files:          css/common.css
                      css/enter.css
                      css/list.css
+                     images/logo.svgz
 
 library
   hs-source-dirs:      sources/library
