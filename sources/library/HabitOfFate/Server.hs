@@ -94,7 +94,7 @@ import Paths_habit_of_fate (getDataFileName)
 -------------------------------- Miscellaneous ---------------------------------
 --------------------------------------------------------------------------------
 
-import HabitOfFate.Server.Implementation.Common
+import HabitOfFate.Server.Common
 
 --------------------------------------------------------------------------------
 ---------------------------- Shared Scotty Actions -----------------------------

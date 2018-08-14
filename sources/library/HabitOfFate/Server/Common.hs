@@ -19,7 +19,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Implementation.Common where
+module HabitOfFate.Server.Common where
 
 import HabitOfFate.Prelude
 

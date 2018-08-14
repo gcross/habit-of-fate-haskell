@@ -76,7 +76,7 @@ library
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Server
-                     , HabitOfFate.Server.Implementation.Common
+                     , HabitOfFate.Server.Common
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
                      , HabitOfFate.Story.Parser.XML
