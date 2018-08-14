@@ -69,7 +69,7 @@ import Web.Scotty (parseParam)
 
 import HabitOfFate.API
 import HabitOfFate.Credits
-import HabitOfFate.Habit
+import HabitOfFate.Data.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote

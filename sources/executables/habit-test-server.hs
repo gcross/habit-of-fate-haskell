@@ -28,8 +28,8 @@ import Data.List
 import Network.Wai.Handler.Warp
 import Network.Wai.Handler.WarpTLS
 
-import HabitOfFate.Account
-import HabitOfFate.Habit
+import HabitOfFate.Data.Account
+import HabitOfFate.Data.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Server
 import HabitOfFate.TH (textChar8)

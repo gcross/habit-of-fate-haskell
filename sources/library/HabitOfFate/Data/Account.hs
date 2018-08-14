@@ -24,7 +24,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Account where
+module HabitOfFate.Data.Account where
 
 import HabitOfFate.Prelude
 
@@ -35,7 +35,7 @@ import Data.Aeson hiding ((.=))
 import Data.UUID (UUID)
 
 import HabitOfFate.Credits
-import HabitOfFate.Habit
+import HabitOfFate.Data.Habit
 import HabitOfFate.Quest
 import HabitOfFate.Quests
 import HabitOfFate.Story

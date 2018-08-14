@@ -25,7 +25,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Habit where
+module HabitOfFate.Data.Habit where
 
 import HabitOfFate.Prelude
 

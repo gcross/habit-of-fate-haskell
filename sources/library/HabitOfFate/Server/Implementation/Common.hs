@@ -30,7 +30,7 @@ import Data.Time.Clock (UTCTime)
 import Data.UUID (UUID, fromText)
 import Web.Scotty (Parsable(..))
 
-import HabitOfFate.Account
+import HabitOfFate.Data.Account
 
 instance Parsable UUID where
   parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right

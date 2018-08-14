@@ -36,7 +36,7 @@ import System.Random
 
 import HabitOfFate.API
 import HabitOfFate.Credits
-import HabitOfFate.Habit
+import HabitOfFate.Data.Habit
 import HabitOfFate.Story.Renderer.Console
 
 data Cancel = Cancel deriving (Show)

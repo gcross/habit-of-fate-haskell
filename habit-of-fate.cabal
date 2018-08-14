@@ -64,11 +64,11 @@ library
                      , warp
                      , xml-conduit
                      , yaml
-  exposed-modules:     HabitOfFate.Account
-                     , HabitOfFate.API
+  exposed-modules:     HabitOfFate.API
                      , HabitOfFate.Client
                      , HabitOfFate.Credits
-                     , HabitOfFate.Habit
+                     , HabitOfFate.Data.Account
+                     , HabitOfFate.Data.Habit
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread

@@ -80,9 +80,9 @@ import Web.Scotty
   )
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Account
 import HabitOfFate.Credits
-import HabitOfFate.Habit
+import HabitOfFate.Data.Account
+import HabitOfFate.Data.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Story
 import HabitOfFate.Story.Renderer.HTML
