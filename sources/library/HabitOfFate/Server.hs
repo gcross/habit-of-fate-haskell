@@ -94,37 +94,7 @@ import Paths_habit_of_fate (getDataFileName)
 -------------------------------- Miscellaneous ---------------------------------
 --------------------------------------------------------------------------------
 
-instance Parsable UUID where
-  parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right
-
-newtype Username = Username { unwrapUsername ∷ Text } deriving
-  ( Eq
-  , FromJSONKey
-  , Ord
-  , Parsable
-  , Read
-  , Show
-  , ToJSONKey
-  )
-
-instance FromJSON Username where
-  parseJSON = parseJSON >>> fmap Username
-
-instance ToJSON Username where
-  toJSON = unwrapUsername >>> toJSON
-  toEncoding = unwrapUsername >>> toEncoding
-
-newtype Cookie = Cookie Text deriving (Eq,FromJSON,Ord,Parsable,Read,Show,ToJSON)
-
-data Environment = Environment
-  { accounts_tvar ∷ TVar (Map Username (TVar Account))
-  , cookies_tvar ∷ TVar (Map Cookie (UTCTime, Username))
-  , expirations_tvar ∷ TVar (Set (UTCTime, Cookie))
-  , write_request_var ∷ TMVar ()
-  }
-
-readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
-readTVarMonadIO = readTVarIO >>> liftIO
+import HabitOfFate.Server.Implementation.Common
 
 --------------------------------------------------------------------------------
 ---------------------------- Shared Scotty Actions -----------------------------
