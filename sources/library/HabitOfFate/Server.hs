@@ -50,7 +50,6 @@ import Control.Monad.Random
 import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import qualified Data.ByteString.Builder as Builder
-import qualified Data.ByteString.Lazy as LazyBS
 import Data.List (isSuffixOf)
 import Data.Set (minView)
 import qualified Data.Text.Lazy as Lazy
@@ -68,11 +67,9 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Web.Cookie
 import Web.Scotty
   ( ActionM
-  , Param
   , Parsable
   , addHeader
   , params
-  , parseParam
   , finish
   , rescue
   , scottyApp
@@ -84,7 +81,7 @@ import HabitOfFate.Credits
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Logging
-import HabitOfFate.Story
+import HabitOfFate.Server.Actions.Common
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
@@ -253,64 +250,7 @@ logRequest = do
 
 ------------------------------------ Common ------------------------------------
 
-data CommonInstruction α where
-  GetBodyInstruction ∷ CommonInstruction LazyBS.ByteString
-  GetParamsInstruction ∷ CommonInstruction [Param]
-  RaiseStatusInstruction ∷ Status → CommonInstruction α
-  LogInstruction ∷ String → CommonInstruction ()
-
-class Monad m ⇒ ActionMonad m where
-  singletonCommon ∷ CommonInstruction α → m α
-
-getBody ∷ ActionMonad m ⇒ m LazyBS.ByteString
-getBody = singletonCommon GetBodyInstruction
-
-getBodyJSON ∷ (FromJSON α, ActionMonad m) ⇒ m α
-getBodyJSON = do
-  body ← getBody
-  case eitherDecode' $ body of
-    Left message → do
-      log [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body}|]
-      raiseStatus 400 "Bad request: Invalid JSON"
-    Right json → pure json
-
-getParams ∷ ActionMonad m ⇒ m [Param]
-getParams = singletonCommon GetParamsInstruction
-
-getParam ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m α
-getParam param_name = do
-  params_ ← getParams
-  case lookup param_name params_ of
-    Nothing → raiseStatus 400 [i|Bad request: Missing parameter %{param_name}|]
-    Just value → case parseParam value of
-      Left _ →
-        raiseStatus
-          400
-          [i|Bad request: Parameter #{param_name} has invalid format #{value}|]
-      Right x → return x
-
-getParamMaybe ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → m (Maybe α)
-getParamMaybe param_name =
-  getParams
-  <&>
-  (lookup param_name >=> (parseParam >>> either (const Nothing) return))
-
-raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
-raiseStatus code =
-  pack
-  >>>
-  encodeUtf8
-  >>>
-  Status code
-  >>>
-  RaiseStatusInstruction
-  >>>
-  singletonCommon
-
-raiseNoSuchHabit = raiseStatus 404 "Not found: No such habit"
-
-log ∷ ActionMonad m ⇒ String → m ()
-log = LogInstruction >>> singletonCommon
+-- import HabitOfFate.Server.Action.Common
 
 ------------------------------------ Reader ------------------------------------
 
