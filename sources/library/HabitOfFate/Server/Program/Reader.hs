@@ -22,7 +22,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Actions.Reader where
+module HabitOfFate.Server.Program.Reader where
 
 import HabitOfFate.Prelude
 

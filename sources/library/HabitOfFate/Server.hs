@@ -83,10 +83,10 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Common
 import HabitOfFate.Server.Actions.Queries
-import HabitOfFate.Server.Actions.Reader
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Program.Common
+import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 

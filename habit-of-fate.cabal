@@ -78,9 +78,9 @@ library
                      , HabitOfFate.Server
                      , HabitOfFate.Server.Actions.Common
                      , HabitOfFate.Server.Actions.Queries
-                     , HabitOfFate.Server.Actions.Reader
                      , HabitOfFate.Server.Actions.Results
                      , HabitOfFate.Server.Program.Common
+                     , HabitOfFate.Server.Program.Reader
                      , HabitOfFate.Server.Common
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
