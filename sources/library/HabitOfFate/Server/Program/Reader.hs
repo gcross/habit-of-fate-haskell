@@ -29,7 +29,7 @@ import HabitOfFate.Prelude
 import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import Network.HTTP.Types.Status (Status)
-import Web.Scotty (ActionM, params)
+import Web.Scotty (ActionM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
@@ -58,7 +58,7 @@ readerWith ∷ (∀ α. String → ActionM α) → Environment → ReaderProgram
 readerWith actionWhenAuthFails environment (ReaderProgram program) = do
   logRequest
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
-  params_ ← params
+  params_ ← Scotty.params
   body_ ← Scotty.body
   account ← account_tvar |> readTVarMonadIO
   let interpret ∷ ReaderInstruction α → ExceptT Status (Writer (Seq String)) α
