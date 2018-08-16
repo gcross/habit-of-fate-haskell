@@ -79,10 +79,10 @@ library
                      , HabitOfFate.Server.Actions.Common
                      , HabitOfFate.Server.Actions.Queries
                      , HabitOfFate.Server.Actions.Results
+                     , HabitOfFate.Server.Common
                      , HabitOfFate.Server.Program.Common
                      , HabitOfFate.Server.Program.Reader
                      , HabitOfFate.Server.Program.Writer
-                     , HabitOfFate.Server.Common
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
                      , HabitOfFate.Story.Parser.XML
