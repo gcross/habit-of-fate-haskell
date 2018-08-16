@@ -81,6 +81,7 @@ library
                      , HabitOfFate.Server.Actions.Results
                      , HabitOfFate.Server.Program.Common
                      , HabitOfFate.Server.Program.Reader
+                     , HabitOfFate.Server.Program.Writer
                      , HabitOfFate.Server.Common
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
