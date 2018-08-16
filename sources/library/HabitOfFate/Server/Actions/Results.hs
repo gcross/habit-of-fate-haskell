@@ -27,7 +27,6 @@ import HabitOfFate.Prelude
 import Data.Aeson (ToJSON)
 import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (Status(..))
-import Network.Wai (rawPathInfo, rawQueryString, requestMethod)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Blaze.Html5 (Html, (!), toHtml)
 import qualified Text.Blaze.Html5 as H
@@ -116,8 +115,3 @@ renderEventToHTMLAndReturn title stylesheets status =
   renderEventToHTML
   >>>
   renderHTMLUsingTemplateAndReturn title stylesheets status
-
-logRequest ∷ ActionM ()
-logRequest = do
-  r ← Scotty.request
-  logIO [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]

@@ -17,6 +17,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Common where
@@ -28,9 +29,12 @@ import Control.Concurrent.STM.TMVar (TMVar)
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Time.Clock (UTCTime)
 import Data.UUID (UUID, fromText)
-import Web.Scotty (Parsable(..))
+import Network.Wai (rawPathInfo, rawQueryString, requestMethod)
+import Web.Scotty (ActionM, Parsable(..))
+import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Logging
 
 instance Parsable UUID where
   parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right
@@ -46,3 +50,8 @@ data Environment = Environment
 
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
+
+logRequest ∷ ActionM ()
+logRequest = do
+  r ← Scotty.request
+  logIO [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
