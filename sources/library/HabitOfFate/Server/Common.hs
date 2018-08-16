@@ -25,7 +25,7 @@ import HabitOfFate.Prelude
 
 import Control.Concurrent.STM.TVar (TVar, readTVarIO)
 import Control.Concurrent.STM.TMVar (TMVar)
-import Data.Aeson (FromJSON(..), FromJSONKey(..), ToJSON(..), ToJSONKey(..))
+import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Time.Clock (UTCTime)
 import Data.UUID (UUID, fromText)
 import Web.Scotty (Parsable(..))
@@ -34,23 +34,6 @@ import HabitOfFate.Data.Account
 
 instance Parsable UUID where
   parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right
-
-newtype Username = Username { unwrapUsername ∷ Text } deriving
-  ( Eq
-  , FromJSONKey
-  , Ord
-  , Parsable
-  , Read
-  , Show
-  , ToJSONKey
-  )
-
-instance FromJSON Username where
-  parseJSON = parseJSON >>> fmap Username
-
-instance ToJSON Username where
-  toJSON = unwrapUsername >>> toJSON
-  toEncoding = unwrapUsername >>> toEncoding
 
 newtype Cookie = Cookie Text deriving (Eq,FromJSON,Ord,Parsable,Read,Show,ToJSON)
 

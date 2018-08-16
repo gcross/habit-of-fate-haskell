@@ -103,11 +103,7 @@ runEvent = do
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
-makeAppWithTestMode ∷
-  Bool →
-  Map Username Account →
-  (Map Username Account → IO ()) →
-  IO Application
+makeAppWithTestMode ∷ Bool → Accounts → (Accounts → IO ()) → IO Application
 makeAppWithTestMode test_mode initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
 

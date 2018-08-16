@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -33,6 +34,7 @@ import Control.Monad.Random
 import Crypto.PasswordStore
 import Data.Aeson hiding ((.=))
 import Data.UUID (UUID)
+import Web.Scotty (Parsable)
 
 import HabitOfFate.Credits
 import HabitOfFate.Data.Habit
@@ -178,3 +180,23 @@ data HabitsToMark = HabitsToMark
   } deriving (Eq, Ord, Read, Show)
 deriveJSON ''HabitsToMark
 makeLenses ''HabitsToMark
+
+newtype Username = Username { unwrapUsername ∷ Text } deriving
+  ( Eq
+  , FromJSONKey
+  , Ord
+  , Parsable
+  , Read
+  , Show
+  , ToJSONKey
+  )
+
+instance FromJSON Username where
+  parseJSON = parseJSON >>> fmap Username
+
+instance ToJSON Username where
+  toJSON = unwrapUsername >>> toJSON
+  toEncoding = unwrapUsername >>> toEncoding
+
+
+type Accounts = Map Username Account
