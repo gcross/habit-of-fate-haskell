@@ -88,6 +88,7 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Server.Program.Writer
+import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
@@ -180,26 +181,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       logIO [i|ERROR: #{message}|]
       Scotty.status internalServerError500
       Scotty.text message
-    Scotty.post "/api/create" $ do
-      logRequest
-      username ← param "username"
-      password ← param "password"
-      logIO $ [i|Request to create an account for "#{username}".|]
-      liftIO >>> join $ do
-        new_account ← newAccount password
-        atomically $ do
-          accounts ← readTVar accounts_tvar
-          if member username accounts
-            then pure $ do
-              logIO $ [i|Account "#{username}" already exists!|]
-              status conflict409
-            else do
-              account_tvar ← newTVar new_account
-              modifyTVar accounts_tvar $ insertMap username account_tvar
-              pure $ do
-                logIO $ [i|Account "#{username}" successfully created!|]
-                status created201
-                createAndReturnCookie username
+    handleCreateAccountApi environment
     let basicTextInput type_ name placeholder =
           (! A.type_ type_)
           >>>
