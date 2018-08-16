@@ -176,6 +176,10 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 
   scottyApp $ do
 -------------------------------- Create Account --------------------------------
+    Scotty.defaultHandler $ \message → do
+      logIO [i|ERROR: #{message}|]
+      Scotty.status internalServerError500
+      Scotty.text message
     Scotty.post "/api/create" $ do
       logRequest
       username ← param "username"
