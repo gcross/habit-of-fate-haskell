@@ -37,15 +37,7 @@ import Web.Scotty (ActionM, Parsable, finish, rescue, status)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
-import HabitOfFate.Data.Habit
-import HabitOfFate.Server.Actions.Common
 import HabitOfFate.Server.Common
-
-lookupHabit ∷ (ActionMonad m, MonadState Account m) ⇒ UUID → m Habit
-lookupHabit habit_id = do
-  use (habits_ . at habit_id)
-  >>=
-  maybe raiseNoSuchHabit return
 
 param ∷ Parsable α ⇒ Lazy.Text → ActionM α
 param name =
