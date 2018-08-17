@@ -89,6 +89,7 @@ import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Server.Program.Writer
 import HabitOfFate.Server.Requests.LoginOrCreate
+import HabitOfFate.Server.Requests.Logout
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
@@ -183,31 +184,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       Scotty.text message
 
     handleLoginOrCreate environment
------------------------------------- Logout ------------------------------------
-    let logoutAction = do
-          logRequest
-          maybe_cookie_header ← Scotty.header "Cookie"
-          case maybe_cookie_header of
-            Nothing → pure ()
-            Just cookie_header →
-              let maybe_cookie =
-                    cookie_header
-                      |> view strict
-                      |> encodeUtf8
-                      |> parseCookiesText
-                      |> lookup "token"
-                      |> fmap Cookie
-              in case maybe_cookie of
-                Nothing → pure ()
-                Just cookie → (liftIO <<< atomically) $ do
-                  cookies ← readTVar cookies_tvar
-                  case lookup cookie cookies of
-                    Nothing → pure ()
-                    Just (expiration_time, _) →
-                      modifyTVar expirations_tvar $ deleteSet (expiration_time, cookie)
-                  writeTVar cookies_tvar $ deleteMap cookie cookies
-    Scotty.post "/api/logout" logoutAction
-    Scotty.post "/logout" $ logoutAction >> Scotty.redirect "/login"
+    handleLogout environment
 -------------------------------- Get All Habits --------------------------------
     Scotty.get "/api/habits" <<< apiReader $ do
       log "Requested all habits."
