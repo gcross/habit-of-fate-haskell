@@ -91,6 +91,7 @@ import HabitOfFate.Server.Program.Writer
 import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
+import HabitOfFate.Server.Requests.NewHabit
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
@@ -184,13 +185,9 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       [ handleGetAllHabits
       , handleLoginOrCreate
       , handleLogout
+      , handleNewHabit
       ]
 
------------------------------------ New Habit ----------------------------------
-    Scotty.get "/habits/new" $
-      liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
-      >>=
-      Scotty.redirect
 ---------------------------------- Move Habit ----------------------------------
     let move = webWriter environment $ do
           habit_id ← getParam "habit_id"

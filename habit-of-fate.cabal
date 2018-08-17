@@ -86,6 +86,7 @@ library
                      , HabitOfFate.Server.Requests.GetAllHabits
                      , HabitOfFate.Server.Requests.LoginOrCreate
                      , HabitOfFate.Server.Requests.Logout
+                     , HabitOfFate.Server.Requests.NewHabit
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
                      , HabitOfFate.Story.Parser.XML
