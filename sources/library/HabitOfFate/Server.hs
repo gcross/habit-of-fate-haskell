@@ -88,6 +88,7 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Server.Program.Writer
+import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
 import HabitOfFate.Story.Renderer.HTML
@@ -181,48 +182,12 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 
     handleLoginOrCreate environment
     handleLogout environment
--------------------------------- Get All Habits --------------------------------
-    Scotty.get "/api/habits" <<< apiReader environment $ do
-      log "Requested all habits."
-      view habits_ >>= returnJSON ok200
+    handleGetAllHabits environment
+----------------------------------- New Habit ----------------------------------
     Scotty.get "/habits/new" $
       liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
       >>=
       Scotty.redirect
-    Scotty.get "/habits" <<< webReader environment $ do
-      habit_list ← view (habits_ . habit_list_)
-      renderHTMLUsingTemplateAndReturn "Habit of Fate - List of Habits" ["common", "list"] ok200 $
-        H.div ! A.class_ "list" $ do
-          H.table $ do
-            H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance", "Success", "Failure"]
-            H.tbody <<< mconcat $
-              [ H.tr ! A.class_ ("row " ⊕ if n `mod` 2 == 0 then "even" else "odd") $ do
-                  H.td $ H.form ! A.method "post" ! A.action (H.toValue $ "/move/" ⊕ show uuid) $ do
-                    H.input
-                      ! A.type_ "submit"
-                      ! A.value "Move To"
-                    H.input
-                      ! A.type_ "text"
-                      ! A.value (H.toValue n)
-                      ! A.name "new_index"
-                      ! A.class_ "new-index"
-                  H.td $ H.toHtml (show n ⊕ ".")
-                  H.td ! A.class_ "name" $
-                    H.a ! A.href (H.toValue ("/habits/" ⊕ pack (show uuid) ∷ Text)) $ H.toHtml (habit ^. name_)
-                  let addScaleElement scale_class scale_lens =
-                        H.td ! A.class_ scale_class $ H.toHtml $ displayScale $ habit ^. scale_lens
-                  addScaleElement "difficulty" difficulty_
-                  addScaleElement "importance" importance_
-                  let addMarkElement name label =
-                        H.td $
-                          H.form ! A.method "post" ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid) $
-                            H.input ! A.type_ "submit" ! A.value label
-                  addMarkElement "success" "😃"
-                  addMarkElement "failure" "😞"
-              | n ← [1∷Int ..]
-              | (uuid, habit) ← habit_list
-              ]
-          H.a ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
 ---------------------------------- Move Habit ----------------------------------
     let move = webWriter environment $ do
           habit_id ← getParam "habit_id"

@@ -83,6 +83,7 @@ library
                      , HabitOfFate.Server.Program.Common
                      , HabitOfFate.Server.Program.Reader
                      , HabitOfFate.Server.Program.Writer
+                     , HabitOfFate.Server.Requests.GetAllHabits
                      , HabitOfFate.Server.Requests.LoginOrCreate
                      , HabitOfFate.Server.Requests.Logout
                      , HabitOfFate.Story
