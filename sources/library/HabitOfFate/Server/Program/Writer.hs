@@ -61,8 +61,8 @@ instance MonadState Account WriterProgram where
   get = Operational.singleton WriterGetAccountInstruction |> WriterProgram
   put = WriterPutAccountInstruction >>> Operational.singleton >>> WriterProgram
 
-writerWith ∷ (∀ α. String → ActionM α) → Environment → WriterProgram ProgramResult → ActionM ()
-writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram program) = do
+writerWith ∷ (∀ α. String → ActionM α) → WriterProgram ProgramResult → Environment → ActionM ()
+writerWith actionWhenAuthFails (WriterProgram program) (environment@Environment{..}) = do
   logRequest
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← Scotty.params
@@ -101,8 +101,8 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
       setStatusAndLog status_
       maybe (pure ()) setContent maybe_content
 
-apiWriter ∷ Environment → WriterProgram ProgramResult → ActionM ()
+apiWriter ∷ WriterProgram ProgramResult → Environment → ActionM ()
 apiWriter = writerWith (finishWithStatusMessage 403)
 
-webWriter ∷ Environment → WriterProgram ProgramResult → ActionM ()
+webWriter ∷ WriterProgram ProgramResult → Environment → ActionM ()
 webWriter = writerWith (const $ Scotty.redirect "/login")
