@@ -18,6 +18,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -81,3 +82,9 @@ readerWith actionWhenAuthFails environment (ReaderProgram program) = do
     Right (ProgramResult status_ content) → do
       setStatusAndLog status_
       setContent content
+
+apiReader ∷ Environment → ReaderProgram ProgramResult → ActionM ()
+apiReader = readerWith (finishWithStatusMessage 403)
+
+webReader ∷ Environment → ReaderProgram ProgramResult → ActionM ()
+webReader = readerWith (const $ Scotty.redirect "/login")

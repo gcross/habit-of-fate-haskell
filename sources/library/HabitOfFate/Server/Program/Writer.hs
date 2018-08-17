@@ -18,6 +18,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -99,3 +100,9 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterProgram prog
     Right (status_, maybe_content) → do
       setStatusAndLog status_
       maybe (pure ()) setContent maybe_content
+
+apiWriter ∷ Environment → WriterProgram ProgramResult → ActionM ()
+apiWriter = writerWith (finishWithStatusMessage 403)
+
+webWriter ∷ Environment → WriterProgram ProgramResult → ActionM ()
+webWriter = writerWith (const $ Scotty.redirect "/login")

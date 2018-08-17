@@ -171,10 +171,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     saveAccounts
 
   let environment = Environment{..}
-      apiReader = readerWith (finishWithStatusMessage 403) environment
-      apiWriter = writerWith (finishWithStatusMessage 403) environment
-      wwwReader = readerWith (const $ Scotty.redirect "/login") environment
-      wwwWriter = writerWith (const $ Scotty.redirect "/login") environment
 
   scottyApp $ do
 
@@ -186,14 +182,14 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     handleLoginOrCreate environment
     handleLogout environment
 -------------------------------- Get All Habits --------------------------------
-    Scotty.get "/api/habits" <<< apiReader $ do
+    Scotty.get "/api/habits" <<< apiReader environment $ do
       log "Requested all habits."
       view habits_ >>= returnJSON ok200
     Scotty.get "/habits/new" $
       liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
       >>=
       Scotty.redirect
-    Scotty.get "/habits" <<< wwwReader $ do
+    Scotty.get "/habits" <<< webReader environment $ do
       habit_list ← view (habits_ . habit_list_)
       renderHTMLUsingTemplateAndReturn "Habit of Fate - List of Habits" ["common", "list"] ok200 $
         H.div ! A.class_ "list" $ do
@@ -228,7 +224,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
               ]
           H.a ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
 ---------------------------------- Move Habit ----------------------------------
-    let move = wwwWriter $ do
+    let move = webWriter environment $ do
           habit_id ← getParam "habit_id"
           new_index ← getParam "new_index" <&> (\n → n-1)
           log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
@@ -268,19 +264,19 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
               H.div $ do
                 H.input !  A.type_ "submit"
                 H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
-    Scotty.get "/api/habits/:habit_id" <<< apiReader $ do
+    Scotty.get "/api/habits/:habit_id" <<< apiReader environment $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested habit with id #{habit_id}.|]
       (view $ habits_ . at habit_id)
         >>= maybe raiseNoSuchHabit (returnJSON ok200)
 
-    Scotty.get "/habits/:habit_id" <<< wwwReader $ do
+    Scotty.get "/habits/:habit_id" <<< webReader environment $ do
       habit_id ← getParam "habit_id"
       log $ [i|Web GET request for habit with id #{habit_id}.|]
       (view (habits_ . at habit_id) <&> fromMaybe def)
         >>= habitPage habit_id "" "" ""
 
-    Scotty.post "/habits/:habit_id" <<< wwwWriter $ do
+    Scotty.post "/habits/:habit_id" <<< webWriter environment $ do
       habit_id ← getParam "habit_id"
       log $ [i|Web POST request for habit with id #{habit_id}.|]
       (unparsed_name, maybe_name, name_error) ← getParamMaybe "name" <&> \case
@@ -307,7 +303,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           log [i|Updating habit #{habit_id} to #{new_habit}|]
           habits_ . at habit_id <<.= Just new_habit
           redirectTo "/habits"
-    Scotty.delete "/api/habits/:habit_id" <<< apiWriter $ do
+    Scotty.delete "/api/habits/:habit_id" <<< apiWriter environment $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
       habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Nothing)
@@ -325,14 +321,14 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
             if habit_was_there
               then noContent204
               else created201
-    Scotty.post "/api/habits/:habit_id" <<< apiWriter $ apiWriteAction
-    Scotty.put "/api/habits/:habit_id" <<< apiWriter $ apiWriteAction
+    Scotty.post "/api/habits/:habit_id" <<< apiWriter environment $ apiWriteAction
+    Scotty.put "/api/habits/:habit_id" <<< apiWriter environment $ apiWriteAction
 --------------------------------- Get Credits ----------------------------------
-    Scotty.get "/api/credits" <<< apiReader $ do
+    Scotty.get "/api/credits" <<< apiReader environment $ do
       log $ "Requested credits."
       view (stored_credits_) >>= returnJSON ok200
 --------------------------------- Mark Habits ----------------------------------
-    Scotty.post "/api/mark" <<< apiWriter $ do
+    Scotty.post "/api/mark" <<< apiWriter environment $ do
       marks ← getBodyJSON
       let markHabits ∷
             Getter HabitsToMark [UUID] →
@@ -368,7 +364,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           Getter Habit Double →
           Lens' Credits Double →
           ActionM ()
-        markHabit status habit_scale_getter_ credits_lens_ = wwwWriter $ do
+        markHabit status habit_scale_getter_ credits_lens_ = webWriter environment $ do
           habits ← use habits_
           habit_id ← getParam "habit_id"
           log [i|Marking #{habit_id} as #{status}.|]
@@ -382,18 +378,18 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
               runGame
     Scotty.post "/mark/success/:habit_id" $ markHabit "succeeded" (difficulty_ . to scaleFactor) successes_
     Scotty.post "/mark/failure/:habit_id" $ markHabit "failed"(importance_ . to scaleFactor) failures_
-    Scotty.post "/run" <<< wwwWriter $ runGame
+    Scotty.post "/run" <<< webWriter environment $ runGame
 --------------------------------- Quest Status ---------------------------------
-    Scotty.get "/api/status" <<< apiReader $
+    Scotty.get "/api/status" <<< apiReader environment $
       ask
       >>=
       (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
-    Scotty.get "/status" <<< wwwReader $
+    Scotty.get "/status" <<< webReader environment $
       (ask <&> getAccountStatus)
       >>=
       renderEventToHTMLAndReturn  "Habit of Fate - Quest Status" [] ok200
 ----------------------------------- Run Game -----------------------------------
-    Scotty.post "/api/run" <<< apiWriter $ do
+    Scotty.post "/api/run" <<< apiWriter environment $ do
       runEvent >>= (renderEventToXMLText >>> returnLazyText ok200)
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
