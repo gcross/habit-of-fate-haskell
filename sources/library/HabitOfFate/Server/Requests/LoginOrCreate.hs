@@ -32,6 +32,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Logging
+import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
 handleCreateAccountApi ∷ Environment → ScottyM ()
@@ -56,3 +57,26 @@ handleCreateAccountApi Environment{..} = do
               logIO $ [i|Account "#{username}" successfully created!|]
               Scotty.status created201
               createAndReturnCookie username
+
+handleLoginApi ∷ Environment → ScottyM ()
+handleLoginApi Environment{..} = do
+  Scotty.post "/api/login" $ do
+    logRequest
+    username ← paramGuardingAgainstMissing "username"
+    password ← paramGuardingAgainstMissing "password"
+    logIO $ [i|Request to log into an account with "#{username}".|]
+    account_tvar ←
+      (accounts_tvar |> readTVarMonadIO |> fmap (lookup username))
+      >>=
+      maybe (finishWithStatusMessage 404 "Not Found: No such account") return
+    (
+      readTVarMonadIO account_tvar
+      >>=
+      (
+        passwordIsValid password
+        >>>
+        bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
+      )
+      >>
+      createAndReturnCookie username
+      )

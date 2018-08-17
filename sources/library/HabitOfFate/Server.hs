@@ -253,26 +253,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.get "/create" $ createAccountAction
     Scotty.post "/create" $ createAccountAction
 ------------------------------------ Login -------------------------------------
-    Scotty.post "/api/login" $ do
-      logRequest
-      username ← param "username"
-      password ← param "password"
-      logIO $ [i|Request to log into an account with "#{username}".|]
-      account_tvar ←
-        (accounts_tvar |> readTVarMonadIO |> fmap (lookup username))
-        >>=
-        maybe (finishWithStatusMessage 404 "Not Found: No such account") return
-      (
-        readTVarMonadIO account_tvar
-        >>=
-        (
-          passwordIsValid password
-          >>>
-          bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
-        )
-        >>
-        createAndReturnCookie username
-       )
+    handleLoginApi environment
     let loginAction = do
           logRequest
           username@(Username username_) ← Username <$> paramOrBlank "username"
