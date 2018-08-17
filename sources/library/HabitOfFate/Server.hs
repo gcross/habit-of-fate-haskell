@@ -180,9 +180,12 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       Scotty.status internalServerError500
       Scotty.text message
 
-    handleLoginOrCreate environment
-    handleLogout environment
-    handleGetAllHabits environment
+    mapM_ ($ environment)
+      [ handleGetAllHabits
+      , handleLoginOrCreate
+      , handleLogout
+      ]
+
 ----------------------------------- New Habit ----------------------------------
     Scotty.get "/habits/new" $
       liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
