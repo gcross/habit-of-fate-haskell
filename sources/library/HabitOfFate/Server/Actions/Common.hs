@@ -22,7 +22,7 @@
 
 module HabitOfFate.Server.Actions.Common where
 
-import HabitOfFate.Prelude hiding (log)
+import HabitOfFate.Prelude
 
 import Data.Aeson (eitherDecode', FromJSON)
 import qualified Data.ByteString.Lazy as LazyBS

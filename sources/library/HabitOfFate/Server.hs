@@ -41,7 +41,7 @@ module HabitOfFate.Server
   , makeAppRunningInTestMode
   ) where
 
-import HabitOfFate.Prelude hiding (div, id, log)
+import HabitOfFate.Prelude
 
 import Data.Aeson hiding ((.=))
 import Control.Concurrent

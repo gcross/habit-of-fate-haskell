@@ -86,7 +86,6 @@ import Prelude
   , Enum(..)
   , Eq(..)
   , Float
-  , Floating(..)
   , Fractional(..)
   , Int
   , Integer

@@ -21,7 +21,7 @@
 
 module HabitOfFate.Server.Requests.GetAllHabits (handleGetAllHabits) where
 
-import HabitOfFate.Prelude hiding (log)
+import HabitOfFate.Prelude
 
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
