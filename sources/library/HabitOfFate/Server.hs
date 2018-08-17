@@ -352,7 +352,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
     Scotty.get "/status" <<< webReader environment $
       (ask <&> getAccountStatus)
       >>=
-      renderEventToHTMLAndReturn  "Habit of Fate - Quest Status" [] ok200
+      renderEventToHTMLAndReturn "Habit of Fate - Quest Status" [] ok200
 ----------------------------------- Run Game -----------------------------------
     Scotty.post "/api/run" <<< apiWriter environment $ do
       runEvent >>= (renderEventToXMLText >>> returnLazyText ok200)
