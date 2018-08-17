@@ -91,6 +91,7 @@ import HabitOfFate.Server.Program.Writer
 import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
+import HabitOfFate.Server.Requests.MoveHabit
 import HabitOfFate.Server.Requests.NewHabit
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
@@ -185,21 +186,11 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       [ handleGetAllHabits
       , handleLoginOrCreate
       , handleLogout
+      , handleMoveHabit
       , handleNewHabit
       ]
 
----------------------------------- Move Habit ----------------------------------
-    let move = webWriter environment $ do
-          habit_id ← getParam "habit_id"
-          new_index ← getParam "new_index" <&> (\n → n-1)
-          log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
-          old_habits ← use habits_
-          case moveHabitWithIdToIndex habit_id new_index old_habits of
-            Left exc → log [i|Exception moving habit: #{exc}|]
-            Right new_habits → habits_ .= new_habits
-          redirectTo "/"
-    Scotty.post "/move/:habit_id" move
-    Scotty.post "/move/:habit_id/:new_index" move
+---------------------------------- Move Habit ---------------------------------
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
         habitPage habit_id name_error difficulty_error importance_error habit =
