@@ -55,8 +55,8 @@ instance MonadReader Account (ReaderProgram) where
   ask = ReaderProgram $ Operational.singleton ReaderViewInstruction
   local = error "if you see this, then ReaderProgram needs to have a local method"
 
-readerWith ∷ (∀ α. String → ActionM α) → ReaderProgram ProgramResult → Environment → ActionM ()
-readerWith actionWhenAuthFails (ReaderProgram program) environment = do
+readerWith ∷ (∀ α. String → ActionM α) → Environment → ReaderProgram ProgramResult → ActionM ()
+readerWith actionWhenAuthFails environment (ReaderProgram program) = do
   logRequest
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← Scotty.params
@@ -83,8 +83,8 @@ readerWith actionWhenAuthFails (ReaderProgram program) environment = do
       setStatusAndLog status_
       setContent content
 
-apiReader ∷ ReaderProgram ProgramResult → Environment → ActionM ()
+apiReader ∷ Environment → ReaderProgram ProgramResult → ActionM ()
 apiReader = readerWith (finishWithStatusMessage 403)
 
-webReader ∷ ReaderProgram ProgramResult → Environment → ActionM ()
+webReader ∷ Environment → ReaderProgram ProgramResult → ActionM ()
 webReader = readerWith (const $ Scotty.redirect "/login")
