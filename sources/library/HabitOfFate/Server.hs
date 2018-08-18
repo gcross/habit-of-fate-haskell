@@ -88,6 +88,7 @@ import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Server.Program.Writer
 import HabitOfFate.Server.Requests.GetAllHabits
+import HabitOfFate.Server.Requests.GetHabit
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
 import HabitOfFate.Server.Requests.MoveHabit
@@ -183,6 +184,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 
     mapM_ ($ environment)
       [ handleGetAllHabits
+      , handleGetHabit
       , handleLoginOrCreate
       , handleLogout
       , handleMoveHabit
@@ -218,11 +220,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
               H.div $ do
                 H.input !  A.type_ "submit"
                 H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
-    Scotty.get "/api/habits/:habit_id" <<< apiReader environment $ do
-      habit_id ← getParam "habit_id"
-      log $ [i|Requested habit with id #{habit_id}.|]
-      (view $ habits_ . at habit_id)
-        >>= maybe raiseNoSuchHabit (returnJSON ok200)
 
     Scotty.get "/habits/:habit_id" <<< webReader environment $ do
       habit_id ← getParam "habit_id"
