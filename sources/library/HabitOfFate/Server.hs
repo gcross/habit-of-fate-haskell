@@ -87,6 +87,7 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Server.Program.Writer
+import HabitOfFate.Server.Requests.DeleteHabit
 import HabitOfFate.Server.Requests.EditHabit
 import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.GetHabit
@@ -184,7 +185,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       Scotty.text message
 
     mapM_ ($ environment)
-      [ handleEditHabit
+      [ handleDeleteHabit
+      , handleEditHabit
       , handleGetAllHabits
       , handleGetHabit
       , handleLoginOrCreate
@@ -193,15 +195,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handleNewHabit
       ]
 
----------------------------------- Get Habit -----------------------------------
-    Scotty.delete "/api/habits/:habit_id" <<< apiWriter environment $ do
-      habit_id ← getParam "habit_id"
-      log $ [i|Requested to delete habit with id #{habit_id}.|]
-      habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Nothing)
-      returnNothing $
-        if habit_was_there
-          then noContent204
-          else notFound404
 ---------------------------------- Put Habit -----------------------------------
     let apiWriteAction = do
           habit_id ← getParam "habit_id"
