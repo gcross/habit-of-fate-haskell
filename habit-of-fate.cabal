@@ -87,6 +87,7 @@ library
                      , HabitOfFate.Server.Requests.GetAllHabits
                      , HabitOfFate.Server.Requests.GetCredits
                      , HabitOfFate.Server.Requests.GetHabit
+                     , HabitOfFate.Server.Requests.GetQuestStatus
                      , HabitOfFate.Server.Requests.LoginOrCreate
                      , HabitOfFate.Server.Requests.Logout
                      , HabitOfFate.Server.Requests.MarkHabitAndRun

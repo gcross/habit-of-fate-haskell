@@ -92,6 +92,7 @@ import HabitOfFate.Server.Requests.EditHabit
 import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.GetCredits
 import HabitOfFate.Server.Requests.GetHabit
+import HabitOfFate.Server.Requests.GetQuestStatus
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
 import HabitOfFate.Server.Requests.MarkHabitAndRun
@@ -187,6 +188,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handleGetAllHabits
       , handleGetCredits
       , handleGetHabit
+      , handleGetQuestStatus
       , handleLoginOrCreate
       , handleLogout
       , handleMarkHabitAndRun
@@ -195,15 +197,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handlePutHabit
       ]
 
---------------------------------- Quest Status ---------------------------------
-    Scotty.get "/api/status" <<< apiReader environment $
-      ask
-      >>=
-      (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
-    Scotty.get "/status" <<< webReader environment $
-      (ask <&> getAccountStatus)
-      >>=
-      renderEventToHTMLAndReturn "Habit of Fate - Quest Status" [] ok200
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Web Files -----------------------------------
