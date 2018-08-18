@@ -27,11 +27,15 @@ import HabitOfFate.Prelude
 
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, modifyTVar, newTVar)
+import qualified Data.ByteString.Builder as Builder
+import Data.Time.Clock (addUTCTime, getCurrentTime)
 import Network.HTTP.Types.Status (conflict409, created201)
+import System.Random (randomRIO)
 import Text.Blaze.Html5 (AttributeValue, Html, (!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Web.Scotty (ScottyM)
+import Web.Cookie (SetCookie(..), renderSetCookie, sameSiteStrict)
+import Web.Scotty (ActionM, ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
@@ -40,8 +44,30 @@ import HabitOfFate.Server.Actions.Queries
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
+createAndReturnCookie ∷ Environment → Username → ActionM ()
+createAndReturnCookie Environment{..} username = do
+  Cookie token ← liftIO $ do
+    current_time ← getCurrentTime
+    cookie ← (pack >>> Cookie) <$> (replicateM 20 $ randomRIO ('A','z'))
+    atomically $ do
+      let expiration_time = addUTCTime (30*86400) current_time
+      modifyTVar cookies_tvar $ insertMap cookie (expiration_time, username)
+      modifyTVar expirations_tvar $ insertSet (expiration_time, cookie)
+    pure cookie
+  def
+    { setCookieName="token"
+    , setCookieValue=encodeUtf8 token
+    , setCookieHttpOnly=True
+    , setCookieSameSite=Just sameSiteStrict
+    , setCookieSecure=not test_mode
+    }
+    |> renderSetCookie
+    |> Builder.toLazyByteString
+    |> decodeUtf8
+    |> Scotty.setHeader "Set-Cookie"
+
 handleCreateAccountApi ∷ Environment → ScottyM ()
-handleCreateAccountApi Environment{..} = do
+handleCreateAccountApi environment@Environment{..} = do
   Scotty.post "/api/create" $ do
     logRequest
     username ← paramGuardingAgainstMissing "username"
@@ -61,10 +87,10 @@ handleCreateAccountApi Environment{..} = do
             pure $ do
               logIO $ [i|Account "#{username}" successfully created!|]
               Scotty.status created201
-              createAndReturnCookie username
+              createAndReturnCookie environment username
 
 handleLoginApi ∷ Environment → ScottyM ()
-handleLoginApi Environment{..} = do
+handleLoginApi environment@Environment{..} = do
   Scotty.post "/api/login" $ do
     logRequest
     username ← paramGuardingAgainstMissing "username"
@@ -83,7 +109,7 @@ handleLoginApi Environment{..} = do
         bool (finishWithStatusMessage 403 "Forbidden: Invalid password") (logIO "Login successful.")
       )
       >>
-      createAndReturnCookie username
+      createAndReturnCookie environment username
       )
 
 basicTextInput ∷ AttributeValue → AttributeValue → AttributeValue → Html → Html
@@ -102,7 +128,7 @@ basicTextForm =
     )
 
 handleCreateAccountWeb ∷ Environment → ScottyM ()
-handleCreateAccountWeb Environment{..} = do
+handleCreateAccountWeb environment@Environment{..} = do
   Scotty.get "/create" action
   Scotty.post "/create" action
  where
@@ -130,7 +156,7 @@ handleCreateAccountWeb Environment{..} = do
                   modifyTVar accounts_tvar $ insertMap username account_tvar
                   pure $ do
                     logIO $ [i|Account "#{username_}" successfully created!|]
-                    createAndReturnCookie username
+                    createAndReturnCookie environment username
                     Scotty.redirect "/"
         else pure $
           if onull username_
@@ -167,7 +193,7 @@ handleCreateAccountWeb Environment{..} = do
               ! A.value "Create Account"
 
 handleLoginWeb ∷ Environment → ScottyM ()
-handleLoginWeb Environment{..} = do
+handleLoginWeb environment@Environment{..} = do
   Scotty.get "/login" action
   Scotty.post "/login" action
  where
@@ -191,7 +217,7 @@ handleLoginWeb Environment{..} = do
               if passwordIsValid password account
                 then do
                   logIO [i|Successfully logged in #{username_}.|]
-                  createAndReturnCookie username
+                  createAndReturnCookie environment username
                   Scotty.redirect "/habits"
                 else do
                   logIO [i|Incorrect password for #{username_}.|]

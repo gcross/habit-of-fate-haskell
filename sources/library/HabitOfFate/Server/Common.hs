@@ -52,7 +52,7 @@ data Environment = Environment
   , cookies_tvar ∷ TVar (Map Cookie (UTCTime, Username))
   , expirations_tvar ∷ TVar (Set (UTCTime, Cookie))
   , write_request_var ∷ TMVar ()
-  , createAndReturnCookie ∷ Username → ActionM ()
+  , test_mode ∷ Bool
   }
 
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α

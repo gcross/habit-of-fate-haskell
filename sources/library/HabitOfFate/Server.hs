@@ -153,28 +153,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 
   _ ← forkIO $ cleanCookies cookies_tvar expirations_tvar
 
-  let createAndReturnCookie ∷ Username → ActionM ()
-      createAndReturnCookie username = do
-        Cookie token ← liftIO $ do
-          current_time ← getCurrentTime
-          cookie ← (pack >>> Cookie) <$> (replicateM 20 $ randomRIO ('A','z'))
-          atomically $ do
-            let expiration_time = addUTCTime (30*86400) current_time
-            modifyTVar cookies_tvar $ insertMap cookie (expiration_time, username)
-            modifyTVar expirations_tvar $ insertSet (expiration_time, cookie)
-          pure cookie
-        def
-          { setCookieName="token"
-          , setCookieValue=encodeUtf8 token
-          , setCookieHttpOnly=True
-          , setCookieSameSite=Just sameSiteStrict
-          , setCookieSecure=not test_mode
-          }
-          |> renderSetCookie
-          |> Builder.toLazyByteString
-          |> decodeUtf8
-          |> Scotty.setHeader "Set-Cookie"
-
   let environment = Environment{..}
 
   scottyApp $ do
