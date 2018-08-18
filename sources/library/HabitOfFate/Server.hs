@@ -103,8 +103,12 @@ import HabitOfFate.Server.Requests.PutHabit
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
-writeDataOnChange ∷ TVar (Map Username (TVar Account)) → TMVar () → (Accounts → IO ()) → IO α
-writeDataOnChange accounts_tvar write_request_var saveAccounts = forever $
+--------------------------------------------------------------------------------
+------------------------------ Background Threads ------------------------------
+--------------------------------------------------------------------------------
+
+writeDataOnChange ∷ Environment → (Accounts → IO ()) → IO α
+writeDataOnChange Environment{..} saveAccounts = forever $
   (atomically $ do
     takeTMVar write_request_var
     readTVar accounts_tvar >>= traverse readTVar
@@ -112,8 +116,8 @@ writeDataOnChange accounts_tvar write_request_var saveAccounts = forever $
   >>=
   saveAccounts
 
-cleanCookies ∷ TVar (Map Cookie (UTCTime, Username)) → TVar (Set (UTCTime, Cookie)) → IO α
-cleanCookies cookies_tvar expirations_tvar = forever $ do
+cleanCookies ∷ Environment → IO α
+cleanCookies Environment{..} = forever $ do
   dropped ←
     (atomically $ do
       current_time ← unsafeIOToSTM getCurrentTime
@@ -140,20 +144,17 @@ makeAppWithTestMode ∷ Bool → Accounts → (Accounts → IO ()) → IO Applic
 makeAppWithTestMode test_mode initial_accounts saveAccounts = do
   liftIO $ hSetBuffering stderr LineBuffering
 
-  logIO $ "Starting server..."
+  logIO "Starting server..."
 
-  accounts_tvar ← atomically $
-    traverse newTVar initial_accounts >>= newTVar
+  accounts_tvar ← atomically $ traverse newTVar initial_accounts >>= newTVar
   write_request_var ← newEmptyTMVarIO
-
-  _ ← forkIO $ writeDataOnChange accounts_tvar write_request_var saveAccounts
-
   cookies_tvar ← newTVarIO mempty
   expirations_tvar ← newTVarIO mempty
 
-  _ ← forkIO $ cleanCookies cookies_tvar expirations_tvar
-
   let environment = Environment{..}
+
+  _ ← forkIO $ writeDataOnChange environment saveAccounts
+  _ ← forkIO $ cleanCookies environment
 
   scottyApp $ do
 
@@ -179,9 +180,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handlePutHabit
       ]
 
-------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
----------------------------------- Not Found -----------------------------------
+
     Scotty.notFound $ do
       r ← Scotty.request
       logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
