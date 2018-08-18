@@ -46,7 +46,7 @@ import Network.HTTP.Simple
 import Network.HTTP.Types
 import Web.Cookie
 
-import HabitOfFate.Credits
+import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Story

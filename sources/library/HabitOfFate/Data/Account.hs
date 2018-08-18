@@ -36,7 +36,7 @@ import Data.Aeson hiding ((.=))
 import Data.UUID (UUID)
 import Web.Scotty (Parsable)
 
-import HabitOfFate.Credits
+import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Quest
 import HabitOfFate.Quests

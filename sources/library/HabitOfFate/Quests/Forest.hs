@@ -37,7 +37,7 @@ import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Random
 
-import HabitOfFate.Credits
+import HabitOfFate.Data.Credits
 import HabitOfFate.Proofread
 import HabitOfFate.Quest
 import HabitOfFate.Story

@@ -27,7 +27,7 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Random
 
-import HabitOfFate.Credits
+import HabitOfFate.Data.Credits
 import HabitOfFate.Story
 
 data InitialQuestResult α = InitialQuestResult

@@ -20,7 +20,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Credits where
+module HabitOfFate.Data.Credits where
 
 import HabitOfFate.Prelude
 

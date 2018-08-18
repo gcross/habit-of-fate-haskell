@@ -68,7 +68,7 @@ import qualified Text.XML.Lens as XML
 import Web.Scotty (parseParam)
 
 import HabitOfFate.API
-import HabitOfFate.Credits
+import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story

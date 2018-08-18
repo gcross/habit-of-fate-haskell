@@ -77,8 +77,8 @@ import Web.Scotty
   )
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Credits
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Queries

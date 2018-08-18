@@ -35,7 +35,7 @@ import System.IO.Error (isEOFError)
 import System.Random
 
 import HabitOfFate.API
-import HabitOfFate.Credits
+import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Story.Renderer.Console
 

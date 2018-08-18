@@ -66,8 +66,8 @@ library
                      , yaml
   exposed-modules:     HabitOfFate.API
                      , HabitOfFate.Client
-                     , HabitOfFate.Credits
                      , HabitOfFate.Data.Account
+                     , HabitOfFate.Data.Credits
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
