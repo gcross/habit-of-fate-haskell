@@ -95,6 +95,7 @@ import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
 import HabitOfFate.Server.Requests.MoveHabit
 import HabitOfFate.Server.Requests.NewHabit
+import HabitOfFate.Server.Requests.PutHabit
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
@@ -193,20 +194,9 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handleLogout
       , handleMoveHabit
       , handleNewHabit
+      , handlePutHabit
       ]
 
----------------------------------- Put Habit -----------------------------------
-    let apiWriteAction = do
-          habit_id ← getParam "habit_id"
-          log $ [i|Requested to put habit with id #{habit_id}.|]
-          habit ← getBodyJSON
-          habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Just habit)
-          returnNothing $
-            if habit_was_there
-              then noContent204
-              else created201
-    Scotty.post "/api/habits/:habit_id" <<< apiWriter environment $ apiWriteAction
-    Scotty.put "/api/habits/:habit_id" <<< apiWriter environment $ apiWriteAction
 --------------------------------- Get Credits ----------------------------------
     Scotty.get "/api/credits" <<< apiReader environment $ do
       log $ "Requested credits."

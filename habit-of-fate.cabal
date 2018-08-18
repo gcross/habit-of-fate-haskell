@@ -90,6 +90,7 @@ library
                      , HabitOfFate.Server.Requests.Logout
                      , HabitOfFate.Server.Requests.MoveHabit
                      , HabitOfFate.Server.Requests.NewHabit
+                     , HabitOfFate.Server.Requests.PutHabit
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
                      , HabitOfFate.Story.Parser.XML
