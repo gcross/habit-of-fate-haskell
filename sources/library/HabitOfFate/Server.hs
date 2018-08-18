@@ -91,6 +91,7 @@ import HabitOfFate.Server.Requests.DeleteHabit
 import HabitOfFate.Server.Requests.EditHabit
 import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.GetCredits
+import HabitOfFate.Server.Requests.GetFile
 import HabitOfFate.Server.Requests.GetHabit
 import HabitOfFate.Server.Requests.GetQuestStatus
 import HabitOfFate.Server.Requests.LoginOrCreate
@@ -101,8 +102,6 @@ import HabitOfFate.Server.Requests.NewHabit
 import HabitOfFate.Server.Requests.PutHabit
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
-
-import Paths_habit_of_fate (getDataFileName)
 
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
@@ -182,6 +181,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       Scotty.status internalServerError500
       Scotty.text message
 
+    handleGetFile
+
     mapM_ ($ environment)
       [ handleDeleteHabit
       , handleEditHabit
@@ -199,24 +200,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
----------------------------------- Web Files -----------------------------------
-    let fetch ∷ FilePath → String → Lazy.Text → Maybe Lazy.Text → ActionM ()
-        fetch subdirectory extension content_type maybe_compression = do
-          filepath ← param "filename"
-          logIO [i|Requested file #{filepath} in #{subdirectory}|]
-          when ('/' ∈ filepath) $ do
-            logIO [i|Filepath #{filepath} has a slash.|]
-            Scotty.next
-          unless (('.':extension) `isSuffixOf` filepath) $ do
-            logIO [i|Filename #{filepath} does not end with .#{extension}|]
-            Scotty.next
-          file_to_return ← (subdirectory </> filepath) |> getDataFileName |> liftIO
-          logIO [i|Returning #{file_to_return}|]
-          addHeader "Content-Type" content_type
-          maybe (pure ()) (addHeader "Content-Encoding") maybe_compression
-          Scotty.file file_to_return
-    Scotty.get "/css/:filename" $ fetch "css" "css" "text/css" Nothing
-    Scotty.get "/images/:filename" $ fetch "images" "svgz" "image/svg+xml" (Just "gzip")
 ---------------------------------- Not Found -----------------------------------
     Scotty.notFound $ do
       r ← Scotty.request
