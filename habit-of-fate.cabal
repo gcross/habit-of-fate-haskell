@@ -85,6 +85,7 @@ library
                      , HabitOfFate.Server.Requests.DeleteHabit
                      , HabitOfFate.Server.Requests.EditHabit
                      , HabitOfFate.Server.Requests.GetAllHabits
+                     , HabitOfFate.Server.Requests.GetCredits
                      , HabitOfFate.Server.Requests.GetHabit
                      , HabitOfFate.Server.Requests.LoginOrCreate
                      , HabitOfFate.Server.Requests.Logout

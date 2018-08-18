@@ -90,6 +90,7 @@ import HabitOfFate.Server.Program.Writer
 import HabitOfFate.Server.Requests.DeleteHabit
 import HabitOfFate.Server.Requests.EditHabit
 import HabitOfFate.Server.Requests.GetAllHabits
+import HabitOfFate.Server.Requests.GetCredits
 import HabitOfFate.Server.Requests.GetHabit
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
@@ -189,6 +190,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       [ handleDeleteHabit
       , handleEditHabit
       , handleGetAllHabits
+      , handleGetCredits
       , handleGetHabit
       , handleLoginOrCreate
       , handleLogout
@@ -197,10 +199,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handlePutHabit
       ]
 
---------------------------------- Get Credits ----------------------------------
-    Scotty.get "/api/credits" <<< apiReader environment $ do
-      log $ "Requested credits."
-      view (stored_credits_) >>= returnJSON ok200
 --------------------------------- Mark Habits ----------------------------------
     Scotty.post "/api/mark" <<< apiWriter environment $ do
       marks ← getBodyJSON
