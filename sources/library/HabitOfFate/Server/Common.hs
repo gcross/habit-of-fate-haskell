@@ -32,6 +32,10 @@ import Data.Time.Clock (UTCTime)
 import Data.UUID (UUID, fromText)
 import Network.HTTP.Types.Status (badRequest400)
 import Network.Wai (rawPathInfo, rawQueryString, requestMethod)
+import Text.Blaze.Html.Renderer.Text (renderHtml)
+import Text.Blaze.Html5 (Html, (!), toHtml)
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 import Web.Scotty (ActionM, Parsable(..))
 import qualified Web.Scotty as Scotty
 
@@ -68,3 +72,21 @@ paramGuardingAgainstMissing name =
     Scotty.text $ name ⊕ " was not given"
     Scotty.finish
    )
+
+renderHTMLUsingTemplate ∷ Text → [Text] → Html → Lazy.Text
+renderHTMLUsingTemplate title stylesheets body =
+  renderHtml $
+    H.docTypeHtml $ do
+      H.head $
+        (H.title $ toHtml title)
+        ⊕
+        mconcat
+          [ H.link
+              ! A.rel "stylesheet"
+              ! A.type_ "text/css"
+              ! A.href (H.toValue $ mconcat ["css/", stylesheet, ".css"])
+          | stylesheet ← stylesheets
+          ]
+      H.body $ do
+        H.img ! A.src "images/logo.svgz"
+        body

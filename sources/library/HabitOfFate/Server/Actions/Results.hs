@@ -28,9 +28,7 @@ import Data.Aeson (ToJSON)
 import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (Status(..))
 import Text.Blaze.Html.Renderer.Text (renderHtml)
-import Text.Blaze.Html5 (Html, (!), toHtml)
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import Text.Blaze.Html5 (Html, toHtml)
 import Web.Scotty (ActionM, finish, status)
 import qualified Web.Scotty as Scotty
 
@@ -66,21 +64,3 @@ setStatusAndLog status_@(Status code message) = do
         | code < 200 || code >= 300 = "failed"
         | otherwise = "succeeded"
   logIO $ [i|Request #{result} - #{code} #{decodeUtf8 >>> unpack $ message}|]
-
-renderHTMLUsingTemplate ∷ Text → [Text] → Html → Lazy.Text
-renderHTMLUsingTemplate title stylesheets body =
-  renderHtml $
-    H.docTypeHtml $ do
-      H.head $
-        (H.title $ toHtml title)
-        ⊕
-        mconcat
-          [ H.link
-              ! A.rel "stylesheet"
-              ! A.type_ "text/css"
-              ! A.href (H.toValue $ mconcat ["css/", stylesheet, ".css"])
-          | stylesheet ← stylesheets
-          ]
-      H.body $ do
-        H.img ! A.src "images/logo.svgz"
-        body

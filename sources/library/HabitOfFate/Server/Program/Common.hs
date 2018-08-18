@@ -35,6 +35,7 @@ import Web.Scotty (Param, Parsable(parseParam))
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Actions.Results
+import HabitOfFate.Server.Common
 import HabitOfFate.Story (Event)
 import HabitOfFate.Story.Renderer.HTML (renderEventToHTML)
 
