@@ -14,7 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -81,19 +80,26 @@ handleEditHabitPost environment = do
   Scotty.post "/habits/:habit_id" <<< webWriter environment $ do
     habit_id ← getParam "habit_id"
     log $ [i|Web POST request for habit with id #{habit_id}.|]
-    (unparsed_name, maybe_name, name_error) ← getParamMaybe "name" <&> \case
-          Nothing → ("", Nothing, "No value for the name was present.")
-          Just unparsed_name
-            | onull unparsed_name → (unparsed_name, Nothing, "Name must not be blank.")
-            | otherwise → (unparsed_name, Just (pack unparsed_name), "")
-    let getScale param_name = getParamMaybe param_name <&> \case
-          Nothing → ("", Nothing, "No value for the " ⊕ param_name ⊕ " was present.")
-          Just unparsed_value →
-            case readMaybe unparsed_value of
-              Nothing → (unparsed_name, Nothing, "Invalid value for the " ⊕ param_name ⊕ ".")
-              Just value → (unparsed_value, Just value, "")
-    (unparsed_difficulty, maybe_difficulty, difficulty_error) ← getScale "difficulty"
-    (unparsed_importance, maybe_importance, importance_error) ← getScale "importance"
+    (maybe_name, name_error) ←
+      getParamMaybe "name"
+      <&>
+      maybe
+        (Nothing, "No value for the name was present.")
+        (\value → (Just (pack value), ""))
+    let getScale param_name =
+          getParamMaybe param_name
+          <&>
+          maybe
+            (Nothing, "No value for the " ⊕ param_name ⊕ " was present.")
+            (
+              readMaybe
+              >>>
+              maybe
+                (Nothing, "Invalid value for the " ⊕ param_name ⊕ ".")
+                (\value → (Just value, ""))
+            )
+    (maybe_difficulty, difficulty_error) ← getScale "difficulty"
+    (maybe_importance, importance_error) ← getScale "importance"
     case Habit <$> maybe_name <*> (Difficulty <$> maybe_difficulty) <*> (Importance <$> maybe_importance) of
       Nothing → do
         log [i|Failed to update habit #{habit_id}:|]
