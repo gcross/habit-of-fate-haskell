@@ -35,8 +35,6 @@ import Web.Scotty (ActionM, finish, status)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Logging (logIO)
-import HabitOfFate.Story (Event)
-import HabitOfFate.Story.Renderer.HTML (renderEventToHTML)
 
 finishWithStatus ∷ Status → ActionM α
 finishWithStatus s = do
@@ -46,6 +44,13 @@ finishWithStatus s = do
 
 finishWithStatusMessage ∷ Int → String → ActionM α
 finishWithStatusMessage code = pack >>> encodeUtf8 >>> Status code >>> finishWithStatus
+
+data Content =
+    NoContent
+  | TextContent Lazy.Text
+  | TextContentAsHTML Lazy.Text
+  | HtmlContent Html
+  | ∀ α. ToJSON α ⇒ JSONContent α
 
 setContent ∷ Content → ActionM ()
 setContent NoContent = pure ()
@@ -61,30 +66,6 @@ setStatusAndLog status_@(Status code message) = do
         | code < 200 || code >= 300 = "failed"
         | otherwise = "succeeded"
   logIO $ [i|Request #{result} - #{code} #{decodeUtf8 >>> unpack $ message}|]
-
-data ProgramResult = ProgramRedirectsTo Lazy.Text | ProgramResult Status Content
-
-data Content =
-    NoContent
-  | TextContent Lazy.Text
-  | TextContentAsHTML Lazy.Text
-  | HtmlContent Html
-  | ∀ α. ToJSON α ⇒ JSONContent α
-
-returnNothing ∷ Monad m ⇒ Status → m ProgramResult
-returnNothing s = return $ ProgramResult s NoContent
-
-returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
-returnLazyText s = TextContent >>> ProgramResult s >>> return
-
-returnLazyTextAsHTML ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
-returnLazyTextAsHTML s = TextContentAsHTML >>> ProgramResult s >>> return
-
-returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
-returnJSON s = JSONContent >>> ProgramResult s >>> return
-
-redirectTo ∷ Monad m ⇒ Lazy.Text → m ProgramResult
-redirectTo = ProgramRedirectsTo >>> return
 
 renderHTMLUsingTemplate ∷ Text → [Text] → Html → Lazy.Text
 renderHTMLUsingTemplate title stylesheets body =
@@ -103,15 +84,3 @@ renderHTMLUsingTemplate title stylesheets body =
       H.body $ do
         H.img ! A.src "images/logo.svgz"
         body
-
-renderHTMLUsingTemplateAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m ProgramResult
-renderHTMLUsingTemplateAndReturn title stylesheets status =
-  renderHTMLUsingTemplate title stylesheets
-  >>>
-  returnLazyTextAsHTML status
-
-renderEventToHTMLAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Event → m ProgramResult
-renderEventToHTMLAndReturn title stylesheets status =
-  renderEventToHTML
-  >>>
-  renderHTMLUsingTemplateAndReturn title stylesheets status

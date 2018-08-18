@@ -30,9 +30,8 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Server.Actions.Common
-import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
+import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 
 import HabitOfFate.Data.Account

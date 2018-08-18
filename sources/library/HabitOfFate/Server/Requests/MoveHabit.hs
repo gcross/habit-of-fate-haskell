@@ -28,9 +28,8 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
-import HabitOfFate.Server.Actions.Common
-import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
+import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Writer
 
 handleMoveHabit ∷ Environment → ScottyM ()

@@ -40,10 +40,10 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Logging
-import HabitOfFate.Server.Actions.Common
 import HabitOfFate.Server.Actions.Queries
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
+import HabitOfFate.Server.Program.Common
 
 data WriterInstruction α where
   WriterCommonInstruction ∷ CommonInstruction α → WriterInstruction α

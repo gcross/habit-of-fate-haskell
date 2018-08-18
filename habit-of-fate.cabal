@@ -76,7 +76,6 @@ library
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Server
-                     , HabitOfFate.Server.Actions.Common
                      , HabitOfFate.Server.Actions.Queries
                      , HabitOfFate.Server.Actions.Results
                      , HabitOfFate.Server.Common
