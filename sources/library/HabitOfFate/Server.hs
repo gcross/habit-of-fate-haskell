@@ -87,6 +87,7 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Server.Program.Writer
+import HabitOfFate.Server.Requests.EditHabit
 import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.GetHabit
 import HabitOfFate.Server.Requests.LoginOrCreate
@@ -183,7 +184,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       Scotty.text message
 
     mapM_ ($ environment)
-      [ handleGetAllHabits
+      [ handleEditHabit
+      , handleGetAllHabits
       , handleGetHabit
       , handleLoginOrCreate
       , handleLogout
@@ -192,68 +194,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       ]
 
 ---------------------------------- Get Habit -----------------------------------
-    let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
-        habitPage habit_id name_error difficulty_error importance_error habit =
-          renderHTMLUsingTemplate "Habit of Fate - Editing a Habit" [] >>> returnLazyTextAsHTML ok200 $
-            H.form ! A.method "post" $ do
-              H.div $ H.table $ do
-                H.tr $ do
-                  H.td $ H.toHtml ("Name:" ∷ Text)
-                  H.td $ H.input ! A.type_ "text" ! A.name "name" ! A.value (H.toValue $ habit ^. name_)
-                  H.td $ H.toHtml name_error
-                let generateScaleEntry name value_lens =
-                      H.select ! A.name name ! A.required "true" $
-                        flip foldMap scales $ \scale →
-                          let addSelectedFlag
-                                | habit ^. value_lens == scale = (! A.selected "selected")
-                                | otherwise = identity
-                              unselected_option = H.option ! A.value (scale |> show |> H.toValue)
-                          in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
-                H.tr $ do
-                  H.td $ H.toHtml ("Difficulty:" ∷ Text)
-                  H.td $ generateScaleEntry "difficulty" difficulty_
-                  H.td $ H.toHtml difficulty_error
-                H.tr $ do
-                  H.td $ H.toHtml ("Importance:" ∷ Text)
-                  H.td $ generateScaleEntry "importance" importance_
-                  H.td $ H.toHtml importance_error
-              H.div $ do
-                H.input !  A.type_ "submit"
-                H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
-
-    Scotty.get "/habits/:habit_id" <<< webReader environment $ do
-      habit_id ← getParam "habit_id"
-      log $ [i|Web GET request for habit with id #{habit_id}.|]
-      (view (habits_ . at habit_id) <&> fromMaybe def)
-        >>= habitPage habit_id "" "" ""
-
-    Scotty.post "/habits/:habit_id" <<< webWriter environment $ do
-      habit_id ← getParam "habit_id"
-      log $ [i|Web POST request for habit with id #{habit_id}.|]
-      (unparsed_name, maybe_name, name_error) ← getParamMaybe "name" <&> \case
-            Nothing → ("", Nothing, "No value for the name was present.")
-            Just unparsed_name
-              | onull unparsed_name → (unparsed_name, Nothing, "Name must not be blank.")
-              | otherwise → (unparsed_name, Just (pack unparsed_name), "")
-      let getScale param_name = getParamMaybe param_name <&> \case
-            Nothing → ("", Nothing, "No value for the " ⊕ param_name ⊕ " was present.")
-            Just unparsed_value →
-              case readMaybe unparsed_value of
-                Nothing → (unparsed_name, Nothing, "Invalid value for the " ⊕ param_name ⊕ ".")
-                Just value → (unparsed_value, Just value, "")
-      (unparsed_difficulty, maybe_difficulty, difficulty_error) ← getScale "difficulty"
-      (unparsed_importance, maybe_importance, importance_error) ← getScale "importance"
-      case Habit <$> maybe_name <*> (Difficulty <$> maybe_difficulty) <*> (Importance <$> maybe_importance) of
-        Nothing → do
-          log [i|Failed to update habit #{habit_id}:|]
-          log [i|    Name error: #{name_error}|]
-          log [i|    Difficulty error: #{difficulty_error}|]
-          log [i|    Importance error: #{importance_error}|]
-          habitPage habit_id name_error difficulty_error importance_error def
-        Just new_habit → do
-          log [i|Updating habit #{habit_id} to #{new_habit}|]
-          habits_ . at habit_id <<.= Just new_habit
-          redirectTo "/habits"
     Scotty.delete "/api/habits/:habit_id" <<< apiWriter environment $ do
       habit_id ← getParam "habit_id"
       log $ [i|Requested to delete habit with id #{habit_id}.|]
