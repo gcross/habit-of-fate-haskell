@@ -30,12 +30,11 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
+import HabitOfFate.Data.Account
+import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
-
-import HabitOfFate.Data.Account
-import HabitOfFate.Data.Habit
 
 handleGetAllHabitsApi ∷ Environment → ScottyM ()
 handleGetAllHabitsApi environment = do
