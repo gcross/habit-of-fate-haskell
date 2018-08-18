@@ -103,6 +103,35 @@ import HabitOfFate.Server.Requests.PutHabit
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
+writeDataOnChange ∷ TVar (Map Username (TVar Account)) → TMVar () → (Accounts → IO ()) → IO α
+writeDataOnChange accounts_tvar write_request_var saveAccounts = forever $
+  (atomically $ do
+    takeTMVar write_request_var
+    readTVar accounts_tvar >>= traverse readTVar
+  )
+  >>=
+  saveAccounts
+
+cleanCookies ∷ TVar (Map Cookie (UTCTime, Username)) → TVar (Set (UTCTime, Cookie)) → IO α
+cleanCookies cookies_tvar expirations_tvar = forever $ do
+  dropped ←
+    (atomically $ do
+      current_time ← unsafeIOToSTM getCurrentTime
+      expirations ← readTVar expirations_tvar
+      case minView expirations of
+        Nothing → pure False
+        Just (first@(first_time, first_cookie), rest) → do
+          if first_time < current_time
+            then do
+              unsafeIOToSTM $ logIO [i|Dropping cookie #{first} at #{current_time}.|]
+              modifyTVar cookies_tvar $ deleteMap first_cookie
+              writeTVar expirations_tvar rest
+              pure True
+            else
+              pure False
+    )
+  unless dropped $ threadDelay (60 * 1000 * 1000)
+
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
@@ -115,31 +144,14 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 
   accounts_tvar ← atomically $
     traverse newTVar initial_accounts >>= newTVar
+  write_request_var ← newEmptyTMVarIO
+
+  _ ← forkIO $ writeDataOnChange accounts_tvar write_request_var saveAccounts
 
   cookies_tvar ← newTVarIO mempty
   expirations_tvar ← newTVarIO mempty
 
-  forkIO <<< forever $
-    let go =
-          (
-            atomically $ do
-              current_time ← unsafeIOToSTM getCurrentTime
-              expirations ← readTVar expirations_tvar
-              case minView expirations of
-                Nothing → pure False
-                Just (first@(first_time, first_cookie), rest) → do
-                  if first_time < current_time
-                    then do
-                      unsafeIOToSTM $ logIO [i|Dropping cookie #{first} at #{current_time}.|]
-                      modifyTVar cookies_tvar $ deleteMap first_cookie
-                      writeTVar expirations_tvar rest
-                      pure True
-                    else
-                      pure False
-          )
-          >>=
-          \case { False → threadDelay (60 * 1000 * 1000) >> go; _ → go }
-    in go
+  _ ← forkIO $ cleanCookies cookies_tvar expirations_tvar
 
   let createAndReturnCookie ∷ Username → ActionM ()
       createAndReturnCookie username = do
@@ -162,15 +174,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
           |> Builder.toLazyByteString
           |> decodeUtf8
           |> Scotty.setHeader "Set-Cookie"
-
-  write_request_var ← newEmptyTMVarIO
-  forever >>> forkIO $
-    (atomically $ do
-      takeTMVar write_request_var
-      readTVar accounts_tvar >>= traverse readTVar
-    )
-    >>=
-    saveAccounts
 
   let environment = Environment{..}
 
