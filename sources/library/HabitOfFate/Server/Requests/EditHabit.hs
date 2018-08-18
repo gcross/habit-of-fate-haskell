@@ -25,7 +25,6 @@ module HabitOfFate.Server.Requests.EditHabit (handleEditHabit) where
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
-import Data.UUID (UUID)
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!), toHtml)
 import qualified Text.Blaze.Html5 as H
@@ -40,8 +39,8 @@ import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
 import HabitOfFate.Server.Program.Writer
 
-habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
-habitPage habit_id name_error difficulty_error importance_error habit =
+habitPage ∷ Monad m ⇒ Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
+habitPage name_error difficulty_error importance_error habit =
   renderHTMLUsingTemplate "Habit of Fate - Editing a Habit" [] >>> returnLazyTextAsHTML ok200 $
     H.form ! A.method "post" $ do
       H.div $ H.table $ do
@@ -75,7 +74,7 @@ handleEditHabitGet environment = do
     habit_id ← getParam "habit_id"
     log $ [i|Web GET request for habit with id #{habit_id}.|]
     (view (habits_ . at habit_id) <&> fromMaybe def)
-      >>= habitPage habit_id "" "" ""
+      >>= habitPage "" "" ""
 
 handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do
@@ -101,10 +100,10 @@ handleEditHabitPost environment = do
         log [i|    Name error: #{name_error}|]
         log [i|    Difficulty error: #{difficulty_error}|]
         log [i|    Importance error: #{importance_error}|]
-        habitPage habit_id name_error difficulty_error importance_error def
+        habitPage name_error difficulty_error importance_error def
       Just new_habit → do
         log [i|Updating habit #{habit_id} to #{new_habit}|]
-        habits_ . at habit_id <<.= Just new_habit
+        habits_ . at habit_id .= Just new_habit
         redirectTo "/habits"
 
 handleEditHabit ∷ Environment → ScottyM ()
