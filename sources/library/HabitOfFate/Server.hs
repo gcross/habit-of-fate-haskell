@@ -189,7 +189,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handleNewHabit
       ]
 
----------------------------------- Move Habit ---------------------------------
 ---------------------------------- Get Habit -----------------------------------
     let habitPage ∷ Monad m ⇒ UUID → Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
         habitPage habit_id name_error difficulty_error importance_error habit =
