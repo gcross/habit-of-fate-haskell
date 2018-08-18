@@ -43,50 +43,20 @@ module HabitOfFate.Server
 
 import HabitOfFate.Prelude
 
-import Data.Aeson hiding ((.=))
 import Control.Concurrent
 import Control.Concurrent.STM
-import Control.Monad.Random
-import Control.Monad.Operational (Program, interpretWithMonad)
-import qualified Control.Monad.Operational as Operational
-import qualified Data.ByteString.Builder as Builder
-import Data.List (isSuffixOf)
 import Data.Set (minView)
-import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock
-import Data.UUID hiding (null)
 import GHC.Conc.Sync (unsafeIOToSTM)
 import Network.HTTP.Types.Status
 import Network.Wai
-import System.FilePath ((</>))
 import System.IO (BufferMode(LineBuffering), hSetBuffering, stderr)
-import Text.Blaze.Html.Renderer.Text (renderHtml)
-import Text.Blaze.Html5 (Html, (!), toHtml)
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
-import Web.Cookie
-import Web.Scotty
-  ( ActionM
-  , Parsable
-  , addHeader
-  , params
-  , finish
-  , rescue
-  , scottyApp
-  , status
-  )
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
-import HabitOfFate.Data.Credits
-import HabitOfFate.Data.Habit
 import HabitOfFate.Logging
-import HabitOfFate.Server.Actions.Queries
-import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Program.Common
-import HabitOfFate.Server.Program.Reader
-import HabitOfFate.Server.Program.Writer
+
 import HabitOfFate.Server.Requests.DeleteHabit
 import HabitOfFate.Server.Requests.EditHabit
 import HabitOfFate.Server.Requests.GetAllHabits
@@ -100,8 +70,6 @@ import HabitOfFate.Server.Requests.MarkHabitAndRun
 import HabitOfFate.Server.Requests.MoveHabit
 import HabitOfFate.Server.Requests.NewHabit
 import HabitOfFate.Server.Requests.PutHabit
-import HabitOfFate.Story.Renderer.HTML
-import HabitOfFate.Story.Renderer.XML
 
 --------------------------------------------------------------------------------
 ------------------------------ Background Threads ------------------------------
@@ -156,7 +124,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
   _ ← forkIO $ writeDataOnChange environment saveAccounts
   _ ← forkIO $ cleanCookies environment
 
-  scottyApp $ do
+  Scotty.scottyApp $ do
 
     Scotty.defaultHandler $ \message → do
       logIO [i|ERROR: #{message}|]
