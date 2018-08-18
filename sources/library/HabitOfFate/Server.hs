@@ -94,6 +94,7 @@ import HabitOfFate.Server.Requests.GetCredits
 import HabitOfFate.Server.Requests.GetHabit
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
+import HabitOfFate.Server.Requests.MarkHabitAndRun
 import HabitOfFate.Server.Requests.MoveHabit
 import HabitOfFate.Server.Requests.NewHabit
 import HabitOfFate.Server.Requests.PutHabit
@@ -101,12 +102,6 @@ import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
 import Paths_habit_of_fate (getDataFileName)
-
-runEvent = do
-  account ← get
-  let (event, new_account) = runState runAccount account
-  put new_account
-  pure event
 
 --------------------------------------------------------------------------------
 ------------------------------ Server Application ------------------------------
@@ -194,63 +189,12 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handleGetHabit
       , handleLoginOrCreate
       , handleLogout
+      , handleMarkHabitAndRun
       , handleMoveHabit
       , handleNewHabit
       , handlePutHabit
       ]
 
---------------------------------- Mark Habits ----------------------------------
-    Scotty.post "/api/mark" <<< apiWriter environment $ do
-      marks ← getBodyJSON
-      let markHabits ∷
-            Getter HabitsToMark [UUID] →
-            Getter Habit Scale →
-            Lens' Account Double →
-            WriterProgram Double
-          markHabits uuids_getter scale_getter value_lens = do
-            old_value ← use value_lens
-            increment ∷ Double ←
-              marks
-                |> (^. uuids_getter)
-                |> mapM (lookupHabit >>> fmap ((^. scale_getter) >>> scaleFactor))
-                |> fmap sum
-            value_lens <.= old_value + increment
-      log $ [i|Marking #{marks ^. succeeded} successes and #{marks ^. failed} failures.|]
-      (Credits
-          <$> (Successes <$> markHabits succeeded difficulty_ (stored_credits_ . successes_))
-          <*> (Failures  <$> markHabits failed    importance_ (stored_credits_ . failures_ ))
-       ) >>= returnJSON ok200
-    let runGame = do
-          event ← runEvent
-          let rendered_event
-                | (not <<< null) event = renderEventToHTML event
-                | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
-          stored_credits ← use stored_credits_
-          renderHTMLUsingTemplateAndReturn "Habit of Fate - Event" [] ok200 $ do
-            rendered_event
-            if stored_credits ^. successes_ /= 0 || stored_credits ^. failures_ /= 0
-              then H.form ! A.method "post" $ H.input ! A.type_ "submit" ! A.value "Next"
-              else H.a ! A.href "/habits" $ H.toHtml ("Done" ∷ Text)
-        markHabit ∷
-          String →
-          Getter Habit Double →
-          Lens' Credits Double →
-          ActionM ()
-        markHabit status habit_scale_getter_ credits_lens_ = webWriter environment $ do
-          habits ← use habits_
-          habit_id ← getParam "habit_id"
-          log [i|Marking #{habit_id} as #{status}.|]
-          case habits ^. at habit_id of
-            Nothing →
-              renderHTMLUsingTemplateAndReturn "Habit of Fate - Marking a Habit" [] notFound404 $ do
-                H.h1 "Habit Not Found"
-                H.p $ H.toHtml [i|"Habit #{habit_id} was not found.|]
-            Just habit → do
-              stored_credits_ . credits_lens_ += habit ^. habit_scale_getter_
-              runGame
-    Scotty.post "/mark/success/:habit_id" $ markHabit "succeeded" (difficulty_ . to scaleFactor) successes_
-    Scotty.post "/mark/failure/:habit_id" $ markHabit "failed"(importance_ . to scaleFactor) failures_
-    Scotty.post "/run" <<< webWriter environment $ runGame
 --------------------------------- Quest Status ---------------------------------
     Scotty.get "/api/status" <<< apiReader environment $
       ask
@@ -260,9 +204,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       (ask <&> getAccountStatus)
       >>=
       renderEventToHTMLAndReturn "Habit of Fate - Quest Status" [] ok200
------------------------------------ Run Game -----------------------------------
-    Scotty.post "/api/run" <<< apiWriter environment $ do
-      runEvent >>= (renderEventToXMLText >>> returnLazyText ok200)
 ------------------------------------- Root -------------------------------------
     Scotty.get "/" $ Scotty.redirect "/habits"
 ---------------------------------- Web Files -----------------------------------

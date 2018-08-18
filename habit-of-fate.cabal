@@ -89,6 +89,7 @@ library
                      , HabitOfFate.Server.Requests.GetHabit
                      , HabitOfFate.Server.Requests.LoginOrCreate
                      , HabitOfFate.Server.Requests.Logout
+                     , HabitOfFate.Server.Requests.MarkHabitAndRun
                      , HabitOfFate.Server.Requests.MoveHabit
                      , HabitOfFate.Server.Requests.NewHabit
                      , HabitOfFate.Server.Requests.PutHabit
