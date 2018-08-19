@@ -8,11 +8,10 @@ maintainer:          gcrosswhite@gmail.com
 copyright:           2016 Gregory Crosswhite
 build-type:          Simple
 cabal-version:       >=1.10
-data-dir:            web
-data-files:          css/common.css
-                     css/enter.css
-                     css/list.css
-                     images/logo.svgz
+data-files:          web/css/common.css
+                     web/css/enter.css
+                     web/css/list.css
+                     web/images/logo.svgz
 
 library
   hs-source-dirs:      sources/library
