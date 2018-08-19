@@ -1,4 +1,12 @@
 body {
-    background: #a2aeff;
+    background: #ddeeff;
     font-family: Arial;
+}
+
+.logo img {
+    display: block;
+    margin-bottom: -50px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 600px;
 }

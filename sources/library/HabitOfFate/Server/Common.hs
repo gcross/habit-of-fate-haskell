@@ -87,6 +87,6 @@ renderHTMLUsingTemplate title stylesheets body =
               ! A.href (H.toValue $ mconcat ["css/", stylesheet, ".css"])
           | stylesheet ← stylesheets
           ]
-      H.body $ do
-        H.img ! A.src "images/logo.svgz"
-        body
+      H.body ! A.class_ "page" $ do
+        H.div ! A.class_ "logo" $ H.img ! A.src "images/logo.svgz"
+        H.div ! A.class_ "content" $ body
