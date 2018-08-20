@@ -1,5 +1,4 @@
 .list {
-    background-color: #84a0ff;
     font-size: 24;
     margin-top: 100px;
     margin-left: auto;
@@ -19,10 +18,10 @@ thead {
 }
 
 tbody tr:nth-child(even) {
-    background-color: #c3d0ff;
+    background-color: #d6dfff;
 }
 tbody tr:nth-child(odd) {
-    background-color: #94aaff;
+    background-color: #c2cfff;
 }
 
 .new-index {
