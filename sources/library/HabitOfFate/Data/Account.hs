@@ -82,7 +82,7 @@ passwordIsValid password account =
 getAccountStatus ∷ Account → Event
 getAccountStatus account =
   maybe
-    ["No quest is active"]
+    ["You are between quests."]
     (runCurrentQuest run)
     (account ^. maybe_current_quest_state_)
   where
