@@ -35,6 +35,7 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Program.Common
 import HabitOfFate.Server.Program.Reader
+import HabitOfFate.Story.Renderer.HTML
 
 handleGetAllHabitsApi ∷ Environment → ScottyM ()
 handleGetAllHabitsApi environment = do
@@ -46,7 +47,9 @@ handleGetAllHabitsWeb ∷ Environment → ScottyM ()
 handleGetAllHabitsWeb environment = do
   Scotty.get "/habits" <<< webReader environment $ do
     habit_list ← view (habits_ . habit_list_)
-    renderHTMLUsingTemplateAndReturn "Habit of Fate - List of Habits" ["common", "list"] ok200 $
+    quest_status ← ask <&> getAccountStatus
+    renderHTMLUsingTemplateAndReturn "Habit of Fate - List of Habits" ["common", "list"] ok200 $ do
+      H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "list" $ do
         H.table $ do
           H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance", "Success", "Failure"]
