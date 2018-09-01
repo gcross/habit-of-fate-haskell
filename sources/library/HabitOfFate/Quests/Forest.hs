@@ -65,7 +65,7 @@ makeLenses ''State
 intro_story = [s_fixed|
 The last thing in the world that <introduce>[Susie]</introduce> wanted to do was
 to wander alone in the Wicked Forest at night, but his/her[Susie]
-son/daughter[Tommy], little <introduce>{Tommy}</introduce>, was sick and would
+son/daughter[Tommy], little <introduce>[Tommy]</introduce>, was sick and would
 not live through the night unless [Susie] could find <introduce>an
 [Illsbane]</introduce> plant. It is a hopeless task, but he/she[Susie] has no
 other choice.
