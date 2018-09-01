@@ -119,6 +119,8 @@ basicTextInput type_ name placeholder =
   (! A.name name)
   >>>
   (! A.placeholder placeholder)
+  >>>
+  (! A.required "")
 
 basicTextForm ∷ [Html → Html] → Html
 basicTextForm =

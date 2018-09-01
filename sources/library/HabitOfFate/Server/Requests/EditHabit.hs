@@ -45,7 +45,12 @@ habitPage name_error difficulty_error importance_error habit =
       H.div $ H.table $ do
         H.tr $ do
           H.td $ H.toHtml ("Name:" ∷ Text)
-          H.td $ H.input ! A.type_ "text" ! A.name "name" ! A.value (H.toValue $ habit ^. name_)
+          H.td $
+            H.input
+              ! A.type_ "text"
+              ! A.name "name"
+              ! A.value (H.toValue $ habit ^. name_)
+              ! A.required "true"
           H.td $ H.toHtml name_error
         let generateScaleEntry name value_lens =
               H.select ! A.name name ! A.required "true" $
