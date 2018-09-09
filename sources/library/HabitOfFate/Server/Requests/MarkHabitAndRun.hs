@@ -37,20 +37,20 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Program.Common
-import HabitOfFate.Server.Program.Writer
+import HabitOfFate.Server.Transaction.Common
+import HabitOfFate.Server.Transaction.Writer
 import HabitOfFate.Story
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
-runEvent ∷ WriterProgram Event
+runEvent ∷ WriterTransaction Event
 runEvent = do
   account ← get
   let (event, new_account) = runState runAccount account
   put new_account
   pure event
 
-runGame ∷ WriterProgram ProgramResult
+runGame ∷ WriterTransaction TransactionResult
 runGame = do
   event ← runEvent
   let rendered_event
@@ -72,7 +72,7 @@ handleMarkHabitApi environment =
           Getter HabitsToMark [UUID] →
           Getter Habit Scale →
           Lens' Account Double →
-          WriterProgram Double
+          WriterTransaction Double
         markHabits uuids_getter scale_getter value_lens = do
           old_value ← use value_lens
           increment ∷ Double ←

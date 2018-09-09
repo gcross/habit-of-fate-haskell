@@ -23,7 +23,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Program.Reader where
+module HabitOfFate.Server.Transaction.Reader where
 
 import HabitOfFate.Prelude
 
@@ -38,25 +38,25 @@ import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Queries
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Program.Common
+import HabitOfFate.Server.Transaction.Common
 
 data ReaderInstruction α where
   ReaderCommonInstruction ∷ CommonInstruction α → ReaderInstruction α
   ReaderViewInstruction ∷ ReaderInstruction Account
 
-newtype ReaderProgram α = ReaderProgram
-  { unwrapReaderProgram ∷ Program ReaderInstruction α }
+newtype ReaderTransaction α = ReaderTransaction
+  { unwrapReaderTransaction ∷ Program ReaderInstruction α }
   deriving (Applicative, Functor, Monad)
 
-instance ActionMonad ReaderProgram where
-  singletonCommon = ReaderCommonInstruction >>> Operational.singleton >>> ReaderProgram
+instance ActionMonad ReaderTransaction where
+  singletonCommon = ReaderCommonInstruction >>> Operational.singleton >>> ReaderTransaction
 
-instance MonadReader Account (ReaderProgram) where
-  ask = ReaderProgram $ Operational.singleton ReaderViewInstruction
-  local = error "if you see this, then ReaderProgram needs to have a local method"
+instance MonadReader Account (ReaderTransaction) where
+  ask = ReaderTransaction $ Operational.singleton ReaderViewInstruction
+  local = error "if you see this, then ReaderTransaction needs to have a local method"
 
-readerWith ∷ (∀ α. String → ActionM α) → Environment → ReaderProgram ProgramResult → ActionM ()
-readerWith actionWhenAuthFails environment (ReaderProgram program) = do
+readerWith ∷ (∀ α. String → ActionM α) → Environment → ReaderTransaction TransactionResult → ActionM ()
+readerWith actionWhenAuthFails environment (ReaderTransaction program) = do
   logRequest
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← Scotty.params
@@ -78,13 +78,13 @@ readerWith actionWhenAuthFails environment (ReaderProgram program) = do
   case error_or_result of
     Left status_ →
       setStatusAndLog status_
-    Right (ProgramRedirectsTo href) → Scotty.redirect href
-    Right (ProgramResult status_ content) → do
+    Right (RedirectsTo href) → Scotty.redirect href
+    Right (TransactionResult status_ content) → do
       setStatusAndLog status_
       setContent content
 
-apiReader ∷ Environment → ReaderProgram ProgramResult → ActionM ()
+apiReader ∷ Environment → ReaderTransaction TransactionResult → ActionM ()
 apiReader = readerWith (finishWithStatusMessage 403)
 
-webReader ∷ Environment → ReaderProgram ProgramResult → ActionM ()
+webReader ∷ Environment → ReaderTransaction TransactionResult → ActionM ()
 webReader = readerWith (const $ Scotty.redirect "/login")

@@ -34,11 +34,11 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Program.Common
-import HabitOfFate.Server.Program.Reader
-import HabitOfFate.Server.Program.Writer
+import HabitOfFate.Server.Transaction.Common
+import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction.Writer
 
-habitPage ∷ Monad m ⇒ Lazy.Text → Lazy.Text → Lazy.Text → Habit → m ProgramResult
+habitPage ∷ Monad m ⇒ Lazy.Text → Lazy.Text → Lazy.Text → Habit → m TransactionResult
 habitPage name_error difficulty_error importance_error habit =
   renderHTMLUsingTemplate "Habit of Fate - Editing a Habit" [] >>> returnLazyTextAsHTML ok200 $
     H.form ! A.method "post" $ do

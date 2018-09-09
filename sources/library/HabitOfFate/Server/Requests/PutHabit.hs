@@ -29,8 +29,8 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Program.Common
-import HabitOfFate.Server.Program.Writer
+import HabitOfFate.Server.Transaction.Common
+import HabitOfFate.Server.Transaction.Writer
 
 handlePutHabit ∷ Environment → ScottyM ()
 handlePutHabit environment = do

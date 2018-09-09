@@ -20,7 +20,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Program.Common where
+module HabitOfFate.Server.Transaction.Common where
 
 import HabitOfFate.Prelude
 
@@ -105,30 +105,30 @@ lookupHabit habit_id = do
   >>=
   maybe raiseNoSuchHabit return
 
-data ProgramResult = ProgramRedirectsTo Lazy.Text | ProgramResult Status Content
+data TransactionResult = RedirectsTo Lazy.Text | TransactionResult Status Content
 
-returnNothing ∷ Monad m ⇒ Status → m ProgramResult
-returnNothing s = return $ ProgramResult s NoContent
+returnNothing ∷ Monad m ⇒ Status → m TransactionResult
+returnNothing s = return $ TransactionResult s NoContent
 
-returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
-returnLazyText s = TextContent >>> ProgramResult s >>> return
+returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m TransactionResult
+returnLazyText s = TextContent >>> TransactionResult s >>> return
 
-returnLazyTextAsHTML ∷ Monad m ⇒ Status → Lazy.Text → m ProgramResult
-returnLazyTextAsHTML s = TextContentAsHTML >>> ProgramResult s >>> return
+returnLazyTextAsHTML ∷ Monad m ⇒ Status → Lazy.Text → m TransactionResult
+returnLazyTextAsHTML s = TextContentAsHTML >>> TransactionResult s >>> return
 
-returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m ProgramResult
-returnJSON s = JSONContent >>> ProgramResult s >>> return
+returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m TransactionResult
+returnJSON s = JSONContent >>> TransactionResult s >>> return
 
-redirectTo ∷ Monad m ⇒ Lazy.Text → m ProgramResult
-redirectTo = ProgramRedirectsTo >>> return
+redirectTo ∷ Monad m ⇒ Lazy.Text → m TransactionResult
+redirectTo = RedirectsTo >>> return
 
-renderHTMLUsingTemplateAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m ProgramResult
+renderHTMLUsingTemplateAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m TransactionResult
 renderHTMLUsingTemplateAndReturn title stylesheets status =
   renderHTMLUsingTemplate title stylesheets
   >>>
   returnLazyTextAsHTML status
 
-renderEventToHTMLAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Event → m ProgramResult
+renderEventToHTMLAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Event → m TransactionResult
 renderEventToHTMLAndReturn title stylesheets status =
   renderEventToHTML
   >>>

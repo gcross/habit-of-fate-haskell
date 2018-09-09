@@ -29,8 +29,8 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Program.Common
-import HabitOfFate.Server.Program.Reader
+import HabitOfFate.Server.Transaction.Common
+import HabitOfFate.Server.Transaction.Reader
 
 handleGetCredits ∷ Environment → ScottyM ()
 handleGetCredits environment =
