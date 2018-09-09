@@ -412,7 +412,15 @@ main = defaultMain $ testGroup "All Tests"
                 , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
                 ]
             readHabitsIn doc = liftIO $ do
-              let rows = doc ^.. root ./ named "body" ./  named "div" ./ named "table" ./ named "tbody" ./ named "tr"
+              let rows = doc ^..
+                    (  root
+                    ./ named "body"
+                    ./ named "div"
+                    ./ named "div"
+                    ./ named "table"
+                    ./ named "tbody"
+                    ./ named "tr"
+                    )
                   number_of_rows = length rows
                   observed_classes = map (^. attribute "class") rows
                   expected_classes = take number_of_rows (cycle [Just "row odd", Just "row even"])
