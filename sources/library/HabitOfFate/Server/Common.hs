@@ -74,7 +74,7 @@ paramGuardingAgainstMissing name =
    )
 
 renderHTMLUsingTemplate ∷ Text → [Text] → Html → Lazy.Text
-renderHTMLUsingTemplate title stylesheets body =
+renderHTMLUsingTemplate title stylesheets content =
   renderHtml $
     H.docTypeHtml $ do
       H.head $
@@ -89,4 +89,4 @@ renderHTMLUsingTemplate title stylesheets body =
           ]
       H.body ! A.class_ "page" $ do
         H.div ! A.class_ "logo" $ H.img ! A.src "images/logo.svgz"
-        H.div ! A.class_ "content" $ body
+        H.div ! A.class_ "content" $ content
