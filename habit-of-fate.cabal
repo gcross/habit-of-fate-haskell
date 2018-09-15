@@ -11,7 +11,9 @@ cabal-version:       >=1.10
 data-files:          web/css/common.css
                      web/css/enter.css
                      web/css/list.css
+                     web/images/grave.svgz
                      web/images/logo.svgz
+                     web/images/treasure-chest.svgz
 
 library
   hs-source-dirs:      sources/library
