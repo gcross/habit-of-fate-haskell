@@ -25,23 +25,16 @@ module Main where
 
 import HabitOfFate.Prelude
 
-import Data.Aeson
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
 import Data.Text.IO
-import Data.UUID
 import Data.Yaml hiding (Parser, (.=))
 import Network.Wai.Handler.Warp hiding (run)
 import Network.Wai.Handler.WarpTLS
 import Options.Applicative
 import System.Directory
 import System.Exit
-import System.FilePath
-import System.Random
-import Web.JWT hiding (header)
 
 import HabitOfFate.Logging
-import HabitOfFate.TH
 import HabitOfFate.Server
 
 data Configuration = Configuration
