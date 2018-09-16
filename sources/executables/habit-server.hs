@@ -25,6 +25,9 @@ module Main where
 
 import HabitOfFate.Prelude
 
+import Control.Concurrent (forkFinally)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Exception (throwIO)
 import qualified Data.ByteString as BS
 import Data.Text.IO
 import Data.Yaml hiding (Parser, (.=))
@@ -38,8 +41,7 @@ import HabitOfFate.Logging
 import HabitOfFate.Server
 
 data Configuration = Configuration
-  { port ∷ Int
-  , data_path ∷ FilePath
+  { data_path ∷ FilePath
   , certificate_path ∷ FilePath
   , key_path ∷ FilePath
   }
@@ -53,14 +55,7 @@ main ∷ IO ()
 main = do
   let configuration_parser ∷ Parser Configuration
       configuration_parser = Configuration
-        <$> option auto (mconcat
-              [ metavar "PORT"
-              , help "Port to listen on."
-              , long "port"
-              , short 'p'
-              , value 8081
-              ])
-        <*> (strOption $ mconcat
+        <$> (strOption $ mconcat
               [ metavar "FILE"
               , help "Path to the game data."
               , long "data"
@@ -87,7 +82,6 @@ main = do
       (configuration_parser <**> helper)
       (fullDesc <> header "habit-server - server program for habit-of-fate"
       )
-  logIO $ "Listening on port " ⊕ show port
   logIO $ "Certificate file is located at " ⊕ certificate_path
   logIO $ "Key file is located at " ⊕ key_path
 
@@ -101,7 +95,23 @@ main = do
       (do logIO $ "Reading existing data file at " ⊕ data_path
           BS.readFile data_path >>= (decodeEither >>> either error pure)
       )
-  makeApp initial_accounts (encodeFile data_path) >>=
-    runTLS
-      (tlsSettings certificate_path key_path)
-      (setPort port defaultSettings)
+  app ← makeApp initial_accounts (encodeFile data_path)
+  done_mvar ← newEmptyMVar
+  void $
+    forkFinally
+      (runTLS
+        ((tlsSettings certificate_path key_path) {onInsecure = AllowInsecure} )
+        (setPort 80 defaultSettings)
+        app
+      )
+      (either throwIO (const $ putMVar done_mvar ()))
+  void $
+    forkFinally
+      (runTLS
+        ((tlsSettings certificate_path key_path) {onInsecure = AllowInsecure} )
+        (setPort 443 defaultSettings)
+        app
+      )
+      (either throwIO (const $ putMVar done_mvar ()))
+  takeMVar done_mvar
+  takeMVar done_mvar
