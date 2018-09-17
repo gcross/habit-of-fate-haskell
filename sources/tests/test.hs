@@ -403,7 +403,7 @@ main = defaultMain $ testGroup "All Tests"
                   [ ("username",username)
                   , ("password",password)
                   ]
-            createHabit habit_id habit = void $
+            createHabitViaWeb habit_id habit = void $
               requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
               $
               setRequestBodyURLEncoded
@@ -507,7 +507,7 @@ main = defaultMain $ testGroup "All Tests"
             assertTextIs doc "error-message" "This account already exists."
         , webTestCase "Create an account and then a habit and check /habits" $ do
             _ ← createTestAccount "username" "password"
-            createHabit test_habit_id test_habit
+            createHabitViaWeb test_habit_id test_habit
             (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
             habits ← readHabitsIn doc
             liftIO $ habits @?= [(test_habit_id, test_habit)]
