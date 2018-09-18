@@ -144,6 +144,119 @@ requestDocument path customizeRequest = do
   put updated_cookie_jar
   return (response_without_cookie, doc)
 
+assertRedirectsTo ∷ MonadIO m ⇒ Response α → ByteString → m ()
+assertRedirectsTo response expected_location = liftIO $
+  getResponseHeader "Location" response @?= [expected_location]
+
+assertPageTitleEquals ∷ MonadIO m ⇒ Document → Text → m ()
+assertPageTitleEquals doc expected_page_title = liftIO $
+  doc ^? root ./ named "head" ./ named "title" . text
+    @?= Just expected_page_title
+
+assertTextIs :: MonadIO m ⇒ Document → Text → Text → m ()
+assertTextIs doc element_id expected_text = liftIO $
+  (
+    findOf
+      (cosmosOf uniplate)
+      (elementAttributes >>> lookup "id" >>> (== Just element_id))
+      (doc ^. root)
+    |> fmap (^. text)
+  )
+  @?= Just expected_text
+
+createTestAccount ∷
+  ByteString →
+  ByteString →
+  ReaderT Int (StateT CookieJar IO) (Response (), Document)
+createTestAccount username password =
+  requestDocument "/create" $
+    setRequestBodyURLEncoded
+      [ ("username",username)
+      , ("password1",password)
+      , ("password2",password)
+      ]
+
+loginTestAccount ∷
+  ByteString →
+  ByteString →
+  ReaderT Int (StateT CookieJar IO) (Response (), Document)
+loginTestAccount username password =
+  requestDocument "/login" $
+    setRequestBodyURLEncoded
+      [ ("username",username)
+      , ("password",password)
+      ]
+
+createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar IO) ()
+createHabitViaWeb habit_id habit = void $
+  requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
+  $
+  setRequestBodyURLEncoded
+    [ ("name", habit ^. name_ . re utf8)
+    , ("importance", habit ^. importance_ . to (show >>> BS8.pack))
+    , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
+    ]
+
+readHabitsIn ∷ MonadIO m ⇒ Document → m [(UUID, Habit)]
+readHabitsIn doc = liftIO $ do
+  let rows = doc ^..
+        (  root
+        ./ named "body"
+        ./ named "div"
+        ./ named "div"
+        ./ named "table"
+        ./ named "tbody"
+        ./ named "tr"
+        )
+      number_of_rows = length rows
+      observed_classes = map (^. attribute "class") rows
+      expected_classes = take number_of_rows (cycle [Just "row odd", Just "row even"])
+  observed_classes @?= expected_classes
+
+  forM (zip [(1∷Int)..] rows) $ \(i, row) → do
+    case row ^.. uniplate . named "td" of
+      [_, position, name, difficulty, importance, _, _] → do
+        strip (position ^. text) @?= pack (show i ⊕ ".")
+        habit_id_unparsed ←
+          maybe
+            (assertFailure "No link to the habit page.")
+            (drop (olength ("/habits/" ∷ Text)) >>> pure)
+            (name ^. uniplate . named "a" . attribute "href")
+        habit_id ←
+          maybe
+            (assertFailure $ printf "UUID %s did not parse sucessfully." habit_id_unparsed)
+            pure
+            (fromText habit_id_unparsed)
+        let parseColumn name =
+              (^.. text)
+              >>>
+              mconcat
+              >>>
+              words
+              >>>
+              unwords
+              >>>
+              fromStrict
+              >>>
+              (\column_text →
+                column_text
+                |> parseParam
+                |> either
+                    (\error_message → Lazy.unpack >>> assertFailure $
+                      "Error parsing \"" ⊕ column_text ⊕ "\": " ⊕ error_message)
+                    pure
+              )
+        difficulty_scale ← parseColumn "difficulty" difficulty
+        importance_scale ← parseColumn "importance" importance
+        pure
+          ( habit_id
+          , Habit
+              (maybe "(no name)" (^. text) (name ^? uniplate . named "a"))
+              (Difficulty difficulty_scale)
+              (Importance importance_scale)
+          )
+      x → assertFailure $ printf "Row %i has %i columns" i (length x)
+
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   [ testGroup "HabitOfFate.Server"
@@ -377,99 +490,6 @@ main = defaultMain $ testGroup "All Tests"
                   |> void
                   |> flip runStateT mempty
                   |> void
-            assertRedirectsTo response expected_location = liftIO $
-              getResponseHeader "Location" response @?= [expected_location]
-            assertPageTitleEquals doc expected_page_title = liftIO $
-              doc ^? root ./ named "head" ./ named "title" . text
-                @?= Just expected_page_title
-            assertTextIs doc element_id expected_text = liftIO $
-              (
-                findOf
-                  (cosmosOf uniplate)
-                  (elementAttributes >>> lookup "id" >>> (== Just element_id))
-                  (doc ^. root)
-                |> fmap (^. text)
-              )
-              @?= Just expected_text
-            createTestAccount username password =
-              requestDocument "/create" $
-                setRequestBodyURLEncoded
-                  [ ("username",username)
-                  , ("password1",password)
-                  , ("password2",password)
-                  ]
-            loginTestAccount username password =
-              requestDocument "/login" $
-                setRequestBodyURLEncoded
-                  [ ("username",username)
-                  , ("password",password)
-                  ]
-            createHabitViaWeb habit_id habit = void $
-              requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
-              $
-              setRequestBodyURLEncoded
-                [ ("name", habit ^. name_ . re utf8)
-                , ("importance", habit ^. importance_ . to (show >>> BS8.pack))
-                , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
-                ]
-            readHabitsIn doc = liftIO $ do
-              let rows = doc ^..
-                    (  root
-                    ./ named "body"
-                    ./ named "div"
-                    ./ named "div"
-                    ./ named "table"
-                    ./ named "tbody"
-                    ./ named "tr"
-                    )
-                  number_of_rows = length rows
-                  observed_classes = map (^. attribute "class") rows
-                  expected_classes = take number_of_rows (cycle [Just "row odd", Just "row even"])
-              observed_classes @?= expected_classes
-
-              forM (zip [(1∷Int)..] rows) $ \(i, row) → do
-                case row ^.. uniplate . named "td" of
-                  [_, position, name, difficulty, importance, _, _] → do
-                    strip (position ^. text) @?= pack (show i ⊕ ".")
-                    habit_id_unparsed ←
-                      maybe
-                        (assertFailure "No link to the habit page.")
-                        (drop (olength ("/habits/" ∷ Text)) >>> pure)
-                        (name ^. uniplate . named "a" . attribute "href")
-                    habit_id ←
-                      maybe
-                        (assertFailure $ printf "UUID %s did not parse sucessfully." habit_id_unparsed)
-                        pure
-                        (fromText habit_id_unparsed)
-                    let parseColumn name =
-                          (^.. text)
-                          >>>
-                          mconcat
-                          >>>
-                          words
-                          >>>
-                          unwords
-                          >>>
-                          fromStrict
-                          >>>
-                          (\column_text →
-                            column_text
-                            |> parseParam
-                            |> either
-                                (\error_message → Lazy.unpack >>> assertFailure $
-                                  "Error parsing \"" ⊕ column_text ⊕ "\": " ⊕ error_message)
-                                pure
-                          )
-                    difficulty_scale ← parseColumn "difficulty" difficulty
-                    importance_scale ← parseColumn "importance" importance
-                    pure
-                      ( habit_id
-                      , Habit
-                          (maybe "(no name)" (^. text) (name ^? uniplate . named "a"))
-                          (Difficulty difficulty_scale)
-                          (Importance importance_scale)
-                      )
-                  x → assertFailure $ printf "Row %i has %i columns" i (length x)
         in
     ----------------------------------------------------------------------------
         [ webTestCase "GET / redirects to /habits" $ do
