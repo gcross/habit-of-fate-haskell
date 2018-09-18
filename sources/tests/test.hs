@@ -119,6 +119,31 @@ test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 createHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitCreated) >>> liftIO)
 replaceHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitReplaced) >>> liftIO)
 
+requestDocument ∷
+  ByteString →
+  (Request → Request) →
+  ReaderT Int (StateT CookieJar IO) (Response (), Document)
+requestDocument path customizeRequest = do
+  port ← ask
+  old_cookie_jar ← get
+  current_time ← liftIO getCurrentTime
+  let request_without_cookies =
+        defaultRequest
+        |> setRequestSecure False
+        |> setRequestHost "localhost"
+        |> setRequestPort port
+        |> setRequestPath path
+        |> (\x → x {redirectCount = 0})
+        |> customizeRequest
+      (cookie_header, new_cookie_jar) =
+        computeCookieString request old_cookie_jar current_time True
+      request = addRequestHeader "Cookie" cookie_header request_without_cookies
+  (response, doc) ← liftIO $ httpSink request (\response → (response,) <$> sinkDoc)
+  let (updated_cookie_jar, response_without_cookie) =
+        updateCookieJar response request current_time new_cookie_jar
+  put updated_cookie_jar
+  return (response_without_cookie, doc)
+
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   [ testGroup "HabitOfFate.Server"
@@ -352,30 +377,6 @@ main = defaultMain $ testGroup "All Tests"
                   |> void
                   |> flip runStateT mempty
                   |> void
-            requestDocument ∷
-              ByteString →
-              (Request → Request) →
-              ReaderT Int (StateT CookieJar IO) (Response (), Document)
-            requestDocument path customizeRequest = do
-              port ← ask
-              old_cookie_jar ← get
-              current_time ← liftIO getCurrentTime
-              let request_without_cookies =
-                    defaultRequest
-                    |> setRequestSecure False
-                    |> setRequestHost "localhost"
-                    |> setRequestPort port
-                    |> setRequestPath path
-                    |> (\x → x {redirectCount = 0})
-                    |> customizeRequest
-                  (cookie_header, new_cookie_jar) =
-                    computeCookieString request old_cookie_jar current_time True
-                  request = addRequestHeader "Cookie" cookie_header request_without_cookies
-              (response, doc) ← liftIO $ httpSink request (\response → (response,) <$> sinkDoc)
-              let (updated_cookie_jar, response_without_cookie) =
-                    updateCookieJar response request current_time new_cookie_jar
-              put updated_cookie_jar
-              return (response_without_cookie, doc)
             assertRedirectsTo response expected_location = liftIO $
               getResponseHeader "Location" response @?= [expected_location]
             assertPageTitleEquals doc expected_page_title = liftIO $
