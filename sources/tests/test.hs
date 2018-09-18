@@ -119,6 +119,16 @@ test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 createHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitCreated) >>> liftIO)
 replaceHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitReplaced) >>> liftIO)
 
+webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
+webTestCase test_name runTest =
+  serverTestCase test_name $ \port → do
+    current_time ← liftIO getCurrentTime
+    runTest
+      |> flip runReaderT port
+      |> void
+      |> flip runStateT mempty
+      |> void
+
 requestDocument ∷
   ByteString →
   (Request → Request) →
@@ -481,16 +491,6 @@ main = defaultMain $ testGroup "All Tests"
         ]
     ----------------------------------------------------------------------------
     , testGroup "Web" $
-        let webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
-            webTestCase test_name runTest =
-              serverTestCase test_name $ \port → do
-                current_time ← liftIO getCurrentTime
-                runTest
-                  |> flip runReaderT port
-                  |> void
-                  |> flip runStateT mempty
-                  |> void
-        in
     ----------------------------------------------------------------------------
         [ webTestCase "GET / redirects to /habits" $ do
             (response, _) ← requestDocument "/" $ setRequestMethod "GET"
