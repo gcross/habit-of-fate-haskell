@@ -485,49 +485,64 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
     , testGroup "Web" $
     ----------------------------------------------------------------------------
-        [ webTestCase "GET / redirects to /habits" $ do
-            (response, _) ← requestDocument "/" $ setRequestMethod "GET"
-            assertRedirectsTo response "/habits"
-        , webTestCase "GET /habits redirects to /login" $ do
-            (response, _) ← requestDocument "/habits" $ setRequestMethod "GET"
-            assertRedirectsTo response "/login"
-        , webTestCase "GET /login returns login page" $ do
-            (_, doc) ← requestDocument "/login" $ setRequestMethod "GET"
-            assertPageTitleEquals doc "Habit of Fate - Login"
-        , webTestCase "POST /login for non-existent user returns login page withe error" $ do
-            (_, doc) ← requestDocument "/login" $
-              setRequestBodyURLEncoded [("username","username"), ("password","password")]
-            assertPageTitleEquals doc "Habit of Fate - Login"
-            assertTextIs doc "error-message" "No account has that username."
-        , webTestCase "GET /create returns account creation page" $ do
-            (_, doc) ← requestDocument "/create" $ setRequestMethod "GET"
-            assertPageTitleEquals doc "Habit of Fate - Account Creation"
-        , webTestCase "POST /create with fields filled in redirects to /" $ do
-            (response, _) ← createTestAccount "username" "password"
-            assertRedirectsTo response "/"
-        , webTestCase "Creating an account causes /habits to load the habits page" $ do
-            _ ← createTestAccount "username" "password"
-            (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
-            assertPageTitleEquals doc "Habit of Fate - List of Habits"
-        , webTestCase "Creating an account then logging in redirects to /habits" $ do
-            _ ← createTestAccount "username" "password"
-            (response, _) ← loginTestAccount "username" "password"
-            assertRedirectsTo response "/habits"
-        , webTestCase "Creating an account makes /habits load the list of habits" $ do
-            _ ← createTestAccount "username" "password"
-            (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
-            assertPageTitleEquals doc "Habit of Fate - List of Habits"
-        , webTestCase "Creating a conflicting account displays an error message" $ do
-            _ ← createTestAccount "username" "password"
-            (response, doc) ← createTestAccount "username" "password"
-            liftIO $ getResponseStatusCode response @?= 409
-            assertTextIs doc "error-message" "This account already exists."
-        , webTestCase "Create an account and then a habit and check /habits" $ do
-            _ ← createTestAccount "username" "password"
-            createHabitViaWeb test_habit_id test_habit
-            (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
-            habits ← readHabitsIn doc
-            liftIO $ habits @?= [(test_habit_id, test_habit)]
+        [ testGroup "Redirections" $
+        ------------------------------------------------------------------------
+            [ webTestCase "GET / redirects to /habits" $ do
+                (response, _) ← requestDocument "/" $ setRequestMethod "GET"
+                assertRedirectsTo response "/habits"
+            , webTestCase "GET /habits redirects to /login" $ do
+                (response, _) ← requestDocument "/habits" $ setRequestMethod "GET"
+                assertRedirectsTo response "/login"
+            ]
+        ------------------------------------------------------------------------
+        , testGroup "Login page" $
+        ------------------------------------------------------------------------
+            [ webTestCase "GET /login returns login page" $ do
+                (_, doc) ← requestDocument "/login" $ setRequestMethod "GET"
+                assertPageTitleEquals doc "Habit of Fate - Login"
+            , webTestCase "POST /login for non-existent user returns login page withe error" $ do
+                (_, doc) ← requestDocument "/login" $
+                  setRequestBodyURLEncoded [("username","username"), ("password","password")]
+                assertPageTitleEquals doc "Habit of Fate - Login"
+                assertTextIs doc "error-message" "No account has that username."
+            ]
+        ------------------------------------------------------------------------
+        , testGroup "Create page" $
+        ------------------------------------------------------------------------
+            [ webTestCase "GET /create returns account creation page" $ do
+                (_, doc) ← requestDocument "/create" $ setRequestMethod "GET"
+                assertPageTitleEquals doc "Habit of Fate - Account Creation"
+            , webTestCase "POST /create with fields filled in redirects to /" $ do
+                (response, _) ← createTestAccount "username" "password"
+                assertRedirectsTo response "/"
+            , webTestCase "Creating an account causes /habits to load the habits page" $ do
+                _ ← createTestAccount "username" "password"
+                (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+                assertPageTitleEquals doc "Habit of Fate - List of Habits"
+            , webTestCase "Creating an account then logging in redirects to /habits" $ do
+                _ ← createTestAccount "username" "password"
+                (response, _) ← loginTestAccount "username" "password"
+                assertRedirectsTo response "/habits"
+            , webTestCase "Creating an account makes /habits load the list of habits" $ do
+                _ ← createTestAccount "username" "password"
+                (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+                assertPageTitleEquals doc "Habit of Fate - List of Habits"
+            , webTestCase "Creating a conflicting account displays an error message" $ do
+                _ ← createTestAccount "username" "password"
+                (response, doc) ← createTestAccount "username" "password"
+                liftIO $ getResponseStatusCode response @?= 409
+                assertTextIs doc "error-message" "This account already exists."
+            ]
+        ------------------------------------------------------------------------
+        , testGroup "Habits" $
+        ------------------------------------------------------------------------
+            [ webTestCase "Create an account and then a habit and check /habits" $ do
+                _ ← createTestAccount "username" "password"
+                createHabitViaWeb test_habit_id test_habit
+                (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+                habits ← readHabitsIn doc
+                liftIO $ habits @?= [(test_habit_id, test_habit)]
+            ]
         ]
         ------------------------------------------------------------------------
     ]
