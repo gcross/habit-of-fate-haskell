@@ -122,7 +122,6 @@ replaceHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitReplaced) >
 webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
 webTestCase test_name runTest =
   serverTestCase test_name $ \port → do
-    current_time ← liftIO getCurrentTime
     runTest
       |> flip runReaderT port
       |> void
