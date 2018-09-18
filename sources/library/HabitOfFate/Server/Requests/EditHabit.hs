@@ -47,11 +47,12 @@ habitPage name_error difficulty_error importance_error habit =
           H.td $ H.toHtml ("Name:" ∷ Text)
           H.td $
             H.input
+              ! A.id "name"
               ! A.type_ "text"
               ! A.name "name"
               ! A.value (H.toValue $ habit ^. name_)
               ! A.required "true"
-          H.td $ H.toHtml name_error
+          H.td ! A.id "name_error" $ H.toHtml name_error
         let generateScaleEntry name value_lens =
               H.select ! A.name name ! A.required "true" $
                 flip foldMap scales $ \scale →
@@ -63,11 +64,11 @@ habitPage name_error difficulty_error importance_error habit =
         H.tr $ do
           H.td $ H.toHtml ("Difficulty:" ∷ Text)
           H.td $ generateScaleEntry "difficulty" difficulty_
-          H.td $ H.toHtml difficulty_error
+          H.td ! A.id "difficulty_error" $ H.toHtml difficulty_error
         H.tr $ do
           H.td $ H.toHtml ("Importance:" ∷ Text)
           H.td $ generateScaleEntry "importance" importance_
-          H.td $ H.toHtml importance_error
+          H.td ! A.id "importance_error" $ H.toHtml importance_error
       H.div $ do
         H.input !  A.type_ "submit"
         H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)

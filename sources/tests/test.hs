@@ -33,11 +33,12 @@ import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
-import Data.ByteString.Strict.Lens (unpackedChars)
+import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
 import Data.Data.Lens (uniplate)
 import Data.IORef
 import Data.List (cycle, isPrefixOf)
 import Data.Time.Clock
+import qualified Data.Text as Text
 import Data.Text (strip)
 import Data.Text.Strict.Lens (utf8)
 import qualified Data.Text.Lazy as Lazy
@@ -45,7 +46,7 @@ import Data.UUID (UUID, fromText)
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
-import Network.HTTP.Types.Status (found302)
+import Network.HTTP.Types.Status (found302, ok200)
 import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
 import Test.QuickCheck
@@ -57,9 +58,13 @@ import Text.Parsec (many, runParser)
 import Text.XML (documentRoot, parseText)
 import Text.XML.Lens
   ( Document
+  , Element
+  , Name(nameLocalName)
   , (./)
   , attribute
+  , attributeIs
   , elementAttributes
+  , entire
   , named
   , root
   , text
@@ -262,6 +267,67 @@ readHabitsIn doc = liftIO $ do
               (Importance importance_scale)
           )
       x → assertFailure $ printf "Row %i has %i columns" i (length x)
+
+extractElement ∷ Name → Text → Element → IO Element
+extractElement id_kind id_value element = do
+  maybe
+    ("error locating " ⊕ nameLocalName id_kind ⊕ " " ⊕ id_value |> unpack |> assertFailure)
+    pure
+    (element ^? entire . attributeIs id_kind id_value)
+
+extractInputValue ∷ Name → Text → Element → IO Text
+extractInputValue id_kind id_value element = do
+  (extractElement id_kind id_value element <&> (^. attribute "value"))
+  >>=
+  maybe
+    ("no value for input control " ⊕ nameLocalName id_kind ⊕ " " ⊕ id_value |> unpack |> assertFailure)
+    pure
+
+extractSelectValue ∷ Name → Text → Element → IO Text
+extractSelectValue id_kind id_value element = do
+  (
+    extractElement id_kind id_value element
+    <&>
+    (^. uniplate . attributeIs "selected" "selected" . attribute "value")
+   )
+  >>=
+  maybe
+    ("no value for select control in " ⊕ (nameLocalName id_kind) ⊕ " " ⊕ id_value |> unpack |> assertFailure)
+    pure
+
+extractTextValue ∷ Name → Text → Element → IO Text
+extractTextValue id_kind id_value element =
+  extractElement id_kind id_value element <&> ((^.. text) >>> Text.concat)
+
+fail_ ∷ Text → IO α
+fail_ message = message |> unpack |> assertFailure
+
+extractScaleValue ∷ Text → Element → IO Scale
+extractScaleValue id_value element = do
+  value ← extractSelectValue "name" id_value element
+  case parseParam (Lazy.fromStrict value) of
+    Left conversion_message →
+      fail_ $ "error converting " ⊕ id_value ⊕ ": " ⊕ (Lazy.toStrict conversion_message)
+    Right scale_value → pure scale_value
+
+checkErrorMessage ∷ Text → Element → IO ()
+checkErrorMessage id_value element = do
+  error_message_element ← extractElement "id" id_value element
+  case Text.concat (error_message_element ^.. text) of
+    "" → pure ()
+    error_message →
+      fail_ $ "error message " ⊕ id_value ⊕ ": " ⊕ error_message
+
+readHabitIn ∷ MonadIO m ⇒ Document → m Habit
+readHabitIn doc = liftIO $ do
+  let root = documentRoot doc
+  checkErrorMessage "name_error" root
+  checkErrorMessage "difficulty_error" root
+  checkErrorMessage "importance_error" root
+  Habit
+    <$> extractInputValue "name" "name" root
+    <*> (Difficulty <$> extractScaleValue "difficulty" root)
+    <*> (Importance <$> extractScaleValue "importance" root)
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
@@ -558,6 +624,15 @@ main = defaultMain $ testGroup "All Tests"
                   assertBool
                     ("Location starts with /habits/: " ⊕ location)
                     ("/habits" `isPrefixOf` location)
+            , webTestCase "Open the habit edit page for an existing habit." $ do
+                _ ← createTestAccount "username" "password"
+                createHabitViaWeb test_habit_id_2 test_habit_2
+                (response, doc) ←
+                  requestDocument
+                    ("/habits/" ⊕ (test_habit_id_2 |> show |> (^. packedChars))) $ setRequestMethod "GET"
+                liftIO $ responseStatus response @?= ok200
+                habit ← readHabitIn doc
+                liftIO $ habit @?= test_habit_2
             ]
         ]
         ------------------------------------------------------------------------
