@@ -488,6 +488,9 @@ main = defaultMain $ testGroup "All Tests"
         [ webTestCase "GET / redirects to /habits" $ do
             (response, _) ← requestDocument "/" $ setRequestMethod "GET"
             assertRedirectsTo response "/habits"
+        , webTestCase "GET /habits redirects to /login" $ do
+            (response, _) ← requestDocument "/habits" $ setRequestMethod "GET"
+            assertRedirectsTo response "/login"
         , webTestCase "GET /login returns login page" $ do
             (_, doc) ← requestDocument "/login" $ setRequestMethod "GET"
             assertPageTitleEquals doc "Habit of Fate - Login"
