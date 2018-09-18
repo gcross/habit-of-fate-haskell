@@ -33,14 +33,11 @@ import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
-import Data.Char (toLower)
 import Data.Data.Lens (uniplate)
 import Data.IORef
 import Data.List (cycle)
-import qualified Data.Map as Map
 import Data.Time.Clock
 import Data.Text (strip)
-import Data.Text.Arbitrary
 import Data.Text.Strict.Lens (utf8)
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID, fromText)
@@ -64,16 +61,13 @@ import Text.XML.Lens
   , root
   , text
   )
-import qualified Text.XML.Lens as XML
 import Web.Scotty (parseParam)
 
 import HabitOfFate.API
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server
-import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
-import HabitOfFate.Story.Renderer.XML
 import HabitOfFate.Substitution
 
 instance Arbitrary SubstitutionData where
