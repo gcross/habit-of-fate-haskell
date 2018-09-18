@@ -33,16 +33,19 @@ import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
+import Data.ByteString.Strict.Lens (unpackedChars)
 import Data.Data.Lens (uniplate)
 import Data.IORef
-import Data.List (cycle)
+import Data.List (cycle, isPrefixOf)
 import Data.Time.Clock
 import Data.Text (strip)
 import Data.Text.Strict.Lens (utf8)
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID, fromText)
 import Network.HTTP.Client hiding (httpNoBody)
+import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
+import Network.HTTP.Types.Status (found302)
 import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
 import Test.QuickCheck
@@ -542,6 +545,19 @@ main = defaultMain $ testGroup "All Tests"
                 (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
                 habits ← readHabitsIn doc
                 liftIO $ habits @?= [(test_habit_id, test_habit)]
+            , webTestCase "Open the habit edit page for a new habit results in redirect." $ do
+                _ ← createTestAccount "username" "password"
+                (response, _) ← requestDocument "/habits/new" $ setRequestMethod "GET"
+                liftIO $ do
+                  responseStatus response @?= found302
+                  location ←
+                    maybe
+                      (assertFailure "No location returned.")
+                      pure
+                      (lookup "Location" (responseHeaders response) <&> (^. unpackedChars))
+                  assertBool
+                    ("Location starts with /habits/: " ⊕ location)
+                    ("/habits" `isPrefixOf` location)
             ]
         ]
         ------------------------------------------------------------------------

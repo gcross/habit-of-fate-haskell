@@ -135,6 +135,7 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
 
     mapM_ ($ environment)
       [ handleDeleteHabit
+      , handleNewHabit -- MUST be before EditHabit or creating a new habit breaks
       , handleEditHabit
       , handleGetAllHabits
       , handleGetCredits
@@ -144,7 +145,6 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       , handleLogout
       , handleMarkHabitAndRun
       , handleMoveHabit
-      , handleNewHabit
       , handlePutHabit
       ]
 
