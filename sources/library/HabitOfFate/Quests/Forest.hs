@@ -62,6 +62,7 @@ makeLenses ''State
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
+intro_story ∷ SubEvent
 intro_story = [s_fixed|
 The last thing in the world that <introduce>[Susie]</introduce> wanted to do was
 to wander alone in the Wicked Forest at night, but his/her[Susie]
@@ -104,6 +105,7 @@ data FailureEvent = FailureEvent
   }
 makeLenses ''FailureEvent
 
+makeFailureEvent ∷ (SubEvent, SubEvent, SubEvent) → FailureEvent
 makeFailureEvent (common,averted,happened) = FailureEvent common averted happened
 
 failure_stories ∷ [FailureEvent]
@@ -138,6 +140,7 @@ now.
 ------------------------------------ Wander ------------------------------------
 --------------------------------------------------------------------------------
 
+wander_stories ∷ [SubEvent]
 wander_stories = [s|
 Nothing happens as {Susie} wanders through the forest.
 ================================================================================
@@ -220,6 +223,7 @@ off.
 ------------------------------------ Found -------------------------------------
 --------------------------------------------------------------------------------
 
+found_stories ∷ [SubEvent]
 found_stories = [s|
 After searching for what feels like hours, {Susie} nearly steps on an {Illsbane}
 plant. {Her} heart leaps and {she} gives a short prayer of thanks. {She}
@@ -246,6 +250,7 @@ looks up, the fairy is gone.
 ------------------------------------- Won --------------------------------------
 --------------------------------------------------------------------------------
 
+won_story ∷ SubEvent
 won_story = [s_fixed|
 {Susie} is starting to feel like {she} will never make it back when {she}
 notices that things are starting to get brighter -- {she} must be getting close
@@ -265,10 +270,12 @@ builds an alter to you out of gratitude.
 ------------------------------------ Status ------------------------------------
 --------------------------------------------------------------------------------
 
+looking_for_herb_story ∷ SubEvent
 looking_for_herb_story = [s_fixed|
 [Susie] continues to search in the dark for an [Illsbane] plant.
 |]
 
+returning_home_story ∷ SubEvent
 returning_home_story = [s_fixed|
 An [Illsbane] plant in hand, [Susie] continues home.
 |]
@@ -306,7 +313,7 @@ runAttainedSuccessMilestone = do
       herb_found_ .= True
       QuestResult
         <$> (QuestInProgress <$> numberUntilEvent 5)
-        <*> (uniform found_stories)
+        <*> (substitute substitutions <$> uniform found_stories)
 
 runAttainedFailureMilestone ∷ AttainedMilestoneQuestRunner State
 runAttainedFailureMilestone = do
@@ -332,13 +339,13 @@ proofread = do
   printCentered '=' "Wandering Stories"
   forM_ wander_stories $ \wander_story → do
     printLine '-'
-    printEvent wander_story
+    printEvent (substitute test_substitutions wander_story)
   newline
   printLine '='
   printCentered '=' "Found Stories"
   forM_ found_stories $ \found_story → do
     printLine '-'
-    printEvent found_story
+    printEvent (substitute test_substitutions found_story)
   newline
   printEventBanner "Won Story"
   newline
