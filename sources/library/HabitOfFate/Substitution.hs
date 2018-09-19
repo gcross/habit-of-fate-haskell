@@ -104,10 +104,10 @@ getCase c
 parseSubstitutionAtom ∷ HasArticle → Maybe Case → Parser Atom
 parseSubstitutionAtom article maybe_case = do
   kind ←
-    try (string "[" >> pure Name)
+    try (string "|" >> pure Name)
     <|>
     msum
-      [ try (string word <|> string (word & _head . uppercase_ .~ True) >> char '[')
+      [ try (string word <|> string (word & _head . uppercase_ .~ True) >> char '|')
         >>
         (pure $ Referrent referrent)
       | (word, referrent) ← referrents
@@ -118,7 +118,6 @@ parseSubstitutionAtom article maybe_case = do
       pure
       maybe_case
   key ← many letter <&> pack
-  _ ← char ']'
   pure $ Substitution $
     SubstitutionData
       (article == HasArticle)
