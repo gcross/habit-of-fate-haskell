@@ -167,28 +167,6 @@ his/her| shadow didn't stop walking when he/she| did. He/she| backs away slowly 
 his/her| shadow gets further and further away from him/her|. He/she| decide to
 start searching in a different direction.
 ================================================================================
-|Susie trips on a branch and nearly falls. “Odd,” he/she| says to
-himself/herself| “I've been staring at the ground; how could I have missed it?”
-Examining the ground more closely, he/she| sees the root he/she| tripped on
-lower itself back into the earth. He/she| then catches another one rising right
-next to her. He/she| tries backing away slowly, but then nearly trips on a root
-behind him/her|. He/she| breaks into a run, leaping with each step so that
-his/her| feet cannot be caught. He/she| hears the rustling of leaves in the wind
-and it sounds like laughter.
-================================================================================
-|Susie hears rustling in the leaves and turns to face it. He/she| sees a mouse
-emerge, looking around for signs of danger. |Susie lets out the breath that
-he/she| had just realized he/she| was holding.
-
-“Human, what are you doing in the forest?” he/she| hears it ask.
-
-|Susie jumps. He/she| starts to answer, but then he/she| sees a blur dive towards
-the mouse, grab it, and then head back towards the sky; after a moment of
-staring he/she| realizes that it is an owl. The screams of the mouse for help die
-away as the owl flies off.
-
-He/she| resumes his/her| search, shaken by what had just happened.
-================================================================================
 |Susie looks up at the Moon. For reasons that nobody understands, the Moon is
 always full in the Wicked Forest. The good news is that this makes it easier to
 search for |Illsbane, but the bad news is that he/she| has to worry about
@@ -209,15 +187,6 @@ way then...”
 
 |Susie resumed searching, the laugher of the tree receding as he/she| left it
 behind.
-================================================================================
-|Susie finally sees an |Illsbane plant. He/she| offers you a prayer of thanks,
-and then reaches down to pick it.
-
-Suddenly, it changes into the shape of a creature with a head, three arms, and
-three legs. It makes a noise that mixes shrieking with laughter, and then runs
-off.
-
-|Susie bows his/her| head in shock and disappointment, and resumes searching.
 |]
 
 --------------------------------------------------------------------------------
