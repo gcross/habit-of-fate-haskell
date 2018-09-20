@@ -58,6 +58,7 @@ data Referrent =
   | Object
   | Possessive
   | ProperPossessive
+  | Reflexive
   | Category
   | CategoryPlural
   | Offspring
@@ -70,6 +71,7 @@ referrents =
   , ( "him/her", Object)
   , ( "his/her", Possessive)
   , ( "his/hers", ProperPossessive)
+  , ( "himself/herself", Reflexive)
   , ( "man/woman", Category)
   , ( "men/women", CategoryPlural)
   , ( "son/daughter", Offspring)
@@ -269,6 +271,10 @@ applyReferrent Possessive Neuter = "its"
 applyReferrent ProperPossessive Male = "his"
 applyReferrent ProperPossessive Female = "hers"
 applyReferrent ProperPossessive Neuter = "its"
+
+applyReferrent Reflexive Male = "himself"
+applyReferrent Reflexive Female = "herself"
+applyReferrent Reflexive Neuter = "itsself"
 
 applyReferrent Category Male = "man"
 applyReferrent Category Female = "woman"
