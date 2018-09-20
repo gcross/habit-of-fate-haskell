@@ -25,6 +25,7 @@ module HabitOfFate.Story.Renderer.Console (printEvent) where
 import HabitOfFate.Prelude
 
 import qualified Data.ByteString as BS
+import qualified Data.Sequence as Seq
 import Data.Void
 import Rainbow
 
@@ -41,10 +42,13 @@ makeLenses ''RenderState
 
 renderStoryToChunks ∷ Event → [Chunk Text]
 renderStoryToChunks [] = []
-renderStoryToChunks paragraphs =
-  toList (foldMap renderParagraph (intersperse "\n\n" paragraphs))
-  ⊕
-  [chunk "\n"]
+renderStoryToChunks (first:rest) =
+  mconcat >>> toList
+  $
+  [ renderParagraph first
+  , Seq.singleton (chunk "\n")
+  , foldMap (renderParagraph >>> (Seq.singleton (chunk "\n\n") ⊕)) rest
+  ]
   where
     tellChunk ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Chunk Text → m ()
     tellChunk = singleton >>> tell
