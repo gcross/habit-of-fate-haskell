@@ -145,8 +145,8 @@ wander_stories ∷ [SubEvent]
 wander_stories = [s|
 Nothing happens as |Susie wanders through the forest.
 ================================================================================
-As |Susie continues to search he/she| hears wolves howling in the distance,
-which makes him/her| shiver. Thank goodness they seem to be in the distance.
+As |Susie continues to search he/she| hears the howling of wolves, which makes
+him/her| shiver. Thank goodness they seem to be in the distance!
 ================================================================================
 |Susie is paying so much attention to looking for |Illsbane that he/she|
 almost misses the ominous circle of mushrooms. He/she| says a prayer of thanks
