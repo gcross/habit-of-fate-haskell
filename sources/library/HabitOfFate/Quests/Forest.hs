@@ -211,7 +211,6 @@ he/she| looks up, the fairy is gone.
 
 He/she| falls to his/her| knees and thanks you for guiding her to the plan.
 He/she| then gets up and starts heading back to his/her| home.
-================================================================================
 |]
 
 --------------------------------------------------------------------------------
