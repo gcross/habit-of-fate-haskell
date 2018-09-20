@@ -38,11 +38,9 @@ import HabitOfFate.Prelude hiding (State)
 import Control.Monad.Random
 
 import HabitOfFate.Data.Credits
-import HabitOfFate.Proofread
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
-import HabitOfFate.Story.Renderer.Console
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
@@ -297,34 +295,13 @@ runAttainedFailureMilestone = do
 --------------------------------- Proofreading ---------------------------------
 --------------------------------------------------------------------------------
 
-proofread ∷ IO ()
-proofread = do
-  printQuestBanner "Forest"
-  newline
-  printEventBanner "Intro Story"
-  newline
-  printEvent (substitute test_substitutions intro_story)
-  newline
-  printLine '='
-  printCentered '=' "Wandering Stories"
-  forM_ wander_stories $ \wander_story → do
-    printLine '-'
-    printEvent (substitute test_substitutions wander_story)
-  newline
-  printLine '='
-  printCentered '=' "Found Stories"
-  forM_ found_stories $ \found_story → do
-    printLine '-'
-    printEvent (substitute test_substitutions found_story)
-  newline
-  printEventBanner "Won Story"
-  newline
-  printEvent (substitute test_substitutions won_story)
-  newline
-  printEventBanner "Looking Status"
-  newline
-  printEvent (substitute test_substitutions looking_for_herb_story)
-  newline
-  printEventBanner "Returning Status"
-  newline
-  printEvent (substitute test_substitutions returning_home_story)
+stories ∷ [(Text, [Event])]
+stories =
+  map (second (map (substitute test_substitutions)))
+  [ ("Introduction", [intro_story])
+  , ("Wandering", wander_stories)
+  , ("Found", found_stories)
+  , ("Won", [won_story])
+  , ("Looking for Herb Status", [looking_for_herb_story])
+  , ("Returning", [returning_home_story])
+  ]
