@@ -42,11 +42,9 @@ makeLenses ''RenderState
 renderStoryToChunks ∷ Event → [Chunk Text]
 renderStoryToChunks [] = []
 renderStoryToChunks paragraphs =
-  (do mapM_ renderParagraph (intersperse "\n\n" paragraphs)
-      tellNewline
-  )
-  |> execWriter
-  |> toList
+  toList (foldMap renderParagraph (intersperse "\n\n" paragraphs))
+  ⊕
+  [chunk "\n"]
   where
     tellChunk ∷ MonadWriter (Seq (Chunk Text)) m ⇒ Chunk Text → m ()
     tellChunk = singleton >>> tell
@@ -57,7 +55,7 @@ renderStoryToChunks paragraphs =
     tellNewline ∷ MonadWriter (Seq (Chunk Text)) m ⇒ m ()
     tellNewline = tellLine ""
 
-    renderParagraph ∷ Paragraph → Writer (Seq (Chunk Text)) ()
+    renderParagraph ∷ Paragraph → Seq (Chunk Text)
     renderParagraph =
       go mempty
       >>>
@@ -68,6 +66,8 @@ renderStoryToChunks paragraphs =
         , _pending_chunks_ = mempty
         , _pending_length_ = 0
         })
+      >>>
+      execWriter
       where
         go formatting (StyleP style rest) = go (addFormat formatting) rest
           where
