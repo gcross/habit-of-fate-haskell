@@ -680,31 +680,31 @@ main = defaultMain $ testGroup "All Tests"
       , testCase "literal, whole string" $
           runParser (many parseAtom) () "<story>" "xyz" @?= Right [Literal 'x', Literal 'y', Literal 'z']
       , testCase "substitution, name" $
-          runParser parseAtom () "<story>" "[]" @?=
+          runParser parseAtom () "<story>" "|" @?=
             Right (Substitution $ SubstitutionData False True Name "")
       , testCase "substitution, subject" $
-          runParser parseAtom () "<story>" "he/she[x]" @?=
+          runParser parseAtom () "<story>" "he/she|x" @?=
             Right (Substitution $ SubstitutionData False False (Referrent Subject) "x")
       , testCase "substitution, subject, multiparse" $
-          runParser (many parseAtom) () "<story>" "he/she[x]" @?=
+          runParser (many parseAtom) () "<story>" "he/she|x" @?=
             Right [Substitution $ SubstitutionData False False (Referrent Subject) "x"]
       , testCase "substitution, proper possessive" $
-          runParser parseAtom () "<story>" "his/hers[Sue]" @?=
+          runParser parseAtom () "<story>" "his/hers|Sue" @?=
             Right (Substitution $ SubstitutionData False False (Referrent ProperPossessive) "Sue")
       , testCase "substitution, with article" $
-          runParser parseAtom () "<story>" "an [illsbane]" @?=
+          runParser parseAtom () "<story>" "an |illsbane" @?=
             Right (Substitution $ SubstitutionData True False Name "illsbane")
       , testCase "substitution, with capitalized article" $
-          runParser parseAtom () "<story>" "An [illsbane]" @?=
+          runParser parseAtom () "<story>" "An |illsbane" @?=
             Right (Substitution $ SubstitutionData True True Name "illsbane")
       , testCase "substitution, with article and a newline" $
-          runParser parseAtom () "<story>" "an\n[illsbane]" @?=
+          runParser parseAtom () "<story>" "an\n|illsbane" @?=
             Right (Substitution $ SubstitutionData True False Name "illsbane")
       , testCase "substitution, uppercase referrant" $
-          runParser parseAtom () "<story>" "His/hers[Katie]" @?=
+          runParser parseAtom () "<story>" "His/hers|Katie" @?=
             Right (Substitution $ SubstitutionData False True (Referrent ProperPossessive) "Katie")
       , testCase "substitution, uppercase name" $
-          runParser parseAtom () "<story>" "[Katie]" @?=
+          runParser parseAtom () "<story>" "|Katie" @?=
             Right (Substitution $ SubstitutionData False True Name "Katie")
       ]
     ----------------------------------------------------------------------------
