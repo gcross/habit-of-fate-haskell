@@ -25,8 +25,10 @@ module Main where
 
 import HabitOfFate.Prelude
 
-import Control.Concurrent (forkFinally)
+import Control.Concurrent (forkFinally, forkIO)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent.STM (atomically, retry)
+import Control.Concurrent.STM.TVar (TVar, newTVar, newTVarIO, readTVar)
 import Control.Exception (throwIO)
 import qualified Data.ByteString as BS
 import Data.Text.IO
@@ -37,6 +39,7 @@ import Options.Applicative
 import System.Directory
 import System.Exit
 
+import HabitOfFate.Data.Account
 import HabitOfFate.Logging
 import HabitOfFate.Server
 
@@ -50,6 +53,12 @@ exitFailureWithMessage ∷ Text → IO α
 exitFailureWithMessage message = do
   putStrLn message
   exitFailure
+
+writeDataOnChange ∷ String → TVar Accounts → TVar Bool → IO α
+writeDataOnChange data_path accounts_tvar changed_flag = forever $
+  (atomically $ readTVar changed_flag >>= bool (readTVar accounts_tvar) retry)
+  >>=
+  encodeFile data_path
 
 main ∷ IO ()
 main = do
@@ -85,7 +94,7 @@ main = do
   logIO $ "Certificate file is located at " ⊕ certificate_path
   logIO $ "Key file is located at " ⊕ key_path
 
-  initial_accounts ←
+  accounts_tvar ←
     doesFileExist data_path
     >>=
     bool
@@ -95,7 +104,11 @@ main = do
       (do logIO $ "Reading existing data file at " ⊕ data_path
           BS.readFile data_path >>= (decodeEither >>> either error pure)
       )
-  app ← makeApp initial_accounts (encodeFile data_path)
+    >>=
+    (\accounts → atomically $ traverse newTVar accounts >>= newTVar)
+  accounts_changed_flag ← newTVarIO False
+  forkIO $ writeDataOnChange data_path accounts_tvar accounts_changed_flag
+  app ← makeApp accounts_tvar accounts_changed_flag
   done_mvar ← newEmptyMVar
   void $
     forkFinally

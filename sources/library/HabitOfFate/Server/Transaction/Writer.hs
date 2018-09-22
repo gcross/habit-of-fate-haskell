@@ -90,7 +90,7 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterTransaction 
       Left status_ → pure (Right (status_, Nothing), logs)
       Right (result, new_account) → do
         writeTVar account_tvar new_account
-        void $ tryPutTMVar write_request_var ()
+        writeTVar accounts_changed_flag True
         pure $ case result of
           RedirectsTo href → (Left href, logs)
           TransactionResult status_ content → (Right (status_, Just content), logs)

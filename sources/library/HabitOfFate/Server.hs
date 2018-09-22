@@ -75,15 +75,6 @@ import HabitOfFate.Server.Requests.PutHabit
 ------------------------------ Background Threads ------------------------------
 --------------------------------------------------------------------------------
 
-writeDataOnChange ∷ Environment → (Accounts → IO ()) → IO α
-writeDataOnChange Environment{..} saveAccounts = forever $
-  (atomically $ do
-    takeTMVar write_request_var
-    readTVar accounts_tvar >>= traverse readTVar
-  )
-  >>=
-  saveAccounts
-
 cleanCookies ∷ Environment → IO α
 cleanCookies Environment{..} = forever $ do
   dropped ←
@@ -108,20 +99,17 @@ cleanCookies Environment{..} = forever $ do
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
-makeAppWithTestMode ∷ Bool → Accounts → (Accounts → IO ()) → IO Application
-makeAppWithTestMode test_mode initial_accounts saveAccounts = do
+makeAppWithTestMode ∷ Bool → TVar (Map Username (TVar Account)) → TVar Bool → IO Application
+makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
   liftIO $ hSetBuffering stderr LineBuffering
 
   logIO "Starting server..."
 
-  accounts_tvar ← atomically $ traverse newTVar initial_accounts >>= newTVar
-  write_request_var ← newEmptyTMVarIO
   cookies_tvar ← newTVarIO mempty
   expirations_tvar ← newTVarIO mempty
 
   let environment = Environment{..}
 
-  _ ← forkIO $ writeDataOnChange environment saveAccounts
   _ ← forkIO $ cleanCookies environment
 
   Scotty.scottyApp $ do
@@ -155,14 +143,8 @@ makeAppWithTestMode test_mode initial_accounts saveAccounts = do
       logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next
 
-makeApp ∷
-  Map Username Account →
-  (Map Username Account → IO ()) →
-  IO Application
+makeApp ∷ TVar (Map Username (TVar Account)) → TVar Bool → IO Application
 makeApp = makeAppWithTestMode False
 
-makeAppRunningInTestMode ∷
-  Map Username Account →
-  (Map Username Account → IO ()) →
-  IO Application
+makeAppRunningInTestMode ∷ TVar (Map Username (TVar Account)) → TVar Bool → IO Application
 makeAppRunningInTestMode = makeAppWithTestMode True

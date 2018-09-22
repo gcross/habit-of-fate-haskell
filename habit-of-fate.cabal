@@ -179,6 +179,7 @@ test-suite test
                      , QuickCheck
                      , quickcheck-text
                      , scotty
+                     , stm
                      , tasty
                      , tasty-hunit
                      , tasty-quickcheck

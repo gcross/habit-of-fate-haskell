@@ -31,6 +31,7 @@ module Main where
 
 import HabitOfFate.Prelude hiding (elements, text)
 
+import Control.Concurrent.STM.TVar (newTVarIO, readTVarIO)
 import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
 import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
@@ -95,8 +96,22 @@ instance Arbitrary Kind where
 instance Arbitrary Referrent where
   arbitrary = elements [minBound..maxBound]
 
+withApplication' action =
+  (makeAppRunningInTestMode
+    <$> newTVarIO mempty
+    <*> newTVarIO False
+  )
+  >>=
+  flip withApplication action
+
 withTestApp ∷ (Int → IO ()) → IO ()
-withTestApp = withApplication (makeAppRunningInTestMode mempty (const $ pure ()))
+withTestApp action =
+  (makeAppRunningInTestMode
+    <$> newTVarIO mempty
+    <*> newTVarIO False
+  )
+  >>=
+  flip withApplication action
 
 serverTestCase ∷ String → (Int → IO ()) → TestTree
 serverTestCase test_name = withTestApp >>> testCase test_name
@@ -521,14 +536,17 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
-                write_requested_ref ← newIORef False
-                withApplication
-                  (makeAppRunningInTestMode mempty (const $ writeIORef write_requested_ref True))
-                  $
-                  \port → do
-                    session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
-                    flip runSessionT session_info $ createHabit test_habit_id test_habit
-                readIORef write_requested_ref >>= assertBool "Write was not requested."
+                accounts_changed_flag ← newTVarIO False
+                (makeAppRunningInTestMode
+                  <$> newTVarIO mempty
+                  <*> pure accounts_changed_flag
+                 ) >>=
+                  flip withApplication (
+                    \port → do
+                      session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
+                      flip runSessionT session_info $ createHabit test_habit_id test_habit
+                  )
+                readTVarIO accounts_changed_flag >>= assertBool "Write was not requested."
             ]
         ----------------------------------------------------------------------------
         , testGroup "markHabits"

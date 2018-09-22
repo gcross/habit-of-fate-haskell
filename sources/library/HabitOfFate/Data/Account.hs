@@ -197,6 +197,3 @@ instance FromJSON Username where
 instance ToJSON Username where
   toJSON = unwrapUsername >>> toJSON
   toEncoding = unwrapUsername >>> toEncoding
-
-
-type Accounts = Map Username Account
