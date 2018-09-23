@@ -40,7 +40,7 @@ import HabitOfFate.Server.Transaction.Writer
 
 habitPage ∷ Monad m ⇒ Lazy.Text → Lazy.Text → Lazy.Text → Habit → m TransactionResult
 habitPage name_error difficulty_error importance_error habit =
-  renderHTMLUsingTemplate "Habit of Fate - Editing a Habit" [] >>> returnLazyTextAsHTML ok200 $
+  renderHTMLUsingTemplateAndReturn "Habit of Fate - Editing a Habit" ["common"] ok200 $
     H.form ! A.method "post" $ do
       H.div $ H.table $ do
         H.tr $ do
