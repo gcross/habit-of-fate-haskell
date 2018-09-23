@@ -54,9 +54,13 @@ exitFailureWithMessage message = do
   putStrLn message
   exitFailure
 
-writeDataOnChange ∷ String → TVar Accounts → TVar Bool → IO α
+writeDataOnChange ∷ String → TVar (Map Username (TVar Account)) → TVar Bool → IO α
 writeDataOnChange data_path accounts_tvar changed_flag = forever $
-  (atomically $ readTVar changed_flag >>= bool (readTVar accounts_tvar) retry)
+  (atomically $
+    readTVar changed_flag
+    >>=
+    bool (readTVar accounts_tvar >>= traverse readTVar) retry
+  )
   >>=
   encodeFile data_path
 

@@ -135,6 +135,7 @@ executable habit-server
                      , jwt
                      , optparse-applicative
                      , random
+                     , stm
                      , text
                      , uuid
                      , warp
