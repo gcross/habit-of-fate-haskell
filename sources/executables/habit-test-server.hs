@@ -24,6 +24,8 @@ module Main where
 
 import HabitOfFate.Prelude
 
+import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
 import Data.List
 import Network.Wai.Handler.Warp
 import Network.Wai.Handler.WarpTLS
@@ -125,9 +127,13 @@ main = do
     ,"in the binary and it only stores the account data in memory so all account"
     ,"data will be lost when the server exits."
     ]
-  initial_accounts ← makeInitialAccounts
-  makeAppRunningInTestMode initial_accounts (const $ pure ()) >>=
+  accounts_tvar ←
+    makeInitialAccounts
+    >>=
+    \initial_accounts →
+      atomically $ traverse newTVar initial_accounts >>= newTVar
+  accounts_changed_flag ← newTVarIO False
+  makeAppRunningInTestMode accounts_tvar accounts_changed_flag >>=
     runTLS
       (tls_settings { onInsecure = AllowInsecure })
       (setPort 8081 defaultSettings)
-

@@ -148,6 +148,7 @@ executable habit-test-server
   main-is:             habit-test-server.hs
   build-depends:       habit-of-fate
                      , base
+                     , stm
                      , warp
                      , warp-tls
   default-language:    Haskell2010
