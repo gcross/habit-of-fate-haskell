@@ -40,37 +40,43 @@ import HabitOfFate.Server.Transaction.Writer
 
 habitPage ∷ Monad m ⇒ Lazy.Text → Lazy.Text → Lazy.Text → Habit → m TransactionResult
 habitPage name_error difficulty_error importance_error habit =
-  renderHTMLUsingTemplateAndReturn "Habit of Fate - Editing a Habit" ["common"] ok200 $
+  renderHTMLUsingTemplateAndReturn "Habit of Fate - Editing a Habit" ["common", "edit"] ok200 $
     H.form ! A.method "post" $ do
-      H.div $ H.table $ do
-        H.tr $ do
-          H.td $ H.toHtml ("Name:" ∷ Text)
-          H.td $
-            H.input
-              ! A.id "name"
-              ! A.type_ "text"
-              ! A.name "name"
-              ! A.value (H.toValue $ habit ^. name_)
-              ! A.required "true"
-          H.td ! A.id "name_error" $ H.toHtml name_error
+      H.div ! A.class_ "fields" $ do
+        -- Name
+        H.div ! A.class_ "label" ! A.id "name_label" $ H.toHtml ("Name:" ∷ Text)
+        H.div $
+          H.input
+            ! A.type_ "text"
+            ! A.name "name"
+            ! A.value (H.toValue $ habit ^. name_)
+            ! A.required "true"
+            ! A.size "60"
+            ! A.id "name_input"
+        H.div ! A.class_ "error_message" ! A.id "name_error" $ H.toHtml name_error
+
+        -- Template for Difficulty and Importance
         let generateScaleEntry name value_lens =
-              H.select ! A.name name ! A.required "true" $
+              H.select ! A.name name ! A.required "true" ! A.id (name ⊕ "_input") $
                 flip foldMap scales $ \scale →
                   let addSelectedFlag
                         | habit ^. value_lens == scale = (! A.selected "selected")
                         | otherwise = identity
                       unselected_option = H.option ! A.value (scale |> show |> H.toValue)
                   in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
-        H.tr $ do
-          H.td $ H.toHtml ("Difficulty:" ∷ Text)
-          H.td $ generateScaleEntry "difficulty" difficulty_
-          H.td ! A.id "difficulty_error" $ H.toHtml difficulty_error
-        H.tr $ do
-          H.td $ H.toHtml ("Importance:" ∷ Text)
-          H.td $ generateScaleEntry "importance" importance_
-          H.td ! A.id "importance_error" $ H.toHtml importance_error
-      H.div $ do
-        H.input !  A.type_ "submit"
+
+        -- Difficulty
+        H.div ! A.class_ "label" ! A.id "difficulty_label" $ H.toHtml ("Difficulty:" ∷ Text)
+        generateScaleEntry "difficulty" difficulty_
+        H.div ! A.class_ "error_message" ! A.id "difficulty_error" $ H.toHtml difficulty_error
+
+        -- Importance
+        H.div ! A.class_ "label" ! A.id "importance_label" $ H.toHtml ("Importance:" ∷ Text)
+        generateScaleEntry "importance" importance_
+        H.div ! A.class_ "error_message" ! A.id "importance_error" $ H.toHtml importance_error
+
+      H.div ! A.class_ "submit" $ do
+        H.input ! A.type_ "submit"
         H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
 
 handleEditHabitGet ∷ Environment → ScottyM ()

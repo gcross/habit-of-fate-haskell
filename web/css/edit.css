@@ -1,0 +1,59 @@
+.fields {
+    display: grid;
+    grid-template-columns: 100px auto;
+    grid-template-rows: 25px auto 25px auto 25px auto;
+}
+
+.label {
+    grid-column: 1;
+    text-align: right;
+    margin-right: 10px;
+}
+
+.input, .error_message {
+    grid-column: 2;
+}
+
+.error_message {
+    color: red;
+}
+
+#name_label {
+    grid-row: 1;
+}
+
+#name_input {
+    grid-row: 1;
+}
+
+#name_error {
+    grid-row: 2;
+}
+
+#difficulty_label {
+    grid-row: 3;
+}
+
+#difficulty_input {
+    grid-row: 3;
+}
+
+#difficulty_error {
+    grid-row: 4;
+}
+
+#importance_label {
+    grid-row: 5;
+}
+
+#importance_input {
+    grid-row: 5;
+}
+
+#importance_error {
+    grid-row: 6;
+}
+
+select {
+    margin: auto auto auto 0;
+}
