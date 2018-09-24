@@ -91,7 +91,11 @@ handleEditHabitPost environment = do
       <&>
       maybe
         (Nothing, "No value for the name was present.")
-        (\value → (Just (pack value), ""))
+        (\value →
+          if null value
+            then (Nothing, "Name for the habit may not be empty.")
+            else (Just (pack value), "")
+        )
     let getScale param_name =
           getParamMaybe param_name
           <&>
