@@ -57,3 +57,12 @@
 select {
     margin: auto auto auto 0;
 }
+
+.submit {
+    margin: auto;
+    width: 200px;
+}
+
+.submit * {
+    margin: 10px;
+}

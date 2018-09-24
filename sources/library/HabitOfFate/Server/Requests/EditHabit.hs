@@ -75,9 +75,11 @@ habitPage name_error difficulty_error importance_error habit =
         generateScaleEntry "importance" importance_
         H.div ! A.class_ "error_message" ! A.id "importance_error" $ H.toHtml importance_error
 
+      H.hr
+
       H.div ! A.class_ "submit" $ do
-        H.input ! A.type_ "submit"
-        H.a ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
+        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
+        H.input ! A.class_ "sub" ! A.type_ "submit"
 
 handleEditHabitGet ∷ Environment → ScottyM ()
 handleEditHabitGet environment = do
