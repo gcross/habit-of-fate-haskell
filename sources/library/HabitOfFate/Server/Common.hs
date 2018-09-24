@@ -80,6 +80,8 @@ renderHTMLUsingTemplate title stylesheets content =
       H.head $
         (H.title $ toHtml title)
         ⊕
+        (H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet")
+        ⊕
         mconcat
           [ H.link
               ! A.rel "stylesheet"
