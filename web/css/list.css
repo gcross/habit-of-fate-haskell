@@ -25,5 +25,15 @@ tbody tr:nth-child(odd) {
 }
 
 .new-index {
-  width: 40px
+    padding-right: 2px;
+    text-align: right;
+    width: 40px;
+}
+
+.new_habit_link {
+    display: block;
+    width: 100px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
 }
