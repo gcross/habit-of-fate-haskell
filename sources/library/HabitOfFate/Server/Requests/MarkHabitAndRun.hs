@@ -57,8 +57,8 @@ runGame = do
         | (not <<< null) event = renderEventToHTML event
         | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
   stored_credits ← use stored_credits_
-  renderHTMLUsingTemplateAndReturn "Habit of Fate - Event" [] ok200 $ do
-    rendered_event
+  renderHTMLUsingTemplateAndReturn "Habit of Fate - Event" ["common", "story"] ok200 $ do
+    H.div ! A.class_ "story" $ rendered_event
     if stored_credits ^. successes_ /= 0 || stored_credits ^. failures_ /= 0
       then H.form ! A.method "post" $ H.input ! A.type_ "submit" ! A.value "Next"
       else H.a ! A.href "/habits" $ H.toHtml ("Done" ∷ Text)

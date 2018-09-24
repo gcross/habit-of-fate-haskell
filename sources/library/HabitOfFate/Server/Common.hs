@@ -84,11 +84,11 @@ renderHTMLUsingTemplate title stylesheets content =
           [ H.link
               ! A.rel "stylesheet"
               ! A.type_ "text/css"
-              ! A.href (H.toValue $ mconcat ["../css/", stylesheet, ".css"])
+              ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
           | stylesheet ← stylesheets
           ]
       H.body $ do
-        H.div ! A.class_ "logo" $ H.img ! A.src "../images/logo.svgz" ! A.width "100%"
-        H.div ! A.class_ "left" $ H.img ! A.src "../images/treasure-chest.svgz" ! A.width "100%"
-        H.div ! A.class_ "right" $ H.img ! A.src "../images/grave.svgz" ! A.width "100%"
+        H.div ! A.class_ "logo" $ H.img ! A.src "/images/logo.svgz" ! A.width "100%"
+        H.div ! A.class_ "left" $ H.img ! A.src "/images/treasure-chest.svgz" ! A.width "100%"
+        H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
         H.div ! A.class_ "content" $ content

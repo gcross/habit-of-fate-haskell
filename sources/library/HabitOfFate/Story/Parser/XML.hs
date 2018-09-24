@@ -67,7 +67,9 @@ parseParagraphFromNodes parseSubstitutionTag = mapM parseParagraphChild >>> fmap
   where
     parseParagraphChild (NodeInstruction _) =  throwM $ StoryParseException "unexpected XML instruction"
     parseParagraphChild (NodeComment _) = return mempty
-    parseParagraphChild (NodeContent t) = return $ TextP t
+    parseParagraphChild (NodeContent t)
+      | onull t = return mempty
+      | otherwise = return $ TextP t
     parseParagraphChild (NodeElement element@(Element (Name "sub" _ _) _ _)) =
       SubstitutionP <$> parseSubstitutionTag element
     parseParagraphChild (NodeElement (Element (Name tag _ _) attrs childs)) =

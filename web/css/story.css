@@ -22,3 +22,10 @@
     font-weight: bold;
     text-decoration-color: cyan;
 }
+
+form, a {
+    display: block;
+    margin-top: 20px;
+    margin-left: auto;
+    width: 50px;
+}
