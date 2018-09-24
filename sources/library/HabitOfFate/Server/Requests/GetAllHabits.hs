@@ -52,7 +52,7 @@ handleGetAllHabitsWeb environment = do
       H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "list" $ do
         H.table $ do
-          H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance", "Success", "Failure"]
+          H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance", "I succeeded!", "I failed."]
           H.tbody <<< mconcat $
             [ H.tr ! A.class_ ("row " ⊕ if n `mod` 2 == 0 then "even" else "odd") $ do
                 H.td $ H.form ! A.method "post" ! A.action (H.toValue $ "/move/" ⊕ show uuid) $ do
@@ -71,12 +71,12 @@ handleGetAllHabitsWeb environment = do
                       H.td ! A.class_ scale_class $ H.toHtml $ displayScale $ habit ^. scale_lens
                 addScaleElement "difficulty" difficulty_
                 addScaleElement "importance" importance_
-                let addMarkElement name label =
+                let addMarkElement name class_ =
                       H.td $
                         H.form ! A.method "post" ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid) $
-                          H.input ! A.type_ "submit" ! A.value label
-                addMarkElement "success" "😃"
-                addMarkElement "failure" "😞"
+                          H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
+                addMarkElement "success" "good"
+                addMarkElement "failure" "bad"
             | n ← [1∷Int ..]
             | (uuid, habit) ← habit_list
             ]

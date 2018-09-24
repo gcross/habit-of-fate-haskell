@@ -37,3 +37,19 @@ tbody tr:nth-child(odd) {
     margin-right: auto;
     margin-top: 20px;
 }
+
+.smiley {
+    background-repeat: no-repeat;
+    background-size: 50px;
+    height: 50px;
+    margin: auto;
+    width: 50px;
+}
+
+.good {
+    background-image: url("/images/good.svgz");
+}
+
+.bad {
+    background-image: url("/images/bad.svgz");
+}
