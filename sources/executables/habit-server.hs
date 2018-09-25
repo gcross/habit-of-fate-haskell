@@ -59,7 +59,7 @@ writeDataOnChange data_path accounts_tvar changed_flag = forever $
   (atomically $
     readTVar changed_flag
     >>=
-    bool (readTVar accounts_tvar >>= traverse readTVar) retry
+    bool retry (readTVar accounts_tvar >>= traverse readTVar)
   )
   >>=
   encodeFile data_path
