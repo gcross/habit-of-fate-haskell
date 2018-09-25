@@ -42,7 +42,11 @@ tbody tr:nth-child(odd) {
     background-repeat: no-repeat;
     background-size: 50px;
     height: 50px;
-    margin: auto;
+    padding: 25px;
+    margin-bottom: 5px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 5px;
     width: 50px;
 }
 
