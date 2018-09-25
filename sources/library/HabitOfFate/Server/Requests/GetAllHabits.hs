@@ -80,7 +80,8 @@ handleGetAllHabitsWeb environment = do
             | n ← [1∷Int ..]
             | (uuid, habit) ← habit_list
             ]
-        H.a ! A.class_ "new_habit_link" ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
+        H.a ! A.class_ "new_link" ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
+        H.a ! A.class_ "logout_link" ! A.href "/logout" $ H.toHtml ("Logout" ∷ Text)
 
 handleGetAllHabits ∷ Environment → ScottyM ()
 handleGetAllHabits environment = do

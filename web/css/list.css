@@ -30,12 +30,17 @@ tbody tr:nth-child(odd) {
     width: 40px;
 }
 
-.new_habit_link {
+.new_link, .logout_link {
     display: block;
-    width: 100px;
-    margin-left: auto;
-    margin-right: auto;
     margin-top: 20px;
+}
+
+.new_link {
+    float: left;
+}
+
+.logout_link {
+    float: right;
 }
 
 .smiley {
