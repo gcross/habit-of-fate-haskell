@@ -9,10 +9,14 @@ copyright:           2016 Gregory Crosswhite
 build-type:          Simple
 cabal-version:       >=1.10
 data-files:          web/css/common.css
+                     web/css/edit.css
                      web/css/enter.css
                      web/css/list.css
+                     web/css/story.css
                      web/fonts/GloriaHallelujah.woff2
+                     web/images/bad.svgz
                      web/images/grave.svgz
+                     web/images/good.svgz
                      web/images/logo.svgz
                      web/images/treasure-chest.svgz
 
