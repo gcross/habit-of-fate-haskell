@@ -141,7 +141,7 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       , handlePutHabit
       ]
 
-    Scotty.get "/" $ setStatusAndRedirect temporaryRedirect307 "/habits"
+    Scotty.get "/" $ setStatusAndRedirect movedPermanently301 "/habits"
 
     Scotty.notFound $ do
       r ← Scotty.request
