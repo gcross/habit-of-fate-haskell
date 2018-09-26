@@ -55,6 +55,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Logging
+import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
 import HabitOfFate.Server.Requests.DeleteHabit
@@ -140,7 +141,7 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       , handlePutHabit
       ]
 
-    Scotty.get "/" $ Scotty.redirect "/habits"
+    Scotty.get "/" $ setStatusAndRedirect temporaryRedirect307 "/habits"
 
     Scotty.notFound $ do
       r ← Scotty.request

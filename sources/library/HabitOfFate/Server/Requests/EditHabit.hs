@@ -24,7 +24,7 @@ module HabitOfFate.Server.Requests.EditHabit (handleEditHabit) where
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
-import Network.HTTP.Types.Status (ok200)
+import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
 import Text.Blaze.Html5 ((!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -85,7 +85,7 @@ handleEditHabitGet ∷ Environment → ScottyM ()
 handleEditHabitGet environment = do
   Scotty.get "/habits/:habit_id" <<< webReader environment $ do
     habit_id ← getParam "habit_id"
-    log $ [i|Web GET request for habit with id #{habit_id}.|]
+    log [i|Web GET request for habit with id #{habit_id}.|]
     (view (habits_ . at habit_id) <&> fromMaybe def)
       >>= habitPage "" "" ""
 
@@ -93,7 +93,7 @@ handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do
   Scotty.post "/habits/:habit_id" <<< webWriter environment $ do
     habit_id ← getParam "habit_id"
-    log $ [i|Web POST request for habit with id #{habit_id}.|]
+    log [i|Web POST request for habit with id #{habit_id}.|]
     (maybe_name, name_error) ←
       getParamMaybe "name"
       <&>
@@ -128,7 +128,7 @@ handleEditHabitPost environment = do
       Just new_habit → do
         log [i|Updating habit #{habit_id} to #{new_habit}|]
         habits_ . at habit_id .= Just new_habit
-        redirectTo "/habits"
+        redirectTo temporaryRedirect307 "/habits"
 
 handleEditHabit ∷ Environment → ScottyM ()
 handleEditHabit environment = do

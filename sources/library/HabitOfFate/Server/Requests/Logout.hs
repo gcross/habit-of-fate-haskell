@@ -25,19 +25,20 @@ import HabitOfFate.Prelude
 
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, modifyTVar, writeTVar)
+import Network.HTTP.Types.Status (temporaryRedirect307)
 import Web.Cookie (parseCookiesText)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
+import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
 handleLogout ∷ Environment → ScottyM ()
 handleLogout Environment{..} = do
   Scotty.post "/api/logout" $ action
-  Scotty.post "/logout"     $ action >> Scotty.redirect "/login"
+  Scotty.matchAny "/logout" $ setStatusAndRedirect temporaryRedirect307 "/login"
  where
   action = do
-    logRequest
     maybe_cookie_header ← Scotty.header "Cookie"
     case maybe_cookie_header of
       Nothing → pure ()

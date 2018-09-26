@@ -29,7 +29,7 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
-import Network.HTTP.Types.Status (Status)
+import Network.HTTP.Types.Status (Status, temporaryRedirect307)
 import Web.Scotty (ActionM)
 import qualified Web.Scotty as Scotty
 
@@ -57,7 +57,6 @@ instance MonadReader Account (ReaderTransaction) where
 
 readerWith ∷ (∀ α. String → ActionM α) → Environment → ReaderTransaction TransactionResult → ActionM ()
 readerWith actionWhenAuthFails environment (ReaderTransaction program) = do
-  logRequest
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← Scotty.params
   body_ ← Scotty.body
@@ -78,7 +77,8 @@ readerWith actionWhenAuthFails environment (ReaderTransaction program) = do
   case error_or_result of
     Left status_ →
       setStatusAndLog status_
-    Right (RedirectsTo href) → Scotty.redirect href
+    Right (RedirectsTo status_ href) →
+      setStatusAndRedirect status_ href
     Right (TransactionResult status_ content) → do
       setStatusAndLog status_
       setContent content
@@ -87,4 +87,4 @@ apiReader ∷ Environment → ReaderTransaction TransactionResult → ActionM ()
 apiReader = readerWith (finishWithStatusMessage 403)
 
 webReader ∷ Environment → ReaderTransaction TransactionResult → ActionM ()
-webReader = readerWith (const $ Scotty.redirect "/login")
+webReader = readerWith (const $ setStatusAndRedirect temporaryRedirect307 "/login")

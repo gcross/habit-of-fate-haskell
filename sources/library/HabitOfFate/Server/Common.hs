@@ -58,11 +58,6 @@ data Environment = Environment
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
 
-logRequest ∷ ActionM ()
-logRequest = do
-  r ← Scotty.request
-  logIO [i|URL requested: #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
-
 paramGuardingAgainstMissing ∷ Parsable α ⇒ Lazy.Text → ActionM α
 paramGuardingAgainstMissing name =
   Scotty.param name

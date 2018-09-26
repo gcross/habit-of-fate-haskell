@@ -29,7 +29,7 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, modifyTVar, newTVar)
 import qualified Data.ByteString.Builder as Builder
 import Data.Time.Clock (addUTCTime, getCurrentTime)
-import Network.HTTP.Types.Status (conflict409, created201)
+import Network.HTTP.Types.Status (conflict409, created201, temporaryRedirect307)
 import System.Random (randomRIO)
 import Text.Blaze.Html5 (AttributeValue, Html, (!))
 import qualified Text.Blaze.Html5 as H
@@ -69,7 +69,6 @@ createAndReturnCookie Environment{..} username = do
 handleCreateAccountApi ∷ Environment → ScottyM ()
 handleCreateAccountApi environment@Environment{..} = do
   Scotty.post "/api/create" $ do
-    logRequest
     username ← paramGuardingAgainstMissing "username"
     password ← paramGuardingAgainstMissing "password"
     logIO $ [i|Request to create an account for "#{username}".|]
@@ -92,7 +91,6 @@ handleCreateAccountApi environment@Environment{..} = do
 handleLoginApi ∷ Environment → ScottyM ()
 handleLoginApi environment@Environment{..} = do
   Scotty.post "/api/login" $ do
-    logRequest
     username ← paramGuardingAgainstMissing "username"
     password ← paramGuardingAgainstMissing "password"
     logIO $ [i|Request to log into an account with "#{username}".|]
@@ -135,7 +133,6 @@ handleCreateAccountWeb environment@Environment{..} = do
   Scotty.post "/create" action
  where
   action = do
-    logRequest
     username@(Username username_) ← Username <$> paramOrBlank "username"
     password1 ← paramOrBlank "password1"
     password2 ← paramOrBlank "password2"
@@ -157,8 +154,9 @@ handleCreateAccountWeb environment@Environment{..} = do
                   account_tvar ← newTVar new_account
                   modifyTVar accounts_tvar $ insertMap username account_tvar
                   pure $ do
-                    logIO $ [i|Account "#{username_}" successfully created!|]
+                    logIO $ [i|Account "#{username_}" successfully created! Redirecting to /.|]
                     createAndReturnCookie environment username
+                    Scotty.status temporaryRedirect307
                     Scotty.redirect "/"
         else pure $
           if onull username_
@@ -200,7 +198,6 @@ handleLoginWeb environment@Environment{..} = do
   Scotty.post "/login" action
  where
   action = do
-    logRequest
     username@(Username username_) ← Username <$> paramOrBlank "username"
     password ← paramOrBlank "password"
 
@@ -218,8 +215,9 @@ handleLoginWeb environment@Environment{..} = do
               account ← readTVarMonadIO account_tvar
               if passwordIsValid password account
                 then do
-                  logIO [i|Successfully logged in #{username_}.|]
+                  logIO [i|Successfully logged in #{username_}. Redirecting to /habits.|]
                   createAndReturnCookie environment username
+                  Scotty.status temporaryRedirect307
                   Scotty.redirect "/habits"
                 else do
                   logIO [i|Incorrect password for #{username_}.|]

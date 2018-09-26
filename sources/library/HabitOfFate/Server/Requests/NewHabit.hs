@@ -25,9 +25,11 @@ import HabitOfFate.Prelude
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID)
 import System.Random (randomIO)
+import Network.HTTP.Types.Status (temporaryRedirect307)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
+import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
 handleNewHabit ∷ Environment → ScottyM ()
@@ -35,4 +37,4 @@ handleNewHabit _ =
   Scotty.get "/habits/new" $
     liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
     >>=
-    Scotty.redirect
+    setStatusAndRedirect temporaryRedirect307

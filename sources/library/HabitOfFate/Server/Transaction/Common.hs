@@ -105,7 +105,7 @@ lookupHabit habit_id = do
   >>=
   maybe raiseNoSuchHabit return
 
-data TransactionResult = RedirectsTo Lazy.Text | TransactionResult Status Content
+data TransactionResult = RedirectsTo Status Lazy.Text | TransactionResult Status Content
 
 returnNothing ∷ Monad m ⇒ Status → m TransactionResult
 returnNothing s = return $ TransactionResult s NoContent
@@ -119,8 +119,8 @@ returnLazyTextAsHTML s = TextContentAsHTML >>> TransactionResult s >>> return
 returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m TransactionResult
 returnJSON s = JSONContent >>> TransactionResult s >>> return
 
-redirectTo ∷ Monad m ⇒ Lazy.Text → m TransactionResult
-redirectTo = RedirectsTo >>> return
+redirectTo ∷ Monad m ⇒ Status → Lazy.Text → m TransactionResult
+redirectTo status_ url = RedirectsTo status_ url |> return
 
 renderHTMLUsingTemplateAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m TransactionResult
 renderHTMLUsingTemplateAndReturn title stylesheets status =

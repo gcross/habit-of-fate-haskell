@@ -34,7 +34,7 @@ import Control.Concurrent.STM.TMVar (tryPutTMVar)
 import Control.Monad.Operational (Program, interpretWithMonad)
 import qualified Control.Monad.Operational as Operational
 import Control.Monad.Random (RandT, StdGen, evalRandT, newStdGen)
-import Network.HTTP.Types.Status (Status)
+import Network.HTTP.Types.Status (Status, temporaryRedirect307)
 import Web.Scotty (ActionM)
 import qualified Web.Scotty as Scotty
 
@@ -63,7 +63,6 @@ instance MonadState Account WriterTransaction where
 
 writerWith ∷ (∀ α. String → ActionM α) → Environment → WriterTransaction TransactionResult → ActionM ()
 writerWith actionWhenAuthFails (environment@Environment{..}) (WriterTransaction program) = do
-  logRequest
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← Scotty.params
   body_ ← Scotty.body
@@ -92,11 +91,11 @@ writerWith actionWhenAuthFails (environment@Environment{..}) (WriterTransaction 
         writeTVar account_tvar new_account
         writeTVar accounts_changed_flag True
         pure $ case result of
-          RedirectsTo href → (Left href, logs)
+          RedirectsTo status_ href → (Left (status_, href), logs)
           TransactionResult status_ content → (Right (status_, Just content), logs)
   traverse_ logIO logs
   case redirect_or_content of
-    Left href → Scotty.redirect href
+    Left (status_, href) → Scotty.redirect href
     Right (status_, maybe_content) → do
       setStatusAndLog status_
       maybe (pure ()) setContent maybe_content
@@ -105,4 +104,4 @@ apiWriter ∷ Environment → WriterTransaction TransactionResult → ActionM ()
 apiWriter = writerWith (finishWithStatusMessage 403)
 
 webWriter ∷ Environment → WriterTransaction TransactionResult → ActionM ()
-webWriter = writerWith (const $ Scotty.redirect "/login")
+webWriter = writerWith (const $ setStatusAndRedirect temporaryRedirect307 "/login")

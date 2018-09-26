@@ -23,6 +23,7 @@ module HabitOfFate.Server.Requests.MoveHabit (handleMoveHabit) where
 
 import HabitOfFate.Prelude
 
+import Network.HTTP.Types.Status (temporaryRedirect307)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
@@ -45,4 +46,4 @@ handleMoveHabit environment = do
     case moveHabitWithIdToIndex habit_id new_index old_habits of
       Left exc → log [i|Exception moving habit: #{exc}|]
       Right new_habits → habits_ .= new_habits
-    redirectTo "/"
+    redirectTo temporaryRedirect307 "/habits"

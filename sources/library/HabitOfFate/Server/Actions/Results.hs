@@ -29,7 +29,7 @@ import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (Status(..))
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Blaze.Html5 (Html, toHtml)
-import Web.Scotty (ActionM, finish, status)
+import Web.Scotty (ActionM, finish, redirect, status)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Logging (logIO)
@@ -63,4 +63,10 @@ setStatusAndLog status_@(Status code message) = do
   let result
         | code < 200 || code >= 300 = "failed"
         | otherwise = "succeeded"
-  logIO $ [i|Request #{result} - #{code} #{decodeUtf8 >>> unpack $ message}|]
+  logIO [i|Request #{result} - #{code} #{decodeUtf8 >>> unpack $ message}|]
+
+setStatusAndRedirect ∷ Status → Lazy.Text → ActionM α
+setStatusAndRedirect status_ url = do
+  logIO [i|Redirecting to #{url} with code #{status_}|]
+  status status_
+  redirect url
