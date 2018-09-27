@@ -36,7 +36,7 @@ import HabitOfFate.Server.Common
 handleLogout ∷ Environment → ScottyM ()
 handleLogout Environment{..} = do
   Scotty.post "/api/logout" $ action
-  Scotty.matchAny "/logout" $ setStatusAndRedirect temporaryRedirect307 "/login"
+  Scotty.matchAny "/logout" $ action >> setStatusAndRedirect temporaryRedirect307 "/login"
  where
   action = do
     maybe_cookie_header ← Scotty.header "Cookie"
