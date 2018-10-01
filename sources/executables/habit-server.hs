@@ -33,11 +33,12 @@ import Control.Exception (throwIO)
 import qualified Data.ByteString as BS
 import Data.Text.IO
 import Data.Yaml hiding (Parser, (.=))
-import Network.Wai.Handler.Warp hiding (run)
+import Network.Wai.Handler.Warp
 import Network.Wai.Handler.WarpTLS
 import Options.Applicative
 import System.Directory
 import System.Exit
+import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Logging
@@ -114,14 +115,16 @@ main = do
   forkIO $ writeDataOnChange data_path accounts_tvar accounts_changed_flag
   app ← makeApp accounts_tvar accounts_changed_flag
   done_mvar ← newEmptyMVar
+
   void $
     forkFinally
-      (runTLS
-        ((tlsSettings certificate_path key_path) {onInsecure = AllowInsecure} )
-        (setPort 80 defaultSettings)
-        app
+      (Scotty.scotty 80 $
+        Scotty.matchAny (Scotty.function $ const (Just [])) $ do
+          Just host ← Scotty.header "Host"
+          Scotty.redirect $ "https://" ⊕ host
       )
       (either throwIO (const $ putMVar done_mvar ()))
+
   void $
     forkFinally
       (runTLS
@@ -130,5 +133,6 @@ main = do
         app
       )
       (either throwIO (const $ putMVar done_mvar ()))
+
   takeMVar done_mvar
   takeMVar done_mvar
