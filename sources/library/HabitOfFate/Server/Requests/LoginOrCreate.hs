@@ -140,21 +140,21 @@ handleCreateAccountWeb environment@Environment{..} = do
     error_message ∷ Text ←
       if ((not . onull $ password1) && password1 == password2)
         then do
-          logIO $ [i|Request to create an account for "#{username_}".|]
+          logIO [i|Request to create an account for "#{username_}".|]
           liftIO >>> join $ do
             new_account ← newAccount password1
             atomically $ do
               accounts ← readTVar accounts_tvar
               if member username accounts
                 then pure $ do
-                  logIO $ [i|Account "#{username_}" already exists!|]
+                  logIO [i|Account "#{username_}" already exists!|]
                   Scotty.status conflict409
                   pure "This account already exists."
                 else do
                   account_tvar ← newTVar new_account
                   modifyTVar accounts_tvar $ insertMap username account_tvar
                   pure $ do
-                    logIO $ [i|Account "#{username_}" successfully created! Redirecting to /.|]
+                    logIO [i|Account "#{username_}" successfully created! Redirecting to /.|]
                     createAndReturnCookie environment username
                     Scotty.status temporaryRedirect307
                     Scotty.redirect "/"
