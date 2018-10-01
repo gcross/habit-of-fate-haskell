@@ -14,18 +14,24 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
+
 module HabitOfFate.Logging where
 
 import HabitOfFate.Prelude
 
+import Data.MonoTraversable (Element, MonoFoldable)
 import Data.Text.IO (hPutStrLn)
 import Data.Time.Clock
 import Data.Time.Format
 import System.IO (stderr)
 
-logIO ∷ MonadIO m ⇒ String → m ()
-logIO message = liftIO $ do
+ologIO ∷ (MonoFoldable α, Element α ~ Char, MonadIO m) ⇒ α → m ()
+ologIO message = liftIO $ do
   current_time ← getCurrentTime
   pack >>> hPutStrLn stderr $
-    formatTime defaultTimeLocale "[%F %X] " current_time ⊕ message
+    formatTime defaultTimeLocale "[%F %X] " current_time ⊕ (unpack message)
+
+logIO ∷ MonadIO m ⇒ String → m ()
+logIO message = ologIO message
