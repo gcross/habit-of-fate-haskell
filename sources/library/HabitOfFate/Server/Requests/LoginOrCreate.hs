@@ -172,7 +172,7 @@ handleCreateAccountWeb environment@Environment{..} = do
                 _ | password1 == password2 → ""
                 _ | otherwise → "The passwords did not agree."
 
-    renderHTMLUsingTemplate "Habit of Fate - Account Creation" ["common", "enter"] >>> Scotty.html $
+    renderHTMLUsingTemplate "Habit of Fate - Account Creation" ["enter"] >>> Scotty.html $
       H.div ! A.class_ "enter" $ do
         H.div ! A.class_ "tabs" $ do
           H.span ! A.class_ "inactive" $ H.a ! A.href "/login" $ H.toHtml ("Login" ∷ Text)

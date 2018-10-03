@@ -12,6 +12,7 @@ data-files:          web/css/common.css
                      web/css/edit.css
                      web/css/enter.css
                      web/css/list.css
+                     web/css/normalize.css
                      web/css/story.css
                      web/fonts/GloriaHallelujah.woff2
                      web/images/bad.svgz

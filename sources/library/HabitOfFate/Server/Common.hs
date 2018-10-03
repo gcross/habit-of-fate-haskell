@@ -82,7 +82,7 @@ renderHTMLUsingTemplate title stylesheets content =
               ! A.rel "stylesheet"
               ! A.type_ "text/css"
               ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
-          | stylesheet ← stylesheets
+          | stylesheet ← "normalize":"common":stylesheets
           ]
       H.body $ do
         H.div ! A.class_ "logo" $ H.img ! A.src "/images/logo.svgz" ! A.width "100%"
