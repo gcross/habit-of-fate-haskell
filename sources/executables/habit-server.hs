@@ -28,7 +28,7 @@ import HabitOfFate.Prelude
 import Control.Concurrent (forkFinally, forkIO)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
 import Control.Concurrent.STM (atomically, retry)
-import Control.Concurrent.STM.TVar (TVar, newTVar, newTVarIO, readTVar)
+import Control.Concurrent.STM.TVar (TVar, newTVar, newTVarIO, readTVar, swapTVar)
 import Control.Exception (throwIO)
 import qualified Data.ByteString as BS
 import Data.Text.IO
@@ -58,12 +58,14 @@ exitFailureWithMessage message = do
 writeDataOnChange ∷ String → TVar (Map Username (TVar Account)) → TVar Bool → IO α
 writeDataOnChange data_path accounts_tvar changed_flag = forever $
   (atomically $
-    readTVar changed_flag
+    swapTVar changed_flag False
     >>=
     bool retry (readTVar accounts_tvar >>= traverse readTVar)
   )
   >>=
   encodeFile data_path
+  >>
+  logIO "Wrote data."
 
 main ∷ IO ()
 main = do
