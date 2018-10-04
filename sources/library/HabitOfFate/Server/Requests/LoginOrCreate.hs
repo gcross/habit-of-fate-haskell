@@ -223,7 +223,7 @@ handleLoginWeb environment@Environment{..} = do
                   logIO [i|Incorrect password for #{username_}.|]
                   pure "No account has that username."
 
-    renderHTMLUsingTemplate "Habit of Fate - Login" ["common", "enter"] >>> Scotty.html $
+    renderHTMLUsingTemplate "Habit of Fate - Login" ["enter"] >>> Scotty.html $
       H.div ! A.class_ "enter" $ do
         H.div ! A.class_ "tabs" $ do
           H.span ! A.class_ "active" $ H.toHtml ("Login" ∷ Text)
