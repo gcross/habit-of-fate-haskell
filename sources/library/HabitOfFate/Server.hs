@@ -116,7 +116,7 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
   Scotty.scottyApp $ do
 
     Scotty.middleware $ \runOuterMiddleware req sendResponse → do
-      logIO [i|URL requested: #{requestMethod req} #{rawPathInfo req}#{rawQueryString req}|]
+      logIO [i|- #{requestMethod req} #{rawPathInfo req}#{rawQueryString req}|]
       runOuterMiddleware req sendResponse
 
     Scotty.defaultHandler $ \message → do
