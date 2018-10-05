@@ -57,7 +57,7 @@ runGame = do
         | (not <<< null) event = renderEventToHTML event
         | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
   stored_credits ← use stored_credits_
-  renderHTMLUsingTemplateAndReturn "Habit of Fate - Event" ["story"] ok200 $ do
+  renderTopOnlyPageAndReturn "Habit of Fate - Event" ["story"] ok200 $ do
     H.div ! A.class_ "story" $ rendered_event
     if stored_credits ^. successes_ /= 0 || stored_credits ^. failures_ /= 0
       then H.form ! A.method "post" $ H.input ! A.type_ "submit" ! A.value "Next"
@@ -100,7 +100,7 @@ handleMarkHabitWeb environment = do
     log [i|Marking #{habit_id} as #{status}.|]
     case habits ^. at habit_id of
       Nothing →
-        renderHTMLUsingTemplateAndReturn "Habit of Fate - Marking a Habit" [] notFound404 $ do
+        renderTopOnlyPageAndReturn "Habit of Fate - Marking a Habit" [] notFound404 $ do
           H.h1 "Habit Not Found"
           H.p $ H.toHtml [i|"Habit #{habit_id} was not found.|]
       Just habit → do

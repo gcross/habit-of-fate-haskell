@@ -122,14 +122,14 @@ returnJSON s = JSONContent >>> TransactionResult s >>> return
 redirectTo ∷ Monad m ⇒ Status → Lazy.Text → m TransactionResult
 redirectTo status_ url = RedirectsTo status_ url |> return
 
-renderHTMLUsingTemplateAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m TransactionResult
-renderHTMLUsingTemplateAndReturn title stylesheets status =
-  renderHTMLUsingTemplate title stylesheets
+renderPageAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m TransactionResult
+renderPageAndReturn title stylesheets status =
+  renderPage title stylesheets
   >>>
   returnLazyTextAsHTML status
 
-renderEventToHTMLAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Event → m TransactionResult
-renderEventToHTMLAndReturn title stylesheets status =
-  renderEventToHTML
+renderTopOnlyPageAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m TransactionResult
+renderTopOnlyPageAndReturn title stylesheets status =
+  renderTopOnlyPage title stylesheets
   >>>
-  renderHTMLUsingTemplateAndReturn title stylesheets status
+  returnLazyTextAsHTML status

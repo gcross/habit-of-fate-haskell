@@ -1,13 +1,16 @@
 body {
-    display: grid;
     background: #dde4ff;
     font-family: Arial;
+}
+
+.top {
+    display: grid;
     grid-template-columns: 15% 70% 15%;
     grid-template-rows: auto 10px auto;
 }
 
 @media (min-width: 850px) {
-    body {
+    .top {
         grid-template-columns: auto 600px auto;
     }
 }

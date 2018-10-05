@@ -30,6 +30,7 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
 handleGetQuestStatusApi ∷ Environment → ScottyM ()
@@ -42,9 +43,9 @@ handleGetQuestStatusApi environment =
 handleGetQuestStatusWeb ∷ Environment → ScottyM ()
 handleGetQuestStatusWeb environment =
   Scotty.get "/status" <<< webReader environment $
-    (ask <&> getAccountStatus)
+    (ask <&> getAccountStatus <&> renderEventToHTML)
     >>=
-    renderEventToHTMLAndReturn "Habit of Fate - Quest Status" [] ok200
+    renderTopOnlyPageAndReturn "Habit of Fate - Quest Status" [] ok200
 
 handleGetQuestStatus ∷ Environment → ScottyM ()
 handleGetQuestStatus environment = do

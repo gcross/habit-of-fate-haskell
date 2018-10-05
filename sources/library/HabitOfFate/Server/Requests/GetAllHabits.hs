@@ -48,8 +48,8 @@ handleGetAllHabitsWeb environment = do
   Scotty.get "/habits" <<< webReader environment $ do
     habit_list ← view (habits_ . habit_list_)
     quest_status ← ask <&> getAccountStatus
-    renderHTMLUsingTemplateAndReturn "Habit of Fate - List of Habits" ["list"] ok200 $ do
-      H.div ! A.class_ "story" $ renderEventToHTML quest_status
+    renderPageAndReturn "Habit of Fate - List of Habits" ["list"] ok200 $ do
+      generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "list" $ do
         H.table $ do
           H.thead $ foldMap (H.toHtml >>> H.th) [""∷Text, "#", "Name", "Difficulty", "Importance", "I succeeded!", "I failed."]

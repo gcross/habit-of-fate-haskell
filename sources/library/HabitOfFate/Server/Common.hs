@@ -68,24 +68,31 @@ paramGuardingAgainstMissing name =
     Scotty.finish
    )
 
-renderHTMLUsingTemplate ∷ Text → [Text] → Html → Lazy.Text
-renderHTMLUsingTemplate title stylesheets content =
+renderPage ∷ Text → [Text] → Html → Lazy.Text
+renderPage title stylesheets content =
   renderHtml $
-    H.docTypeHtml $ do
-      H.head $
-        (H.title $ toHtml title)
-        ⊕
-        (H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet")
-        ⊕
-        mconcat
+    H.docTypeHtml $
+      (H.head <<< mconcat $
+        [ H.title $ toHtml title
+        , H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
+        , mconcat
           [ H.link
               ! A.rel "stylesheet"
               ! A.type_ "text/css"
               ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
           | stylesheet ← "normalize":"common":stylesheets
           ]
-      H.body $ do
-        H.div ! A.class_ "logo" $ H.img ! A.src "/images/logo.svgz" ! A.width "100%"
-        H.div ! A.class_ "left" $ H.img ! A.src "/images/treasure-chest.svgz" ! A.width "100%"
-        H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
-        H.div ! A.class_ "content" $ content
+        ]
+      )
+      ⊕
+      (H.body content)
+
+generateTopHTML ∷ Html → Html
+generateTopHTML content = H.div ! A.class_ "top" $ do
+  H.div ! A.class_ "logo" $ H.img ! A.src "/images/logo.svgz" ! A.width "100%"
+  H.div ! A.class_ "left" $ H.img ! A.src "/images/treasure-chest.svgz" ! A.width "100%"
+  H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
+  H.div ! A.class_ "content" $ content
+
+renderTopOnlyPage ∷ Text → [Text] → Html → Lazy.Text
+renderTopOnlyPage title stylesheets = generateTopHTML >>> renderPage title stylesheets

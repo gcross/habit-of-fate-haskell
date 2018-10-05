@@ -26,13 +26,13 @@ import Data.Text.Lazy.IO (writeFile)
 import qualified Text.Blaze.Html5 as H
 
 import qualified HabitOfFate.Quests.Forest as Forest
-import HabitOfFate.Server.Common (renderHTMLUsingTemplate)
+import HabitOfFate.Server.Common (renderTopOnlyPage)
 import HabitOfFate.Story.Renderer.HTML (renderEventToHTML)
 import HabitOfFate.Substitution (Substitutions)
 
 main = do
   writeFile "forest.html" $
-    renderHTMLUsingTemplate "Forest Stories" ["common"] $
+    renderTopOnlyPage "Forest Stories" [] $
       foldMap
         (\(category, category_stories) →
           H.h1 (H.toHtml category) ⊕ mconcat (intersperse H.hr (map renderEventToHTML category_stories))

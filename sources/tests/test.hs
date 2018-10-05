@@ -223,66 +223,6 @@ createHabitViaWeb habit_id habit = void $
     , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
     ]
 
-readHabitsIn ∷ MonadIO m ⇒ Document → m [(UUID, Habit)]
-readHabitsIn doc = liftIO $ do
-  let rows = doc ^..
-        (  root
-        ./ named "body"
-        ./ named "div"
-        ./ named "div"
-        ./ named "table"
-        ./ named "tbody"
-        ./ named "tr"
-        )
-      number_of_rows = length rows
-      observed_classes = map (^. attribute "class") rows
-      expected_classes = take number_of_rows (cycle [Just "row odd", Just "row even"])
-  observed_classes @?= expected_classes
-
-  forM (zip [(1∷Int)..] rows) $ \(i, row) → do
-    case row ^.. uniplate . named "td" of
-      [_, position, name, difficulty, importance, _, _] → do
-        strip (position ^. text) @?= pack (show i ⊕ ".")
-        habit_id_unparsed ←
-          maybe
-            (assertFailure "No link to the habit page.")
-            (drop (olength ("/habits/" ∷ Text)) >>> pure)
-            (name ^. uniplate . named "a" . attribute "href")
-        habit_id ←
-          maybe
-            (assertFailure $ printf "UUID %s did not parse sucessfully." habit_id_unparsed)
-            pure
-            (fromText habit_id_unparsed)
-        let parseColumn name =
-              (^.. text)
-              >>>
-              mconcat
-              >>>
-              words
-              >>>
-              unwords
-              >>>
-              fromStrict
-              >>>
-              (\column_text →
-                column_text
-                |> parseParam
-                |> either
-                    (\error_message → Lazy.unpack >>> assertFailure $
-                      "Error parsing \"" ⊕ column_text ⊕ "\": " ⊕ error_message)
-                    pure
-              )
-        difficulty_scale ← parseColumn "difficulty" difficulty
-        importance_scale ← parseColumn "importance" importance
-        pure
-          ( habit_id
-          , Habit
-              (maybe "(no name)" (^. text) (name ^? uniplate . named "a"))
-              (Difficulty difficulty_scale)
-              (Importance importance_scale)
-          )
-      x → assertFailure $ printf "Row %i has %i columns" i (length x)
-
 extractElement ∷ Name → Text → Element → IO Element
 extractElement id_kind id_value element = do
   maybe
@@ -623,26 +563,7 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
         , testGroup "Habits" $
         ------------------------------------------------------------------------
-            [ webTestCase "Create an account and then a habit and check /habits" $ do
-                _ ← createTestAccount "username" "password"
-                createHabitViaWeb test_habit_id test_habit
-                (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
-                habits ← readHabitsIn doc
-                liftIO $ habits @?= [(test_habit_id, test_habit)]
-            , webTestCase "Open the habit edit page for a new habit results in redirect." $ do
-                _ ← createTestAccount "username" "password"
-                (response, _) ← requestDocument "/habits/new" $ setRequestMethod "GET"
-                liftIO $ do
-                  responseStatus response @?= found302
-                  location ←
-                    maybe
-                      (assertFailure "No location returned.")
-                      pure
-                      (lookup "Location" (responseHeaders response) <&> (^. unpackedChars))
-                  assertBool
-                    ("Location starts with /habits/: " ⊕ location)
-                    ("/habits" `isPrefixOf` location)
-            , webTestCase "Open the habit edit page for an existing habit." $ do
+            [ webTestCase "Open the habit edit page for an existing habit." $ do
                 _ ← createTestAccount "username" "password"
                 createHabitViaWeb test_habit_id_2 test_habit_2
                 (response, doc) ←
