@@ -66,7 +66,7 @@ handleGetAllHabitsWeb environment = do
                     ! A.class_ "new-index"
                 H.td $ H.toHtml (show n ⊕ ".")
                 H.td ! A.class_ "name" $
-                  H.a ! A.href (H.toValue ("/habits/" ⊕ pack (show uuid) ∷ Text)) $ H.toHtml (habit ^. name_)
+                  H.a ! A.href (H.toValue ("/edit/" ⊕ pack (show uuid) ∷ Text)) $ H.toHtml (habit ^. name_)
                 let addScaleElement scale_class scale_lens =
                       H.td ! A.class_ scale_class $ H.toHtml $ displayScale $ habit ^. scale_lens
                 addScaleElement "difficulty" difficulty_
@@ -80,7 +80,7 @@ handleGetAllHabitsWeb environment = do
             | n ← [1∷Int ..]
             | (uuid, habit) ← habit_list
             ]
-        H.a ! A.class_ "new_link" ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
+        H.a ! A.class_ "new_link" ! A.href "/new" $ H.toHtml ("New" ∷ Text)
         H.a ! A.class_ "logout_link" ! A.href "/logout" $ H.toHtml ("Logout" ∷ Text)
 
 handleGetAllHabits ∷ Environment → ScottyM ()

@@ -83,7 +83,7 @@ habitPage name_error difficulty_error importance_error habit =
 
 handleEditHabitGet ∷ Environment → ScottyM ()
 handleEditHabitGet environment = do
-  Scotty.get "/habits/:habit_id" <<< webReader environment $ do
+  Scotty.get "/edit/:habit_id" <<< webReader environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web GET request for habit with id #{habit_id}.|]
     (view (habits_ . at habit_id) <&> fromMaybe def)
@@ -91,7 +91,7 @@ handleEditHabitGet environment = do
 
 handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do
-  Scotty.post "/habits/:habit_id" <<< webWriter environment $ do
+  Scotty.post "/edit/:habit_id" <<< webWriter environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request for habit with id #{habit_id}.|]
     (maybe_name, name_error) ←

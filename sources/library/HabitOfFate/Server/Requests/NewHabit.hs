@@ -34,7 +34,7 @@ import HabitOfFate.Server.Common
 
 handleNewHabit ∷ Environment → ScottyM ()
 handleNewHabit _ =
-  Scotty.get "/habits/new" $
-    liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/habits/" ⊕))
+  Scotty.get "/new" $
+    liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/edit/" ⊕))
     >>=
     setStatusAndRedirect temporaryRedirect307

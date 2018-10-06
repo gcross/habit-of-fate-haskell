@@ -215,7 +215,7 @@ loginTestAccount username password =
 
 createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar IO) ()
 createHabitViaWeb habit_id habit = void $
-  requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
+  requestDocument ("/edit/" ⊕ BS8.pack (show habit_id))
   $
   setRequestBodyURLEncoded
     [ ("name", habit ^. name_ . re utf8)
@@ -568,7 +568,7 @@ main = defaultMain $ testGroup "All Tests"
                 createHabitViaWeb test_habit_id_2 test_habit_2
                 (response, doc) ←
                   requestDocument
-                    ("/habits/" ⊕ (test_habit_id_2 |> show |> (^. packedChars))) $ setRequestMethod "GET"
+                    ("/edit/" ⊕ (test_habit_id_2 |> show |> (^. packedChars))) $ setRequestMethod "GET"
                 liftIO $ responseStatus response @?= ok200
                 habit ← readHabitIn doc
                 liftIO $ habit @?= test_habit_2
