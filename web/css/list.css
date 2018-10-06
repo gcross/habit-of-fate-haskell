@@ -1,26 +1,16 @@
 .list {
     font-size: 24;
-    margin-top: 100px;
-    margin-left: auto;
-    margin-right: auto;
+    margin: auto;
     padding: 10px;
-    width: 600px;
+
+    display: grid;
+    grid-template-columns: 9em 3em auto 100px 100px 100px 100px;
 }
 
-table {
-    border-collapse: collapse;
-    font-size: 24;
-    width: 600px;
-}
-
-thead {
-    text-align: left;
-}
-
-tbody tr:nth-child(even) {
+.even {
     background-color: #d6dfff;
 }
-tbody tr:nth-child(odd) {
+.odd {
     background-color: #c2cfff;
 }
 
