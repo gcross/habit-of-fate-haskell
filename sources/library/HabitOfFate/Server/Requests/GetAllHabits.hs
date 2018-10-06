@@ -51,43 +51,54 @@ handleGetAllHabitsWeb environment = do
     renderPageAndReturn "Habit of Fate - List of Habits" ["list"] ok200 $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "list" $ mconcat $
-        (map (H.toHtml >>> H.div)
-          [ (""∷Text)
-          , ("#")
-          , ("Name")
-          , ("Difficulty")
-          , ("Importance")
-          , ("I succeeded!")
-          , ("I failed.")
+        map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
+          [ ("mark_button", "I succeeded!")
+          , ("mark_button", "I failed.")
+          , ("position", "#")
+          , ("name", "Name")
+          , ("scale", "Difficulty")
+          , ("scale", "Importance")
+          , ("", ""∷Text)
           ]
-        ∷ [H.Html])
         ⊕
         concat
           [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
-                addScaleElement scale_lens =
-                  H.div ! A.class_ evenodd $ H.toHtml $ displayScale $ habit ^. scale_lens
-                addMarkElement name class_ =
-                  H.div ! A.class_ evenodd $
-                    H.form ! A.method "post" ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid) $
-                      H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
-            in
-            [ H.div ! A.class_ evenodd $
-                H.form ! A.method "post" ! A.action (H.toValue $ "/move/" ⊕ show uuid) $ do
-                  H.input
-                    ! A.type_ "submit"
-                    ! A.value "Move To"
-                  H.input
-                    ! A.type_ "text"
-                    ! A.value (H.toValue n)
-                    ! A.name "new_index"
-                    ! A.class_ "new-index"
-            , H.div ! A.class_ evenodd $ H.toHtml (show n ⊕ ".")
-            , H.div ! A.class_ evenodd $
-                H.a ! A.href (H.toValue ("/edit/" ⊕ pack (show uuid) ∷ Text)) $ H.toHtml (habit ^. name_)
-            , addScaleElement difficulty_
-            , addScaleElement importance_
-            , addMarkElement "success" "good"
-            , addMarkElement "failure" "bad"
+                position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
+                edit_link =
+                  H.a
+                    ! A.class_ "name"
+                    ! A.href (H.toValue ("/edit/" ⊕ pack (show uuid) ∷ Text))
+                    $ H.toHtml (habit ^. name_)
+                scaleFor scale_lens =
+                  H.div ! A.class_ "scale" $ H.toHtml $ displayScale $ habit ^. scale_lens
+                markButtonFor name class_ =
+                  H.form
+                    ! A.class_ "mark_button"
+                    ! A.method "post"
+                    ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid)
+                    $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
+                move_form =
+                  H.form
+                    ! A.class_ "move"
+                    ! A.method "post"
+                    ! A.action (H.toValue $ "/move/" ⊕ show uuid)
+                    $ do
+                      H.input
+                        ! A.type_ "submit"
+                        ! A.value "Move To"
+                      H.input
+                        ! A.type_ "text"
+                        ! A.value (H.toValue n)
+                        ! A.name "new_index"
+                        ! A.class_ "new-index"
+            in map (\contents → H.div ! A.class_ evenodd $ contents)
+            [ markButtonFor "success" "good"
+            , markButtonFor "failure" "bad"
+            , position
+            , edit_link
+            , scaleFor difficulty_
+            , scaleFor importance_
+            , move_form
             ]
           | n ← [1∷Int ..]
           | (uuid, habit) ← habit_list

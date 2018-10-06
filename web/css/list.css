@@ -1,17 +1,49 @@
 .list {
-    font-size: 24;
-    margin: auto;
-    padding: 10px;
-
     display: grid;
-    grid-template-columns: 9em 3em auto 100px 100px 100px 100px;
+    font-size: 24;
+    grid-template-columns: 100px 100px 3em auto 100px 100px 9em;
+    padding: 10px;
 }
 
 .even {
     background-color: #d6dfff;
 }
+
 .odd {
     background-color: #c2cfff;
+}
+
+.even, .odd {
+    align-content: center;
+    display: flex;
+}
+
+.mark_button {
+    margin: auto;
+}
+
+.position {
+    margin-bottom: auto;
+    margin-left: auto;
+    margin-right: 10px;
+    margin-top: auto;
+}
+
+.name {
+    margin-bottom: auto;
+    margin-top: auto;
+}
+
+.scale {
+    margin: auto;
+}
+
+.move {
+    margin: auto;
+}
+
+.header {
+    font-weight: bold;
 }
 
 .new-index {
