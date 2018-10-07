@@ -17,12 +17,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Requests.EditHabit (handleEditHabit) where
 
 import HabitOfFate.Prelude
 
+import Data.Char (toUpper)
 import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
 import Text.Blaze.Html5 ((!), toHtml)
@@ -56,24 +58,29 @@ habitPage name_error difficulty_error importance_error habit =
         H.div ! A.class_ "error_message" ! A.id "name_error" $ H.toHtml name_error
 
         -- Template for Difficulty and Importance
-        let generateScaleEntry name value_lens =
-              H.select ! A.name name ! A.required "true" ! A.id (name ⊕ "_input") $
-                flip foldMap scales $ \scale →
-                  let addSelectedFlag
-                        | habit ^. value_lens == scale = (! A.selected "selected")
-                        | otherwise = identity
-                      unselected_option = H.option ! A.value (scale |> show |> H.toValue)
-                  in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
+        let generateScaleEntry ∷ H.AttributeValue → Text → Lens' Habit Scale → Lazy.Text → H.Html
+            generateScaleEntry name label value_lens error = do
+              H.div
+                ! A.class_ "label"
+                ! A.id (name ⊕ "_label")
+                $ H.toHtml label
+              H.select
+                ! A.name name
+                ! A.required "true"
+                ! A.id (name ⊕ "_input")
+                $ flip foldMap scales $ \scale →
+                    let addSelectedFlag
+                          | habit ^. value_lens == scale = (! A.selected "selected")
+                          | otherwise = identity
+                        unselected_option = H.option ! A.value (scale |> show |> H.toValue)
+                    in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
+              H.div
+                ! A.class_ "error_message"
+                ! A.id (name ⊕ "_error")
+                $ H.toHtml error
 
-        -- Difficulty
-        H.div ! A.class_ "label" ! A.id "difficulty_label" $ H.toHtml ("Difficulty:" ∷ Text)
-        generateScaleEntry "difficulty" difficulty_
-        H.div ! A.class_ "error_message" ! A.id "difficulty_error" $ H.toHtml difficulty_error
-
-        -- Importance
-        H.div ! A.class_ "label" ! A.id "importance_label" $ H.toHtml ("Importance:" ∷ Text)
-        generateScaleEntry "importance" importance_
-        H.div ! A.class_ "error_message" ! A.id "importance_error" $ H.toHtml importance_error
+        generateScaleEntry "difficulty" "Difficulty:" difficulty_ difficulty_error
+        generateScaleEntry "importance" "Importance:" importance_ importance_error
 
       H.hr
 
