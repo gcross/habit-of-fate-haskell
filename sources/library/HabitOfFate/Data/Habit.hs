@@ -48,6 +48,9 @@ data Scale = VeryLow | Low | Medium | High | VeryHigh
   deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''Scale
 
+instance Default Scale where
+  def = Medium
+
 instance Parsable Scale where
   parseParam p =
     p
@@ -175,7 +178,7 @@ importance_ =
     (\old new_scale → old { _importance_ = Importance new_scale })
 
 instance Default Habit where
-  def = Habit "" (Difficulty Medium) (Importance Medium)
+  def = Habit "" (Difficulty def) (Importance def)
 
 data Habits = Habits
   { _habit_map_ ∷ HashMap UUID Habit
