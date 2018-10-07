@@ -81,6 +81,9 @@ getParamMaybe param_name =
   <&>
   (lookup param_name >=> (parseParam >>> either (const Nothing) return))
 
+getParamDefault ∷ (Parsable α, ActionMonad m) ⇒ Lazy.Text → α → m α
+getParamDefault param_name d = getParamMaybe param_name <&> fromMaybe d
+
 raiseStatus ∷ ActionMonad m ⇒ Int → String → m α
 raiseStatus code =
   pack

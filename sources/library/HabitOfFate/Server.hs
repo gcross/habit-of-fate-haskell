@@ -59,7 +59,7 @@ import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
 import HabitOfFate.Server.Requests.DeleteHabit
-import HabitOfFate.Server.Requests.EditHabit
+import HabitOfFate.Server.Requests.EditAndDeleteHabit
 import HabitOfFate.Server.Requests.GetAllHabits
 import HabitOfFate.Server.Requests.GetCredits
 import HabitOfFate.Server.Requests.GetFile
@@ -128,8 +128,8 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
 
     mapM_ ($ environment)
       [ handleDeleteHabit
-      , handleNewHabit -- MUST be before EditHabit or creating a new habit breaks
-      , handleEditHabit
+      , handleNewHabit -- MUST be before EditAndDeleteHabit or creating a new habit breaks
+      , handleEditAndDeleteHabit
       , handleGetAllHabits
       , handleGetCredits
       , handleGetHabit

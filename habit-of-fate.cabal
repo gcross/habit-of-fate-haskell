@@ -90,7 +90,7 @@ library
                      , HabitOfFate.Server.Transaction.Reader
                      , HabitOfFate.Server.Transaction.Writer
                      , HabitOfFate.Server.Requests.DeleteHabit
-                     , HabitOfFate.Server.Requests.EditHabit
+                     , HabitOfFate.Server.Requests.EditAndDeleteHabit
                      , HabitOfFate.Server.Requests.GetAllHabits
                      , HabitOfFate.Server.Requests.GetCredits
                      , HabitOfFate.Server.Requests.GetFile
