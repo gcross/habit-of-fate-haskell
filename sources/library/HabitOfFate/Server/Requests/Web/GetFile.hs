@@ -19,7 +19,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Web.GetFile (handleGetFileWeb) where
+module HabitOfFate.Server.Requests.Web.GetFile (handler) where
 
 import HabitOfFate.Prelude
 
@@ -33,8 +33,8 @@ import HabitOfFate.Logging
 
 import Paths_habit_of_fate (getDataFileName)
 
-handleGetFileWeb ∷ ScottyM ()
-handleGetFileWeb = do
+handler ∷ ScottyM ()
+handler = do
   Scotty.get "/css/:filename" $ fetch "css" "css" "text/css" Nothing
   Scotty.get "/fonts/:filename" $ fetch "fonts" "woff2" "application/font-woff2" Nothing
   Scotty.get "/images/:filename" $ fetch "images" "svgz" "image/svg+xml" (Just "gzip")

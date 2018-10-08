@@ -58,19 +58,19 @@ import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
-import HabitOfFate.Server.Requests.Api.DeleteHabit
-import HabitOfFate.Server.Requests.Api.GetAllHabits
-import HabitOfFate.Server.Requests.Api.GetCredits
-import HabitOfFate.Server.Requests.Api.GetHabit
-import HabitOfFate.Server.Requests.Api.GetQuestStatus
-import HabitOfFate.Server.Requests.Api.PutHabit
+import qualified HabitOfFate.Server.Requests.Api.DeleteHabit as Api.DeleteHabit
+import qualified HabitOfFate.Server.Requests.Api.GetAllHabits as Api.GetAllHabits
+import qualified HabitOfFate.Server.Requests.Api.GetCredits as Api.GetCredits
+import qualified HabitOfFate.Server.Requests.Api.GetHabit as Api.GetHabit
+import qualified HabitOfFate.Server.Requests.Api.GetQuestStatus as Api.GetQuestStatus
+import qualified HabitOfFate.Server.Requests.Api.PutHabit as Api.PutHabit
 
-import HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
-import HabitOfFate.Server.Requests.Web.GetAllHabits
-import HabitOfFate.Server.Requests.Web.GetFile
-import HabitOfFate.Server.Requests.Web.GetQuestStatus
-import HabitOfFate.Server.Requests.Web.MoveHabit
-import HabitOfFate.Server.Requests.Web.NewHabit
+import qualified HabitOfFate.Server.Requests.Web.EditAndDeleteHabit as Web.EditAndDeleteHabit
+import qualified HabitOfFate.Server.Requests.Web.GetAllHabits as Web.GetAllHabits
+import qualified HabitOfFate.Server.Requests.Web.GetFile as Web.GetFile
+import qualified HabitOfFate.Server.Requests.Web.GetQuestStatus as Web.GetQuestStatus
+import qualified HabitOfFate.Server.Requests.Web.MoveHabit as Web.MoveHabit
+import qualified HabitOfFate.Server.Requests.Web.NewHabit as Web.NewHabit
 
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
@@ -128,23 +128,23 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       Scotty.status internalServerError500
       Scotty.text message
 
-    handleGetFileWeb
+    Web.GetFile.handler
 
     mapM_ ($ environment)
-      [ handleDeleteHabitApi
-      , handleNewHabitWeb -- MUST be before EditAndDeleteHabit or creating a new habit breaks
-      , handleEditAndDeleteHabitWeb
-      , handleGetAllHabitsApi
-      , handleGetAllHabitsWeb
-      , handleGetCreditsApi
-      , handleGetHabitApi
-      , handleGetQuestStatusApi
-      , handleGetQuestStatusWeb
+      [ Api.DeleteHabit.handler
+      , Web.NewHabit.handler -- MUST be before EditAndDeleteHabit or creating a new habit breaks
+      , Web.EditAndDeleteHabit.handler
+      , Api.GetAllHabits.handler
+      , Web.GetAllHabits.handler
+      , Api.GetCredits.handler
+      , Api.GetHabit.handler
+      , Api.GetQuestStatus.handler
+      , Web.GetQuestStatus.handler
       , handleLoginOrCreate
       , handleLogout
       , handleMarkHabitAndRun
-      , handleMoveHabitWeb
-      , handlePutHabitApi
+      , Web.MoveHabit.handler
+      , Api.PutHabit.handler
       ]
 
     Scotty.get "/" $ setStatusAndRedirect movedPermanently301 "/habits"

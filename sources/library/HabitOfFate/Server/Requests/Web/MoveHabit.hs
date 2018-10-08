@@ -19,7 +19,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Web.MoveHabit (handleMoveHabitWeb) where
+module HabitOfFate.Server.Requests.Web.MoveHabit (handler) where
 
 import HabitOfFate.Prelude
 
@@ -33,8 +33,8 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Writer
 
-handleMoveHabitWeb ∷ Environment → ScottyM ()
-handleMoveHabitWeb environment = do
+handler ∷ Environment → ScottyM ()
+handler environment = do
   Scotty.post "/move/:habit_id" action
   Scotty.post "/move/:habit_id/:new_index" action
  where

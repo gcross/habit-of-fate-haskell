@@ -19,7 +19,7 @@
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Web.GetAllHabits (handleGetAllHabitsWeb) where
+module HabitOfFate.Server.Requests.Web.GetAllHabits (handler) where
 
 import HabitOfFate.Prelude
 
@@ -37,8 +37,8 @@ import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
 import HabitOfFate.Story.Renderer.HTML
 
-handleGetAllHabitsWeb ∷ Environment → ScottyM ()
-handleGetAllHabitsWeb environment = do
+handler ∷ Environment → ScottyM ()
+handler environment = do
   Scotty.get "/habits" <<< webReader environment $ do
     habit_list ← view (habits_ . habit_list_)
     quest_status ← ask <&> getAccountStatus

@@ -23,7 +23,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Web.EditAndDeleteHabit (handleEditAndDeleteHabitWeb) where
+module HabitOfFate.Server.Requests.Web.EditAndDeleteHabit (handler) where
 
 import HabitOfFate.Prelude
 
@@ -219,8 +219,8 @@ handleDeleteHabitPost environment = do
         HabitExtractionResult{..} ← extractHabit
         habitPage habit_id name_error difficulty_error importance_error ConfirmDeletion extracted_habit
 
-handleEditAndDeleteHabitWeb ∷ Environment → ScottyM ()
-handleEditAndDeleteHabitWeb environment = do
+handler ∷ Environment → ScottyM ()
+handler environment = do
   handleEditHabitGet environment
   handleEditHabitPost environment
   handleDeleteHabitGet environment

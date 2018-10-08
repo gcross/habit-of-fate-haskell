@@ -19,7 +19,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Api.GetHabit (handleGetHabitApi) where
+module HabitOfFate.Server.Requests.Api.GetHabit (handler) where
 
 import HabitOfFate.Prelude
 
@@ -32,8 +32,8 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
 
-handleGetHabitApi ∷ Environment → ScottyM ()
-handleGetHabitApi environment =
+handler ∷ Environment → ScottyM ()
+handler environment =
   Scotty.get "/api/habits/:habit_id" <<< apiReader environment $ do
     habit_id ← getParam "habit_id"
     log $ [i|Requested habit with id #{habit_id}.|]

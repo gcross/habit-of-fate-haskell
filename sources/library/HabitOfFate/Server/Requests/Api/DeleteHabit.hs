@@ -19,7 +19,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Api.DeleteHabit (handleDeleteHabitApi) where
+module HabitOfFate.Server.Requests.Api.DeleteHabit (handler) where
 
 import HabitOfFate.Prelude
 
@@ -32,8 +32,8 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Writer
 
-handleDeleteHabitApi ∷ Environment → ScottyM ()
-handleDeleteHabitApi environment =
+handler ∷ Environment → ScottyM ()
+handler environment =
   Scotty.delete "/api/habits/:habit_id" <<< apiWriter environment $ do
     habit_id ← getParam "habit_id"
     log $ [i|Requested to delete habit with id #{habit_id}.|]

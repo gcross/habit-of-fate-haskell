@@ -18,7 +18,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Api.GetQuestStatus (handleGetQuestStatusApi) where
+module HabitOfFate.Server.Requests.Api.GetQuestStatus (handler) where
 
 import HabitOfFate.Prelude
 
@@ -32,8 +32,8 @@ import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
 import HabitOfFate.Story.Renderer.XML
 
-handleGetQuestStatusApi ∷ Environment → ScottyM ()
-handleGetQuestStatusApi environment =
+handler ∷ Environment → ScottyM ()
+handler environment =
   Scotty.get "/api/status" <<< apiReader environment $
     ask
     >>=

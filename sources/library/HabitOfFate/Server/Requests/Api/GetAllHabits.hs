@@ -18,7 +18,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Api.GetAllHabits (handleGetAllHabitsApi) where
+module HabitOfFate.Server.Requests.Api.GetAllHabits (handler) where
 
 import HabitOfFate.Prelude
 
@@ -31,8 +31,8 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
 
-handleGetAllHabitsApi ∷ Environment → ScottyM ()
-handleGetAllHabitsApi environment = do
+handler ∷ Environment → ScottyM ()
+handler environment = do
   Scotty.get "/api/habits" <<< apiReader environment $ do
     log "Requested all habits."
     view habits_ >>= returnJSON ok200

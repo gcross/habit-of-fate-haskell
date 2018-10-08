@@ -18,7 +18,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Web.GetQuestStatus (handleGetQuestStatusWeb) where
+module HabitOfFate.Server.Requests.Web.GetQuestStatus (handler) where
 
 import HabitOfFate.Prelude
 
@@ -32,8 +32,8 @@ import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
 import HabitOfFate.Story.Renderer.HTML
 
-handleGetQuestStatusWeb ∷ Environment → ScottyM ()
-handleGetQuestStatusWeb environment =
+handler ∷ Environment → ScottyM ()
+handler environment =
   Scotty.get "/status" <<< webReader environment $
     (ask <&> getAccountStatus <&> renderEventToHTML)
     >>=

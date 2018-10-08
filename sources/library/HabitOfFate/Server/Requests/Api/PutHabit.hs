@@ -19,7 +19,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Api.PutHabit (handlePutHabitApi) where
+module HabitOfFate.Server.Requests.Api.PutHabit (handler) where
 
 import HabitOfFate.Prelude
 
@@ -32,8 +32,8 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Writer
 
-handlePutHabitApi ∷ Environment → ScottyM ()
-handlePutHabitApi environment = do
+handler ∷ Environment → ScottyM ()
+handler environment = do
   Scotty.post "/api/habits/:habit_id" <<< apiWriter environment $ action
   Scotty.put "/api/habits/:habit_id" <<< apiWriter environment $ action
  where

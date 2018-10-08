@@ -18,7 +18,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Web.NewHabit (handleNewHabitWeb) where
+module HabitOfFate.Server.Requests.Web.NewHabit (handler) where
 
 import HabitOfFate.Prelude
 
@@ -32,8 +32,8 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
-handleNewHabitWeb ∷ Environment → ScottyM ()
-handleNewHabitWeb _ =
+handler ∷ Environment → ScottyM ()
+handler _ =
   Scotty.get "/new" $
     liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/edit/" ⊕))
     >>=
