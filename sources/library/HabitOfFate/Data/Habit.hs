@@ -44,7 +44,7 @@ import Web.Scotty (Parsable(..))
 
 import HabitOfFate.TH
 
-data Scale = VeryLow | Low | Medium | High | VeryHigh
+data Scale = None | VeryLow | Low | Medium | High | VeryHigh
   deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''Scale
 
@@ -144,6 +144,7 @@ scales ∷ [Scale]
 scales = enumFromTo minBound maxBound
 
 displayScale ∷ Scale → Text
+displayScale None = "None"
 displayScale VeryLow = "Very Low"
 displayScale Low = "Low"
 displayScale Medium = "Medium"
@@ -151,6 +152,7 @@ displayScale High = "High"
 displayScale VeryHigh = "Very High"
 
 scaleFactor ∷ Scale → Double
+scaleFactor None = 0
 scaleFactor VeryLow = 1/4
 scaleFactor Low = 1/2
 scaleFactor Medium = 1

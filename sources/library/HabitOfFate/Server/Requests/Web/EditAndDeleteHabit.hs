@@ -161,9 +161,18 @@ extractHabit = do
         )
   (difficulty_value, difficulty_error) ← getScale "difficulty" difficulty_
   (importance_value, importance_error) ← getScale "importance" importance_
+  let irrelevant_error
+        | difficulty_value == None && importance_value == None =
+            "Either the difficulty or the importance must not be None."
+        | otherwise = ""
   pure
     ( Habit name_value (Difficulty difficulty_value) (Importance importance_value)
-    , find (onull >>> not) >>> fromMaybe "" $ [name_error, difficulty_error, importance_error]
+    , find (onull >>> not) >>> fromMaybe "" $
+       [ name_error
+       , difficulty_error
+       , importance_error
+       , irrelevant_error
+       ]
     )
 
 handleEditHabitPost ∷ Environment → ScottyM ()

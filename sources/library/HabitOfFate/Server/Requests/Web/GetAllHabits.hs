@@ -65,12 +65,14 @@ handler environment = do
                     $ H.toHtml (habit ^. name_)
                 scaleFor scale_lens =
                   H.div ! A.class_ "scale" $ H.toHtml $ displayScale $ habit ^. scale_lens
-                markButtonFor name class_ =
-                  H.form
-                    ! A.class_ "mark_button"
-                    ! A.method "post"
-                    ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid)
-                    $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
+                markButtonFor name class_ scale_lens_
+                  | habit ^. scale_lens_ == None = mempty
+                  | otherwise =
+                      H.form
+                        ! A.class_ "mark_button"
+                        ! A.method "post"
+                        ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid)
+                        $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
                 move_form =
                   H.form
                     ! A.class_ "move"
@@ -86,8 +88,8 @@ handler environment = do
                         ! A.name "new_index"
                         ! A.class_ "new-index"
             in map (\contents → H.div ! A.class_ evenodd $ contents)
-            [ markButtonFor "success" "good"
-            , markButtonFor "failure" "bad"
+            [ markButtonFor "success" "good" difficulty_
+            , markButtonFor "failure" "bad"  importance_
             , position
             , edit_link
             , scaleFor difficulty_
