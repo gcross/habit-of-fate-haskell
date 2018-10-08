@@ -16,34 +16,25 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.MoveHabit (handleMoveHabit) where
+module HabitOfFate.Server.Requests.Web.NewHabit (handleNewHabitWeb) where
 
 import HabitOfFate.Prelude
 
+import qualified Data.Text.Lazy as Lazy
+import Data.UUID (UUID)
+import System.Random (randomIO)
 import Network.HTTP.Types.Status (temporaryRedirect307)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Data.Account
-import HabitOfFate.Data.Habit
+import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Writer
 
-handleMoveHabit ∷ Environment → ScottyM ()
-handleMoveHabit environment = do
-  Scotty.post "/move/:habit_id" action
-  Scotty.post "/move/:habit_id/:new_index" action
- where
-  action = webWriter environment $ do
-    habit_id ← getParam "habit_id"
-    new_index ← getParam "new_index" <&> (\n → n-1)
-    log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
-    old_habits ← use habits_
-    case moveHabitWithIdToIndex habit_id new_index old_habits of
-      Left exc → log [i|Exception moving habit: #{exc}|]
-      Right new_habits → habits_ .= new_habits
-    redirectTo temporaryRedirect307 "/habits"
+handleNewHabitWeb ∷ Environment → ScottyM ()
+handleNewHabitWeb _ =
+  Scotty.get "/new" $
+    liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/edit/" ⊕))
+    >>=
+    setStatusAndRedirect temporaryRedirect307

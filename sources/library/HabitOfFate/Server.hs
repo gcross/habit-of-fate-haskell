@@ -58,19 +58,21 @@ import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
-import HabitOfFate.Server.Requests.DeleteHabit
-import HabitOfFate.Server.Requests.EditAndDeleteHabit
+import HabitOfFate.Server.Requests.Api.DeleteHabit
+import HabitOfFate.Server.Requests.Api.GetCredits
+import HabitOfFate.Server.Requests.Api.GetHabit
+import HabitOfFate.Server.Requests.Api.PutHabit
+
+import HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
+import HabitOfFate.Server.Requests.Web.GetFile
+import HabitOfFate.Server.Requests.Web.MoveHabit
+import HabitOfFate.Server.Requests.Web.NewHabit
+
 import HabitOfFate.Server.Requests.GetAllHabits
-import HabitOfFate.Server.Requests.GetCredits
-import HabitOfFate.Server.Requests.GetFile
-import HabitOfFate.Server.Requests.GetHabit
 import HabitOfFate.Server.Requests.GetQuestStatus
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
 import HabitOfFate.Server.Requests.MarkHabitAndRun
-import HabitOfFate.Server.Requests.MoveHabit
-import HabitOfFate.Server.Requests.NewHabit
-import HabitOfFate.Server.Requests.PutHabit
 
 --------------------------------------------------------------------------------
 ------------------------------ Background Threads ------------------------------
@@ -124,21 +126,21 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       Scotty.status internalServerError500
       Scotty.text message
 
-    handleGetFile
+    handleGetFileWeb
 
     mapM_ ($ environment)
-      [ handleDeleteHabit
-      , handleNewHabit -- MUST be before EditAndDeleteHabit or creating a new habit breaks
-      , handleEditAndDeleteHabit
+      [ handleDeleteHabitApi
+      , handleNewHabitWeb -- MUST be before EditAndDeleteHabit or creating a new habit breaks
+      , handleEditAndDeleteHabitWeb
       , handleGetAllHabits
-      , handleGetCredits
-      , handleGetHabit
+      , handleGetCreditsApi
+      , handleGetHabitApi
       , handleGetQuestStatus
       , handleLoginOrCreate
       , handleLogout
       , handleMarkHabitAndRun
-      , handleMoveHabit
-      , handlePutHabit
+      , handleMoveHabitWeb
+      , handlePutHabitApi
       ]
 
     Scotty.get "/" $ setStatusAndRedirect movedPermanently301 "/habits"

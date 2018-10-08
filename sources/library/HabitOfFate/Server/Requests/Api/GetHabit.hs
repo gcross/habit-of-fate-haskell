@@ -19,26 +19,23 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.DeleteHabit (handleDeleteHabit) where
+module HabitOfFate.Server.Requests.Api.GetHabit (handleGetHabitApi) where
 
 import HabitOfFate.Prelude
 
-import Network.HTTP.Types.Status (noContent204, notFound404)
+import Network.HTTP.Types.Status (ok200)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Writer
+import HabitOfFate.Server.Transaction.Reader
 
-handleDeleteHabit ∷ Environment → ScottyM ()
-handleDeleteHabit environment =
-  Scotty.delete "/api/habits/:habit_id" <<< apiWriter environment $ do
+handleGetHabitApi ∷ Environment → ScottyM ()
+handleGetHabitApi environment =
+  Scotty.get "/api/habits/:habit_id" <<< apiReader environment $ do
     habit_id ← getParam "habit_id"
-    log $ [i|Requested to delete habit with id #{habit_id}.|]
-    habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Nothing)
-    returnNothing $
-      if habit_was_there
-        then noContent204
-        else notFound404
+    log $ [i|Requested habit with id #{habit_id}.|]
+    (view $ habits_ . at habit_id)
+      >>= maybe raiseNoSuchHabit (returnJSON ok200)

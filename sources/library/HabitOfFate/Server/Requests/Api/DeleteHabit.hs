@@ -16,25 +16,29 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.NewHabit (handleNewHabit) where
+module HabitOfFate.Server.Requests.Api.DeleteHabit (handleDeleteHabitApi) where
 
 import HabitOfFate.Prelude
 
-import qualified Data.Text.Lazy as Lazy
-import Data.UUID (UUID)
-import System.Random (randomIO)
-import Network.HTTP.Types.Status (temporaryRedirect307)
+import Network.HTTP.Types.Status (noContent204, notFound404)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Server.Actions.Results
+import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
+import HabitOfFate.Server.Transaction.Common
+import HabitOfFate.Server.Transaction.Writer
 
-handleNewHabit ∷ Environment → ScottyM ()
-handleNewHabit _ =
-  Scotty.get "/new" $
-    liftIO (randomIO ∷ IO UUID) <&> (show >>> Lazy.pack >>> ("/edit/" ⊕))
-    >>=
-    setStatusAndRedirect temporaryRedirect307
+handleDeleteHabitApi ∷ Environment → ScottyM ()
+handleDeleteHabitApi environment =
+  Scotty.delete "/api/habits/:habit_id" <<< apiWriter environment $ do
+    habit_id ← getParam "habit_id"
+    log $ [i|Requested to delete habit with id #{habit_id}.|]
+    habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Nothing)
+    returnNothing $
+      if habit_was_there
+        then noContent204
+        else notFound404

@@ -19,23 +19,30 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.GetHabit (handleGetHabit) where
+module HabitOfFate.Server.Requests.Api.PutHabit (handlePutHabitApi) where
 
 import HabitOfFate.Prelude
 
-import Network.HTTP.Types.Status (ok200)
+import Network.HTTP.Types.Status (created201, noContent204)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction.Writer
 
-handleGetHabit ∷ Environment → ScottyM ()
-handleGetHabit environment =
-  Scotty.get "/api/habits/:habit_id" <<< apiReader environment $ do
+handlePutHabitApi ∷ Environment → ScottyM ()
+handlePutHabitApi environment = do
+  Scotty.post "/api/habits/:habit_id" <<< apiWriter environment $ action
+  Scotty.put "/api/habits/:habit_id" <<< apiWriter environment $ action
+ where
+  action = do
     habit_id ← getParam "habit_id"
-    log $ [i|Requested habit with id #{habit_id}.|]
-    (view $ habits_ . at habit_id)
-      >>= maybe raiseNoSuchHabit (returnJSON ok200)
+    log [i|Requested to put habit with id #{habit_id}.|]
+    habit ← getBodyJSON
+    habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Just habit)
+    returnNothing $
+      if habit_was_there
+        then noContent204
+        else created201

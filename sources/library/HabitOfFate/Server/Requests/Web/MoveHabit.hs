@@ -19,30 +19,31 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.PutHabit (handlePutHabit) where
+module HabitOfFate.Server.Requests.Web.MoveHabit (handleMoveHabitWeb) where
 
 import HabitOfFate.Prelude
 
-import Network.HTTP.Types.Status (created201, noContent204)
+import Network.HTTP.Types.Status (temporaryRedirect307)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Writer
 
-handlePutHabit ∷ Environment → ScottyM ()
-handlePutHabit environment = do
-  Scotty.post "/api/habits/:habit_id" <<< apiWriter environment $ action
-  Scotty.put "/api/habits/:habit_id" <<< apiWriter environment $ action
+handleMoveHabitWeb ∷ Environment → ScottyM ()
+handleMoveHabitWeb environment = do
+  Scotty.post "/move/:habit_id" action
+  Scotty.post "/move/:habit_id/:new_index" action
  where
-  action = do
+  action = webWriter environment $ do
     habit_id ← getParam "habit_id"
-    log [i|Requested to put habit with id #{habit_id}.|]
-    habit ← getBodyJSON
-    habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Just habit)
-    returnNothing $
-      if habit_was_there
-        then noContent204
-        else created201
+    new_index ← getParam "new_index" <&> (\n → n-1)
+    log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
+    old_habits ← use habits_
+    case moveHabitWithIdToIndex habit_id new_index old_habits of
+      Left exc → log [i|Exception moving habit: #{exc}|]
+      Right new_habits → habits_ .= new_habits
+    redirectTo temporaryRedirect307 "/habits"

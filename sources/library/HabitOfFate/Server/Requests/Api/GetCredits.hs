@@ -19,7 +19,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.GetCredits (handleGetCredits) where
+module HabitOfFate.Server.Requests.Api.GetCredits (handleGetCreditsApi) where
 
 import HabitOfFate.Prelude
 
@@ -32,8 +32,8 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
 
-handleGetCredits ∷ Environment → ScottyM ()
-handleGetCredits environment =
+handleGetCreditsApi ∷ Environment → ScottyM ()
+handleGetCreditsApi environment =
   Scotty.get "/api/credits" <<< apiReader environment $ do
     log "Requested credits."
     view (stored_credits_) >>= returnJSON ok200
