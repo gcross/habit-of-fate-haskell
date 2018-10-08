@@ -262,6 +262,7 @@ doMain secure_mode Configuration{..} = do
           (\case
             NoSuchAccount → putStrLn "No such account."
             InvalidPassword → putStrLn "Invalid password."
+            UnexpectedLoginErrorCode code → putStrLn $ "Unexpected error code: " ⊕ show code
           )
           runSession
   if create_account_mode

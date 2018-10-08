@@ -23,6 +23,7 @@ data-files:          web/css/common.css
 
 library
   hs-source-dirs:      sources/library
+  ghc-options:         -Werror=incomplete-patterns
   build-depends:       base
                      , aeson
                      , blaze-builder

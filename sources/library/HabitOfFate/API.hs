@@ -103,7 +103,7 @@ createAccount username password secure_mode hostname port =
   <$>
   loginOrCreateAccount "create" username password secure_mode hostname port
 
-data LoginError = NoSuchAccount | InvalidPassword deriving (Eq, Ord, Show)
+data LoginError = NoSuchAccount | InvalidPassword | UnexpectedLoginErrorCode Int deriving (Eq, Ord, Show)
 
 login ∷ String → String → SecureMode → ByteString → Int → IO (Either LoginError SessionInfo)
 login username password secure_mode hostname port =
@@ -113,6 +113,7 @@ login username password secure_mode hostname port =
     (\case
       403 → InvalidPassword
       404 → NoSuchAccount
+      code → UnexpectedLoginErrorCode code
     )
   ))
   <$>
