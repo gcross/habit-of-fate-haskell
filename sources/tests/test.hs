@@ -276,9 +276,7 @@ checkErrorMessage id_value element = do
 readHabitIn ∷ MonadIO m ⇒ Document → m Habit
 readHabitIn doc = liftIO $ do
   let root = documentRoot doc
-  checkErrorMessage "name_error" root
-  checkErrorMessage "difficulty_error" root
-  checkErrorMessage "importance_error" root
+  checkErrorMessage "error_message" root
   Habit
     <$> extractInputValue "name" "name" root
     <*> (Difficulty <$> extractScaleValue "difficulty" root)
