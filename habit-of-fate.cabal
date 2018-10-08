@@ -90,14 +90,15 @@ library
                      , HabitOfFate.Server.Transaction.Reader
                      , HabitOfFate.Server.Transaction.Writer
                      , HabitOfFate.Server.Requests.Api.DeleteHabit
+                     , HabitOfFate.Server.Requests.Api.GetAllHabits
                      , HabitOfFate.Server.Requests.Api.GetCredits
                      , HabitOfFate.Server.Requests.Api.GetHabit
                      , HabitOfFate.Server.Requests.Api.PutHabit
                      , HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
+                     , HabitOfFate.Server.Requests.Web.GetAllHabits
                      , HabitOfFate.Server.Requests.Web.GetFile
                      , HabitOfFate.Server.Requests.Web.MoveHabit
                      , HabitOfFate.Server.Requests.Web.NewHabit
-                     , HabitOfFate.Server.Requests.GetAllHabits
                      , HabitOfFate.Server.Requests.GetQuestStatus
                      , HabitOfFate.Server.Requests.LoginOrCreate
                      , HabitOfFate.Server.Requests.Logout

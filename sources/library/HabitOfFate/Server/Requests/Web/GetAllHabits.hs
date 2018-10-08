@@ -19,7 +19,7 @@
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.GetAllHabits (handleGetAllHabits) where
+module HabitOfFate.Server.Requests.Web.GetAllHabits (handleGetAllHabitsWeb) where
 
 import HabitOfFate.Prelude
 
@@ -36,12 +36,6 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
 import HabitOfFate.Story.Renderer.HTML
-
-handleGetAllHabitsApi ∷ Environment → ScottyM ()
-handleGetAllHabitsApi environment = do
-  Scotty.get "/api/habits" <<< apiReader environment $ do
-    log "Requested all habits."
-    view habits_ >>= returnJSON ok200
 
 handleGetAllHabitsWeb ∷ Environment → ScottyM ()
 handleGetAllHabitsWeb environment = do
@@ -105,8 +99,3 @@ handleGetAllHabitsWeb environment = do
           ]
       H.a ! A.class_ "new_link" ! A.href "/new" $ H.toHtml ("New" ∷ Text)
       H.a ! A.class_ "logout_link" ! A.href "/logout" $ H.toHtml ("Logout" ∷ Text)
-
-handleGetAllHabits ∷ Environment → ScottyM ()
-handleGetAllHabits environment = do
-  handleGetAllHabitsApi environment
-  handleGetAllHabitsWeb environment
