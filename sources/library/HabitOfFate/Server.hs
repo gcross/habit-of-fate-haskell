@@ -132,19 +132,21 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
 
     mapM_ ($ environment)
       [ Api.DeleteHabit.handler
-      , Web.NewHabit.handler -- MUST be before EditAndDeleteHabit or creating a new habit breaks
-      , Web.EditAndDeleteHabit.handler
       , Api.GetAllHabits.handler
-      , Web.GetAllHabits.handler
       , Api.GetCredits.handler
       , Api.GetHabit.handler
       , Api.GetQuestStatus.handler
+      , Api.PutHabit.handler
+
+      , Web.NewHabit.handler -- MUST be before EditAndDeleteHabit or creating a new habit breaks
+      , Web.EditAndDeleteHabit.handler
+      , Web.GetAllHabits.handler
       , Web.GetQuestStatus.handler
+      , Web.MoveHabit.handler
+
       , handleLoginOrCreate
       , handleLogout
       , handleMarkHabitAndRun
-      , Web.MoveHabit.handler
-      , Api.PutHabit.handler
       ]
 
     Scotty.get "/" $ setStatusAndRedirect movedPermanently301 "/habits"
