@@ -82,10 +82,10 @@ handleMarkHabitApi environment =
               |> fmap sum
           value_lens <.= old_value + increment
 
-    log [i|Marking #{marks ^. succeeded} successes and #{marks ^. failed} failures.|]
+    log [i|Marking #{marks ^. succeeded_} successes and #{marks ^. failed_} failures.|]
     (Credits
-        <$> (Successes <$> markHabits succeeded difficulty_ (stored_credits_ . successes_))
-        <*> (Failures  <$> markHabits failed    importance_ (stored_credits_ . failures_ ))
+        <$> (Successes <$> markHabits succeeded_ difficulty_ (stored_credits_ . successes_))
+        <*> (Failures  <$> markHabits failed_    importance_ (stored_credits_ . failures_ ))
       ) >>= returnJSON ok200
 
 handleMarkHabitWeb ∷ Environment → ScottyM ()

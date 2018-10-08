@@ -175,8 +175,8 @@ runAccount = do
           runCurrentQuest run current_quest_state
 
 data HabitsToMark = HabitsToMark
-  { _succeeded ∷ [UUID]
-  , _failed ∷ [UUID]
+  { _succeeded_ ∷ [UUID]
+  , _failed_ ∷ [UUID]
   } deriving (Eq, Ord, Read, Show)
 deriveJSON ''HabitsToMark
 makeLenses ''HabitsToMark
