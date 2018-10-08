@@ -21,7 +21,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.LoginOrCreate (handleLoginOrCreate) where
+module HabitOfFate.Server.Requests.Shared.LoginOrCreate (handler) where
 
 import HabitOfFate.Prelude
 
@@ -242,8 +242,8 @@ handleLoginWeb environment@Environment{..} = do
               ! A.formmethod "post"
               ! A.value "Login"
 
-handleLoginOrCreate ∷ Environment → ScottyM ()
-handleLoginOrCreate environment = do
+handler ∷ Environment → ScottyM ()
+handler environment = do
   handleCreateAccountApi environment
   handleCreateAccountWeb environment
   handleLoginApi environment

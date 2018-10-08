@@ -95,15 +95,15 @@ library
                      , HabitOfFate.Server.Requests.Api.GetHabit
                      , HabitOfFate.Server.Requests.Api.GetQuestStatus
                      , HabitOfFate.Server.Requests.Api.PutHabit
+                     , HabitOfFate.Server.Requests.Shared.LoginOrCreate
+                     , HabitOfFate.Server.Requests.Shared.Logout
+                     , HabitOfFate.Server.Requests.Shared.MarkHabitAndRun
                      , HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
                      , HabitOfFate.Server.Requests.Web.GetAllHabits
                      , HabitOfFate.Server.Requests.Web.GetFile
                      , HabitOfFate.Server.Requests.Web.GetQuestStatus
                      , HabitOfFate.Server.Requests.Web.MoveHabit
                      , HabitOfFate.Server.Requests.Web.NewHabit
-                     , HabitOfFate.Server.Requests.LoginOrCreate
-                     , HabitOfFate.Server.Requests.Logout
-                     , HabitOfFate.Server.Requests.MarkHabitAndRun
                      , HabitOfFate.Story
                      , HabitOfFate.Story.Parser.Quote
                      , HabitOfFate.Story.Parser.XML

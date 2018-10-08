@@ -65,16 +65,16 @@ import qualified HabitOfFate.Server.Requests.Api.GetHabit as Api.GetHabit
 import qualified HabitOfFate.Server.Requests.Api.GetQuestStatus as Api.GetQuestStatus
 import qualified HabitOfFate.Server.Requests.Api.PutHabit as Api.PutHabit
 
+import qualified HabitOfFate.Server.Requests.Shared.LoginOrCreate as Shared.LoginOrCreate
+import qualified HabitOfFate.Server.Requests.Shared.Logout as Shared.Logout
+import qualified HabitOfFate.Server.Requests.Shared.MarkHabitAndRun as Shared.MarkHabitAndRun
+
 import qualified HabitOfFate.Server.Requests.Web.EditAndDeleteHabit as Web.EditAndDeleteHabit
 import qualified HabitOfFate.Server.Requests.Web.GetAllHabits as Web.GetAllHabits
 import qualified HabitOfFate.Server.Requests.Web.GetFile as Web.GetFile
 import qualified HabitOfFate.Server.Requests.Web.GetQuestStatus as Web.GetQuestStatus
 import qualified HabitOfFate.Server.Requests.Web.MoveHabit as Web.MoveHabit
 import qualified HabitOfFate.Server.Requests.Web.NewHabit as Web.NewHabit
-
-import HabitOfFate.Server.Requests.LoginOrCreate
-import HabitOfFate.Server.Requests.Logout
-import HabitOfFate.Server.Requests.MarkHabitAndRun
 
 --------------------------------------------------------------------------------
 ------------------------------ Background Threads ------------------------------
@@ -138,15 +138,15 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       , Api.GetQuestStatus.handler
       , Api.PutHabit.handler
 
+      , Shared.LoginOrCreate.handler
+      , Shared.Logout.handler
+      , Shared.MarkHabitAndRun.handler
+
       , Web.NewHabit.handler -- MUST be before EditAndDeleteHabit or creating a new habit breaks
       , Web.EditAndDeleteHabit.handler
       , Web.GetAllHabits.handler
       , Web.GetQuestStatus.handler
       , Web.MoveHabit.handler
-
-      , handleLoginOrCreate
-      , handleLogout
-      , handleMarkHabitAndRun
       ]
 
     Scotty.get "/" $ setStatusAndRedirect movedPermanently301 "/habits"

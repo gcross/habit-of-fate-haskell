@@ -19,7 +19,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Logout (handleLogout) where
+module HabitOfFate.Server.Requests.Shared.Logout (handler) where
 
 import HabitOfFate.Prelude
 
@@ -33,8 +33,8 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
-handleLogout ∷ Environment → ScottyM ()
-handleLogout Environment{..} = do
+handler ∷ Environment → ScottyM ()
+handler Environment{..} = do
   Scotty.post "/api/logout" $ action
   Scotty.matchAny "/logout" $ action >> setStatusAndRedirect temporaryRedirect307 "/login"
  where

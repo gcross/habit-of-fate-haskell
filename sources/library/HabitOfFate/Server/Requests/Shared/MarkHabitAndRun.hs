@@ -21,7 +21,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.MarkHabitAndRun (handleMarkHabitAndRun) where
+module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (handler) where
 
 import HabitOfFate.Prelude
 
@@ -116,8 +116,8 @@ handleRunWeb ∷ Environment → ScottyM ()
 handleRunWeb environment =
   Scotty.post "/run" <<< webWriter environment $ runGame
 
-handleMarkHabitAndRun ∷ Environment → ScottyM ()
-handleMarkHabitAndRun environment = do
+handler ∷ Environment → ScottyM ()
+handler environment = do
   handleMarkHabitApi environment
   handleMarkHabitWeb environment
   handleRunApi environment
