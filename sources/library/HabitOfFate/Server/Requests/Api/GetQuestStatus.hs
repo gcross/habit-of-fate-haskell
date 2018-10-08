@@ -18,7 +18,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.GetQuestStatus (handleGetQuestStatus) where
+module HabitOfFate.Server.Requests.Api.GetQuestStatus (handleGetQuestStatusApi) where
 
 import HabitOfFate.Prelude
 
@@ -30,7 +30,6 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction.Common
 import HabitOfFate.Server.Transaction.Reader
-import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
 handleGetQuestStatusApi ∷ Environment → ScottyM ()
@@ -39,15 +38,3 @@ handleGetQuestStatusApi environment =
     ask
     >>=
     (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
-
-handleGetQuestStatusWeb ∷ Environment → ScottyM ()
-handleGetQuestStatusWeb environment =
-  Scotty.get "/status" <<< webReader environment $
-    (ask <&> getAccountStatus <&> renderEventToHTML)
-    >>=
-    renderTopOnlyPageAndReturn "Habit of Fate - Quest Status" [] ok200
-
-handleGetQuestStatus ∷ Environment → ScottyM ()
-handleGetQuestStatus environment = do
-  handleGetQuestStatusApi environment
-  handleGetQuestStatusWeb environment

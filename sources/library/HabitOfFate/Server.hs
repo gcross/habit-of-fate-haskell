@@ -62,15 +62,16 @@ import HabitOfFate.Server.Requests.Api.DeleteHabit
 import HabitOfFate.Server.Requests.Api.GetAllHabits
 import HabitOfFate.Server.Requests.Api.GetCredits
 import HabitOfFate.Server.Requests.Api.GetHabit
+import HabitOfFate.Server.Requests.Api.GetQuestStatus
 import HabitOfFate.Server.Requests.Api.PutHabit
 
 import HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
 import HabitOfFate.Server.Requests.Web.GetAllHabits
 import HabitOfFate.Server.Requests.Web.GetFile
+import HabitOfFate.Server.Requests.Web.GetQuestStatus
 import HabitOfFate.Server.Requests.Web.MoveHabit
 import HabitOfFate.Server.Requests.Web.NewHabit
 
-import HabitOfFate.Server.Requests.GetQuestStatus
 import HabitOfFate.Server.Requests.LoginOrCreate
 import HabitOfFate.Server.Requests.Logout
 import HabitOfFate.Server.Requests.MarkHabitAndRun
@@ -137,7 +138,8 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       , handleGetAllHabitsWeb
       , handleGetCreditsApi
       , handleGetHabitApi
-      , handleGetQuestStatus
+      , handleGetQuestStatusApi
+      , handleGetQuestStatusWeb
       , handleLoginOrCreate
       , handleLogout
       , handleMarkHabitAndRun
