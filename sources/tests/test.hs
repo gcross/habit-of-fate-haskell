@@ -514,11 +514,8 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
         [ testGroup "Redirections" $
         ------------------------------------------------------------------------
-            [ webTestCase "GET / redirects to /habits" $ do
+            [ webTestCase "GET / redirects to /login" $ do
                 (response, _) ← requestDocument "/" $ setRequestMethod "GET"
-                assertRedirectsTo response "/habits"
-            , webTestCase "GET /habits redirects to /login" $ do
-                (response, _) ← requestDocument "/habits" $ setRequestMethod "GET"
                 assertRedirectsTo response "/login"
             ]
         ------------------------------------------------------------------------
@@ -542,17 +539,17 @@ main = defaultMain $ testGroup "All Tests"
             , webTestCase "POST /create with fields filled in redirects to /" $ do
                 (response, _) ← createTestAccount "username" "password"
                 assertRedirectsTo response "/"
-            , webTestCase "Creating an account causes /habits to load the habits page" $ do
+            , webTestCase "Creating an account causes / to load the habits page" $ do
                 _ ← createTestAccount "username" "password"
-                (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+                (_, doc) ← requestDocument "/" $ setRequestMethod "GET"
                 assertPageTitleEquals doc "Habit of Fate - List of Habits"
-            , webTestCase "Creating an account then logging in redirects to /habits" $ do
+            , webTestCase "Creating an account then logging in redirects to /" $ do
                 _ ← createTestAccount "username" "password"
                 (response, _) ← loginTestAccount "username" "password"
-                assertRedirectsTo response "/habits"
-            , webTestCase "Creating an account makes /habits load the list of habits" $ do
+                assertRedirectsTo response "/"
+            , webTestCase "Creating an account makes /load the list of habits" $ do
                 _ ← createTestAccount "username" "password"
-                (_, doc) ← requestDocument "/habits" $ setRequestMethod "GET"
+                (_, doc) ← requestDocument "/" $ setRequestMethod "GET"
                 assertPageTitleEquals doc "Habit of Fate - List of Habits"
             , webTestCase "Creating a conflicting account displays an error message" $ do
                 _ ← createTestAccount "username" "password"

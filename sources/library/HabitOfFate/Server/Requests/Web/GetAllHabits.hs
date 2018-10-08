@@ -39,7 +39,7 @@ import HabitOfFate.Story.Renderer.HTML
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.get "/habits" <<< webReader environment $ do
+  Scotty.get "/" <<< webReader environment $ do
     habit_list ← view (habits_ . habit_list_)
     quest_status ← ask <&> getAccountStatus
     renderPageAndReturn "Habit of Fate - List of Habits" ["list"] ok200 $ do

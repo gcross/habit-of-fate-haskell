@@ -149,8 +149,6 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       , Web.MoveHabit.handler
       ]
 
-    Scotty.get "/" $ setStatusAndRedirect movedPermanently301 "/habits"
-
     Scotty.notFound $ do
       r ← Scotty.request
       logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]

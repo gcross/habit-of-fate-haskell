@@ -61,7 +61,7 @@ runGame = do
     H.div ! A.class_ "story" $ rendered_event
     if stored_credits ^. successes_ /= 0 || stored_credits ^. failures_ /= 0
       then H.form ! A.method "post" $ H.input ! A.type_ "submit" ! A.value "Next"
-      else H.a ! A.href "/habits" $ H.toHtml ("Done" ∷ Text)
+      else H.a ! A.href "/" $ H.toHtml ("Done" ∷ Text)
 
 handleMarkHabitApi ∷ Environment → ScottyM ()
 handleMarkHabitApi environment =

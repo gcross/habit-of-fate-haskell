@@ -215,10 +215,10 @@ handleLoginWeb environment@Environment{..} = do
               account ← readTVarMonadIO account_tvar
               if passwordIsValid password account
                 then do
-                  logIO [i|Successfully logged in #{username_}. Redirecting to /habits.|]
+                  logIO [i|Successfully logged in #{username_}. Redirecting to /.|]
                   createAndReturnCookie environment username
                   Scotty.status temporaryRedirect307
-                  Scotty.redirect "/habits"
+                  Scotty.redirect "/"
                 else do
                   logIO [i|Incorrect password for #{username_}.|]
                   pure "No account has that username."

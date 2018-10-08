@@ -90,7 +90,7 @@ habitPage habit_id name_error difficulty_error importance_error deletion_mode ha
       H.hr
 
       H.div ! A.class_ "submit" $ do
-        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
+        H.a ! A.class_ "sub" ! A.href "/" $ toHtml ("Cancel" ∷ Text)
         H.input
           ! A.class_ "sub"
           ! A.formaction (H.toValue $ ("/edit/" ∷ Text) ⊕ toText habit_id)
@@ -181,7 +181,7 @@ handleEditHabitPost environment = do
       then do
         log [i|Updating habit #{habit_id} to #{extracted_habit}|]
         habits_ . at habit_id .= Just extracted_habit
-        redirectTo temporaryRedirect307 "/habits"
+        redirectTo temporaryRedirect307 "/"
       else do
         log [i|Failed to update habit #{habit_id}:|]
         log [i|    Name error: #{name_error}|]
@@ -200,7 +200,7 @@ handleDeleteHabitGet environment = do
     log [i|Web GET request to delete habit with id #{habit_id}.|]
     maybe_habit ← view (habits_ . at habit_id)
     case maybe_habit of
-      Nothing → redirectTo temporaryRedirect307 "/habits"
+      Nothing → redirectTo temporaryRedirect307 "/"
       Just habit → habitPage habit_id "" "" "" DeletionAvailable habit
 
 handleDeleteHabitPost ∷ Environment → ScottyM ()
@@ -213,7 +213,7 @@ handleDeleteHabitPost environment = do
       then do
         log [i|Deleting habit #{habit_id}|]
         habits_ . at habit_id .= Nothing
-        redirectTo temporaryRedirect307 "/habits"
+        redirectTo temporaryRedirect307 "/"
       else do
         log [i|Confirming delete for habit #{habit_id}|]
         HabitExtractionResult{..} ← extractHabit

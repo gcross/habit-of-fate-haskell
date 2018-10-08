@@ -46,4 +46,4 @@ handler environment = do
     case moveHabitWithIdToIndex habit_id new_index old_habits of
       Left exc → log [i|Exception moving habit: #{exc}|]
       Right new_habits → habits_ .= new_habits
-    redirectTo temporaryRedirect307 "/habits"
+    redirectTo temporaryRedirect307 "/"
