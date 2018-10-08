@@ -184,7 +184,7 @@ handleEditHabitPost environment = do
           use (habits_ . habit_map_)
           <&>
           (member habit_id >>> bool NoDeletion DeletionAvailable)
-        habitPage habit_id error_message deletion_mode def
+        habitPage habit_id error_message deletion_mode extracted_habit
 
 handleDeleteHabitGet ∷ Environment → ScottyM ()
 handleDeleteHabitGet environment = do
