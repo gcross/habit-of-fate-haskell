@@ -56,7 +56,7 @@ data Account = Account
   ,   _stored_credits_ ∷ Credits
   ,   _awaited_credits_ ∷ Credits
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
-  ,   _rng_ :: StdGen
+  ,   _rng_ ∷ StdGen
   } deriving (Read,Show)
 deriveJSON ''Account
 makeLenses ''Account
