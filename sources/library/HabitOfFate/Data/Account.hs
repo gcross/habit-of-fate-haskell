@@ -30,9 +30,10 @@ module HabitOfFate.Data.Account where
 import HabitOfFate.Prelude
 
 import Control.Exception
-import Control.Monad.Random
+import Control.Monad.Random (StdGen, newStdGen, runRand, uniform)
 import Crypto.PasswordStore
 import Data.Aeson hiding ((.=))
+import Data.Time.Zones.All (TZLabel(America__New_York))
 import Data.UUID (UUID)
 import Web.Scotty (Parsable)
 
@@ -50,6 +51,16 @@ instance ToJSON StdGen where
 instance FromJSON StdGen where
   parseJSON = parseJSON >>> fmap read
 
+instance ToJSON TZLabel where
+  toJSON = show >>> toJSON
+
+instance FromJSON TZLabel where
+  parseJSON (String label) =
+    case readEither (unpack label) of
+      Left error_message → fail error_message
+      Right timezone → pure timezone
+  parseJSON _ = fail "Expected a string."
+
 data Account = Account
   {   _password_ ∷ Text
   ,   _habits_ ∷ Habits
@@ -57,6 +68,7 @@ data Account = Account
   ,   _awaited_credits_ ∷ Credits
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
   ,   _rng_ ∷ StdGen
+  ,   _timezone_ ∷ TZLabel
   } deriving (Read,Show)
 deriveJSON ''Account
 makeLenses ''Account
@@ -74,6 +86,7 @@ newAccount password =
     <*> pure def
     <*> pure Nothing
     <*> newStdGen
+    <*> pure America__New_York
 
 passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password account =

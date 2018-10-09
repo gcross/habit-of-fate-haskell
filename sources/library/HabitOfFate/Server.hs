@@ -69,6 +69,7 @@ import qualified HabitOfFate.Server.Requests.Shared.LoginOrCreate as Shared.Logi
 import qualified HabitOfFate.Server.Requests.Shared.Logout as Shared.Logout
 import qualified HabitOfFate.Server.Requests.Shared.MarkHabitAndRun as Shared.MarkHabitAndRun
 
+import qualified HabitOfFate.Server.Requests.Web.ChangeTimeZone as Web.ChangeTimeZone
 import qualified HabitOfFate.Server.Requests.Web.EditAndDeleteHabit as Web.EditAndDeleteHabit
 import qualified HabitOfFate.Server.Requests.Web.GetAllHabits as Web.GetAllHabits
 import qualified HabitOfFate.Server.Requests.Web.GetFile as Web.GetFile
@@ -142,6 +143,7 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       , Shared.Logout.handler
       , Shared.MarkHabitAndRun.handler
 
+      , Web.ChangeTimeZone.handler
       , Web.NewHabit.handler -- MUST be before EditAndDeleteHabit or creating a new habit breaks
       , Web.EditAndDeleteHabit.handler
       , Web.GetAllHabits.handler

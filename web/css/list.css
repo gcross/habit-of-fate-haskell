@@ -52,17 +52,21 @@
     width: 40px;
 }
 
-.new_link, .logout_link {
-    display: block;
-    margin-top: 20px;
+.new_link {
+    align-content: center;
+    display: flex;
+    height: 50px;
 }
 
-.new_link {
-    float: left;
+.new_link a {
+    margin-bottom: auto;
+    margin-top: auto;
 }
 
 .logout_link {
-    float: right;
+    display: block;
+    margin-left: auto;
+    width: 3.5em;
 }
 
 .smiley {

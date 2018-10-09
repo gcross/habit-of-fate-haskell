@@ -98,5 +98,16 @@ handler environment = do
           | n ← [1∷Int ..]
           | (uuid, habit) ← habit_list
           ]
-      H.a ! A.class_ "new_link" ! A.href "/new" $ H.toHtml ("New" ∷ Text)
-      H.a ! A.class_ "logout_link" ! A.href "/logout" $ H.toHtml ("Logout" ∷ Text)
+        ⊕
+        replicate 3 (H.div mempty)
+        ⊕
+        [ H.div ! A.class_ "new_link" $ H.a ! A.href "/new" $ H.toHtml ("New" ∷ Text)
+        ]
+
+      H.hr
+
+      H.div $ H.a ! A.class_ "logout_link" ! A.href "/logout" $ H.toHtml ("Logout" ∷ Text)
+
+      H.hr
+
+      H.a ! A.href "/timezone" $ H.toHtml ("Change Time Zone" ∷ Text)

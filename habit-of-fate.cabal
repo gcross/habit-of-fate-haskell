@@ -65,6 +65,7 @@ library
                      , template-haskell
                      , transformers
                      , transformers-base
+                     , tz
                      , unordered-containers
                      , uuid
                      , vector
@@ -97,6 +98,7 @@ library
                      , HabitOfFate.Server.Requests.Shared.LoginOrCreate
                      , HabitOfFate.Server.Requests.Shared.Logout
                      , HabitOfFate.Server.Requests.Shared.MarkHabitAndRun
+                     , HabitOfFate.Server.Requests.Web.ChangeTimeZone
                      , HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
                      , HabitOfFate.Server.Requests.Web.GetAllHabits
                      , HabitOfFate.Server.Requests.Web.GetFile
