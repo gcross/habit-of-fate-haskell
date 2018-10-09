@@ -42,7 +42,7 @@ handler environment = do
   Scotty.get "/" <<< webReader environment $ do
     habit_list ← view (habits_ . habit_list_)
     quest_status ← ask <&> getAccountStatus
-    renderPageAndReturn "Habit of Fate - List of Habits" ["list"] ok200 $ do
+    renderPageResult "Habit of Fate - List of Habits" ["list"] ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "list" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)

@@ -38,7 +38,7 @@ handler environment =
     habit_id ← getParam "habit_id"
     log $ [i|Requested to delete habit with id #{habit_id}.|]
     habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Nothing)
-    returnNothing $
+    noContentResult >>> pure $
       if habit_was_there
         then noContent204
         else notFound404

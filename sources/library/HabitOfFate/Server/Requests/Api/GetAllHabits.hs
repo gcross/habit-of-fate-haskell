@@ -35,4 +35,4 @@ handler ∷ Environment → ScottyM ()
 handler environment = do
   Scotty.get "/api/habits" <<< apiReader environment $ do
     log "Requested all habits."
-    view habits_ >>= returnJSON ok200
+    view habits_ <&> jsonResult ok200

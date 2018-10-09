@@ -36,4 +36,4 @@ handler ∷ Environment → ScottyM ()
 handler environment =
   Scotty.get "/api/credits" <<< apiReader environment $ do
     log "Requested credits."
-    view (stored_credits_) >>= returnJSON ok200
+    view (stored_credits_) <&> jsonResult ok200

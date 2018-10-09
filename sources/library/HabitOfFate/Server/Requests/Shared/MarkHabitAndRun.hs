@@ -57,7 +57,7 @@ runGame = do
         | (not <<< null) event = renderEventToHTML event
         | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
   stored_credits ← use stored_credits_
-  renderTopOnlyPageAndReturn "Habit of Fate - Event" ["story"] ok200 $ do
+  renderTopOnlyPageResult "Habit of Fate - Event" ["story"] ok200 >>> pure $ do
     H.div ! A.class_ "story" $ rendered_event
     if stored_credits ^. successes_ /= 0 || stored_credits ^. failures_ /= 0
       then H.form ! A.method "post" $ H.input ! A.type_ "submit" ! A.value "Next"
@@ -86,7 +86,7 @@ handleMarkHabitApi environment =
     (Credits
         <$> (Successes <$> markHabits succeeded_ difficulty_ (stored_credits_ . successes_))
         <*> (Failures  <$> markHabits failed_    importance_ (stored_credits_ . failures_ ))
-      ) >>= returnJSON ok200
+      ) <&> jsonResult ok200
 
 handleMarkHabitWeb ∷ Environment → ScottyM ()
 handleMarkHabitWeb environment = do
@@ -100,7 +100,7 @@ handleMarkHabitWeb environment = do
     log [i|Marking #{habit_id} as #{status}.|]
     case habits ^. at habit_id of
       Nothing →
-        renderTopOnlyPageAndReturn "Habit of Fate - Marking a Habit" [] notFound404 $ do
+        renderTopOnlyPageResult "Habit of Fate - Marking a Habit" [] notFound404 >>> pure $ do
           H.h1 "Habit Not Found"
           H.p $ H.toHtml [i|"Habit #{habit_id} was not found.|]
       Just habit → do
@@ -110,7 +110,7 @@ handleMarkHabitWeb environment = do
 handleRunApi ∷ Environment → ScottyM ()
 handleRunApi environment =
   Scotty.post "/api/run" <<< apiWriter environment $ do
-    runEvent >>= (renderEventToXMLText >>> returnLazyText ok200)
+    runEvent >>= (renderEventToXMLText >>> lazyTextResult ok200 >>> pure)
 
 handleRunWeb ∷ Environment → ScottyM ()
 handleRunWeb environment =

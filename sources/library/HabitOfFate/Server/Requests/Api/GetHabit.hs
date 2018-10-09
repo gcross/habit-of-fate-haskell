@@ -38,4 +38,4 @@ handler environment =
     habit_id ← getParam "habit_id"
     log $ [i|Requested habit with id #{habit_id}.|]
     (view $ habits_ . at habit_id)
-      >>= maybe raiseNoSuchHabit (returnJSON ok200)
+      >>= maybe raiseNoSuchHabit (jsonResult ok200 >>> pure)

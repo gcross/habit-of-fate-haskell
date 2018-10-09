@@ -42,7 +42,7 @@ handler environment = do
     log [i|Requested to put habit with id #{habit_id}.|]
     habit ← getBodyJSON
     habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Just habit)
-    returnNothing $
+    noContentResult >>> pure $
       if habit_was_there
         then noContent204
         else created201

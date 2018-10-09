@@ -47,7 +47,7 @@ data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 
 habitPage ∷ Monad m ⇒ UUID → Lazy.Text → DeletionMode → Habit → m TransactionResult
 habitPage habit_id error_message deletion_mode habit =
-  renderTopOnlyPageAndReturn "Habit of Fate - Editing a Habit" ["edit"] ok200 $
+  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ok200 >>> pure $
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
         -- Name
@@ -185,7 +185,7 @@ handleEditHabitPost environment = do
       then do
         log [i|Updating habit #{habit_id} to #{extracted_habit}|]
         habits_ . at habit_id .= Just extracted_habit
-        redirectTo temporaryRedirect307 "/"
+        pure $ redirectsToResult temporaryRedirect307 "/"
       else do
         log [i|Failed to update habit #{habit_id}:|]
         log [i|    Error message: #{error_message}|]
@@ -202,7 +202,7 @@ handleDeleteHabitGet environment = do
     log [i|Web GET request to delete habit with id #{habit_id}.|]
     maybe_habit ← view (habits_ . at habit_id)
     case maybe_habit of
-      Nothing → redirectTo temporaryRedirect307 "/"
+      Nothing → pure $ redirectsToResult temporaryRedirect307 "/"
       Just habit → habitPage habit_id "" DeletionAvailable habit
 
 handleDeleteHabitPost ∷ Environment → ScottyM ()
@@ -215,7 +215,7 @@ handleDeleteHabitPost environment = do
       then do
         log [i|Deleting habit #{habit_id}|]
         habits_ . at habit_id .= Nothing
-        redirectTo temporaryRedirect307 "/"
+        pure $ redirectsToResult temporaryRedirect307 "/"
       else do
         log [i|Confirming delete for habit #{habit_id}|]
         (extracted_habit, error_message) ← extractHabit

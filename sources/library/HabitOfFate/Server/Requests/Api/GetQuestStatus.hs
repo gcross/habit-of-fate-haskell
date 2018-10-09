@@ -37,4 +37,4 @@ handler environment =
   Scotty.get "/api/status" <<< apiReader environment $
     ask
     >>=
-    (getAccountStatus >>> renderEventToXMLText >>> returnLazyText ok200)
+    (getAccountStatus >>> renderEventToXMLText >>> lazyTextResult ok200 >>> pure)

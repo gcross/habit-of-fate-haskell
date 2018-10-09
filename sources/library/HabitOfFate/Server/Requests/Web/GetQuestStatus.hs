@@ -35,6 +35,12 @@ import HabitOfFate.Story.Renderer.HTML
 handler ∷ Environment → ScottyM ()
 handler environment =
   Scotty.get "/status" <<< webReader environment $
-    (ask <&> getAccountStatus <&> renderEventToHTML)
-    >>=
-    renderTopOnlyPageAndReturn "Habit of Fate - Quest Status" [] ok200
+    ask
+    <&>
+    (
+      getAccountStatus
+      >>>
+      renderEventToHTML
+      >>>
+      renderTopOnlyPageResult "Habit of Fate - Quest Status" [] ok200
+    )

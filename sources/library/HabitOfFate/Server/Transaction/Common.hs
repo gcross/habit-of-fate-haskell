@@ -110,29 +110,29 @@ lookupHabit habit_id = do
 
 data TransactionResult = RedirectsTo Status Lazy.Text | TransactionResult Status Content
 
-returnNothing ∷ Monad m ⇒ Status → m TransactionResult
-returnNothing s = return $ TransactionResult s NoContent
+noContentResult ∷ Status → TransactionResult
+noContentResult = flip TransactionResult NoContent
 
-returnLazyText ∷ Monad m ⇒ Status → Lazy.Text → m TransactionResult
-returnLazyText s = TextContent >>> TransactionResult s >>> return
+lazyTextResult ∷ Status → Lazy.Text → TransactionResult
+lazyTextResult s = TextContent >>> TransactionResult s
 
-returnLazyTextAsHTML ∷ Monad m ⇒ Status → Lazy.Text → m TransactionResult
-returnLazyTextAsHTML s = TextContentAsHTML >>> TransactionResult s >>> return
+lazyTextAsHTMLResult ∷ Status → Lazy.Text → TransactionResult
+lazyTextAsHTMLResult s = TextContentAsHTML >>> TransactionResult s
 
-returnJSON ∷ (ToJSON α, Monad m) ⇒ Status → α → m TransactionResult
-returnJSON s = JSONContent >>> TransactionResult s >>> return
+jsonResult ∷ ToJSON α ⇒ Status → α → TransactionResult
+jsonResult s = JSONContent >>> TransactionResult s
 
-redirectTo ∷ Monad m ⇒ Status → Lazy.Text → m TransactionResult
-redirectTo status_ url = RedirectsTo status_ url |> return
+redirectsToResult ∷ Status → Lazy.Text → TransactionResult
+redirectsToResult status_ url = RedirectsTo status_ url
 
-renderPageAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m TransactionResult
-renderPageAndReturn title stylesheets status =
+renderPageResult ∷ Text → [Text] → Status → Html → TransactionResult
+renderPageResult title stylesheets status =
   renderPage title stylesheets
   >>>
-  returnLazyTextAsHTML status
+  lazyTextAsHTMLResult status
 
-renderTopOnlyPageAndReturn ∷ Monad m ⇒ Text → [Text] → Status → Html → m TransactionResult
-renderTopOnlyPageAndReturn title stylesheets status =
+renderTopOnlyPageResult ∷ Text → [Text] → Status → Html → TransactionResult
+renderTopOnlyPageResult title stylesheets status =
   renderTopOnlyPage title stylesheets
   >>>
-  returnLazyTextAsHTML status
+  lazyTextAsHTMLResult status
