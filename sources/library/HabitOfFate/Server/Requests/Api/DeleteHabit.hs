@@ -29,12 +29,11 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Writer
+import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment =
-  Scotty.delete "/api/habits/:habit_id" <<< apiWriter environment $ do
+  Scotty.delete "/api/habits/:habit_id" <<< apiTransaction environment $ do
     habit_id ← getParam "habit_id"
     log $ [i|Requested to delete habit with id #{habit_id}.|]
     habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Nothing)

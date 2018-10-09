@@ -29,13 +29,12 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment =
-  Scotty.get "/api/habits/:habit_id" <<< apiReader environment $ do
+  Scotty.get "/api/habits/:habit_id" <<< apiTransaction environment $ do
     habit_id ← getParam "habit_id"
     log $ [i|Requested habit with id #{habit_id}.|]
-    (view $ habits_ . at habit_id)
+    (use $ habits_ . at habit_id)
       >>= maybe raiseNoSuchHabit (jsonResult ok200 >>> pure)

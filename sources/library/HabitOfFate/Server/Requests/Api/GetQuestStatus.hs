@@ -28,13 +28,12 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction
 import HabitOfFate.Story.Renderer.XML
 
 handler ∷ Environment → ScottyM ()
 handler environment =
-  Scotty.get "/api/status" <<< apiReader environment $
-    ask
+  Scotty.get "/api/status" <<< apiTransaction environment $
+    get
     >>=
     (getAccountStatus >>> renderEventToXMLText >>> lazyTextResult ok200 >>> pure)

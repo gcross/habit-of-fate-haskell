@@ -37,20 +37,19 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Writer
+import HabitOfFate.Server.Transaction
 import HabitOfFate.Story
 import HabitOfFate.Story.Renderer.HTML
 import HabitOfFate.Story.Renderer.XML
 
-runEvent ∷ WriterTransaction Event
+runEvent ∷ TransactionProgram Event
 runEvent = do
   account ← get
   let (event, new_account) = runState runAccount account
   put new_account
   pure event
 
-runGame ∷ WriterTransaction TransactionResult
+runGame ∷ TransactionProgram TransactionResult
 runGame = do
   event ← runEvent
   let rendered_event
@@ -65,14 +64,14 @@ runGame = do
 
 handleMarkHabitApi ∷ Environment → ScottyM ()
 handleMarkHabitApi environment =
-  Scotty.post "/api/mark" <<< apiWriter environment $ do
+  Scotty.post "/api/mark" <<< apiTransaction environment $ do
     marks ← getBodyJSON
 
     let markHabits ∷
           Getter HabitsToMark [UUID] →
           Getter Habit Scale →
           Lens' Account Double →
-          WriterTransaction Double
+          TransactionProgram Double
         markHabits uuids_getter scale_getter value_lens = do
           old_value ← use value_lens
           increment ∷ Double ←
@@ -94,7 +93,7 @@ handleMarkHabitWeb environment = do
   Scotty.post "/mark/failure/:habit_id" $ markHabit "failed"(importance_ . to scaleFactor) failures_
  where
   markHabit ∷ String → Getter Habit Double → Lens' Credits Double → ActionM ()
-  markHabit status habit_scale_getter_ credits_lens_ = webWriter environment $ do
+  markHabit status habit_scale_getter_ credits_lens_ = webTransaction environment $ do
     habits ← use habits_
     habit_id ← getParam "habit_id"
     log [i|Marking #{habit_id} as #{status}.|]
@@ -109,12 +108,12 @@ handleMarkHabitWeb environment = do
 
 handleRunApi ∷ Environment → ScottyM ()
 handleRunApi environment =
-  Scotty.post "/api/run" <<< apiWriter environment $ do
+  Scotty.post "/api/run" <<< apiTransaction environment $ do
     runEvent >>= (renderEventToXMLText >>> lazyTextResult ok200 >>> pure)
 
 handleRunWeb ∷ Environment → ScottyM ()
 handleRunWeb environment =
-  Scotty.post "/run" <<< webWriter environment $ runGame
+  Scotty.post "/run" <<< webTransaction environment $ runGame
 
 handler ∷ Environment → ScottyM ()
 handler environment = do

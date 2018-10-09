@@ -28,14 +28,13 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction
 import HabitOfFate.Story.Renderer.HTML
 
 handler ∷ Environment → ScottyM ()
 handler environment =
-  Scotty.get "/status" <<< webReader environment $
-    ask
+  Scotty.get "/status" <<< webTransaction environment $
+    get
     <&>
     (
       getAccountStatus

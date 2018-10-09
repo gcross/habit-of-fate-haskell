@@ -29,11 +29,10 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment =
-  Scotty.get "/api/credits" <<< apiReader environment $ do
+  Scotty.get "/api/credits" <<< apiTransaction environment $ do
     log "Requested credits."
-    view (stored_credits_) <&> jsonResult ok200
+    use (stored_credits_) <&> jsonResult ok200

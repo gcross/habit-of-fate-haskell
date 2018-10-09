@@ -87,9 +87,7 @@ library
                      , HabitOfFate.Server.Actions.Queries
                      , HabitOfFate.Server.Actions.Results
                      , HabitOfFate.Server.Common
-                     , HabitOfFate.Server.Transaction.Common
-                     , HabitOfFate.Server.Transaction.Reader
-                     , HabitOfFate.Server.Transaction.Writer
+                     , HabitOfFate.Server.Transaction
                      , HabitOfFate.Server.Requests.Api.DeleteHabit
                      , HabitOfFate.Server.Requests.Api.GetAllHabits
                      , HabitOfFate.Server.Requests.Api.GetCredits

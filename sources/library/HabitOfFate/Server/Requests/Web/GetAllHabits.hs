@@ -33,15 +33,14 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction
 import HabitOfFate.Story.Renderer.HTML
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.get "/" <<< webReader environment $ do
-    habit_list ← view (habits_ . habit_list_)
-    quest_status ← ask <&> getAccountStatus
+  Scotty.get "/" <<< webTransaction environment $ do
+    habit_list ← use (habits_ . habit_list_)
+    quest_status ← get <&> getAccountStatus
     renderPageResult "Habit of Fate - List of Habits" ["list"] ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "list" $ mconcat $

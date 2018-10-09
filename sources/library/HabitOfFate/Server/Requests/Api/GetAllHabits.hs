@@ -28,11 +28,10 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
+import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.get "/api/habits" <<< apiReader environment $ do
+  Scotty.get "/api/habits" <<< apiTransaction environment $ do
     log "Requested all habits."
-    view habits_ <&> jsonResult ok200
+    use habits_ <&> jsonResult ok200

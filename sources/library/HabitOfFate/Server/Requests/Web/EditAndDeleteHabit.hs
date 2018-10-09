@@ -39,9 +39,7 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Reader
-import HabitOfFate.Server.Transaction.Writer
+import HabitOfFate.Server.Transaction
 
 data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 
@@ -120,15 +118,15 @@ habitPage habit_id error_message deletion_mode habit =
 
 handleEditHabitGet ∷ Environment → ScottyM ()
 handleEditHabitGet environment = do
-  Scotty.get "/edit/:habit_id" <<< webReader environment $ do
+  Scotty.get "/edit/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web GET request for habit with id #{habit_id}.|]
-    maybe_habit ← view (habits_ . at habit_id)
+    maybe_habit ← use (habits_ . at habit_id)
     uncurry (habitPage habit_id "") $ case maybe_habit of
       Nothing → (NoDeletion, def)
       Just habit → (DeletionAvailable, habit)
 
-extractHabit ∷ WriterTransaction (Habit, Lazy.Text)
+extractHabit ∷ TransactionProgram (Habit, Lazy.Text)
 extractHabit = do
   habit_id ← getParam "habit_id"
   default_habit ← use (habits_ . at habit_id) <&> fromMaybe def
@@ -142,7 +140,7 @@ extractHabit = do
           then ("", "Name for the habit may not be empty.")
           else (pack value, "")
       )
-  let getScale ∷ Lazy.Text → Lens' Habit Scale → WriterTransaction (Scale, Lazy.Text)
+  let getScale ∷ Lazy.Text → Lens' Habit Scale → TransactionProgram (Scale, Lazy.Text)
       getScale param_name param_lens_ =
         getParamMaybe param_name
         <&>
@@ -177,7 +175,7 @@ extractHabit = do
 
 handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do
-  Scotty.post "/edit/:habit_id" <<< webWriter environment $ do
+  Scotty.post "/edit/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request for habit with id #{habit_id}.|]
     (extracted_habit, error_message) ← extractHabit
@@ -197,17 +195,17 @@ handleEditHabitPost environment = do
 
 handleDeleteHabitGet ∷ Environment → ScottyM ()
 handleDeleteHabitGet environment = do
-  Scotty.get "/delete/:habit_id" <<< webReader environment $ do
+  Scotty.get "/delete/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web GET request to delete habit with id #{habit_id}.|]
-    maybe_habit ← view (habits_ . at habit_id)
+    maybe_habit ← use (habits_ . at habit_id)
     case maybe_habit of
       Nothing → pure $ redirectsToResult temporaryRedirect307 "/"
       Just habit → habitPage habit_id "" DeletionAvailable habit
 
 handleDeleteHabitPost ∷ Environment → ScottyM ()
 handleDeleteHabitPost environment = do
-  Scotty.post "/delete/:habit_id" <<< webWriter environment $ do
+  Scotty.post "/delete/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request to delete habit with id #{habit_id}.|]
     confirm ∷ Int ← getParamMaybe "confirm" <&> fromMaybe 0

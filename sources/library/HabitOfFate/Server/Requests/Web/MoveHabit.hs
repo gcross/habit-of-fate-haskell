@@ -30,15 +30,14 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Writer
+import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
   Scotty.post "/move/:habit_id" action
   Scotty.post "/move/:habit_id/:new_index" action
  where
-  action = webWriter environment $ do
+  action = webTransaction environment $ do
     habit_id ← getParam "habit_id"
     new_index ← getParam "new_index" <&> (\n → n-1)
     log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]

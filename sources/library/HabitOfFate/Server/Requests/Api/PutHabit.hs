@@ -29,13 +29,12 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Transaction.Common
-import HabitOfFate.Server.Transaction.Writer
+import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.post "/api/habits/:habit_id" <<< apiWriter environment $ action
-  Scotty.put "/api/habits/:habit_id" <<< apiWriter environment $ action
+  Scotty.post "/api/habits/:habit_id" <<< apiTransaction environment $ action
+  Scotty.put "/api/habits/:habit_id" <<< apiTransaction environment $ action
  where
   action = do
     habit_id ← getParam "habit_id"
