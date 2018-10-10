@@ -38,6 +38,11 @@ import Control.Monad.Random (RandT, StdGen, evalRandT, newStdGen)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
 import qualified Data.ByteString.Lazy as LazyBS
 import qualified Data.Text.Lazy as Lazy
+import Data.Time.Clock (UTCTime)
+import qualified Data.Time.Clock as Clock
+import Data.Time.LocalTime (LocalTime)
+import Data.Time.Zones (utcToLocalTimeTZ)
+import Data.Time.Zones.All (tzByLabel)
 import Data.UUID (UUID)
 import Network.HTTP.Types.Status (Status(..), temporaryRedirect307)
 import Text.Blaze.Html5 (Html)
@@ -58,6 +63,7 @@ data TransactionInstruction α where
   GetParamsInstruction ∷ TransactionInstruction [Param]
   RaiseStatusInstruction ∷ Status → TransactionInstruction α
   LogInstruction ∷ String → TransactionInstruction ()
+  GetCurrentTimeInstruction ∷ TransactionInstruction UTCTime
 
 newtype TransactionProgram α = TransactionProgram
   { unwrapTransactionProgram ∷ Operational.Program TransactionInstruction α }
@@ -88,6 +94,15 @@ getBodyJSON = do
 
 getParams ∷ TransactionProgram [Param]
 getParams = wrapTransactionInstruction GetParamsInstruction
+
+getCurrentTime ∷ TransactionProgram UTCTime
+getCurrentTime = wrapTransactionInstruction GetCurrentTimeInstruction
+
+getCurrentTimeAsLocalTime ∷ TransactionProgram LocalTime
+getCurrentTimeAsLocalTime =
+  utcToLocalTimeTZ
+    <$> (tzByLabel <$> use timezone_)
+    <*> getCurrentTime
 
 getParam ∷ Parsable α ⇒ Lazy.Text → TransactionProgram α
 getParam param_name = do
@@ -127,6 +142,12 @@ raiseNoSuchHabit = raiseStatus 404 "Not found: No such habit"
 
 log ∷ String → TransactionProgram ()
 log = LogInstruction >>> wrapTransactionInstruction
+
+getLastSeenAsLocalTime ∷ TransactionProgram LocalTime
+getLastSeenAsLocalTime =
+  utcToLocalTimeTZ
+    <$> (tzByLabel <$> use timezone_)
+    <*> (use last_seen_)
 
 lookupHabit ∷ UUID → TransactionProgram Habit
 lookupHabit habit_id =
@@ -168,11 +189,13 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← Scotty.params
   body_ ← Scotty.body
+  current_time ← liftIO Clock.getCurrentTime
   let interpret ∷
         TransactionInstruction α →
         StateT (Account, Bool) (ExceptT Status (RandT StdGen (Writer (Seq String)))) α
       interpret (GetBodyInstruction) = pure body_
       interpret (GetParamsInstruction) = pure params_
+      interpret (GetCurrentTimeInstruction) = pure current_time
       interpret (RaiseStatusInstruction s) = throwError s
       interpret (LogInstruction message) =
         void ([i|[#{unwrapUsername username}]: #{message}|] |> singleton |> tell)
@@ -190,7 +213,7 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
     case error_or_result of
       Left status → pure (Right Nothing, status, logs, False)
       Right (result, (new_account, account_changed)) → do
-        when account_changed $ writeTVar account_tvar new_account
+        writeTVar account_tvar $ new_account { _last_seen_ = current_time }
         pure $ case result of
           RedirectsTo status href → (Left href, status, logs, account_changed)
           TransactionResult status content → (Right (Just content), status, logs, account_changed)

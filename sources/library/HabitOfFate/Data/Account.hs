@@ -33,6 +33,7 @@ import Control.Exception
 import Control.Monad.Random (StdGen, newStdGen, runRand, uniform)
 import Crypto.PasswordStore
 import Data.Aeson hiding ((.=))
+import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Zones.All (TZLabel(America__New_York))
 import Data.UUID (UUID)
 import Web.Scotty (Parsable)
@@ -69,6 +70,7 @@ data Account = Account
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
   ,   _rng_ ∷ StdGen
   ,   _timezone_ ∷ TZLabel
+  ,   _last_seen_ ∷ UTCTime
   } deriving (Read,Show)
 deriveJSON ''Account
 makeLenses ''Account
@@ -87,6 +89,7 @@ newAccount password =
     <*> pure Nothing
     <*> newStdGen
     <*> pure America__New_York
+    <*> getCurrentTime
 
 passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password account =

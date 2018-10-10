@@ -23,6 +23,9 @@ module HabitOfFate.Server.Requests.Web.GetAllHabits (handler) where
 
 import HabitOfFate.Prelude
 
+import Data.Time.Calendar (diffDays)
+import Data.Time.Format (defaultTimeLocale, formatTime)
+import Data.Time.LocalTime (localDay)
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
@@ -41,6 +44,8 @@ handler environment = do
   Scotty.get "/" <<< webTransaction environment $ do
     habit_list ← use (habits_ . habit_list_)
     quest_status ← get <&> getAccountStatus
+    current_time_as_local_time ← getLastSeenAsLocalTime
+    last_seen_as_local_time ← getLastSeenAsLocalTime
     renderPageResult "Habit of Fate - List of Habits" ["list"] ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "list" $ mconcat $
@@ -110,4 +115,13 @@ handler environment = do
 
       H.hr
 
-      H.a ! A.href "/timezone" $ H.toHtml ("Change Time Zone" ∷ Text)
+      H.hr
+
+      let format_string =
+            case localDay current_time_as_local_time `diffDays` localDay last_seen_as_local_time of
+              0 → "Last seen Today at %R %p.  "
+              1 → "Last seen Yesterday at %R %p.  "
+              _ → "Last seen Yesterday at %R %p.  "
+      H.toHtml $ formatTime defaultTimeLocale format_string last_seen_as_local_time
+
+      H.a ! A.href "/timezone" $ H.toHtml ("(Change Time Zone)" ∷ Text)
