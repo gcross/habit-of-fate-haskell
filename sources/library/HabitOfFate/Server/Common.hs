@@ -24,6 +24,7 @@ module HabitOfFate.Server.Common where
 
 import HabitOfFate.Prelude
 
+import Control.Concurrent.MVar (MVar)
 import Control.Concurrent.STM.TVar (TVar, readTVarIO)
 import Control.Concurrent.STM.TMVar (TMVar)
 import Data.Aeson (FromJSON(..), ToJSON(..))
@@ -49,7 +50,7 @@ newtype Cookie = Cookie Text deriving (Eq,FromJSON,Ord,Parsable,Read,Show,ToJSON
 
 data Environment = Environment
   { accounts_tvar ∷ TVar (Map Username (TVar Account))
-  , accounts_changed_flag ∷ TVar Bool
+  , accounts_changed_signal ∷ MVar ()
   , cookies_tvar ∷ TVar (Map Cookie (UTCTime, Username))
   , expirations_tvar ∷ TVar (Set (UTCTime, Cookie))
   , test_mode ∷ Bool

@@ -30,6 +30,7 @@ module HabitOfFate.Server.Transaction where
 
 import HabitOfFate.Prelude
 
+import Control.Concurrent (tryPutMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import qualified Control.Monad.Operational as Operational
@@ -178,7 +179,7 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
       interpret GetAccountInstruction = get <&> fst
       interpret (PutAccountInstruction new_account) = put (new_account, True)
   initial_generator ← liftIO newStdGen
-  (redirect_or_content, status, logs) ← atomically >>> liftIO $ do
+  (redirect_or_content, status, logs, account_changed) ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs) =
           Operational.interpretWithMonad interpret program
@@ -187,14 +188,13 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
             |> flip evalRandT initial_generator
             |> runWriter
     case error_or_result of
-      Left status → pure (Right Nothing, status, logs)
+      Left status → pure (Right Nothing, status, logs, False)
       Right (result, (new_account, account_changed)) → do
-        when account_changed $ do
-          writeTVar account_tvar new_account
-          writeTVar accounts_changed_flag True
+        when account_changed $ writeTVar account_tvar new_account
         pure $ case result of
-          RedirectsTo status href → (Left href, status, logs)
-          TransactionResult status content → (Right (Just content), status, logs)
+          RedirectsTo status href → (Left href, status, logs, account_changed)
+          TransactionResult status content → (Right (Just content), status, logs, account_changed)
+  when account_changed $ liftIO $ void $ tryPutMVar accounts_changed_signal ()
   traverse_ logIO logs
   case redirect_or_content of
     Left href →

@@ -31,6 +31,7 @@ module Main where
 
 import HabitOfFate.Prelude hiding (elements, text)
 
+import Control.Concurrent.MVar (newEmptyMVar, tryTakeMVar)
 import Control.Concurrent.STM.TVar (newTVarIO, readTVarIO)
 import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
@@ -99,7 +100,7 @@ instance Arbitrary Referrent where
 withApplication' action =
   (makeAppRunningInTestMode
     <$> newTVarIO mempty
-    <*> newTVarIO False
+    <*> newEmptyMVar
   )
   >>=
   flip withApplication action
@@ -108,7 +109,7 @@ withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp action =
   (makeAppRunningInTestMode
     <$> newTVarIO mempty
-    <*> newTVarIO False
+    <*> newEmptyMVar
   )
   >>=
   flip withApplication action
@@ -474,17 +475,17 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
-                accounts_changed_flag ← newTVarIO False
+                accounts_changed_signal ← newEmptyMVar
                 (makeAppRunningInTestMode
                   <$> newTVarIO mempty
-                  <*> pure accounts_changed_flag
+                  <*> pure accounts_changed_signal
                  ) >>=
                   flip withApplication (
                     \port → do
                       session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
                       flip runSessionT session_info $ createHabit test_habit_id test_habit
                   )
-                readTVarIO accounts_changed_flag >>= assertBool "Write was not requested."
+                tryTakeMVar accounts_changed_signal >>= (@?= Just ())
             ]
         ----------------------------------------------------------------------------
         , testGroup "markHabits"

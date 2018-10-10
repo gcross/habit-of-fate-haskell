@@ -105,8 +105,8 @@ cleanCookies Environment{..} = forever $ do
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
-makeAppWithTestMode ∷ Bool → TVar (Map Username (TVar Account)) → TVar Bool → IO Application
-makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
+makeAppWithTestMode ∷ Bool → TVar (Map Username (TVar Account)) → MVar () → IO Application
+makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
   liftIO $ hSetBuffering stderr LineBuffering
 
   logIO "Starting server..."
@@ -156,8 +156,8 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_flag = do
       logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
       Scotty.next
 
-makeApp ∷ TVar (Map Username (TVar Account)) → TVar Bool → IO Application
+makeApp ∷ TVar (Map Username (TVar Account)) → MVar () → IO Application
 makeApp = makeAppWithTestMode False
 
-makeAppRunningInTestMode ∷ TVar (Map Username (TVar Account)) → TVar Bool → IO Application
+makeAppRunningInTestMode ∷ TVar (Map Username (TVar Account)) → MVar () → IO Application
 makeAppRunningInTestMode = makeAppWithTestMode True

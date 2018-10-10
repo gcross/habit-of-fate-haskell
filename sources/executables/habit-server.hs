@@ -26,9 +26,9 @@ module Main where
 import HabitOfFate.Prelude
 
 import Control.Concurrent (forkFinally, forkIO)
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
-import Control.Concurrent.STM (atomically, retry)
-import Control.Concurrent.STM.TVar (TVar, newTVar, newTVarIO, readTVar, swapTVar)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TVar (TVar, newTVar, readTVar)
 import Control.Exception (throwIO)
 import qualified Data.ByteString as BS
 import Data.Text.IO
@@ -55,13 +55,11 @@ exitFailureWithMessage message = do
   putStrLn message
   exitFailure
 
-writeDataOnChange ∷ String → TVar (Map Username (TVar Account)) → TVar Bool → IO α
-writeDataOnChange data_path accounts_tvar changed_flag = forever $
-  (atomically $
-    swapTVar changed_flag False
-    >>=
-    bool retry (readTVar accounts_tvar >>= traverse readTVar)
-  )
+writeDataOnChange ∷ String → TVar (Map Username (TVar Account)) → MVar () → IO α
+writeDataOnChange data_path accounts_tvar changed_signal = forever $
+  takeMVar changed_signal
+  >>
+  (atomically $ readTVar accounts_tvar >>= traverse readTVar)
   >>=
   encodeFile data_path
   >>
@@ -113,9 +111,9 @@ main = do
       )
     >>=
     (\accounts → atomically $ traverse newTVar accounts >>= newTVar)
-  accounts_changed_flag ← newTVarIO False
-  forkIO $ writeDataOnChange data_path accounts_tvar accounts_changed_flag
-  app ← makeApp accounts_tvar accounts_changed_flag
+  accounts_changed_signal ← newEmptyMVar
+  forkIO $ writeDataOnChange data_path accounts_tvar accounts_changed_signal
+  app ← makeApp accounts_tvar accounts_changed_signal
   done_mvar ← newEmptyMVar
 
   void $
