@@ -18,7 +18,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (handler) where
@@ -36,6 +38,7 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
+import HabitOfFate.Logging
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 import HabitOfFate.Story
@@ -65,45 +68,32 @@ runGame = do
 handleMarkHabitApi ∷ Environment → ScottyM ()
 handleMarkHabitApi environment =
   Scotty.post "/api/mark" <<< apiTransaction environment $ do
-    marks ← getBodyJSON
-
-    let markHabits ∷
-          Getter HabitsToMark [UUID] →
-          Getter Habit Scale →
-          Lens' Account Double →
-          TransactionProgram Double
-        markHabits uuids_getter scale_getter value_lens = do
-          old_value ← use value_lens
-          increment ∷ Double ←
-            marks
-              |> (^. uuids_getter)
-              |> mapM (lookupHabit >>> fmap ((^. scale_getter) >>> scaleFactor))
-              |> fmap sum
-          value_lens <.= old_value + increment
-
-    log [i|Marking #{marks ^. succeeded_} successes and #{marks ^. failed_} failures.|]
-    (Credits
-        <$> (Successes <$> markHabits succeeded_ difficulty_ (stored_credits_ . successes_))
-        <*> (Failures  <$> markHabits failed_    importance_ (stored_credits_ . failures_ ))
-      ) <&> jsonResult ok200
+    HabitsToMark{..} ← getBodyJSON
+    log [i|Marking #{succeeded} successes and #{failed} failures.|]
+    old_account ← get
+    case markHabits (map (SuccessResult,) succeeded ⊕ map (FailureResult,) failed) old_account of
+      Left habit_id → raiseStatus 400 $ "No such habit: " ⊕ show habit_id
+      Right new_account → do
+        put new_account
+        pure $ jsonResult ok200 $ new_account ^. stored_credits_
 
 handleMarkHabitWeb ∷ Environment → ScottyM ()
 handleMarkHabitWeb environment = do
-  Scotty.post "/mark/success/:habit_id" $ markHabit "succeeded" (difficulty_ . to scaleFactor) successes_
-  Scotty.post "/mark/failure/:habit_id" $ markHabit "failed"(importance_ . to scaleFactor) failures_
+  Scotty.post "/mark/success/:habit_id" $ mark SuccessResult
+  Scotty.post "/mark/failure/:habit_id" $ mark FailureResult
  where
-  markHabit ∷ String → Getter Habit Double → Lens' Credits Double → ActionM ()
-  markHabit status habit_scale_getter_ credits_lens_ = webTransaction environment $ do
-    habits ← use habits_
+  mark ∷ SuccessOrFailureResult → ActionM ()
+  mark result = webTransaction environment $ do
     habit_id ← getParam "habit_id"
-    log [i|Marking #{habit_id} as #{status}.|]
-    case habits ^. at habit_id of
-      Nothing →
+    log [i|Marking #{habit_id} as #{result}.|]
+    old_account ← get
+    case markHabit result habit_id old_account of
+      Left exc →
         renderTopOnlyPageResult "Habit of Fate - Marking a Habit" [] notFound404 >>> pure $ do
-          H.h1 "Habit Not Found"
-          H.p $ H.toHtml [i|"Habit #{habit_id} was not found.|]
-      Just habit → do
-        stored_credits_ . credits_lens_ += habit ^. habit_scale_getter_
+          H.h1 "Error Marking Habit"
+          H.p $ H.toHtml [i|"Error marking habit #{habit_id}: #{exc}.|]
+      Right new_account → do
+        put new_account
         runGame
 
 handleRunApi ∷ Environment → ScottyM ()

@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -30,11 +31,13 @@ module HabitOfFate.Data.Account where
 import HabitOfFate.Prelude
 
 import Control.Exception
+import Control.Monad.Catch (MonadThrow(throwM))
 import Control.Monad.Random (StdGen, newStdGen, runRand, uniform)
 import Crypto.PasswordStore
 import Data.Aeson hiding ((.=))
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Zones.All (TZLabel(America__New_York))
+import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Web.Scotty (Parsable)
 
@@ -190,12 +193,40 @@ runAccount = do
 
           runCurrentQuest run current_quest_state
 
+data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
+
+creditLensForResult ∷ SuccessOrFailureResult → Lens' Credits Double
+creditLensForResult SuccessResult = successes_
+creditLensForResult FailureResult = failures_
+
+scaleLensForResult ∷ SuccessOrFailureResult → Lens' Habit Scale
+scaleLensForResult SuccessResult = difficulty_
+scaleLensForResult FailureResult = importance_
+
+data MarkException =
+  HabitToMarkDoesNotExistException UUID
+ deriving (Show, Typeable)
+
+instance Exception MarkException where
+
+markHabit ∷ MonadThrow m ⇒ SuccessOrFailureResult → UUID → Account → m Account
+markHabit result habit_id account =
+  maybe
+    (throwM $ HabitToMarkDoesNotExistException habit_id)
+    (\habit → pure $ (account &
+      stored_credits_ . creditLensForResult result +~
+        (scaleFactor $ habit ^. scaleLensForResult result)
+    ))
+    (account ^. habits_ . at habit_id)
+
+markHabits ∷ MonadThrow m ⇒ [(SuccessOrFailureResult, UUID)] → Account → m Account
+markHabits marks account = foldM (markHabit |> uncurry |> flip) account marks
+
 data HabitsToMark = HabitsToMark
-  { _succeeded_ ∷ [UUID]
-  , _failed_ ∷ [UUID]
+  { succeeded ∷ [UUID]
+  , failed ∷ [UUID]
   } deriving (Eq, Ord, Read, Show)
 deriveJSON ''HabitsToMark
-makeLenses ''HabitsToMark
 
 newtype Username = Username { unwrapUsername ∷ Text } deriving
   ( Eq
