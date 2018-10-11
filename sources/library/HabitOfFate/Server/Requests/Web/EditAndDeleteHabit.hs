@@ -71,11 +71,10 @@ habitPage habit_id error_message deletion_mode habit =
                 ! A.required "true"
                 ! A.id (name ⊕ "_input")
                 $ flip foldMap scales $ \scale →
-                    let addSelectedFlag
-                          | habit ^. value_lens == scale = (! A.selected "selected")
-                          | otherwise = identity
-                        unselected_option = H.option ! A.value (scale |> show |> H.toValue)
-                    in addSelectedFlag unselected_option $ H.toHtml (displayScale scale)
+                    (H.option
+                      ! A.value (scale |> show |> H.toValue)
+                      & if habit ^. value_lens == scale then (! A.selected "selected") else identity
+                     )$ H.toHtml (displayScale scale)
 
         generateScaleEntry "difficulty" "Difficulty:" difficulty_
         generateScaleEntry "importance" "Importance:" importance_
