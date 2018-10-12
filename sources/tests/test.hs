@@ -121,8 +121,8 @@ apiTestCase test_name action =
   |> serverTestCase test_name
 
 test_habit, test_habit_2 ∷ Habit
-test_habit = Habit "name" (Difficulty Low) (Importance Medium)
-test_habit_2 = Habit "test" (Difficulty Medium) (Importance VeryHigh)
+test_habit = Habit "name" (Difficulty Low) (Importance Medium) Indefinite
+test_habit_2 = Habit "test" (Difficulty Medium) (Importance VeryHigh) Indefinite
 
 test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
@@ -208,6 +208,7 @@ createHabitViaWeb habit_id habit = void $
     [ ("name", habit ^. name_ . re utf8)
     , ("importance", habit ^. importance_ . to (show >>> BS8.pack))
     , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
+    , ("frequency", habit ^. frequency_ . to (show >>> BS8.pack))
     ]
 
 convertLazyBStoString ∷ LazyByteString → String
@@ -241,12 +242,31 @@ extractSelect name tags =
       attr "value" $ "select" @: ["name" @= name] // "option" @: ["selected" @= "selected"]
     )
 
+extractRadio ∷ Read α ⇒ String → Tags → IO α
+extractRadio name tags =
+  maybe
+    (assertFailure $ name ⊕ " not found")
+    (
+      convertLazyBStoString
+      >>>
+      (\text_value →
+        either
+          (printf "Error parsing %s (value = \"%s\"): %s" name text_value >>> assertFailure)
+          pure
+          (readEither text_value)
+      )
+    )
+    (flip scrape tags $
+      attr "value" $ "input" @: ["type" @= "radio", "name" @= name, "checked" @= "checked"]
+    )
+
 extractHabit ∷ Tags → IO Habit
 extractHabit tags =
   Habit
     <$> extractTextInput "name" tags
     <*> (Difficulty <$> extractSelect "difficulty" tags)
     <*> (Importance <$> extractSelect "importance" tags)
+    <*> extractRadio "frequency" tags
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------

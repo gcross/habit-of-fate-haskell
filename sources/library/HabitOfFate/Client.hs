@@ -181,6 +181,7 @@ main_menu =
         <$> (pack <$> prompt readNonEmpty "What is the name of the habit?")
         <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
         <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
+        <*> promptWithDefault readMaybe Indefinite ("Frequency " ⊕ frequency_options)
       void $ putHabit habit_id habit
       "Habit ID is " ⊕ show habit_id |> putStrLn |> liftIO
     ,interaction 'e' "Edit a habit." $ do
@@ -196,6 +197,7 @@ main_menu =
                promptWithDefault readNonEmpty (old_habit ^. name_ . to unpack) "What is the name of the habit?")
         <*> (Difficulty <$> promptWithDefault readMaybe Medium ("Difficulty " ⊕ scale_options))
         <*> (Importance <$> promptWithDefault readMaybe Medium ("Importance " ⊕ scale_options))
+        <*> promptWithDefault readMaybe Indefinite ("Frequency " ⊕ frequency_options)
       void $ putHabit habit_id habit
     ,interaction 'f' "Mark habits as failed." $
        prompt parseUUIDs "Which habits failed?" >>= (markHabits [] >>> void)
@@ -216,6 +218,7 @@ main_menu =
   ]
   where
     scale_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
+    frequency_options = " [" ⊕ ointercalate ", " (map show [minBound..maxBound ∷ Scale]) ⊕ "]"
 
     printHabits = do
       habits_to_display ← getHabits <&> view habit_list_

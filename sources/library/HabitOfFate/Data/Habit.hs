@@ -159,10 +159,17 @@ scaleFactor Medium = 1
 scaleFactor High = 2
 scaleFactor VeryHigh = 4
 
+data Frequency = Indefinite | Once deriving (Eq, Read, Show, Ord)
+deriveJSON ''Frequency
+
+instance Default Frequency where
+  def = Indefinite
+
 data Habit = Habit
   { _name_ ∷ Text
   , _difficulty_ ∷ Difficulty
   , _importance_ ∷ Importance
+  , _frequency_ ∷ Frequency
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
@@ -179,8 +186,11 @@ importance_ =
     (_importance_ >>> unwrapImportance)
     (\old new_scale → old { _importance_ = Importance new_scale })
 
+frequency_ ∷ Lens' Habit Frequency
+frequency_ = lens _frequency_ (\old new_frequency → old { _frequency_ = new_frequency })
+
 instance Default Habit where
-  def = Habit "" (Difficulty def) (Importance def)
+  def = Habit "" (Difficulty def) (Importance def) def
 
 data Habits = Habits
   { _habit_map_ ∷ HashMap UUID Habit

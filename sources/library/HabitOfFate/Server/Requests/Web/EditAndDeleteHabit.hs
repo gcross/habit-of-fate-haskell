@@ -49,7 +49,7 @@ habitPage habit_id error_message deletion_mode habit =
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
         -- Name
-        H.div ! A.class_ "label" ! A.id "name_label" $ H.toHtml ("Name:" ∷ Text)
+        H.div ! A.class_ "label" $ H.toHtml ("Name:" ∷ Text)
         H.div $
           H.input
             ! A.type_ "text"
@@ -64,7 +64,6 @@ habitPage habit_id error_message deletion_mode habit =
             generateScaleEntry name label value_lens = do
               H.div
                 ! A.class_ "label"
-                ! A.id (name ⊕ "_label")
                 $ H.toHtml label
               H.select
                 ! A.name name
@@ -77,6 +76,22 @@ habitPage habit_id error_message deletion_mode habit =
 
         generateScaleEntry "difficulty" "Difficulty:" difficulty_
         generateScaleEntry "importance" "Importance:" importance_
+
+        H.toHtml ("Frequency:" ∷ Text)
+
+        H.div ! A.id ("frequency_input") $ do
+          H.input
+            ! A.type_ "radio"
+            ! A.name "frequency"
+            ! A.value "Indefinite"
+            & if habit ^. frequency_ == Indefinite then (! A.checked "checked") else identity
+          H.toHtml ("Indefinite" ∷ Text)
+          H.input
+            ! A.type_ "radio"
+            ! A.name "frequency"
+            ! A.value "Once"
+            & if habit ^. frequency_ == Once then (! A.checked "checked") else identity
+          H.toHtml ("Once" ∷ Text)
 
       H.hr
 
@@ -161,13 +176,25 @@ extractHabit = do
         | difficulty_value == None && importance_value == None =
             "Either the difficulty or the importance must not be None."
         | otherwise = ""
+  (frequency_value, frequency_error) ←
+    getParamMaybe "frequency"
+    <&>
+    maybe
+      (default_habit ^. frequency_, "No value for the frequency was present.")
+      (\value →
+        case value of
+          "Indefinite" → (Indefinite, "")
+          "Once" → (Once, "")
+          other → (Indefinite, "Frequency must be Indefinite or Once, not " ⊕ value)
+      )
   pure
-    ( Habit name_value (Difficulty difficulty_value) (Importance importance_value)
+    ( Habit name_value (Difficulty difficulty_value) (Importance importance_value) frequency_value
     , find (onull >>> not) >>> fromMaybe "" $
        [ name_error
        , difficulty_error
        , importance_error
        , irrelevant_error
+       , frequency_error
        ]
     )
 
