@@ -35,6 +35,7 @@ import Control.Concurrent.MVar (newEmptyMVar, tryTakeMVar)
 import Control.Concurrent.STM.TVar (newTVarIO, readTVarIO)
 import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Lazy as LazyBS
 import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
 import Data.Data.Lens (uniplate)
 import Data.IORef
@@ -56,6 +57,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Text.HTML.DOM (sinkDoc)
+import Text.HTML.Scalpel hiding (text)
+import Text.HTML.TagSoup (Tag, parseTags)
 import Text.Parsec (many, runParser)
 import Text.XML (documentRoot, parseText)
 import Text.XML.Lens
@@ -224,64 +227,66 @@ createHabitViaWeb habit_id habit = void $
     , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
     ]
 
-extractElement ∷ Name → Text → Element → IO Element
-extractElement id_kind id_value element = do
+requestDocumentTags ∷
+  ByteString →
+  (Request → Request) →
+  ReaderT Int (StateT CookieJar IO) (Response LazyBS.ByteString, [Tag LazyBS.ByteString])
+requestDocumentTags path customizeRequest = do
+  port ← ask
+  old_cookie_jar ← get
+  current_time ← liftIO getCurrentTime
+  let request_without_cookies =
+        defaultRequest
+        |> setRequestSecure False
+        |> setRequestHost "localhost"
+        |> setRequestPort port
+        |> setRequestPath path
+        |> (\x → x {redirectCount = 0})
+        |> customizeRequest
+      (cookie_header, new_cookie_jar) =
+        computeCookieString request old_cookie_jar current_time True
+      request = addRequestHeader "Cookie" cookie_header request_without_cookies
+  response ← liftIO $ httpLBS request
+  let (updated_cookie_jar, response_without_cookie) =
+        updateCookieJar response request current_time new_cookie_jar
+  put updated_cookie_jar
+  pure (response_without_cookie, parseTags $ responseBody response)
+
+convertLazyBStoString ∷ LazyBS.ByteString → String
+convertLazyBStoString = decodeUtf8 >>> Lazy.toStrict >>> unpack
+
+assertFailureLazyBS ∷ LazyBS.ByteString → IO α
+assertFailureLazyBS = convertLazyBStoString >>> assertFailure
+
+extractTextInputFromTags ∷ String → [Tag LazyBS.ByteString] → IO Text
+extractTextInputFromTags name tags =
   maybe
-    ("error locating " ⊕ nameLocalName id_kind ⊕ " " ⊕ id_value |> unpack |> assertFailure)
-    pure
-    (element ^? entire . attributeIs id_kind id_value)
+    (assertFailure $ name ⊕ " not found")
+    (decodeUtf8 >>> Lazy.toStrict >>> pure)
+    (flip scrape tags $ attr "value" $ "input" @: ["name" @= "name"])
 
-extractInputValue ∷ Name → Text → Element → IO Text
-extractInputValue id_kind id_value element = do
-  (extractElement id_kind id_value element <&> (^. attribute "value"))
-  >>=
+extractScaleFromTags ∷ String → [Tag LazyBS.ByteString] → IO Scale
+extractScaleFromTags name tags =
   maybe
-    ("no value for input control " ⊕ nameLocalName id_kind ⊕ " " ⊕ id_value |> unpack |> assertFailure)
-    pure
+    (assertFailure $ name ⊕ " not found")
+    (
+      convertLazyBStoString
+      >>>
+      readEither
+      >>>
+      either (("Error parsing difficulty: " ⊕) >>> assertFailure) pure
+    )
+    (flip scrape tags $
+      attr "value" $ "select" @: ["name" @= name]
+        // "option" @: ["selected" @= "selected"]
+    )
 
-extractSelectValue ∷ Name → Text → Element → IO Text
-extractSelectValue id_kind id_value element = do
-  (
-    extractElement id_kind id_value element
-    <&>
-    (^. uniplate . attributeIs "selected" "selected" . attribute "value")
-   )
-  >>=
-  maybe
-    ("no value for select control in " ⊕ (nameLocalName id_kind) ⊕ " " ⊕ id_value |> unpack |> assertFailure)
-    pure
-
-extractTextValue ∷ Name → Text → Element → IO Text
-extractTextValue id_kind id_value element =
-  extractElement id_kind id_value element <&> ((^.. text) >>> Text.concat)
-
-fail_ ∷ Text → IO α
-fail_ message = message |> unpack |> assertFailure
-
-extractScaleValue ∷ Text → Element → IO Scale
-extractScaleValue id_value element = do
-  value ← extractSelectValue "name" id_value element
-  case parseParam (Lazy.fromStrict value) of
-    Left conversion_message →
-      fail_ $ "error converting " ⊕ id_value ⊕ ": " ⊕ (Lazy.toStrict conversion_message)
-    Right scale_value → pure scale_value
-
-checkErrorMessage ∷ Text → Element → IO ()
-checkErrorMessage id_value element = do
-  error_message_element ← extractElement "id" id_value element
-  case Text.concat (error_message_element ^.. text) of
-    "" → pure ()
-    error_message →
-      fail_ $ "error message " ⊕ id_value ⊕ ": " ⊕ error_message
-
-readHabitIn ∷ MonadIO m ⇒ Document → m Habit
-readHabitIn doc = liftIO $ do
-  let root = documentRoot doc
-  checkErrorMessage "error_message" root
+extractHabit ∷ [Tag LazyBS.ByteString] → IO Habit
+extractHabit tags =
   Habit
-    <$> extractInputValue "name" "name" root
-    <*> (Difficulty <$> extractScaleValue "difficulty" root)
-    <*> (Importance <$> extractScaleValue "importance" root)
+    <$> extractTextInputFromTags "name" tags
+    <*> (Difficulty <$> extractScaleFromTags "difficulty" tags)
+    <*> (Importance <$> extractScaleFromTags "importance" tags)
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
@@ -562,12 +567,12 @@ main = defaultMain $ testGroup "All Tests"
             [ webTestCase "Open the habit edit page for an existing habit." $ do
                 _ ← createTestAccount "username" "password"
                 createHabitViaWeb test_habit_id_2 test_habit_2
-                (response, doc) ←
-                  requestDocument
+                (response, tags) ←
+                  requestDocumentTags
                     ("/edit/" ⊕ (test_habit_id_2 |> show |> (^. packedChars))) $ setRequestMethod "GET"
-                liftIO $ responseStatus response @?= ok200
-                habit ← readHabitIn doc
-                liftIO $ habit @?= test_habit_2
+                liftIO $ do
+                  responseStatus response @?= ok200
+                  extractHabit tags >>= (@?= test_habit_2)
             ]
         ]
         ------------------------------------------------------------------------

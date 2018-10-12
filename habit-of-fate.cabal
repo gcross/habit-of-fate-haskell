@@ -191,8 +191,10 @@ test-suite test
                      , parsec
                      , QuickCheck
                      , quickcheck-text
+                     , scalpel
                      , scotty
                      , stm
+                     , tagsoup
                      , tasty
                      , tasty-hunit
                      , tasty-quickcheck

@@ -69,7 +69,6 @@ habitPage habit_id error_message deletion_mode habit =
               H.select
                 ! A.name name
                 ! A.required "true"
-                ! A.id (name ⊕ "_input")
                 $ flip foldMap scales $ \scale →
                     (H.option
                       ! A.value (scale |> show |> H.toValue)
