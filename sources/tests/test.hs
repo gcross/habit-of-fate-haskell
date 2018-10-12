@@ -52,6 +52,7 @@ import Network.HTTP.Simple
 import Network.HTTP.Types.Status (found302, ok200)
 import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
+import Text.Printf
 import Test.QuickCheck
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -222,28 +223,30 @@ extractTextInput name tags =
     (decodeUtf8 >>> Lazy.toStrict >>> pure)
     (flip scrape tags $ attr "value" $ "input" @: ["name" @= "name"])
 
-extractScale ∷ String → Tags → IO Scale
-extractScale name tags =
+extractSelect ∷ Read α ⇒ String → Tags → IO α
+extractSelect name tags =
   maybe
     (assertFailure $ name ⊕ " not found")
     (
       convertLazyBStoString
       >>>
-      readEither
-      >>>
-      either (("Error parsing difficulty: " ⊕) >>> assertFailure) pure
+      (\text_value →
+        either
+          (printf "Error parsing %s (value = \"%s\"): %s" name text_value >>> assertFailure)
+          pure
+          (readEither text_value)
+      )
     )
     (flip scrape tags $
-      attr "value" $ "select" @: ["name" @= name]
-        // "option" @: ["selected" @= "selected"]
+      attr "value" $ "select" @: ["name" @= name] // "option" @: ["selected" @= "selected"]
     )
 
 extractHabit ∷ Tags → IO Habit
 extractHabit tags =
   Habit
     <$> extractTextInput "name" tags
-    <*> (Difficulty <$> extractScale "difficulty" tags)
-    <*> (Importance <$> extractScale "importance" tags)
+    <*> (Difficulty <$> extractSelect "difficulty" tags)
+    <*> (Importance <$> extractSelect "importance" tags)
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
