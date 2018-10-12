@@ -57,23 +57,10 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Text.HTML.DOM (sinkDoc)
-import Text.HTML.Scalpel hiding (text)
+import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
 import Text.Parsec (many, runParser)
 import Text.XML (documentRoot, parseText)
-import Text.XML.Lens
-  ( Document
-  , Element
-  , Name(nameLocalName)
-  , (./)
-  , attribute
-  , attributeIs
-  , elementAttributes
-  , entire
-  , named
-  , root
-  , text
-  )
 import Web.Scotty (parseParam)
 
 import HabitOfFate.API
@@ -82,6 +69,9 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Server
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
+
+type LazyByteString = LazyBS.ByteString
+type Tags = [Tag LazyByteString]
 
 instance Arbitrary SubstitutionData where
   arbitrary =
@@ -152,86 +142,8 @@ webTestCase test_name runTest =
 requestDocument ∷
   ByteString →
   (Request → Request) →
-  ReaderT Int (StateT CookieJar IO) (Response (), Document)
+  ReaderT Int (StateT CookieJar IO) (Response LazyByteString, Tags)
 requestDocument path customizeRequest = do
-  port ← ask
-  old_cookie_jar ← get
-  current_time ← liftIO getCurrentTime
-  let request_without_cookies =
-        defaultRequest
-        |> setRequestSecure False
-        |> setRequestHost "localhost"
-        |> setRequestPort port
-        |> setRequestPath path
-        |> (\x → x {redirectCount = 0})
-        |> customizeRequest
-      (cookie_header, new_cookie_jar) =
-        computeCookieString request old_cookie_jar current_time True
-      request = addRequestHeader "Cookie" cookie_header request_without_cookies
-  (response, doc) ← liftIO $ httpSink request (\response → (response,) <$> sinkDoc)
-  let (updated_cookie_jar, response_without_cookie) =
-        updateCookieJar response request current_time new_cookie_jar
-  put updated_cookie_jar
-  return (response_without_cookie, doc)
-
-assertRedirectsTo ∷ MonadIO m ⇒ Response α → ByteString → m ()
-assertRedirectsTo response expected_location = liftIO $
-  getResponseHeader "Location" response @?= [expected_location]
-
-assertPageTitleEquals ∷ MonadIO m ⇒ Document → Text → m ()
-assertPageTitleEquals doc expected_page_title = liftIO $
-  doc ^? root ./ named "head" ./ named "title" . text
-    @?= Just expected_page_title
-
-assertTextIs :: MonadIO m ⇒ Document → Text → Text → m ()
-assertTextIs doc element_id expected_text = liftIO $
-  (
-    findOf
-      (cosmosOf uniplate)
-      (elementAttributes >>> lookup "id" >>> (== Just element_id))
-      (doc ^. root)
-    |> fmap (^. text)
-  )
-  @?= Just expected_text
-
-createTestAccount ∷
-  ByteString →
-  ByteString →
-  ReaderT Int (StateT CookieJar IO) (Response (), Document)
-createTestAccount username password =
-  requestDocument "/create" $
-    setRequestBodyURLEncoded
-      [ ("username",username)
-      , ("password1",password)
-      , ("password2",password)
-      ]
-
-loginTestAccount ∷
-  ByteString →
-  ByteString →
-  ReaderT Int (StateT CookieJar IO) (Response (), Document)
-loginTestAccount username password =
-  requestDocument "/login" $
-    setRequestBodyURLEncoded
-      [ ("username",username)
-      , ("password",password)
-      ]
-
-createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar IO) ()
-createHabitViaWeb habit_id habit = void $
-  requestDocument ("/edit/" ⊕ BS8.pack (show habit_id))
-  $
-  setRequestBodyURLEncoded
-    [ ("name", habit ^. name_ . re utf8)
-    , ("importance", habit ^. importance_ . to (show >>> BS8.pack))
-    , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
-    ]
-
-requestDocumentTags ∷
-  ByteString →
-  (Request → Request) →
-  ReaderT Int (StateT CookieJar IO) (Response LazyBS.ByteString, [Tag LazyBS.ByteString])
-requestDocumentTags path customizeRequest = do
   port ← ask
   old_cookie_jar ← get
   current_time ← liftIO getCurrentTime
@@ -252,21 +164,66 @@ requestDocumentTags path customizeRequest = do
   put updated_cookie_jar
   pure (response_without_cookie, parseTags $ responseBody response)
 
-convertLazyBStoString ∷ LazyBS.ByteString → String
+assertRedirectsTo ∷ MonadIO m ⇒ Response α → ByteString → m ()
+assertRedirectsTo response expected_location = liftIO $
+  getResponseHeader "Location" response @?= [expected_location]
+
+assertPageTitleEquals ∷ MonadIO m ⇒ Tags → LazyByteString → m ()
+assertPageTitleEquals tags expected_page_title = liftIO $
+  (flip scrape tags $ text $ ("head" ∷ Selector) // "title") @?= Just expected_page_title
+
+assertTextIs :: MonadIO m ⇒ Tags → String → LazyByteString → m ()
+assertTextIs tags element_id expected_text = liftIO $
+  (flip scrape tags $ text $ AnyTag @: ["id" @= element_id]) @?= Just expected_text
+
+createTestAccount ∷
+  ByteString →
+  ByteString →
+  ReaderT Int (StateT CookieJar IO) (Response LazyByteString, Tags)
+createTestAccount username password =
+  requestDocument "/create" $
+    setRequestBodyURLEncoded
+      [ ("username",username)
+      , ("password1",password)
+      , ("password2",password)
+      ]
+
+loginTestAccount ∷
+  ByteString →
+  ByteString →
+  ReaderT Int (StateT CookieJar IO) (Response LazyByteString, Tags)
+loginTestAccount username password =
+  requestDocument "/login" $
+    setRequestBodyURLEncoded
+      [ ("username",username)
+      , ("password",password)
+      ]
+
+createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar IO) ()
+createHabitViaWeb habit_id habit = void $
+  requestDocument ("/edit/" ⊕ BS8.pack (show habit_id))
+  $
+  setRequestBodyURLEncoded
+    [ ("name", habit ^. name_ . re utf8)
+    , ("importance", habit ^. importance_ . to (show >>> BS8.pack))
+    , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
+    ]
+
+convertLazyBStoString ∷ LazyByteString → String
 convertLazyBStoString = decodeUtf8 >>> Lazy.toStrict >>> unpack
 
-assertFailureLazyBS ∷ LazyBS.ByteString → IO α
+assertFailureLazyBS ∷ LazyByteString → IO α
 assertFailureLazyBS = convertLazyBStoString >>> assertFailure
 
-extractTextInputFromTags ∷ String → [Tag LazyBS.ByteString] → IO Text
-extractTextInputFromTags name tags =
+extractTextInput ∷ String → Tags → IO Text
+extractTextInput name tags =
   maybe
     (assertFailure $ name ⊕ " not found")
     (decodeUtf8 >>> Lazy.toStrict >>> pure)
     (flip scrape tags $ attr "value" $ "input" @: ["name" @= "name"])
 
-extractScaleFromTags ∷ String → [Tag LazyBS.ByteString] → IO Scale
-extractScaleFromTags name tags =
+extractScale ∷ String → Tags → IO Scale
+extractScale name tags =
   maybe
     (assertFailure $ name ⊕ " not found")
     (
@@ -281,12 +238,12 @@ extractScaleFromTags name tags =
         // "option" @: ["selected" @= "selected"]
     )
 
-extractHabit ∷ [Tag LazyBS.ByteString] → IO Habit
+extractHabit ∷ Tags → IO Habit
 extractHabit tags =
   Habit
-    <$> extractTextInputFromTags "name" tags
-    <*> (Difficulty <$> extractScaleFromTags "difficulty" tags)
-    <*> (Importance <$> extractScaleFromTags "importance" tags)
+    <$> extractTextInput "name" tags
+    <*> (Difficulty <$> extractScale "difficulty" tags)
+    <*> (Importance <$> extractScale "importance" tags)
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
@@ -526,40 +483,40 @@ main = defaultMain $ testGroup "All Tests"
         , testGroup "Login page" $
         ------------------------------------------------------------------------
             [ webTestCase "GET /login returns login page" $ do
-                (_, doc) ← requestDocument "/login" $ setRequestMethod "GET"
-                assertPageTitleEquals doc "Habit of Fate - Login"
+                (_, tags) ← requestDocument "/login" $ setRequestMethod "GET"
+                assertPageTitleEquals tags "Habit of Fate - Login"
             , webTestCase "POST /login for non-existent user returns login page withe error" $ do
-                (_, doc) ← requestDocument "/login" $
+                (_, tags) ← requestDocument "/login" $
                   setRequestBodyURLEncoded [("username","username"), ("password","password")]
-                assertPageTitleEquals doc "Habit of Fate - Login"
-                assertTextIs doc "error-message" "No account has that username."
+                assertPageTitleEquals tags "Habit of Fate - Login"
+                assertTextIs tags "error-message" "No account has that username."
             ]
         ------------------------------------------------------------------------
         , testGroup "Create page" $
         ------------------------------------------------------------------------
             [ webTestCase "GET /create returns account creation page" $ do
-                (_, doc) ← requestDocument "/create" $ setRequestMethod "GET"
-                assertPageTitleEquals doc "Habit of Fate - Account Creation"
+                (_, tags) ← requestDocument "/create" $ setRequestMethod "GET"
+                assertPageTitleEquals tags "Habit of Fate - Account Creation"
             , webTestCase "POST /create with fields filled in redirects to /" $ do
                 (response, _) ← createTestAccount "username" "password"
                 assertRedirectsTo response "/"
             , webTestCase "Creating an account causes / to load the habits page" $ do
                 _ ← createTestAccount "username" "password"
-                (_, doc) ← requestDocument "/" $ setRequestMethod "GET"
-                assertPageTitleEquals doc "Habit of Fate - List of Habits"
+                (_, tags) ← requestDocument "/" $ setRequestMethod "GET"
+                assertPageTitleEquals tags "Habit of Fate - List of Habits"
             , webTestCase "Creating an account then logging in redirects to /" $ do
                 _ ← createTestAccount "username" "password"
                 (response, _) ← loginTestAccount "username" "password"
                 assertRedirectsTo response "/"
             , webTestCase "Creating an account makes /load the list of habits" $ do
                 _ ← createTestAccount "username" "password"
-                (_, doc) ← requestDocument "/" $ setRequestMethod "GET"
-                assertPageTitleEquals doc "Habit of Fate - List of Habits"
+                (_, tags) ← requestDocument "/" $ setRequestMethod "GET"
+                assertPageTitleEquals tags "Habit of Fate - List of Habits"
             , webTestCase "Creating a conflicting account displays an error message" $ do
                 _ ← createTestAccount "username" "password"
-                (response, doc) ← createTestAccount "username" "password"
+                (response, tags) ← createTestAccount "username" "password"
                 liftIO $ getResponseStatusCode response @?= 409
-                assertTextIs doc "error-message" "This account already exists."
+                assertTextIs tags "error-message" "This account already exists."
             ]
         ------------------------------------------------------------------------
         , testGroup "Habits" $
@@ -568,7 +525,7 @@ main = defaultMain $ testGroup "All Tests"
                 _ ← createTestAccount "username" "password"
                 createHabitViaWeb test_habit_id_2 test_habit_2
                 (response, tags) ←
-                  requestDocumentTags
+                  requestDocument
                     ("/edit/" ⊕ (test_habit_id_2 |> show |> (^. packedChars))) $ setRequestMethod "GET"
                 liftIO $ do
                   responseStatus response @?= ok200
