@@ -185,7 +185,7 @@ extractHabit = do
         case value of
           "Indefinite" → (Indefinite, "")
           "Once" → (Once, "")
-          other → (Indefinite, "Frequency must be Indefinite or Once, not " ⊕ value)
+          _ → (Indefinite, "Frequency must be Indefinite or Once, not " ⊕ value)
       )
   pure
     ( Habit name_value (Difficulty difficulty_value) (Importance importance_value) frequency_value
