@@ -17,6 +17,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ParallelListComp #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Requests.Web.GetAllHabits (handler) where
@@ -26,6 +29,7 @@ import HabitOfFate.Prelude
 import Data.Time.Calendar (diffDays)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Time.LocalTime (localDay)
+import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
@@ -41,7 +45,7 @@ import HabitOfFate.Story.Renderer.HTML
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.get "/" <<< webTransaction environment $ do
+  Scotty.get "/habits" <<< webTransaction environment $ do
     habit_list ← use (habits_ . habit_list_)
     quest_status ← get <&> getAccountStatus
     current_time_as_local_time ← getLastSeenAsLocalTime
@@ -65,23 +69,23 @@ handler environment = do
                 edit_link =
                   H.a
                     ! A.class_ "name"
-                    ! A.href (H.toValue ("/edit/" ⊕ pack (show uuid) ∷ Text))
+                    ! A.href (H.toValue [i|/habits/#{UUID.toText uuid}|])
                     $ H.toHtml (habit ^. name_)
                 scaleFor scale_lens =
                   H.div ! A.class_ "scale" $ H.toHtml $ displayScale $ habit ^. scale_lens
-                markButtonFor name class_ scale_lens_
+                markButtonFor (name ∷ Text) class_ scale_lens_
                   | habit ^. scale_lens_ == None = mempty
                   | otherwise =
                       H.form
                         ! A.class_ "mark_button"
                         ! A.method "post"
-                        ! A.action (H.toValue $ "/mark/" ⊕ name ⊕ "/" ⊕ show uuid)
+                        ! A.action (H.toValue [i|/habits/#{UUID.toText uuid}/mark/#{name}|])
                         $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
                 move_form =
                   H.form
                     ! A.class_ "move"
                     ! A.method "post"
-                    ! A.action (H.toValue $ "/move/" ⊕ show uuid)
+                    ! A.action (H.toValue $ "/habits/" ⊕ show uuid ⊕ "/move")
                     $ do
                       H.input
                         ! A.type_ "submit"
@@ -106,7 +110,7 @@ handler environment = do
         ⊕
         replicate 3 (H.div mempty)
         ⊕
-        [ H.div ! A.class_ "new_link" $ H.a ! A.href "/new" $ H.toHtml ("New" ∷ Text)
+        [ H.div ! A.class_ "new_link" $ H.a ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
         ]
 
       H.hr

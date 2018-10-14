@@ -34,8 +34,8 @@ import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.post "/move/:habit_id" action
-  Scotty.post "/move/:habit_id/:new_index" action
+  Scotty.post "/habit/:habit_id/move" action
+  Scotty.post "/habit/:habit_id/move/:new_index" action
  where
   action = webTransaction environment $ do
     habit_id ← getParam "habit_id"
@@ -45,4 +45,4 @@ handler environment = do
     case moveHabitWithIdToIndex habit_id new_index old_habits of
       Left exc → log [i|Exception moving habit: #{exc}|]
       Right new_habits → habits_ .= new_habits
-    pure $ redirectsToResult temporaryRedirect307 "/"
+    pure $ redirectsToResult temporaryRedirect307 "/habits"

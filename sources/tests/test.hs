@@ -46,6 +46,7 @@ import Data.Text (strip)
 import Data.Text.Strict.Lens (utf8)
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID, fromText)
+import qualified Data.UUID as UUID
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
@@ -202,7 +203,7 @@ loginTestAccount username password =
 
 createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar IO) ()
 createHabitViaWeb habit_id habit = void $
-  requestDocument ("/edit/" ⊕ BS8.pack (show habit_id))
+  requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
   $
   setRequestBodyURLEncoded
     [ ("name", habit ^. name_ . re utf8)
@@ -498,8 +499,11 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
         [ testGroup "Redirections" $
         ------------------------------------------------------------------------
-            [ webTestCase "GET / redirects to /login" $ do
+            [ webTestCase "GET / redirects to /habits" $ do
                 (response, _) ← requestDocument "/" $ setRequestMethod "GET"
+                assertRedirectsTo response "/habits"
+            , webTestCase "GET /habits redirects to /login" $ do
+                (response, _) ← requestDocument "/habits" $ setRequestMethod "GET"
                 assertRedirectsTo response "/login"
             ]
         ------------------------------------------------------------------------
@@ -525,15 +529,15 @@ main = defaultMain $ testGroup "All Tests"
                 assertRedirectsTo response "/"
             , webTestCase "Creating an account causes / to load the habits page" $ do
                 _ ← createTestAccount "username" "password"
-                (_, tags) ← requestDocument "/" $ setRequestMethod "GET"
+                (_, tags) ← requestDocument "/habits" $ setRequestMethod "GET"
                 assertPageTitleEquals tags "Habit of Fate - List of Habits"
             , webTestCase "Creating an account then logging in redirects to /" $ do
                 _ ← createTestAccount "username" "password"
                 (response, _) ← loginTestAccount "username" "password"
                 assertRedirectsTo response "/"
-            , webTestCase "Creating an account makes /load the list of habits" $ do
+            , webTestCase "Creating an account makes /habits display the list of habits" $ do
                 _ ← createTestAccount "username" "password"
-                (_, tags) ← requestDocument "/" $ setRequestMethod "GET"
+                (_, tags) ← requestDocument "/habits" $ setRequestMethod "GET"
                 assertPageTitleEquals tags "Habit of Fate - List of Habits"
             , webTestCase "Creating a conflicting account displays an error message" $ do
                 _ ← createTestAccount "username" "password"
@@ -548,8 +552,8 @@ main = defaultMain $ testGroup "All Tests"
                 _ ← createTestAccount "username" "password"
                 createHabitViaWeb test_habit_id_2 test_habit_2
                 (response, tags) ←
-                  requestDocument
-                    ("/edit/" ⊕ (test_habit_id_2 |> show |> (^. packedChars))) $ setRequestMethod "GET"
+                  requestDocument ([i|/habits/#{UUID.toText test_habit_id_2}|] |> pack |> encodeUtf8) $
+                    setRequestMethod "GET"
                 liftIO $ do
                   responseStatus response @?= ok200
                   extractHabit tags >>= (@?= test_habit_2)

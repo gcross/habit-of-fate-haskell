@@ -151,10 +151,14 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
       , Web.MoveHabit.handler
       ]
 
+    forM_
+      [Scotty.get, Scotty.post]
+      (\method → method "/" $ setStatusAndRedirect movedPermanently301 "/habits")
+
     Scotty.notFound $ do
       r ← Scotty.request
-      logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}|]
-      Scotty.next
+      logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}.  Redirecting to /...|]
+      setStatusAndRedirect temporaryRedirect307 "/"
 
 makeApp ∷ TVar (Map Username (TVar Account)) → MVar () → IO Application
 makeApp = makeAppWithTestMode False

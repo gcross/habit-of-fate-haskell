@@ -27,8 +27,9 @@ module HabitOfFate.Server.Requests.Web.EditAndDeleteHabit (handler) where
 
 import HabitOfFate.Prelude
 
-import Data.UUID (UUID, toText)
 import qualified Data.Text.Lazy as Lazy
+import Data.UUID (UUID)
+import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
 import Text.Blaze.Html5 ((!), toHtml)
 import qualified Text.Blaze.Html5 as H
@@ -98,10 +99,10 @@ habitPage habit_id error_message deletion_mode habit =
       H.div ! A.id "error_message" $ H.toHtml error_message
 
       H.div ! A.class_ "submit" $ do
-        H.a ! A.class_ "sub" ! A.href "/" $ toHtml ("Cancel" ∷ Text)
+        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
         H.input
           ! A.class_ "sub"
-          ! A.formaction (H.toValue $ ("/edit/" ∷ Text) ⊕ toText habit_id)
+          ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}|])
           ! A.type_ "submit"
 
       case deletion_mode of
@@ -115,7 +116,7 @@ habitPage habit_id error_message deletion_mode habit =
               ! A.value "0"
             H.input
               ! A.type_ "submit"
-              ! A.formaction (H.toValue $ ("/delete/" ∷ Text) ⊕ toText habit_id)
+              ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}/delete|])
               ! A.value "Delete"
         ConfirmDeletion → do
           H.hr
@@ -126,12 +127,12 @@ habitPage habit_id error_message deletion_mode habit =
               ! A.value "1"
             H.input
               ! A.type_ "submit"
-              ! A.formaction (H.toValue $ ("/delete/" ∷ Text) ⊕ toText habit_id)
+              ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}/delete|])
               ! A.value "Confirm Delete?"
 
 handleEditHabitGet ∷ Environment → ScottyM ()
 handleEditHabitGet environment = do
-  Scotty.get "/edit/:habit_id" <<< webTransaction environment $ do
+  Scotty.get "/habits/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web GET request for habit with id #{habit_id}.|]
     maybe_habit ← use (habits_ . at habit_id)
@@ -200,7 +201,7 @@ extractHabit = do
 
 handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do
-  Scotty.post "/edit/:habit_id" <<< webTransaction environment $ do
+  Scotty.post "/habits/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request for habit with id #{habit_id}.|]
     (extracted_habit, error_message) ← extractHabit
@@ -208,7 +209,7 @@ handleEditHabitPost environment = do
       then do
         log [i|Updating habit #{habit_id} to #{extracted_habit}|]
         habits_ . at habit_id .= Just extracted_habit
-        pure $ redirectsToResult temporaryRedirect307 "/"
+        pure $ redirectsToResult temporaryRedirect307 "/habits"
       else do
         log [i|Failed to update habit #{habit_id}:|]
         log [i|    Error message: #{error_message}|]
@@ -220,17 +221,17 @@ handleEditHabitPost environment = do
 
 handleDeleteHabitGet ∷ Environment → ScottyM ()
 handleDeleteHabitGet environment = do
-  Scotty.get "/delete/:habit_id" <<< webTransaction environment $ do
+  Scotty.get "/habits/:habit_id/delete" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web GET request to delete habit with id #{habit_id}.|]
     maybe_habit ← use (habits_ . at habit_id)
     case maybe_habit of
-      Nothing → pure $ redirectsToResult temporaryRedirect307 "/"
+      Nothing → pure $ redirectsToResult temporaryRedirect307 "/habits"
       Just habit → habitPage habit_id "" DeletionAvailable habit
 
 handleDeleteHabitPost ∷ Environment → ScottyM ()
 handleDeleteHabitPost environment = do
-  Scotty.post "/delete/:habit_id" <<< webTransaction environment $ do
+  Scotty.post "/habits/:habit_id/delete" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request to delete habit with id #{habit_id}.|]
     confirm ∷ Int ← getParamMaybe "confirm" <&> fromMaybe 0
@@ -238,7 +239,7 @@ handleDeleteHabitPost environment = do
       then do
         log [i|Deleting habit #{habit_id}|]
         habits_ . at habit_id .= Nothing
-        pure $ redirectsToResult temporaryRedirect307 "/"
+        pure $ redirectsToResult temporaryRedirect307 "/habits"
       else do
         log [i|Confirming delete for habit #{habit_id}|]
         (extracted_habit, error_message) ← extractHabit
