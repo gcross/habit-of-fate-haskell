@@ -76,13 +76,13 @@ handler environment = do
                     $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
                 scaleFor scale_lens =
                   H.div ! A.class_ "scale" $ H.toHtml $ displayScale $ habit ^. scale_lens
-                markButtonFor (name ∷ Text) class_ scale_lens_
+                markButtonFor (habit_name ∷ Text) class_ scale_lens_
                   | habit ^. scale_lens_ == None = mempty
                   | otherwise =
                       H.form
                         ! A.class_ "mark_button"
                         ! A.method "post"
-                        ! A.action (H.toValue [i|/habits/#{UUID.toText uuid}/mark/#{name}|])
+                        ! A.action (H.toValue [i|/habits/#{UUID.toText uuid}/mark/#{habit_name}|])
                         $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
                 move_form =
                   H.form
