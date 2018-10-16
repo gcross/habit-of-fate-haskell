@@ -189,9 +189,7 @@ handler environment = do
           | (uuid, habit) ← habit_list
           ]
         ⊕
-        replicate 3 (H.div mempty)
-        ⊕
-        [ H.div ! A.class_ "new_link" $ H.a ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
+        [ H.div ! A.class_ "new_link new_habit" $ H.a ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
         ]
 
       H.hr

@@ -74,6 +74,10 @@
     grid-column: 2;
 }
 
+.new_habit {
+    grid-column: 4;
+}
+
 .new_link a {
     margin-bottom: auto;
     margin-top: auto;
