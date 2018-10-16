@@ -69,6 +69,7 @@ import HabitOfFate.API
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Server
+import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
 
@@ -566,14 +567,14 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
     [ testGroup "s"
     ----------------------------------------------------------------------------
-      [ testCase "just a substitution" $ olength [s|{test}|] @?= 1
+      [ testCase "just a substitution" $ olength ([s|{test}|] ∷ [SubEvent]) @?= 1
       , testCase "single story plain text" $
-          olength [s|line1|] @?= 1
+          olength ([s|line1|] ∷ [SubEvent]) @?= 1
       , testCase "2 stories: both non-empty" $
-          olength [s|line1
-                    =
-                    line2
-                   |] @?= 2
+          olength ([s|line1
+                     =
+                     line2
+                     |] ∷ [SubEvent]) @?= 2
       ]
     ]
   ------------------------------------------------------------------------------
