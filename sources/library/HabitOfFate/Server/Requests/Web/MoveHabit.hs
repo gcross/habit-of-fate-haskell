@@ -34,8 +34,8 @@ import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.post "/habit/:habit_id/move" action
-  Scotty.post "/habit/:habit_id/move/:new_index" action
+  Scotty.post "/habits/:habit_id/move" action
+  Scotty.post "/habits/:habit_id/move/:new_index" action
  where
   action = webTransaction environment $ do
     habit_id ← getParam "habit_id"
