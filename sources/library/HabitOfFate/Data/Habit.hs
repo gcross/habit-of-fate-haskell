@@ -167,6 +167,7 @@ data Habit = Habit
   , _difficulty_ ∷ Difficulty
   , _importance_ ∷ Importance
   , _frequency_ ∷ Frequency
+  , _group_membership_ ∷ Set UUID
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
@@ -186,5 +187,8 @@ importance_ =
 frequency_ ∷ Lens' Habit Frequency
 frequency_ = lens _frequency_ (\old new_frequency → old { _frequency_ = new_frequency })
 
+group_membership_ ∷ Lens' Habit (Set UUID)
+group_membership_ = lens _group_membership_ (\old new_group_membership → old { _group_membership_ = new_group_membership })
+
 instance Default Habit where
-  def = Habit "" (Difficulty def) (Importance def) def
+  def = Habit "" (Difficulty def) (Importance def) def mempty

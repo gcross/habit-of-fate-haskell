@@ -52,6 +52,9 @@ items_list_ = to $ \items@(ItemsSequence items_map items_seq) →
   | item_id ← toList items_seq
   ]
 
+items_values_ ∷ Show α ⇒ Getter (ItemsSequence α) [α]
+items_values_ = to ((^. items_list_) >>> map snd)
+
 instance Default (ItemsSequence α) where
   def = ItemsSequence mempty mempty
 

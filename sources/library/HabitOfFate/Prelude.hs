@@ -217,6 +217,7 @@ import Data.Sequences
   , repack
   , replicate
   , singleton
+  , stripPrefix
   , stripSuffix
   , take
   , takeWhile

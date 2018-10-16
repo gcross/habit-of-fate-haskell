@@ -70,11 +70,14 @@ import qualified HabitOfFate.Server.Requests.Shared.Logout as Shared.Logout
 import qualified HabitOfFate.Server.Requests.Shared.MarkHabitAndRun as Shared.MarkHabitAndRun
 
 import qualified HabitOfFate.Server.Requests.Web.ChangeTimeZone as Web.ChangeTimeZone
+import qualified HabitOfFate.Server.Requests.Web.EditAndDeleteGroup as Web.EditAndDeleteGroup
 import qualified HabitOfFate.Server.Requests.Web.EditAndDeleteHabit as Web.EditAndDeleteHabit
 import qualified HabitOfFate.Server.Requests.Web.GetAllHabits as Web.GetAllHabits
 import qualified HabitOfFate.Server.Requests.Web.GetFile as Web.GetFile
 import qualified HabitOfFate.Server.Requests.Web.GetQuestStatus as Web.GetQuestStatus
+import qualified HabitOfFate.Server.Requests.Web.MoveGroup as Web.MoveGroup
 import qualified HabitOfFate.Server.Requests.Web.MoveHabit as Web.MoveHabit
+import qualified HabitOfFate.Server.Requests.Web.NewGroup as Web.NewGroup
 import qualified HabitOfFate.Server.Requests.Web.NewHabit as Web.NewHabit
 
 --------------------------------------------------------------------------------
@@ -144,10 +147,13 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
       , Shared.MarkHabitAndRun.handler
 
       , Web.ChangeTimeZone.handler
+      , Web.NewGroup.handler
       , Web.NewHabit.handler -- MUST be before EditAndDeleteHabit or creating a new habit breaks
+      , Web.EditAndDeleteGroup.handler
       , Web.EditAndDeleteHabit.handler
       , Web.GetAllHabits.handler
       , Web.GetQuestStatus.handler
+      , Web.MoveGroup.handler
       , Web.MoveHabit.handler
       ]
 

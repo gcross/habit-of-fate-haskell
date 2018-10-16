@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -45,8 +46,8 @@ import HabitOfFate.Server.Transaction
 
 data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 
-habitPage ∷ Monad m ⇒ UUID → Lazy.Text → DeletionMode → Habit → m TransactionResult
-habitPage habit_id error_message deletion_mode habit =
+habitPage ∷ Monad m ⇒ UUID → Lazy.Text → DeletionMode → Habit → Groups → m TransactionResult
+habitPage habit_id error_message deletion_mode habit groups = do
   renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ok200 >>> pure $
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
@@ -81,7 +82,7 @@ habitPage habit_id error_message deletion_mode habit =
 
         H.toHtml ("Frequency:" ∷ Text)
 
-        H.div ! A.id ("frequency_input") $ do
+        H.div ! A.id "frequency_input" $ do
           H.input
             ! A.type_ "radio"
             ! A.name "frequency"
@@ -94,6 +95,17 @@ habitPage habit_id error_message deletion_mode habit =
             ! A.value "Once"
             & if habit ^. frequency_ == Once then (! A.checked "checked") else identity
           H.toHtml ("Once" ∷ Text)
+
+        H.toHtml ("Groups:" ∷ Text)
+
+        H.div ! A.id "group_input" $ do
+          forM_ (groups ^. items_list_) $ \(group_id, group_name) → do
+            H.input
+              ! A.type_ "checkbox"
+              ! A.name (H.toValue ("group" ∷ Text))
+              ! A.value (H.toValue $ UUID.toText group_id)
+              & if member group_id (habit ^. group_membership_) then (! A.checked "checked") else identity
+            H.toHtml group_name
 
       H.hr
 
@@ -137,12 +149,16 @@ handleEditHabitGet environment = do
     habit_id ← getParam "habit_id"
     log [i|Web GET request for habit with id #{habit_id}.|]
     maybe_habit ← use (habits_ . at habit_id)
-    uncurry (habitPage habit_id "") $ case maybe_habit of
-      Nothing → (NoDeletion, def)
-      Just habit → (DeletionAvailable, habit)
+    use groups_ >>=
+      (uncurry (habitPage habit_id "") $
+        case maybe_habit of
+          Nothing → (NoDeletion, def)
+          Just habit → (DeletionAvailable, habit)
+      )
 
 extractHabit ∷ TransactionProgram (Habit, Lazy.Text)
 extractHabit = do
+  group_ids ∷ Set UUID ← use groups_ <&> ((^. items_seq_) >>> toList >>> setFromList)
   habit_id ← getParam "habit_id"
   default_habit ← use (habits_ . at habit_id) <&> fromMaybe def
   (name_value, name_error) ←
@@ -189,14 +205,47 @@ extractHabit = do
           "Once" → (Once, "")
           _ → (Indefinite, "Frequency must be Indefinite or Once, not " ⊕ value)
       )
+  all_params ← getParams
+  log [i|PARAMS = #{show all_params}|]
+  (group_membership_error ∷ Lazy.Text, group_membership_value ∷ Set UUID) ←
+    getParams
+    <&>
+    (
+      mapMaybe (
+        \(key, value) →
+          case key of
+            "group" →
+              value
+              |> Lazy.toStrict
+              |> UUID.fromText
+              |> maybe
+                  (Just $ Left ("Group UUID has invalid format: " ⊕ value))
+                  (\group_id → Just $
+                     if member group_id group_ids
+                       then Right group_id
+                       else Left ("Group with UUID " ⊕ value ⊕ " does not exist.")
+                  )
+            _ → Nothing
+      )
+      >>>
+      partitionEithers
+      >>>
+      (\case { error_message:_ → error_message; _ → ""} *** setFromList)
+    )
   pure
-    ( Habit name_value (Difficulty difficulty_value) (Importance importance_value) frequency_value
+    ( Habit
+        name_value
+        (Difficulty difficulty_value)
+        (Importance importance_value)
+        frequency_value
+        group_membership_value
     , find (onull >>> not) >>> fromMaybe "" $
        [ name_error
        , difficulty_error
        , importance_error
        , irrelevant_error
        , frequency_error
+       , group_membership_error
        ]
     )
 
@@ -218,7 +267,7 @@ handleEditHabitPost environment = do
           use (habits_ . items_map_)
           <&>
           (member habit_id >>> bool NoDeletion DeletionAvailable)
-        habitPage habit_id error_message deletion_mode extracted_habit
+        use groups_ >>= habitPage habit_id error_message deletion_mode extracted_habit
 
 handleDeleteHabitGet ∷ Environment → ScottyM ()
 handleDeleteHabitGet environment = do
@@ -228,7 +277,7 @@ handleDeleteHabitGet environment = do
     maybe_habit ← use (habits_ . at habit_id)
     case maybe_habit of
       Nothing → pure $ redirectsToResult temporaryRedirect307 "/habits"
-      Just habit → habitPage habit_id "" DeletionAvailable habit
+      Just habit → use groups_ >>= habitPage habit_id "" DeletionAvailable habit
 
 handleDeleteHabitPost ∷ Environment → ScottyM ()
 handleDeleteHabitPost environment = do
@@ -244,7 +293,7 @@ handleDeleteHabitPost environment = do
       else do
         log [i|Confirming delete for habit #{habit_id}|]
         (extracted_habit, error_message) ← extractHabit
-        habitPage habit_id error_message ConfirmDeletion extracted_habit
+        use groups_ >>= habitPage habit_id error_message ConfirmDeletion extracted_habit
 
 handler ∷ Environment → ScottyM ()
 handler environment = do

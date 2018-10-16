@@ -1,3 +1,10 @@
+.groups {
+    display: grid;
+    font-size: 24;
+    grid-template-columns: 3em auto 25px 9em;
+    padding: 10px;
+}
+
 .list {
     display: grid;
     font-size: 24;
@@ -61,6 +68,10 @@
     align-content: center;
     display: flex;
     height: 50px;
+}
+
+.new_group {
+    grid-column: 2;
 }
 
 .new_link a {

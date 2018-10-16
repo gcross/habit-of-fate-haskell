@@ -19,6 +19,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -66,6 +67,9 @@ instance FromJSON TZLabel where
       Right timezone → pure timezone
   parseJSON _ = fail "Expected a string."
 
+type Group = Text
+type Groups = ItemsSequence Group
+
 data Account = Account
   {   _password_ ∷ Text
   ,   _habits_ ∷ ItemsSequence Habit
@@ -75,6 +79,7 @@ data Account = Account
   ,   _rng_ ∷ StdGen
   ,   _timezone_ ∷ TZLabel
   ,   _last_seen_ ∷ UTCTime
+  ,   _groups_ ∷ Groups
   } deriving (Read,Show)
 deriveJSON ''Account
 makeLenses ''Account
@@ -94,6 +99,7 @@ newAccount password =
     <*> newStdGen
     <*> pure America__New_York
     <*> getCurrentTime
+    <*> pure []
 
 passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password account =

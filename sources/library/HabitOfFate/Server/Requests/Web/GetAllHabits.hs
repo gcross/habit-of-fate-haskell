@@ -47,18 +47,95 @@ import HabitOfFate.Story.Renderer.HTML
 handler ∷ Environment → ScottyM ()
 handler environment = do
   Scotty.get "/habits" <<< webTransaction environment $ do
-    habit_list ← use (habits_ . items_list_)
+    groups ← use groups_
+    maybe_group_id ← getParamMaybe "group"
+    habit_list ←
+      use (habits_ . items_list_)
+      >>=
+      \habits →
+        case maybe_group_id of
+          Nothing → pure habits
+          Just group_id → do
+            log [i|Filtering habits with group #{group_id}...|]
+            pure $ filter (\(_, habit) → group_id `member` (habit ^. group_membership_)) habits
     quest_status ← get <&> getAccountStatus
     current_time_as_local_time ← getLastSeenAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
     renderPageResult "Habit of Fate - List of Habits" ["list"] ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
+      H.div ! A.class_ "groups" $ mconcat $
+        map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
+          [ ("position", "#")
+          , ("name", "Group Name")
+          , ("", ""∷Text)
+          , ("", ""∷Text)
+          ]
+        ⊕
+        [ H.div ! A.class_ "position" $ H.toHtml ("0." ∷ Text)
+        , H.div ! A.class_ "name_area" $
+            (if maybe_group_id == Nothing
+              then
+                identity
+              else
+                H.a ! A.class_ "name" ! (A.href $ "/habits")
+            ) $ H.toHtml ("All" ∷ Text)
+        , H.div $ H.toHtml ("" ∷ Text)
+        , H.div $ H.toHtml ("" ∷ Text)
+        ]
+        ⊕
+        concat
+          [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
+                position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
+                name_link =
+                  (
+                    H.div ! A.class_ "name_area"
+                    >>>
+                    if maybe_group_id == Just group_id
+                      then
+                        H.div ! A.class_ "name"
+                      else
+                        H.a ! A.class_ "name" ! (A.href $ "/habits?group=" ⊕ H.toValue (UUID.toText group_id))
+                  ) $ H.toHtml group_name
+                edit_button =
+                  H.a
+                    ! A.class_ "edit"
+                    ! A.href (H.toValue [i|/groups/#{UUID.toText group_id}|])
+                    $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
+                move_form =
+                  H.form
+                    ! A.class_ "move"
+                    ! A.method "post"
+                    ! A.action (H.toValue $ "/groups/" ⊕ show group_id ⊕ "/move")
+                    $ do
+                      H.input
+                        ! A.type_ "submit"
+                        ! A.value "Move To"
+                      H.input
+                        ! A.type_ "text"
+                        ! A.value (H.toValue n)
+                        ! A.name "new_index"
+                        ! A.class_ "new-index"
+            in map (\contents → H.div ! A.class_ evenodd $ contents)
+            [ position
+            , name_link
+            , edit_button
+            , move_form
+            ]
+          | n ← [1∷Int ..]
+          | (group_id, group_name) ← groups ^. items_list_
+          ]
+        ⊕
+        replicate 3 (H.div mempty)
+        ⊕
+        [ H.div ! A.class_ "new_link new_group" $ H.a ! A.href "/groups/new" $ H.toHtml ("New" ∷ Text)
+        ]
+
       H.div ! A.class_ "list" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
           [ ("mark_button", "I succeeded!")
           , ("mark_button", "I failed.")
           , ("position", "#")
-          , ("name", "Name")
+          , ("name", "Habit Name")
           , ("", ""∷Text)
           , ("scale", "Difficulty")
           , ("scale", "Importance")
