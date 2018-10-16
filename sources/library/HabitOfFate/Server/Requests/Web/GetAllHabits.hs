@@ -39,6 +39,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 import HabitOfFate.Story.Renderer.HTML
@@ -46,7 +47,7 @@ import HabitOfFate.Story.Renderer.HTML
 handler ∷ Environment → ScottyM ()
 handler environment = do
   Scotty.get "/habits" <<< webTransaction environment $ do
-    habit_list ← use (habits_ . habit_list_)
+    habit_list ← use (habits_ . items_list_)
     quest_status ← get <&> getAccountStatus
     current_time_as_local_time ← getLastSeenAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime

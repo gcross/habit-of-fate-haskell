@@ -28,7 +28,7 @@ import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
-import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
@@ -42,7 +42,7 @@ handler environment = do
     new_index ← getParam "new_index" <&> (\n → n-1)
     log [i|Web POST request to move habit with id #{habit_id} to index #{new_index}.|]
     old_habits ← use habits_
-    case moveHabitWithIdToIndex habit_id new_index old_habits of
+    case moveWithIdToIndex habit_id new_index old_habits of
       Left exc → log [i|Exception moving habit: #{exc}|]
       Right new_habits → habits_ .= new_habits
     pure $ redirectsToResult temporaryRedirect307 "/habits"

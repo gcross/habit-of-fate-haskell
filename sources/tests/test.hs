@@ -19,6 +19,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -68,6 +69,7 @@ import Web.Scotty (parseParam)
 import HabitOfFate.API
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
@@ -338,7 +340,7 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ------------------------------------------------------------------------
-            getHabits >>= (view habit_count_ >>> (@?= 0) >>> liftIO)
+            getHabits >>= (view items_count_ >>> (@?= 0) >>> liftIO)
         ------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ------------------------------------------------------------------------
@@ -359,7 +361,7 @@ main = defaultMain $ testGroup "All Tests"
                 getHabits
                   >>=
                   (
-                    (@?= Habits (singletonMap test_habit_id test_habit) (singleton test_habit_id))
+                    (@?= [(test_habit_id, test_habit)])
                     >>>
                     liftIO
                   )
@@ -371,7 +373,7 @@ main = defaultMain $ testGroup "All Tests"
                 getHabits
                   >>=
                   (
-                    (@?= Habits (singletonMap test_habit_id test_habit_2) (singleton test_habit_id))
+                    (@?= [(test_habit_id, test_habit_2)])
                     >>>
                     liftIO
                   )
@@ -387,12 +389,12 @@ main = defaultMain $ testGroup "All Tests"
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 deleteHabit test_habit_id >>= ((@?= HabitDeleted) >>> liftIO)
-                getHabits >>= (view habit_count_ >>> (@?= 0) >>> liftIO)
+                getHabits >>= (view items_count_ >>> (@?= 0) >>> liftIO)
             ]
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ----------------------------------------------------------------------------
-            getHabits >>= (view habit_count_ >>> (@?= 0) >>> liftIO)
+            getHabits >>= (view items_count_ >>> (@?= 0) >>> liftIO)
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ----------------------------------------------------------------------------
@@ -413,7 +415,7 @@ main = defaultMain $ testGroup "All Tests"
                 getHabits
                   >>=
                   (
-                    (@?= Habits (singletonMap test_habit_id test_habit) (singleton test_habit_id))
+                    (@?= [(test_habit_id, test_habit)])
                     >>>
                     liftIO
                   )
@@ -427,11 +429,7 @@ main = defaultMain $ testGroup "All Tests"
                   getHabits
                     >>=
                     (
-                      (@?=
-                        Habits
-                          (mapFromList [(test_habit_id, test_habit), (test_habit_id_2, test_habit_2)])
-                          (fromList [test_habit_id, test_habit_id_2])
-                      )
+                      (@?= [(test_habit_id, test_habit), (test_habit_id_2, test_habit_2)])
                       >>>
                       liftIO
                     )
@@ -443,11 +441,7 @@ main = defaultMain $ testGroup "All Tests"
                   getHabits
                     >>=
                     (
-                      (@?=
-                        Habits
-                          (mapFromList [(test_habit_id_2, test_habit_2), (test_habit_id, test_habit)])
-                          (fromList [test_habit_id_2, test_habit_id])
-                      )
+                      (@?= [(test_habit_id_2, test_habit_2), (test_habit_id, test_habit)])
                       >>>
                       liftIO
                     )

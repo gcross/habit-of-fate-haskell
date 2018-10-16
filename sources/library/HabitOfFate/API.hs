@@ -49,6 +49,7 @@ import Web.Cookie
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.XML
 
@@ -245,7 +246,7 @@ getHabit habit_id = do
     404 → pure Nothing
     code → throwM $ UnexpectedStatus [200,404] code
 
-getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Habits
+getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (ItemsSequence Habit)
 getHabits = do
   response ← requestForJSON GET "habits"
   case responseStatusCode response of

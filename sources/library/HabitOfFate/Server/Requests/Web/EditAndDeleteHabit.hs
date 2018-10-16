@@ -39,6 +39,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
@@ -214,7 +215,7 @@ handleEditHabitPost environment = do
         log [i|Failed to update habit #{habit_id}:|]
         log [i|    Error message: #{error_message}|]
         deletion_mode ←
-          use (habits_ . habit_map_)
+          use (habits_ . items_map_)
           <&>
           (member habit_id >>> bool NoDeletion DeletionAvailable)
         habitPage habit_id error_message deletion_mode extracted_habit

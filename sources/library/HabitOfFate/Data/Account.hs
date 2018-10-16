@@ -43,6 +43,7 @@ import Web.Scotty (Parsable)
 
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Quest
 import HabitOfFate.Quests
 import HabitOfFate.Story
@@ -67,7 +68,7 @@ instance FromJSON TZLabel where
 
 data Account = Account
   {   _password_ ∷ Text
-  ,   _habits_ ∷ Habits
+  ,   _habits_ ∷ ItemsSequence Habit
   ,   _stored_credits_ ∷ Credits
   ,   _awaited_credits_ ∷ Credits
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
