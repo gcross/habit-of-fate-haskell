@@ -58,6 +58,7 @@ handler environment = do
           , ("mark_button", "I failed.")
           , ("position", "#")
           , ("name", "Name")
+          , ("", ""∷Text)
           , ("scale", "Difficulty")
           , ("scale", "Importance")
           , ("", ""∷Text)
@@ -66,11 +67,12 @@ handler environment = do
         concat
           [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
                 position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
-                edit_link =
+                name = H.div ! A.class_ "name_area" $ H.div ! A.class_ "name" $ H.toHtml $ habit ^. name_
+                edit_button =
                   H.a
-                    ! A.class_ "name"
+                    ! A.class_ "edit"
                     ! A.href (H.toValue [i|/habits/#{UUID.toText uuid}|])
-                    $ H.toHtml (habit ^. name_)
+                    $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
                 scaleFor scale_lens =
                   H.div ! A.class_ "scale" $ H.toHtml $ displayScale $ habit ^. scale_lens
                 markButtonFor (name ∷ Text) class_ scale_lens_
@@ -99,7 +101,8 @@ handler environment = do
             [ markButtonFor "success" "good" difficulty_
             , markButtonFor "failure" "bad"  importance_
             , position
-            , edit_link
+            , name
+            , edit_button
             , scaleFor difficulty_
             , scaleFor importance_
             , move_form

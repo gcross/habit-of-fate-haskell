@@ -1,7 +1,7 @@
 .list {
     display: grid;
     font-size: 24;
-    grid-template-columns: 100px 100px 3em auto 100px 100px 9em;
+    grid-template-columns: 100px 100px 3em auto 25px 100px 100px 9em;
     padding: 10px;
 }
 
@@ -27,6 +27,11 @@
     margin-left: auto;
     margin-right: 10px;
     margin-top: auto;
+}
+
+.name_area {
+    display: flex;
+    flex-direction: down;
 }
 
 .name {
@@ -87,4 +92,8 @@
 
 .bad {
     background-image: url("/images/bad.svgz");
+}
+
+.edit {
+    margin: auto;
 }
