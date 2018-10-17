@@ -59,7 +59,9 @@ writeDataOnChange ∷ String → TVar (Map Username (TVar Account)) → MVar () 
 writeDataOnChange data_path accounts_tvar changed_signal = forever $
   takeMVar changed_signal
   >>
-  (atomically $ readTVar accounts_tvar >>= traverse readTVar)
+  (atomically $ readTVar accounts_tvar)
+  >>=
+  (traverse readTVar >>> atomically)
   >>=
   encodeFile data_path
   >>
