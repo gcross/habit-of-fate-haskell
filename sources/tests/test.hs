@@ -56,8 +56,8 @@ import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
 import Text.Printf
 import Test.QuickCheck
-import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty (TestTree, defaultMain, testGroup)
+import qualified Test.Tasty.HUnit as HUnit
 import Test.Tasty.QuickCheck
 import Text.HTML.DOM (sinkDoc)
 import Text.HTML.Scalpel
@@ -74,6 +74,21 @@ import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
+
+assertBool ∷ MonadIO m ⇒ String → Bool → m ()
+assertBool message = HUnit.assertBool message >>> liftIO
+
+assertFailure ∷ MonadIO m ⇒ String → m α
+assertFailure = HUnit.assertFailure >>> liftIO
+
+(@?=) ∷ (MonadIO m, Eq α, Show α) ⇒ α → α → m ()
+(@?=) x y = liftIO $ (HUnit.@?=) x y
+
+(@=?) ∷ (MonadIO m, Eq α, Show α) ⇒ α → α → m ()
+(@=?) x y = liftIO $ (HUnit.@=?) x y
+
+testCase ∷ String → IO () → TestTree
+testCase name = HUnit.testCase name
 
 type LazyByteString = LazyBS.ByteString
 type Tags = [Tag LazyByteString]
@@ -132,8 +147,8 @@ test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 
-createHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitCreated) >>> liftIO)
-replaceHabit habit_id habit = putHabit habit_id habit >>= ((@?= HabitReplaced) >>> liftIO)
+createHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitCreated)
+replaceHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitReplaced)
 
 webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
 webTestCase test_name runTest =
@@ -174,11 +189,11 @@ assertRedirectsTo response expected_location = liftIO $
   getResponseHeader "Location" response @?= [expected_location]
 
 assertPageTitleEquals ∷ MonadIO m ⇒ Tags → LazyByteString → m ()
-assertPageTitleEquals tags expected_page_title = liftIO $
+assertPageTitleEquals tags expected_page_title =
   (flip scrape tags $ text $ ("head" ∷ Selector) // "title") @?= Just expected_page_title
 
 assertTextIs :: MonadIO m ⇒ Tags → String → LazyByteString → m ()
-assertTextIs tags element_id expected_text = liftIO $
+assertTextIs tags element_id expected_text =
   (flip scrape tags $ text $ AnyTag @: ["id" @= element_id]) @?= Just expected_text
 
 createTestAccount ∷
@@ -218,17 +233,17 @@ createHabitViaWeb habit_id habit = void $
 convertLazyBStoString ∷ LazyByteString → String
 convertLazyBStoString = decodeUtf8 >>> Lazy.toStrict >>> unpack
 
-assertFailureLazyBS ∷ LazyByteString → IO α
+assertFailureLazyBS ∷ MonadIO m ⇒ LazyByteString → m α
 assertFailureLazyBS = convertLazyBStoString >>> assertFailure
 
-extractTextInput ∷ String → Tags → IO Text
+extractTextInput ∷ MonadIO m ⇒ String → Tags → m Text
 extractTextInput name tags =
   maybe
     (assertFailure $ name ⊕ " not found")
     (decodeUtf8 >>> Lazy.toStrict >>> pure)
     (flip scrape tags $ attr "value" $ "input" @: ["name" @= "name"])
 
-extractSelect ∷ Read α ⇒ String → Tags → IO α
+extractSelect ∷ (MonadIO m, Read α) ⇒ String → Tags → m α
 extractSelect name tags =
   maybe
     (assertFailure $ name ⊕ " not found")
@@ -246,7 +261,7 @@ extractSelect name tags =
       attr "value" $ "select" @: ["name" @= name] // "option" @: ["selected" @= "selected"]
     )
 
-extractRadio ∷ Read α ⇒ String → Tags → IO α
+extractRadio ∷ (MonadIO m, Read α) ⇒ String → Tags → m α
 extractRadio name tags =
   maybe
     (assertFailure $ name ⊕ " not found")
@@ -264,7 +279,7 @@ extractRadio name tags =
       attr "value" $ "input" @: ["type" @= "radio", "name" @= name, "checked" @= "checked"]
     )
 
-extractHabit ∷ Tags → IO Habit
+extractHabit ∷ MonadIO m ⇒ Tags → m Habit
 extractHabit tags =
   Habit
     <$> extractTextInput "name" tags
@@ -337,89 +352,69 @@ main = defaultMain $ testGroup "All Tests"
             try getHabits >>= \case
               Left (UnexpectedStatus _ 403) → pure ()
               Left e → throwM e
-              _ → liftIO $ assertFailure "No exception raised."
+              _ → assertFailure "No exception raised."
         ------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ------------------------------------------------------------------------
-            getHabits >>= (view items_count_ >>> (@?= 0) >>> liftIO)
+            getHabits >>= (view items_count_ >>> (@?= 0))
         ------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ------------------------------------------------------------------------
             getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
             >>=
-            ((@?= Nothing) >>> liftIO)
+            (@?= Nothing)
         ------------------------------------------------------------------------
         , testGroup "putHabit"
         ------------------------------------------------------------------------
             [ apiTestCase "Putting a habit and then fetching it returns the habit" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabit test_habit_id >>= ((@?= Just test_habit) >>> liftIO)
+                getHabit test_habit_id >>= (@?= Just test_habit)
             --------------------------------------------------------------------
             , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabits
-                  >>=
-                  (
-                    (@?= [(test_habit_id, test_habit)])
-                    >>>
-                    liftIO
-                  )
+                getHabits >>= (@?= [(test_habit_id, test_habit)])
             --------------------------------------------------------------------
             , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 replaceHabit test_habit_id test_habit_2
-                getHabits
-                  >>=
-                  (
-                    (@?= [(test_habit_id, test_habit_2)])
-                    >>>
-                    liftIO
-                  )
+                getHabits >>= (@?= [(test_habit_id, test_habit_2)])
             ]
         ------------------------------------------------------------------------
         , testGroup "deleteHabit"
         ------------------------------------------------------------------------
             [ apiTestCase "Deleting a non-existing habit returns NoHabitToDelete" $ do
             --------------------------------------------------------------------
-                deleteHabit test_habit_id >>= ((@?= NoHabitToDelete) >>> liftIO)
+                deleteHabit test_habit_id >>= (@?= NoHabitToDelete)
             --------------------------------------------------------------------
             , apiTestCase "Putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                deleteHabit test_habit_id >>= ((@?= HabitDeleted) >>> liftIO)
-                getHabits >>= (view items_count_ >>> (@?= 0) >>> liftIO)
+                deleteHabit test_habit_id >>= (@?= HabitDeleted)
+                getHabits >>= (view items_count_ >>> (@?= 0))
             ]
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching all habits from a new account returns an empty array" $
         ----------------------------------------------------------------------------
-            getHabits >>= (view items_count_ >>> (@?= 0) >>> liftIO)
+            getHabits >>= (view items_count_ >>> (@?= 0))
         ----------------------------------------------------------------------------
         , apiTestCase "Fetching a habit when none exist returns Nothing" $
         ----------------------------------------------------------------------------
-            getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506")
-            >>=
-            ((@?= Nothing) >>> liftIO)
+            getHabit (read "730e9d4a-7d72-4a28-a19b-0bcc621c1506") >>= (@?= Nothing)
         ----------------------------------------------------------------------------
         , testGroup "putHabit"
         ----------------------------------------------------------------------------
             [ apiTestCase "Putting a habit and then fetching it returns the habit" $ do
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabit test_habit_id >>= ((@?= Just test_habit) >>> liftIO)
+                getHabit test_habit_id >>= (@?= Just test_habit)
             ------------------------------------------------------------------------
             , apiTestCase "Putting a habit causes fetching all habits to return a singleton map" $ do
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                getHabits
-                  >>=
-                  (
-                    (@?= [(test_habit_id, test_habit)])
-                    >>>
-                    liftIO
-                  )
+                getHabits >>= (@?= [(test_habit_id, test_habit)])
             ------------------------------------------------------------------------
             , testGroup "Putting two habits causes them to be returned in order of creation" $
             ------------------------------------------------------------------------
@@ -427,25 +422,13 @@ main = defaultMain $ testGroup "All Tests"
               ------------------------------------------------------------------------
                   createHabit test_habit_id test_habit
                   createHabit test_habit_id_2 test_habit_2
-                  getHabits
-                    >>=
-                    (
-                      (@?= [(test_habit_id, test_habit), (test_habit_id_2, test_habit_2)])
-                      >>>
-                      liftIO
-                    )
+                  getHabits >>= (@?= [(test_habit_id, test_habit), (test_habit_id_2, test_habit_2)])
               ------------------------------------------------------------------------
               , apiTestCase "Test habit 2 followed by test habit 1" $ do
               ------------------------------------------------------------------------
                   createHabit test_habit_id_2 test_habit_2
                   createHabit test_habit_id test_habit
-                  getHabits
-                    >>=
-                    (
-                      (@?= [(test_habit_id_2, test_habit_2), (test_habit_id, test_habit)])
-                      >>>
-                      liftIO
-                    )
+                  getHabits >>= (@?= [(test_habit_id_2, test_habit_2), (test_habit_id, test_habit)])
               ]
             ------------------------------------------------------------------------
             , apiTestCase "Putting a habit, replacing it, and then fetching all habits returns the replaced habit" $ do
@@ -453,7 +436,7 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits [test_habit_id] [test_habit_id_2]
-                getCredits >>= ((@?= Credits (Successes 0.5) (Failures 4)) >>> liftIO)
+                getCredits >>= (@?= Credits (Successes 0.5) (Failures 4))
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
@@ -478,16 +461,14 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id_2 test_habit_2
                 markHabits [test_habit_id] [test_habit_id_2]
                 credits @(Credits actual_successes actual_failures) ← getCredits
-                credits |> show |> putStrLn |> liftIO
                 let expected_successes = test_habit ^. difficulty_ |> scaleFactor
                     expected_failures = test_habit_2 ^. importance_ |> scaleFactor
-                liftIO $ do
-                  assertBool
-                    ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
-                    (abs ((credits ^. successes_) - expected_successes) < 0.1)
-                  assertBool
-                    ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
-                    (abs ((credits ^. failures_ ) - expected_failures ) < 0.1)
+                assertBool
+                  ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
+                  (abs ((credits ^. successes_) - expected_successes) < 0.1)
+                assertBool
+                  ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
+                  (abs ((credits ^. failures_ ) - expected_failures ) < 0.1)
             ]
         ]
     ----------------------------------------------------------------------------
@@ -538,7 +519,7 @@ main = defaultMain $ testGroup "All Tests"
             , webTestCase "Creating a conflicting account displays an error message" $ do
                 _ ← createTestAccount "username" "password"
                 (response, tags) ← createTestAccount "username" "password"
-                liftIO $ getResponseStatusCode response @?= 409
+                getResponseStatusCode response @?= 409
                 assertTextIs tags "error-message" "This account already exists."
             ]
         ------------------------------------------------------------------------
@@ -550,9 +531,8 @@ main = defaultMain $ testGroup "All Tests"
                 (response, tags) ←
                   requestDocument ([i|/habits/#{UUID.toText test_habit_id_2}|] |> pack |> encodeUtf8) $
                     setRequestMethod "GET"
-                liftIO $ do
-                  responseStatus response @?= ok200
-                  extractHabit tags >>= (@?= test_habit_2)
+                responseStatus response @?= ok200
+                extractHabit tags >>= (@?= test_habit_2)
             ]
         ]
         ------------------------------------------------------------------------
