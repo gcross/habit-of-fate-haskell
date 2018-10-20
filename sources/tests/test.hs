@@ -70,6 +70,7 @@ import HabitOfFate.API
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Repeated
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
@@ -290,7 +291,35 @@ extractHabit tags =
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
-  [ testGroup "HabitOfFate.Server"
+  [ testGroup "HabitOfFate.Repeated"
+  ------------------------------------------------------------------------------
+    [ testGroup "nextDailyAfterPresent"
+    ----------------------------------------------------------------------------
+      [ testProperty "deadline after today" $
+          \(Positive period) (Positive today) (Positive offset) →
+            let deadline = today + offset
+            in ioProperty $ nextDailyAfterPresent period today deadline @?= deadline
+      , testProperty "deadline before today" $
+          \(Positive period) (Positive deadline) (Positive offset) →
+            let today = deadline + offset
+            in ioProperty $ nextDailyAfterPresent period today deadline @?= (((((today - deadline) `div` period) + 1) * period) + deadline)
+      , testCase "manual test case" $ nextDailyAfterPresent 2 4 3 @?= 5
+      ]
+    ----------------------------------------------------------------------------
+    , testGroup "previousDailies"
+    ----------------------------------------------------------------------------
+      [ testProperty "deadline greater than next deadline" $
+          \(Positive period) (Positive next_deadline) (NonNegative offset) →
+            let deadline = next_deadline + offset
+            in ioProperty $ previousDailies period deadline next_deadline @?= []
+      , testCase "period = 2, deadline = 5, next_deadline = 10" $
+          previousDailies 2 5 10 @?= [8, 6]
+      , testCase "period = 1, deadline = 10, next_deadline = 20" $
+          previousDailies 1 10 20 @?= [19, 18..13]
+      ]
+    ----------------------------------------------------------------------------
+    ]
+  , testGroup "HabitOfFate.Server"
   ------------------------------------------------------------------------------
     [ testGroup "JSON API" $
     ----------------------------------------------------------------------------

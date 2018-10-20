@@ -79,6 +79,7 @@ library
                      , HabitOfFate.Data.Credits
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Data.ItemsSequence
+                     , HabitOfFate.Data.Repeated
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
