@@ -23,18 +23,20 @@ import HabitOfFate.Prelude
 
 import Data.List (unfoldr)
 
-nextDailyAfterPresent ∷ Int → Int → Int → Int
+nextDailyAfterPresent ∷ Rational → Rational → Rational → Rational
 nextDailyAfterPresent period today deadline
   | deadline > today = deadline
   | otherwise =
       deadline
       |> (today -)
-      |> (`div` period)
+      |> (/ period)
+      |> (floor ∷ Rational → Int)
+      |> toRational
       |> (+ 1)
       |> (* period)
       |> (+ deadline)
 
-previousDailies ∷ Int → Int → Int → [Int]
+previousDailies ∷ Rational → Rational → Rational → [Rational]
 previousDailies period deadline next_deadline =
   unfoldr
     (

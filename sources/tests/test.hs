@@ -302,8 +302,10 @@ main = defaultMain $ testGroup "All Tests"
       , testProperty "deadline before today" $
           \(Positive period) (Positive deadline) (Positive offset) →
             let today = deadline + offset
-            in ioProperty $ nextDailyAfterPresent period today deadline @?= (((((today - deadline) `div` period) + 1) * period) + deadline)
-      , testCase "manual test case" $ nextDailyAfterPresent 2 4 3 @?= 5
+            in ioProperty $ nextDailyAfterPresent period today deadline @?=
+                 ((toRational ((floor ((today - deadline) / period) ∷ Integer) + 1) * period) + deadline)
+      , testCase "period = 2, today = 4, deadline = 3" $ nextDailyAfterPresent 2 4 3 @?= 5
+      , testCase "period = 1, today = 4.2, deadline = 3.6" $ nextDailyAfterPresent 1 4.2 3.6 @?= 4.6
       ]
     ----------------------------------------------------------------------------
     , testGroup "previousDailies"
