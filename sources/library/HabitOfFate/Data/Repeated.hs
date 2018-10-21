@@ -22,6 +22,8 @@ module HabitOfFate.Data.Repeated where
 import HabitOfFate.Prelude
 
 import Data.List (unfoldr)
+import Data.Time.Calendar (Day(ModifiedJulianDay))
+import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDayFraction)
 
 nextDailyAfterPresent ∷ Rational → Rational → Rational → Rational
 nextDailyAfterPresent period today deadline
@@ -51,3 +53,24 @@ previousDailies period deadline next_deadline =
     next_deadline
  where
   cutoff = deadline `max` (next_deadline - 7)
+
+localTimeToRational ∷ LocalTime → Rational
+localTimeToRational (LocalTime (ModifiedJulianDay day) time_of_day) =
+  toRational day + timeOfDayToDayFraction time_of_day
+
+rationalToLocalTime ∷ Rational → LocalTime
+rationalToLocalTime =
+  properFraction
+  >>>
+  \(day, time_of_day) → LocalTime (ModifiedJulianDay day) (dayFractionToTimeOfDay time_of_day)
+
+nextAndPreviousDailies ∷ Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
+nextAndPreviousDailies period today deadline =
+  ( rationalToLocalTime next_deadline_rational
+  , map rationalToLocalTime $ previousDailies period_rational deadline_rational next_deadline_rational
+  )
+ where
+  period_rational = toRational period
+  deadline_rational = localTimeToRational deadline
+  today_rational = localTimeToRational today
+  next_deadline_rational = nextDailyAfterPresent period_rational today_rational deadline_rational

@@ -41,7 +41,9 @@ import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
 import Data.Data.Lens (uniplate)
 import Data.IORef
 import Data.List (cycle, isPrefixOf)
+import Data.Time.Calendar
 import Data.Time.Clock
+import Data.Time.LocalTime
 import qualified Data.Text as Text
 import Data.Text (strip)
 import Data.Text.Strict.Lens (utf8)
@@ -75,6 +77,12 @@ import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
+
+mkDay ∷ Int → Day
+mkDay = toInteger >>> ModifiedJulianDay
+
+mkLocal ∷ Int → TimeOfDay → LocalTime
+mkLocal = mkDay >>> LocalTime
 
 assertBool ∷ MonadIO m ⇒ String → Bool → m ()
 assertBool message = HUnit.assertBool message >>> liftIO
@@ -320,6 +328,18 @@ main = defaultMain $ testGroup "All Tests"
           previousDailies 1 10 20 @?= [19, 18..13]
       ]
     ----------------------------------------------------------------------------
+    , testGroup "nextAndPreviousDailies"
+    ----------------------------------------------------------------------------
+      [ testCase "period = 1, deadline = LocalTime 10 @ 2pm, today = 20 @ 4am" $
+          let t_2pm = TimeOfDay 14 0 0
+              t_4am = TimeOfDay 4 0 0
+              today = mkLocal 20 t_4am
+              deadline = mkLocal 10 t_2pm
+              next_deadline = mkLocal 20 t_2pm
+          in do
+              nextAndPreviousDailies 1 today deadline @?=
+                (next_deadline, map (flip mkLocal t_2pm) [19, 18..13])
+      ]
     ]
   , testGroup "HabitOfFate.Server"
   ------------------------------------------------------------------------------
