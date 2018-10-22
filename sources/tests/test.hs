@@ -378,6 +378,17 @@ main = defaultMain $ testGroup "All Tests"
           , (today_day_of_week, today_day_of_week_name) ←
               zip [1..] day_of_week_names
           ]
+      , testGroup "Two day starting on earlier day cases"
+          [ let days_to_repeat = def & repeat_day_1_lens_ .~ True
+                                     & repeat_day_2_lens_ .~ True
+            in testCase (repeatDays days_to_repeat) $
+              nextWeeklyAfterPresentOffset days_to_repeat repeat_day_1
+                @?= Just ((repeat_day_2-1) - (repeat_day_1-1))
+          | (repeat_day_1, DaysToRepeatLens repeat_day_1_lens_) ←
+                                  zip [1..] (V.toList days_to_repeat_lenses)
+          , (repeat_day_2, DaysToRepeatLens repeat_day_2_lens_) ←
+              drop repeat_day_1 $ zip [1..] (V.toList days_to_repeat_lenses)
+          ]
       ]
     ----------------------------------------------------------------------------
     ]
