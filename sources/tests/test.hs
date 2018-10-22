@@ -21,6 +21,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -40,7 +41,7 @@ import qualified Data.ByteString.Lazy as LazyBS
 import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
 import Data.Data.Lens (uniplate)
 import Data.IORef
-import Data.List (cycle, isPrefixOf)
+import Data.List (cycle, isPrefixOf, zip3)
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
@@ -50,6 +51,7 @@ import Data.Text.Strict.Lens (utf8)
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID, fromText)
 import qualified Data.UUID as UUID
+import qualified Data.Vector as V
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
@@ -83,6 +85,18 @@ mkDay = toInteger >>> ModifiedJulianDay
 
 mkLocal ∷ Int → TimeOfDay → LocalTime
 mkLocal = mkDay >>> LocalTime
+
+day_of_week_names ∷ [String]
+day_of_week_names = ["M", "T", "W", "Th", "F", "Sat", "Sun"]
+
+repeatDays ∷ DaysToRepeat → String
+repeatDays days_to_repeat =
+  concat
+    [ day_of_week_name
+    | day_of_week_name ← day_of_week_names
+    | DaysToRepeatLens days_to_repeat_lens_ ← (V.toList days_to_repeat_lenses)
+    , days_to_repeat ^. days_to_repeat_lens_
+    ]
 
 assertBool ∷ MonadIO m ⇒ String → Bool → m ()
 assertBool message = HUnit.assertBool message >>> liftIO
@@ -340,6 +354,32 @@ main = defaultMain $ testGroup "All Tests"
               nextAndPreviousDailies 1 today deadline @?=
                 (next_deadline, map (flip mkLocal t_2pm) [19, 18..13])
       ]
+    ----------------------------------------------------------------------------
+    , testGroup "nextWeeklyAfterPresent"
+      [ testProperty "No repeats" $ choose (1, 7) <&> (nextWeeklyAfterPresentOffset def >>> isNothing)
+      , testCase "M M" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 1 @?= Just 7
+      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffset (def & saturday_ .~ True) 6 @?= Just 7
+      , testCase "M T" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 2 @?= Just 6
+      , testCase "Th W" $ nextWeeklyAfterPresentOffset (def & thursday_ .~ True) 3 @?= Just 1
+      , testCase "MWF T" $
+          nextWeeklyAfterPresentOffset
+            (def & monday_ .~ True & wednesday_ .~ True & friday_ .~ True) 4
+          @?= Just 1
+      , testGroup "All single day cases"
+          [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
+            in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
+              nextWeeklyAfterPresentOffset days_to_repeat today_day_of_week
+                @?= Just (let offset = ((repeat_day-1) - (today_day_of_week-1)) `mod` 7
+                          in if offset == 0 then 7 else offset)
+                -- Cleverer but perhaps less immediately understandable solution.
+                -- @?= Just ((((((repeat_day-1) - (today_day_of_week-1)) `mod` 7) - 1) `mod` 7) + 1)
+          | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
+              zip3 [1..] day_of_week_names (V.toList days_to_repeat_lenses)
+          , (today_day_of_week, today_day_of_week_name) ←
+              zip [1..] day_of_week_names
+          ]
+      ]
+    ----------------------------------------------------------------------------
     ]
   , testGroup "HabitOfFate.Server"
   ------------------------------------------------------------------------------

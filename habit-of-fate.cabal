@@ -192,6 +192,7 @@ test-suite test
                      , text
                      , time
                      , uuid
+                     , vector
                      , warp
                      , xml-conduit
   default-language:    Haskell2010

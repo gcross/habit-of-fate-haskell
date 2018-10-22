@@ -15,6 +15,8 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Data.Repeated where
@@ -24,6 +26,10 @@ import HabitOfFate.Prelude
 import Data.List (unfoldr)
 import Data.Time.Calendar (Day(ModifiedJulianDay))
 import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDayFraction)
+import Data.Vector (Vector, (!))
+import qualified Data.Vector as V
+
+import HabitOfFate.TH
 
 nextDailyAfterPresent ∷ Rational → Rational → Rational → Rational
 nextDailyAfterPresent period today deadline
@@ -74,3 +80,49 @@ nextAndPreviousDailies period today deadline =
   deadline_rational = localTimeToRational deadline
   today_rational = localTimeToRational today
   next_deadline_rational = nextDailyAfterPresent period_rational today_rational deadline_rational
+
+data DaysToRepeat = DaysToRepeat
+  { _monday_ ∷ Bool
+  , _tuesday_ ∷ Bool
+  , _wednesday_ ∷ Bool
+  , _thursday_ ∷ Bool
+  , _friday_ ∷ Bool
+  , _saturday_ ∷ Bool
+  , _sunday_ ∷ Bool
+  } deriving (Eq, Ord, Read, Show)
+deriveJSON ''DaysToRepeat
+makeLenses ''DaysToRepeat
+
+newtype DaysToRepeatLens = DaysToRepeatLens { unwrapDaysToRepeatLens ∷ Lens' DaysToRepeat Bool }
+
+days_to_repeat_lenses ∷ Vector DaysToRepeatLens
+days_to_repeat_lenses = V.fromList $
+  [ DaysToRepeatLens monday_
+  , DaysToRepeatLens tuesday_
+  , DaysToRepeatLens wednesday_
+  , DaysToRepeatLens thursday_
+  , DaysToRepeatLens friday_
+  , DaysToRepeatLens saturday_
+  , DaysToRepeatLens sunday_
+  ]
+
+instance Default DaysToRepeat where
+  def = DaysToRepeat False False False False False False False
+
+days_to_repeat_lenses_rotated_by ∷ Vector (Vector DaysToRepeatLens)
+days_to_repeat_lenses_rotated_by = V.fromList
+  [ let (days_next_week, rest_of_days_this_week) = V.splitAt index days_to_repeat_lenses
+    in rest_of_days_this_week ⊕ days_next_week
+  | index ← [0..7-1]
+  ]
+
+reversed_days_to_repeat_lenses_rotated_by ∷ Vector (Vector DaysToRepeatLens)
+reversed_days_to_repeat_lenses_rotated_by = V.map V.reverse days_to_repeat_lenses_rotated_by
+
+nextWeeklyAfterPresentOffset ∷ DaysToRepeat → Int → Maybe Int
+nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
+  V.findIndex
+    (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
+    (days_to_repeat_lenses_rotated_by ! (((day_of_week-1)+1) `mod` 7))
+  <&>
+  (+1)
