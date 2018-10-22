@@ -123,6 +123,12 @@ nextWeeklyAfterPresentOffset ∷ DaysToRepeat → Int → Maybe Int
 nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
   V.findIndex
     (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
-    (days_to_repeat_lenses_rotated_by ! (((day_of_week-1)+1) `mod` 7))
+    (days_to_repeat_lenses_rotated_by !
+      (day_of_week
+        |> (\x → x-1) -- days of the week start at 1; subtract this offset off
+        |> (\x → x+1) -- start the search on the following day
+        |> (`mod` 7)  -- wrap around if we are on Sunday
+      )
+    )
   <&>
-  (+1)
+  (+1) -- add 1 to the offset because we started on the following day
