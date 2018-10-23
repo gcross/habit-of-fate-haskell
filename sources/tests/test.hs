@@ -60,7 +60,8 @@ import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
 import Text.Printf
 import Test.QuickCheck
-import Test.Tasty (TestTree, defaultMain, testGroup)
+import qualified Test.Tasty as Tasty
+import Test.Tasty (TestTree, defaultMain)
 import qualified Test.Tasty.HUnit as HUnit
 import Test.Tasty.QuickCheck
 import Text.HTML.DOM (sinkDoc)
@@ -311,7 +312,23 @@ extractHabit tags =
     <*> extractRadio "frequency" tags
     <*> pure []
 
-main = defaultMain $ testGroup "All Tests"
+data GroupFilter = IncludeAllBut [String] | ExcludeAllBut [String]
+
+group_filter ∷ GroupFilter
+group_filter = IncludeAllBut []
+
+testGroup ∷ String → [TestTree] → TestTree
+testGroup name children =
+  Tasty.testGroup name $
+  case group_filter of
+    IncludeAllBut groups_to_exclude
+      | name ∈ groups_to_exclude → []
+      | otherwise → children
+    ExcludeAllBut groups_to_include
+      | name ∈ groups_to_include → children
+      | otherwise → []
+
+main = defaultMain $ Tasty.testGroup "All Tests"
   ------------------------------------------------------------------------------
   [ testGroup "HabitOfFate.Repeated"
   ------------------------------------------------------------------------------
