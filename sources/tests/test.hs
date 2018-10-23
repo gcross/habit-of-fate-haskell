@@ -356,6 +356,7 @@ main = defaultMain $ testGroup "All Tests"
       ]
     ----------------------------------------------------------------------------
     , testGroup "nextWeeklyAfterPresent"
+    ----------------------------------------------------------------------------
       [ testProperty "No repeats" $ choose (1, 7) <&> (nextWeeklyAfterPresentOffset def >>> isNothing)
       , testCase "M M" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 1 @?= Just 7
       , testCase "Sat Sat" $ nextWeeklyAfterPresentOffset (def & saturday_ .~ True) 6 @?= Just 7
