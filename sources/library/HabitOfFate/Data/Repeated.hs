@@ -117,7 +117,12 @@ days_to_repeat_lenses_rotated_by = V.fromList
   ]
 
 reversed_days_to_repeat_lenses_rotated_by ∷ Vector (Vector DaysToRepeatLens)
-reversed_days_to_repeat_lenses_rotated_by = V.map V.reverse days_to_repeat_lenses_rotated_by
+reversed_days_to_repeat_lenses_rotated_by =
+  days_to_repeat_lenses_rotated_by
+  |> V.splitAt 1 -- in the next two lines we rotate so that the first day is now last
+  |> (\(first_day, rest_days) → rest_days ⊕ first_day)
+  |> V.map V.reverse -- reverse so that index walking goes in the opposite direction;
+                     -- note that now the first day is back to being first again
 
 nextWeeklyAfterPresentOffset ∷ DaysToRepeat → Int → Maybe Int
 nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
@@ -132,3 +137,14 @@ nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
     )
   <&>
   (+1) -- add 1 to the offset because we started on the following day
+
+previousWeeklyOffsets ∷ DaysToRepeat → Int → [Int]
+previousWeeklyOffsets days_to_repeat day_of_week =
+  V.toList two_week_offsets
+ where
+  last_week_offsets =
+    reversed_days_to_repeat_lenses_rotated_by
+    |> (! (day_of_week-1))
+    |> V.findIndices (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
+    |> V.map negate
+  two_week_offsets = last_week_offsets ⊕ V.map (\x → x-7) last_week_offsets
