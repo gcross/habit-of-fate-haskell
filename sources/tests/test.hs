@@ -440,38 +440,38 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
     , testGroup "previousWeeklyOffsets"
     ----------------------------------------------------------------------------
-      [ testCase "M M" $ previousWeeklyOffsets (def & monday_ .~ True) 1 @?= [0, -7]
-      , testCase "M T" $ previousWeeklyOffsets (def & monday_ .~ True) 2 @?= [-1, -8]
-      , testCase "T Th" $ previousWeeklyOffsets (def & tuesday_ .~ True) 4 @?= [-2, -9]
-      , testCase "M Sun" $ previousWeeklyOffsets (def & monday_ .~ True) 7 @?= [-6, -13]
-      , testCase "MW F" $ previousWeeklyOffsets (def & monday_ .~ True & wednesday_ .~ True) 5
+      [ testCase "M M" $ previousWeeklyOffsets (def & monday_ .~ True) 0 @?= [0, -7]
+      , testCase "M T" $ previousWeeklyOffsets (def & monday_ .~ True) 1 @?= [-1, -8]
+      , testCase "T Th" $ previousWeeklyOffsets (def & tuesday_ .~ True) 3 @?= [-2, -9]
+      , testCase "M Sun" $ previousWeeklyOffsets (def & monday_ .~ True) 6 @?= [-6, -13]
+      , testCase "MW F" $ previousWeeklyOffsets (def & monday_ .~ True & wednesday_ .~ True) 4
           @?= [-2, -4, -9, -11]
-      , testCase "MF W" $ previousWeeklyOffsets (def & monday_ .~ True & friday_ .~ True) 3
+      , testCase "MF W" $ previousWeeklyOffsets (def & monday_ .~ True & friday_ .~ True) 2
           @?= [-2, -5, -9, -12]
       , testGroup "All single day cases"
           [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
             in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
               previousWeeklyOffsets days_to_repeat today_day_of_week
-                @?= let offset = ((today_day_of_week-1) - (repeat_day-1)) `mod` 7 in [-offset, -offset-7]
+                @?= let offset = (today_day_of_week - repeat_day) `mod` 7 in [-offset, -offset-7]
           | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
-              zip3 [1..] day_of_week_names (V.toList days_to_repeat_lenses)
+              zip3 [0..] day_of_week_names (V.toList days_to_repeat_lenses)
           , (today_day_of_week, today_day_of_week_name) ←
-              zip [1..] day_of_week_names
+              zip [0..] day_of_week_names
           ]
       , testGroup "All two day cases"
           [ let days_to_repeat = def & repeat_day_1_lens_ .~ True
                                      & repeat_day_2_lens_ .~ True
             in testCase (repeatDays days_to_repeat ⊕ " " ⊕ today_day_of_week_name) $
               previousWeeklyOffsets days_to_repeat today_day_of_week
-                @?= let offset_1 = ((today_day_of_week-1) - (repeat_day_1-1)) `mod` 7
-                        offset_2 = ((today_day_of_week-1) - (repeat_day_2-1)) `mod` 7
-                    in [-offset_1, -offset_1-7, -offset_2, -offset_2-7] |> sort |> reverse
+                @?= let offset_1 = (today_day_of_week - repeat_day_1) `mod` 7
+                        offset_2 = (today_day_of_week - repeat_day_2) `mod` 7
+                    in [-offset_1, -offset_1-7, -offset_2, -offset_2-7] |> nub |> sort |> reverse
           | (repeat_day_1, DaysToRepeatLens repeat_day_1_lens_) ←
-                                  zip [1..] (V.toList days_to_repeat_lenses)
+                                  zip [0..] (V.toList days_to_repeat_lenses)
           , (repeat_day_2, DaysToRepeatLens repeat_day_2_lens_) ←
-              drop repeat_day_1 $ zip [1..] (V.toList days_to_repeat_lenses)
+              drop repeat_day_1 $ zip [0..] (V.toList days_to_repeat_lenses)
           , (today_day_of_week, today_day_of_week_name) ←
-              zip [1..] day_of_week_names
+              zip [0..] day_of_week_names
           ]
       ]
     ----------------------------------------------------------------------------

@@ -150,7 +150,7 @@ previousWeeklyOffsets days_to_repeat day_of_week =
  where
   last_week_offsets =
     reversed_days_to_repeat_lenses_rotated_by
-    |> (! (day_of_week-1))
+    |> (! day_of_week)
     |> V.findIndices (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
     |> V.map negate
   two_week_offsets = last_week_offsets ⊕ V.map (\x → x-7) last_week_offsets
