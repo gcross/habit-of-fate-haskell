@@ -91,10 +91,10 @@ day_of_week_names = ["M", "T", "W", "Th", "F", "Sat", "Sun"]
 
 repeatDays ∷ DaysToRepeat → String
 repeatDays days_to_repeat =
-  concat
+  intercalate "+"
     [ day_of_week_name
-    | day_of_week_name ← day_of_week_names
-    | DaysToRepeatLens days_to_repeat_lens_ ← (V.toList days_to_repeat_lenses)
+    | (DaysToRepeatLens days_to_repeat_lens_, day_of_week_name) ←
+        zip (V.toList days_to_repeat_lenses) day_of_week_names
     , days_to_repeat ^. days_to_repeat_lens_
     ]
 
