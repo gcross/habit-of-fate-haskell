@@ -138,6 +138,13 @@ nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
   <&>
   (+1) -- add 1 to the offset because we started on the following day
 
+nextWeeklyAfterPresentOffsetWithShift ∷ Bool → DaysToRepeat → Int → Maybe Int
+nextWeeklyAfterPresentOffsetWithShift should_shift days_to_repeat day_of_week
+  | should_shift =
+      nextWeeklyAfterPresentOffset days_to_repeat ((day_of_week-1) `mod` 7) <&> (\x → x-1)
+  | otherwise =
+      nextWeeklyAfterPresentOffset days_to_repeat day_of_week
+
 previousWeeklyOffsets ∷ DaysToRepeat → Int → [Int]
 previousWeeklyOffsets days_to_repeat day_of_week =
   V.toList two_week_offsets

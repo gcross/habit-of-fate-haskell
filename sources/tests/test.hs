@@ -98,6 +98,17 @@ repeatDays days_to_repeat =
     , days_to_repeat ^. days_to_repeat_lens_
     ]
 
+instance Arbitrary DaysToRepeat where
+  arbitrary =
+    DaysToRepeat
+      <$> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+
 assertBool ∷ MonadIO m ⇒ String → Bool → m ()
 assertBool message = HUnit.assertBool message >>> liftIO
 
@@ -358,7 +369,7 @@ main = defaultMain $ testGroup "All Tests"
                 (next_deadline, map (flip mkLocal t_2pm) [19, 18..13])
       ]
     ----------------------------------------------------------------------------
-    , testGroup "nextWeeklyAfterPresent"
+    , testGroup "nextWeeklyAfterPresentOffset"
     ----------------------------------------------------------------------------
       [ testProperty "No repeats" $ choose (1, 7) <&> (nextWeeklyAfterPresentOffset def >>> isNothing)
       , testCase "M M" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 1 @?= Just 7
@@ -392,6 +403,37 @@ main = defaultMain $ testGroup "All Tests"
                                   zip [1..] (V.toList days_to_repeat_lenses)
           , (repeat_day_2, DaysToRepeatLens repeat_day_2_lens_) ←
               drop repeat_day_1 $ zip [1..] (V.toList days_to_repeat_lenses)
+          ]
+      ]
+    ----------------------------------------------------------------------------
+    , testGroup "nextWeeklyAfterPresentOffsetWithShift"
+      [ testProperty "No shift" $ do
+          days_to_repeat ← arbitrary
+          day_of_week ← choose (1, 7)
+          pure $
+            nextWeeklyAfterPresentOffsetWithShift False days_to_repeat day_of_week
+              == nextWeeklyAfterPresentOffset days_to_repeat day_of_week
+      , testCase "M M" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 1 @?= Just 0
+      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffsetWithShift True (def & saturday_ .~ True) 6 @?= Just 0
+      , testCase "M T" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 2 @?= Just 6
+      , testCase "Th W" $ nextWeeklyAfterPresentOffsetWithShift True (def & thursday_ .~ True) 3 @?= Just 1
+      , testCase "MWF T" $
+          nextWeeklyAfterPresentOffsetWithShift
+            True
+            (def & monday_ .~ True
+                 & wednesday_ .~ True
+                 & friday_ .~ True)
+            4
+          @?= Just 1
+      , testGroup "All single day cases"
+          [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
+            in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
+              nextWeeklyAfterPresentOffsetWithShift True days_to_repeat today_day_of_week
+                @?= Just ((((repeat_day-1) - (today_day_of_week-1-1)) `mod` 7 - 1) `mod` 7)
+          | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
+              zip3 [1..] day_of_week_names (V.toList days_to_repeat_lenses)
+          , (today_day_of_week, today_day_of_week_name) ←
+              zip [1..] day_of_week_names
           ]
       ]
     ----------------------------------------------------------------------------
