@@ -372,68 +372,69 @@ main = defaultMain $ testGroup "All Tests"
     , testGroup "nextWeeklyAfterPresentOffset"
     ----------------------------------------------------------------------------
       [ testProperty "No repeats" $ choose (1, 7) <&> (nextWeeklyAfterPresentOffset def >>> isNothing)
-      , testCase "M M" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 1 @?= Just 7
-      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffset (def & saturday_ .~ True) 6 @?= Just 7
-      , testCase "M T" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 2 @?= Just 6
-      , testCase "Th W" $ nextWeeklyAfterPresentOffset (def & thursday_ .~ True) 3 @?= Just 1
+      , testCase "M M" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 0 @?= Just 7
+      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffset (def & saturday_ .~ True) 5 @?= Just 7
+      , testCase "M T" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 1 @?= Just 6
+      , testCase "Th W" $ nextWeeklyAfterPresentOffset (def & thursday_ .~ True) 2 @?= Just 1
       , testCase "MWF T" $
           nextWeeklyAfterPresentOffset
-            (def & monday_ .~ True & wednesday_ .~ True & friday_ .~ True) 4
+            (def & monday_ .~ True & wednesday_ .~ True & friday_ .~ True) 1
           @?= Just 1
       , testGroup "All single day cases"
           [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
             in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
               nextWeeklyAfterPresentOffset days_to_repeat today_day_of_week
-                @?= Just (let offset = ((repeat_day-1) - (today_day_of_week-1)) `mod` 7
+                @?= Just (let offset = (repeat_day - today_day_of_week) `mod` 7
                           in if offset == 0 then 7 else offset)
                 -- Cleverer but perhaps less immediately understandable solution.
                 -- @?= Just ((((((repeat_day-1) - (today_day_of_week-1)) `mod` 7) - 1) `mod` 7) + 1)
           | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
-              zip3 [1..] day_of_week_names (V.toList days_to_repeat_lenses)
+              zip3 [0..] day_of_week_names (V.toList days_to_repeat_lenses)
           , (today_day_of_week, today_day_of_week_name) ←
-              zip [1..] day_of_week_names
+              zip [0..] day_of_week_names
           ]
       , testGroup "Two day starting on earlier day cases"
           [ let days_to_repeat = def & repeat_day_1_lens_ .~ True
                                      & repeat_day_2_lens_ .~ True
             in testCase (repeatDays days_to_repeat) $
               nextWeeklyAfterPresentOffset days_to_repeat repeat_day_1
-                @?= Just ((repeat_day_2-1) - (repeat_day_1-1))
+                @?= Just (let offset = repeat_day_2 - repeat_day_1
+                          in if offset == 0 then 7 else offset)
           | (repeat_day_1, DaysToRepeatLens repeat_day_1_lens_) ←
-                                  zip [1..] (V.toList days_to_repeat_lenses)
+                                  zip [0..] (V.toList days_to_repeat_lenses)
           , (repeat_day_2, DaysToRepeatLens repeat_day_2_lens_) ←
-              drop repeat_day_1 $ zip [1..] (V.toList days_to_repeat_lenses)
+              drop repeat_day_1 $ zip [0..] (V.toList days_to_repeat_lenses)
           ]
       ]
     ----------------------------------------------------------------------------
     , testGroup "nextWeeklyAfterPresentOffsetWithShift"
       [ testProperty "No shift" $ do
           days_to_repeat ← arbitrary
-          day_of_week ← choose (1, 7)
+          day_of_week ← choose (0, 6)
           pure $
             nextWeeklyAfterPresentOffsetWithShift False days_to_repeat day_of_week
               == nextWeeklyAfterPresentOffset days_to_repeat day_of_week
-      , testCase "M M" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 1 @?= Just 0
-      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffsetWithShift True (def & saturday_ .~ True) 6 @?= Just 0
-      , testCase "M T" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 2 @?= Just 6
-      , testCase "Th W" $ nextWeeklyAfterPresentOffsetWithShift True (def & thursday_ .~ True) 3 @?= Just 1
+      , testCase "M M" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 0 @?= Just 0
+      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffsetWithShift True (def & saturday_ .~ True) 5 @?= Just 0
+      , testCase "M T" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 1 @?= Just 6
+      , testCase "Th W" $ nextWeeklyAfterPresentOffsetWithShift True (def & thursday_ .~ True) 2 @?= Just 1
       , testCase "MWF T" $
           nextWeeklyAfterPresentOffsetWithShift
             True
             (def & monday_ .~ True
                  & wednesday_ .~ True
                  & friday_ .~ True)
-            4
+            1
           @?= Just 1
       , testGroup "All single day cases"
           [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
             in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
               nextWeeklyAfterPresentOffsetWithShift True days_to_repeat today_day_of_week
-                @?= Just ((((repeat_day-1) - (today_day_of_week-1-1)) `mod` 7 - 1) `mod` 7)
+                @?= Just (((repeat_day - (today_day_of_week-1)) `mod` 7 - 1) `mod` 7)
           | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
-              zip3 [1..] day_of_week_names (V.toList days_to_repeat_lenses)
+              zip3 [0..] day_of_week_names (V.toList days_to_repeat_lenses)
           , (today_day_of_week, today_day_of_week_name) ←
-              zip [1..] day_of_week_names
+              zip [0..] day_of_week_names
           ]
       ]
     ----------------------------------------------------------------------------

@@ -130,7 +130,6 @@ nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
     (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
     (days_to_repeat_lenses_rotated_by !
       (day_of_week
-        |> (\x → x-1) -- days of the week start at 1; subtract this offset off
         |> (\x → x+1) -- start the search on the following day
         |> (`mod` 7)  -- wrap around if we are on Sunday
       )
