@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -140,7 +141,7 @@ nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
 nextWeeklyAfterPresentOffsetWithShift ∷ Bool → DaysToRepeat → Int → Maybe Int
 nextWeeklyAfterPresentOffsetWithShift should_shift days_to_repeat day_of_week
   | should_shift =
-      nextWeeklyAfterPresentOffset days_to_repeat ((day_of_week-1) `mod` 7) <&> (\x → x-1)
+      nextWeeklyAfterPresentOffset days_to_repeat ((day_of_week-1) `mod` 7) <&> (subtract 1)
   | otherwise =
       nextWeeklyAfterPresentOffset days_to_repeat day_of_week
 
@@ -153,4 +154,23 @@ previousWeeklyOffsets days_to_repeat day_of_week =
     |> (! day_of_week)
     |> V.findIndices (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
     |> V.map negate
-  two_week_offsets = last_week_offsets ⊕ V.map (\x → x-7) last_week_offsets
+  two_week_offsets = last_week_offsets ⊕ V.map (subtract 7) last_week_offsets
+
+previousWeeklyOffsetsWithShift ∷ Bool → DaysToRepeat → Int → [Int]
+previousWeeklyOffsetsWithShift should_shift days_to_repeat day_of_week
+  | should_shift =
+      previousWeeklyOffsets days_to_repeat shifted_day_of_week
+      |> fmap (+1)
+      |> (\case
+          [] → []
+          list@(first:rest)
+            | first > 0 → map (subtract 7) list
+            | otherwise → list
+         )
+  | otherwise =
+      previousWeeklyOffsets days_to_repeat day_of_week
+  where
+    shifted_day_of_week =
+      day_of_week
+      |> (+1) -- Shift to the next day.
+      |> (`mod` 7) -- Wrap around.
