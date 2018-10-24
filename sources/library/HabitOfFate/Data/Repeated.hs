@@ -24,11 +24,12 @@ module HabitOfFate.Data.Repeated where
 
 import HabitOfFate.Prelude
 
-import Data.List (unfoldr)
+import Data.List (iterate, unfoldr)
 import Data.Time.Calendar (Day(ModifiedJulianDay))
 import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDayFraction)
 import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
 
 import HabitOfFate.TH
 
@@ -145,21 +146,35 @@ nextWeeklyAfterPresentOffsetWithShift should_shift days_to_repeat day_of_week
   | otherwise =
       nextWeeklyAfterPresentOffset days_to_repeat day_of_week
 
-previousWeeklyOffsets ∷ DaysToRepeat → Int → [Int]
-previousWeeklyOffsets days_to_repeat day_of_week =
-  V.toList two_week_offsets
- where
-  last_week_offsets =
-    reversed_days_to_repeat_lenses_rotated_by
-    |> (! day_of_week)
-    |> V.findIndices (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
-    |> V.map negate
-  two_week_offsets = last_week_offsets ⊕ V.map (subtract 7) last_week_offsets
+previousWeekliesOffsets ∷ DaysToRepeat → Int → [Int]
+previousWeekliesOffsets days_to_repeat day_of_week =
+  reversed_days_to_repeat_lenses_rotated_by
 
-previousWeeklyOffsetsWithShift ∷ Bool → DaysToRepeat → Int → [Int]
-previousWeeklyOffsetsWithShift should_shift days_to_repeat day_of_week
+  -- Look up the appropriate table for this day of the week.
+  |> (! day_of_week)
+
+  -- Because we constructed the table this way, the index in the table
+  -- corresponds to how far back the previous weekly is.
+  |> V.findIndices (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
+
+  -- Not necessary, but since it takes so little effort we convert to an unboxed
+  -- vector because it is more efficient and the conversion is so little
+  -- trouble.
+  |> (\indices → UV.generate (V.length indices) (indices !))
+
+  -- Because we are measuring distances into the past we negate them.
+  |> UV.map negate
+
+  -- These two lines construct an infinite list of offsets going infinitely far
+  -- into the past. It is the responsibility of the caller to truncate this list
+  -- after all of the values that they care about.
+  |> iterate (UV.map $ subtract 7)
+  |> concatMap UV.toList
+
+previousWeekliesOffsetsWithShift ∷ Bool → DaysToRepeat → Int → [Int]
+previousWeekliesOffsetsWithShift should_shift days_to_repeat day_of_week
   | should_shift =
-      previousWeeklyOffsets days_to_repeat shifted_day_of_week
+      previousWeekliesOffsets days_to_repeat shifted_day_of_week
       |> fmap (+1)
       |> (\case
           [] → []
@@ -168,7 +183,7 @@ previousWeeklyOffsetsWithShift should_shift days_to_repeat day_of_week
             | otherwise → list
          )
   | otherwise =
-      previousWeeklyOffsets days_to_repeat day_of_week
+      previousWeekliesOffsets days_to_repeat day_of_week
   where
     shifted_day_of_week =
       day_of_week
