@@ -46,20 +46,17 @@ nextDailyAfterPresent period today deadline
       |> (+ deadline)
 
 previousDailies ∷ Rational → Rational → Rational → [Rational]
-previousDailies period deadline next_deadline =
+previousDailies period deadline =
   unfoldr
     (
-      (\x → x - period)
+      (subtract period)
       >>>
       (\previous_deadline →
-        if previous_deadline >= cutoff
+        if previous_deadline >= deadline
           then Just (previous_deadline, previous_deadline)
           else Nothing
       )
     )
-    next_deadline
- where
-  cutoff = deadline `max` (next_deadline - 7)
 
 localTimeToRational ∷ LocalTime → Rational
 localTimeToRational (LocalTime (ModifiedJulianDay day) time_of_day) =

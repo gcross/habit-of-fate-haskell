@@ -349,11 +349,14 @@ main = defaultMain $ testGroup "All Tests"
       [ testProperty "deadline greater than next deadline" $
           \(Positive period) (Positive next_deadline) (NonNegative offset) →
             let deadline = next_deadline + offset
-            in ioProperty $ previousDailies period deadline next_deadline @?= []
+            in previousDailies period deadline next_deadline
+               |> onull
+               |> assertBool "List is empty"
+               |> ioProperty
       , testCase "period = 2, deadline = 5, next_deadline = 10" $
           previousDailies 2 5 10 @?= [8, 6]
       , testCase "period = 1, deadline = 10, next_deadline = 20" $
-          previousDailies 1 10 20 @?= [19, 18..13]
+          take 7 (previousDailies 1 10 20) @?= [19, 18..13]
       ]
     ----------------------------------------------------------------------------
     , testGroup "nextAndPreviousDailies"
@@ -365,7 +368,7 @@ main = defaultMain $ testGroup "All Tests"
               deadline = mkLocal 10 t_2pm
               next_deadline = mkLocal 20 t_2pm
           in do
-              nextAndPreviousDailies 1 today deadline @?=
+              (nextAndPreviousDailies 1 today deadline & _2 %~ take 7) @?=
                 (next_deadline, map (flip mkLocal t_2pm) [19, 18..13])
       ]
     ----------------------------------------------------------------------------
