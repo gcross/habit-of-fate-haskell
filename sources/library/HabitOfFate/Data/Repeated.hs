@@ -24,7 +24,7 @@ module HabitOfFate.Data.Repeated where
 
 import HabitOfFate.Prelude
 
-import Data.List (iterate, unfoldr)
+import Data.List (iterate)
 import Data.Time.Calendar (Day(ModifiedJulianDay))
 import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDayFraction)
 import Data.Vector (Vector, (!))
@@ -46,19 +46,6 @@ nextDailyAfterPresent period today deadline
       |> (* period)
       |> (+ deadline)
 
-previousDailies ∷ Rational → Rational → Rational → [Rational]
-previousDailies period deadline =
-  unfoldr
-    (
-      (subtract period)
-      >>>
-      (\previous_deadline →
-        if previous_deadline >= deadline
-          then Just (previous_deadline, previous_deadline)
-          else Nothing
-      )
-    )
-
 localTimeToRational ∷ LocalTime → Rational
 localTimeToRational (LocalTime (ModifiedJulianDay day) time_of_day) =
   toRational day + timeOfDayToDayFraction time_of_day
@@ -69,15 +56,20 @@ rationalToLocalTime =
   >>>
   \(day, time_of_day) → LocalTime (ModifiedJulianDay day) (dayFractionToTimeOfDay time_of_day)
 
-nextAndPreviousDailies ∷ Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
-nextAndPreviousDailies period today deadline =
+nextAndPreviousDailies ∷ Int → Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
+nextAndPreviousDailies days_to_keep period today deadline =
   ( rationalToLocalTime next_deadline_rational
-  , map rationalToLocalTime $ previousDailies period_rational deadline_rational next_deadline_rational
+  , next_deadline_rational
+    |> subtract period_rational
+    |> iterate (subtract period_rational)
+    |> takeWhile (>= cutoff_rational)
+    |> map rationalToLocalTime
   )
  where
   period_rational = toRational period
   deadline_rational = localTimeToRational deadline
   today_rational = localTimeToRational today
+  cutoff_rational = deadline_rational `max` (today_rational - toRational days_to_keep)
   next_deadline_rational = nextDailyAfterPresent period_rational today_rational deadline_rational
 
 data DaysToRepeat = DaysToRepeat
