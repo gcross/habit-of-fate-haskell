@@ -34,17 +34,15 @@ import qualified Data.Vector.Unboxed as UV
 import HabitOfFate.TH
 
 nextDailyAfterPresent ∷ Rational → Rational → Rational → Rational
-nextDailyAfterPresent period today deadline
-  | deadline > today = deadline
-  | otherwise =
-      deadline
-      |> (today -)
-      |> (/ period)
-      |> (floor ∷ Rational → Int)
-      |> toRational
-      |> (+ 1)
-      |> (* period)
-      |> (+ deadline)
+nextDailyAfterPresent period today deadline =
+  deadline
+  |> (today -)
+  |> (/ period)
+  |> (floor ∷ Rational → Int)
+  |> toRational
+  |> (+ 1)
+  |> (* period)
+  |> (+ deadline)
 
 localTimeToRational ∷ LocalTime → Rational
 localTimeToRational (LocalTime (ModifiedJulianDay day) time_of_day) =
@@ -57,14 +55,16 @@ rationalToLocalTime =
   \(day, time_of_day) → LocalTime (ModifiedJulianDay day) (dayFractionToTimeOfDay time_of_day)
 
 nextAndPreviousDailies ∷ Int → Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
-nextAndPreviousDailies days_to_keep period today deadline =
-  ( rationalToLocalTime next_deadline_rational
-  , next_deadline_rational
-    |> subtract period_rational
-    |> iterate (subtract period_rational)
-    |> takeWhile (>= cutoff_rational)
-    |> map rationalToLocalTime
-  )
+nextAndPreviousDailies days_to_keep period today deadline
+  | today < deadline = (deadline, [])
+  | otherwise =
+      ( rationalToLocalTime next_deadline_rational
+      , next_deadline_rational
+        |> subtract period_rational
+        |> iterate (subtract period_rational)
+        |> takeWhile (>= cutoff_rational)
+        |> map rationalToLocalTime
+      )
  where
   period_rational = toRational period
   deadline_rational = localTimeToRational deadline

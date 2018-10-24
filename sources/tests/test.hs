@@ -332,9 +332,10 @@ main = defaultMain $ testGroup "All Tests"
     [ testGroup "nextDailyAfterPresent"
     ----------------------------------------------------------------------------
       [ testProperty "deadline after today" $
-          \(Positive period) (Positive today) (Positive offset) →
-            let deadline = today + offset
-            in ioProperty $ nextDailyAfterPresent period today deadline @?= deadline
+          \(Positive period) (Positive deadline) (Positive offset) →
+            let today = deadline - offset
+            in ioProperty $ nextDailyAfterPresent period today deadline @?=
+                 ((toRational ((floor ((today - deadline) / period) ∷ Integer) + 1) * period) + deadline)
       , testProperty "deadline before today" $
           \(Positive period) (Positive deadline) (Positive offset) →
             let today = deadline + offset
@@ -346,14 +347,19 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
     , testGroup "nextAndPreviousDailies"
     ----------------------------------------------------------------------------
-      [ testCase "period = 1, deadline = LocalTime 10 @ 2pm, today = 20 @ 4am" $
+      [ testCase "period = 1, deadline = LocalTime 20 @ 2pm, today = 10 @ 4am" $
+          let t_2pm = TimeOfDay 14 0 0
+              t_4am = TimeOfDay 4 0 0
+              today = mkLocal 10 t_4am
+              deadline = mkLocal 20 t_2pm
+          in nextAndPreviousDailies 7 1 today deadline @?= (deadline, [])
+      , testCase "period = 1, deadline = LocalTime 10 @ 2pm, today = 20 @ 4am" $
           let t_2pm = TimeOfDay 14 0 0
               t_4am = TimeOfDay 4 0 0
               today = mkLocal 20 t_4am
               deadline = mkLocal 10 t_2pm
               next_deadline = mkLocal 20 t_2pm
-          in do
-              nextAndPreviousDailies 7 1 today deadline @?=
+          in nextAndPreviousDailies 7 1 today deadline @?=
                 (next_deadline, map (flip mkLocal t_2pm) [19, 18..13])
       ]
     ----------------------------------------------------------------------------
