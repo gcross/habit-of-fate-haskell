@@ -114,6 +114,9 @@ days_to_repeat_lenses_rotated_by = V.fromList
   | index ← [0..7-1]
   ]
 
+-- Each entry is a table corresponding to a day of the week such that the
+-- element at each index in the entry (which is itself a table) corresponds to
+-- the day of the week field lens for that many days in the past.
 reversed_days_to_repeat_lenses_rotated_by ∷ Vector (Vector DaysToRepeatLens)
 reversed_days_to_repeat_lenses_rotated_by =
   days_to_repeat_lenses_rotated_by
