@@ -149,19 +149,25 @@ previousWeekliesOffsets days_to_repeat day_of_week =
   -- corresponds to how far back the previous weekly is.
   |> V.findIndices (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
 
-  -- Not necessary, but since it takes so little effort we convert to an unboxed
-  -- vector because it is more efficient and the conversion is so little
-  -- trouble.
-  |> (\indices → UV.generate (V.length indices) (indices !))
+  |> (\indices →
+        if V.length indices == 0
+          then []
+          else
+            -- Not necessary, but since it takes so little effort we convert to
+            -- an unboxed vector because it is more efficient and the conversion
+            -- is so little trouble.
+            UV.generate (V.length indices) (indices !)
 
-  -- Because we are measuring distances into the past we negate them.
-  |> UV.map negate
+            -- Because we are measuring distances into the past we negate them.
+            |> UV.map negate
 
-  -- These two lines construct an infinite list of offsets going infinitely far
-  -- into the past. It is the responsibility of the caller to truncate this list
-  -- after all of the values that they care about.
-  |> iterate (UV.map $ subtract 7)
-  |> concatMap UV.toList
+            -- These two lines construct an infinite list of offsets going
+            -- infinitely far into the past. It is the responsibility of the
+            -- caller to truncate this list after all of the values that they
+            -- care about.
+            |> iterate (UV.map $ subtract 7)
+            |> concatMap UV.toList
+     )
 
 previousWeekliesOffsetsWithShift ∷ Bool → DaysToRepeat → Int → [Int]
 previousWeekliesOffsetsWithShift should_shift days_to_repeat day_of_week
