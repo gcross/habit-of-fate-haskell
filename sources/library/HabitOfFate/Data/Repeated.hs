@@ -54,7 +54,9 @@ rationalToLocalTime =
   >>>
   \(day, time_of_day) → LocalTime (ModifiedJulianDay day) (dayFractionToTimeOfDay time_of_day)
 
-nextAndPreviousDailies ∷ Int → Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
+data DaysToKeep = KeepDaysInPast Int | KeepNumberOfDays Int
+
+nextAndPreviousDailies ∷ DaysToKeep → Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
 nextAndPreviousDailies days_to_keep period today deadline
   | today < deadline = (deadline, [])
   | otherwise =
@@ -62,14 +64,19 @@ nextAndPreviousDailies days_to_keep period today deadline
       , next_deadline_rational
         |> subtract period_rational
         |> iterate (subtract period_rational)
-        |> takeWhile (>= cutoff_rational)
+        |> takeWhile (>= deadline_rational)
+        |> (case days_to_keep of
+              KeepDaysInPast days_in_past →
+                takeWhile (>= today_rational - toRational days_in_past)
+              KeepNumberOfDays number_of_days →
+                take number_of_days
+            )
         |> map rationalToLocalTime
       )
  where
   period_rational = toRational period
   deadline_rational = localTimeToRational deadline
   today_rational = localTimeToRational today
-  cutoff_rational = deadline_rational `max` (today_rational - toRational days_to_keep)
   next_deadline_rational = nextDailyAfterPresent period_rational today_rational deadline_rational
 
 data DaysToRepeat = DaysToRepeat

@@ -347,20 +347,36 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
     , testGroup "nextAndPreviousDailies"
     ----------------------------------------------------------------------------
-      [ testCase "period = 1, deadline = LocalTime 20 @ 2pm, today = 10 @ 4am" $
+      [ testCase "days_to_keep = KeepDaysInPast 7, period = 1, deadline = LocalTime 20 @ 2pm, today = 10 @ 4am" $
           let t_2pm = TimeOfDay 14 0 0
               t_4am = TimeOfDay 4 0 0
               today = mkLocal 10 t_4am
               deadline = mkLocal 20 t_2pm
-          in nextAndPreviousDailies 7 1 today deadline @?= (deadline, [])
-      , testCase "period = 1, deadline = LocalTime 10 @ 2pm, today = 20 @ 4am" $
+          in nextAndPreviousDailies (KeepDaysInPast 7) 1 today deadline @?= (deadline, [])
+      , testCase "days_to_keep = KeepDaysInPast 7, period = 1, deadline = LocalTime 10 @ 2pm, today = 20 @ 4am" $
           let t_2pm = TimeOfDay 14 0 0
               t_4am = TimeOfDay 4 0 0
               today = mkLocal 20 t_4am
               deadline = mkLocal 10 t_2pm
               next_deadline = mkLocal 20 t_2pm
-          in nextAndPreviousDailies 7 1 today deadline @?=
+          in nextAndPreviousDailies (KeepDaysInPast 7) 1 today deadline @?=
                 (next_deadline, map (flip mkLocal t_2pm) [19, 18..13])
+      , testCase "days_to_keep = KeepNumberOfDays 3, period = 2, deadline = LocalTime 10 @ 2pm, today = 20 @ 4am" $
+          let t_2pm = TimeOfDay 14 0 0
+              t_4am = TimeOfDay 4 0 0
+              today = mkLocal 20 t_4am
+              deadline = mkLocal 10 t_2pm
+              next_deadline = mkLocal 20 t_2pm
+          in nextAndPreviousDailies (KeepNumberOfDays 3) 2 today deadline @?=
+                (next_deadline, map (flip mkLocal t_2pm) [18, 16, 14])
+      , testCase "days_to_keep = KeepNumberOfDays 3, period = 3, deadline = LocalTime 17 @ 2pm, today = 20 @ 4am" $
+          let t_2pm = TimeOfDay 14 0 0
+              t_4am = TimeOfDay 4 0 0
+              today = mkLocal 20 t_4am
+              deadline = mkLocal 17 t_2pm
+              next_deadline = mkLocal 20 t_2pm
+          in nextAndPreviousDailies (KeepNumberOfDays 3) 3 today deadline @?=
+                (next_deadline, map (flip mkLocal t_2pm) [17])
       ]
     ----------------------------------------------------------------------------
     , testGroup "nextWeeklyAfterPresentOffset"
