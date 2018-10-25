@@ -418,6 +418,7 @@ main = defaultMain $ testGroup "All Tests"
       ]
     ----------------------------------------------------------------------------
     , testGroup "nextWeeklyAfterPresentOffsetWithShift"
+    ----------------------------------------------------------------------------
       [ testProperty "No shift" $ do
           days_to_repeat ← arbitrary
           day_of_week ← choose (0, 6)
