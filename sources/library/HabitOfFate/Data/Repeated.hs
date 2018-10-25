@@ -25,7 +25,8 @@ module HabitOfFate.Data.Repeated where
 import HabitOfFate.Prelude
 
 import Data.List (iterate)
-import Data.Time.Calendar (Day(ModifiedJulianDay))
+import Data.Time.Calendar (Day(ModifiedJulianDay,toModifiedJulianDay), addDays)
+import Data.Time.Calendar.WeekDate (toWeekDate)
 import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDayFraction)
 import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
@@ -125,25 +126,39 @@ reversed_days_to_repeat_lenses_rotated_by =
   |> V.map V.reverse -- reverse so that index walking goes in the opposite direction;
                      -- note that now the first day is back to being first again
 
-nextWeeklyAfterPresentOffset ∷ DaysToRepeat → Int → Maybe Int
-nextWeeklyAfterPresentOffset days_to_repeat day_of_week =
-  V.findIndex
-    (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
-    (days_to_repeat_lenses_rotated_by !
-      (day_of_week
-        |> (\x → x+1) -- start the search on the following day
-        |> (`mod` 7)  -- wrap around if we are on Sunday
-      )
-    )
-  <&>
-  (+1) -- add 1 to the offset because we started on the following day
+checkDayRepeated ∷ DaysToRepeat → DaysToRepeatLens → Bool
+checkDayRepeated = (^.) >>> (unwrapDaysToRepeatLens >>>)
 
-nextWeeklyAfterPresentOffsetWithShift ∷ Bool → DaysToRepeat → Int → Maybe Int
-nextWeeklyAfterPresentOffsetWithShift should_shift days_to_repeat day_of_week
-  | should_shift =
-      nextWeeklyAfterPresentOffset days_to_repeat ((day_of_week-1) `mod` 7) <&> (subtract 1)
-  | otherwise =
-      nextWeeklyAfterPresentOffset days_to_repeat day_of_week
+nextWeeklyAfterPresent ∷ DaysToRepeat → Int → LocalTime → LocalTime → LocalTime
+nextWeeklyAfterPresent days_to_repeat period today deadline
+  | today < deadline = deadline
+  | otherwise = deadline { localDay = addDays days_to_add deadline_day }
+ where
+  today_int, deadline_int ∷ Int
+  today_int = today |> localDay |> toModifiedJulianDay |> fromInteger
+  deadline_day = localDay deadline
+  deadline_int = deadline_day |> toModifiedJulianDay |> fromInteger
+  (_, _, day_of_week_1_based) = toWeekDate deadline_day
+  day_of_week = day_of_week_1_based - 1
+  weeks_to_next_deadline =
+    deadline_int
+    |> (today_int -)
+    |> (`div` 7)
+    |> (`div` period)
+    |> (+ 1)
+    |> (* period)
+  day_of_week_of_first_deadline =
+    fromMaybe
+      (error "no days of the week are repeated")
+      (V.findIndex (checkDayRepeated days_to_repeat) days_to_repeat_lenses)
+  days_to_add =
+    days_to_repeat_lenses
+    |> V.drop (day_of_week+1)
+    |> V.findIndex (checkDayRepeated days_to_repeat)
+    |> maybe
+        (weeks_to_next_deadline*7 - day_of_week + day_of_week_of_first_deadline)
+        (+1) -- the index counts the number of days to the next repeated day minus 1
+    |> toInteger
 
 previousWeekliesOffsets ∷ DaysToRepeat → Int → [Int]
 previousWeekliesOffsets days_to_repeat day_of_week =

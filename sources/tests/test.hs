@@ -43,7 +43,9 @@ import Data.Data.Lens (uniplate)
 import Data.IORef
 import Data.List (cycle, isPrefixOf, sort, zip3)
 import Data.Time.Calendar
+import Data.Time.Calendar.WeekDate
 import Data.Time.Clock
+import Data.Time.Format
 import Data.Time.LocalTime
 import qualified Data.Text as Text
 import Data.Text (strip)
@@ -100,7 +102,7 @@ repeatDays days_to_repeat =
 
 instance Arbitrary DaysToRepeat where
   arbitrary =
-    DaysToRepeat
+    (DaysToRepeat
       <$> arbitrary
       <*> arbitrary
       <*> arbitrary
@@ -108,6 +110,9 @@ instance Arbitrary DaysToRepeat where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+    )
+    `suchThat`
+    (/= def)
 
 assertBool ∷ MonadIO m ⇒ String → Bool → m ()
 assertBool message = HUnit.assertBool message >>> liftIO
@@ -143,6 +148,15 @@ instance Arbitrary Kind where
 
 instance Arbitrary Referrent where
   arbitrary = elements [minBound..maxBound]
+
+instance Arbitrary Day where
+  arbitrary = ModifiedJulianDay <$> arbitrary `suchThat` (> 0)
+
+instance Arbitrary TimeOfDay where
+  arbitrary = dayFractionToTimeOfDay <$> (toRational <$> choose (0 ∷ Float, 1) `suchThat` (< 1))
+
+instance Arbitrary LocalTime where
+  arbitrary = LocalTime <$> arbitrary <*> arbitrary
 
 withApplication' action =
   (makeAppRunningInTestMode
@@ -379,74 +393,74 @@ main = defaultMain $ testGroup "All Tests"
                 (next_deadline, map (flip mkLocal t_2pm) [17])
       ]
     ----------------------------------------------------------------------------
-    , testGroup "nextWeeklyAfterPresentOffset"
+    , testGroup "nextWeeklyAfterPresentOffset" $
     ----------------------------------------------------------------------------
-      [ testProperty "No repeats" $ choose (1, 7) <&> (nextWeeklyAfterPresentOffset def >>> isNothing)
-      , testCase "M M" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 0 @?= Just 7
-      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffset (def & saturday_ .~ True) 5 @?= Just 7
-      , testCase "M T" $ nextWeeklyAfterPresentOffset (def & monday_ .~ True) 1 @?= Just 6
-      , testCase "Th W" $ nextWeeklyAfterPresentOffset (def & thursday_ .~ True) 2 @?= Just 1
-      , testCase "MWF T" $
-          nextWeeklyAfterPresentOffset
-            (def & monday_ .~ True & wednesday_ .~ True & friday_ .~ True) 1
-          @?= Just 1
-      , testGroup "All single day cases"
-          [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
-            in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
-              nextWeeklyAfterPresentOffset days_to_repeat today_day_of_week
-                @?= Just (let offset = (repeat_day - today_day_of_week) `mod` 7
-                          in if offset == 0 then 7 else offset)
-                -- Cleverer but perhaps less immediately understandable solution.
-                -- @?= Just ((((((repeat_day-1) - (today_day_of_week-1)) `mod` 7) - 1) `mod` 7) + 1)
-          | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
-              zip3 [0..] day_of_week_names (V.toList days_to_repeat_lenses)
-          , (today_day_of_week, today_day_of_week_name) ←
-              zip [0..] day_of_week_names
-          ]
-      , testGroup "Two day starting on earlier day cases"
-          [ let days_to_repeat = def & repeat_day_1_lens_ .~ True
-                                     & repeat_day_2_lens_ .~ True
-            in testCase (repeatDays days_to_repeat) $
-              nextWeeklyAfterPresentOffset days_to_repeat repeat_day_1
-                @?= Just (let offset = repeat_day_2 - repeat_day_1
-                          in if offset == 0 then 7 else offset)
-          | (repeat_day_1, DaysToRepeatLens repeat_day_1_lens_) ←
-                                  zip [0..] (V.toList days_to_repeat_lenses)
-          , (repeat_day_2, DaysToRepeatLens repeat_day_2_lens_) ←
-              drop repeat_day_1 $ zip [0..] (V.toList days_to_repeat_lenses)
-          ]
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "nextWeeklyAfterPresentOffsetWithShift"
-    ----------------------------------------------------------------------------
-      [ testProperty "No shift" $ do
-          days_to_repeat ← arbitrary
-          day_of_week ← choose (0, 6)
-          pure $
-            nextWeeklyAfterPresentOffsetWithShift False days_to_repeat day_of_week
-              == nextWeeklyAfterPresentOffset days_to_repeat day_of_week
-      , testCase "M M" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 0 @?= Just 0
-      , testCase "Sat Sat" $ nextWeeklyAfterPresentOffsetWithShift True (def & saturday_ .~ True) 5 @?= Just 0
-      , testCase "M T" $ nextWeeklyAfterPresentOffsetWithShift True (def & monday_ .~ True) 1 @?= Just 6
-      , testCase "Th W" $ nextWeeklyAfterPresentOffsetWithShift True (def & thursday_ .~ True) 2 @?= Just 1
-      , testCase "MWF T" $
-          nextWeeklyAfterPresentOffsetWithShift
-            True
-            (def & monday_ .~ True
-                 & wednesday_ .~ True
-                 & friday_ .~ True)
-            1
-          @?= Just 1
-      , testGroup "All single day cases"
-          [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
-            in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
-              nextWeeklyAfterPresentOffsetWithShift True days_to_repeat today_day_of_week
-                @?= Just (((repeat_day - (today_day_of_week-1)) `mod` 7 - 1) `mod` 7)
-          | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
-              zip3 [0..] day_of_week_names (V.toList days_to_repeat_lenses)
-          , (today_day_of_week, today_day_of_week_name) ←
-              zip [0..] day_of_week_names
-          ]
+      let testNextWeeklyAfterPresentCase days_to_repeat period today deadline next_deadline =
+            testCase
+              (printf "%s %i %s %s"
+                (repeatDays days_to_repeat)
+                period
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
+              )
+              (nextWeeklyAfterPresent days_to_repeat period today deadline @?= next_deadline)
+      in
+      [ testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True & tuesday_ .~ True)
+          1
+          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 1 0 0))
+          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 1 0 0))
+      , testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True & tuesday_ .~ True)
+          1
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 1 0 0))
+          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 1 0 0)) -- should be the same
+      , testProperty "today < deadline => deadline" $ \days_to_repeat (Positive period) today deadline →
+          today < deadline ==> nextWeeklyAfterPresent days_to_repeat period today deadline == deadline
+      , testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True)
+          2
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 1 0 0))
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 3 1)) (TimeOfDay 0 0 0))
+      , testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True)
+          3
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 4 1)) (TimeOfDay 0 0 0))
+      , testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True)
+          2
+          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 3 1)) (TimeOfDay 0 0 0))
+      , testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True & wednesday_ .~ True)
+          2
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
+      , testNextWeeklyAfterPresentCase
+          (def & wednesday_ .~ True)
+          2
+          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 3 3)) (TimeOfDay 0 0 0))
+      , testNextWeeklyAfterPresentCase
+          (def & tuesday_ .~ True & wednesday_ .~ True)
+          2
+          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 3 2)) (TimeOfDay 0 0 0))
+      , testNextWeeklyAfterPresentCase
+          (def & tuesday_ .~ True & friday_ .~ True)
+          2
+          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
+          (LocalTime ((fromWeekDate 1 1 5)) (TimeOfDay 0 0 0))
       ]
     ----------------------------------------------------------------------------
     , testGroup "previousWeekliesOffsets"
