@@ -463,96 +463,46 @@ main = defaultMain $ testGroup "All Tests"
           (LocalTime (fromWeekDate 1 1 5) (TimeOfDay 0 0 0))
       ]
     ----------------------------------------------------------------------------
-    , testGroup "previousWeekliesOffsets"
+    , testGroup "nextWeeklyAfterPresentOffset" $
     ----------------------------------------------------------------------------
-      [ testCase "M M" $
-          takeWhile (> -14) (previousWeekliesOffsets (def & monday_ .~ True) 0) @?= [0, -7]
-      , testCase "M T" $
-          takeWhile (> -14) (previousWeekliesOffsets (def & monday_ .~ True) 1) @?= [-1, -8]
-      , testCase "T Th" $
-          takeWhile (> -14) (previousWeekliesOffsets (def & tuesday_ .~ True) 3) @?= [-2, -9]
-      , testCase "M Sun" $
-          takeWhile (> -14) (previousWeekliesOffsets (def & monday_ .~ True) 6) @?= [-6, -13]
-      , testCase "MW F" $
-          takeWhile (> -14) (previousWeekliesOffsets (def & monday_ .~ True & wednesday_ .~ True) 4)
-            @?= [-2, -4, -9, -11]
-      , testCase "MF W" $
-          takeWhile (> -14) (previousWeekliesOffsets (def & monday_ .~ True & friday_ .~ True) 2)
-            @?= [-2, -5, -9, -12]
-      , testGroup "All single day cases"
-          [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
-            in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
-              takeWhile (> -14) (previousWeekliesOffsets days_to_repeat today_day_of_week)
-                @?= let offset = (today_day_of_week - repeat_day) `mod` 7 in [-offset, -offset-7]
-          | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
-              zip3 [0..] day_of_week_names (V.toList days_to_repeat_lenses)
-          , (today_day_of_week, today_day_of_week_name) ←
-              zip [0..] day_of_week_names
+      let previousWeekliesBeforePresentCase takeDays days_to_repeat period next_deadline previous_deadlines =
+            testCase
+              (printf "%s %i %s"
+                (repeatDays days_to_repeat)
+                period
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" next_deadline)
+              )
+              (
+                takeDays (previousWeekliesBeforePresent days_to_repeat period next_deadline)
+                  @?= previous_deadlines
+              )
+      in
+      [ previousWeekliesBeforePresentCase
+          (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
+          (def & monday_ .~ True & tuesday_ .~ True)
+          1
+          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0))
+          [ LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
           ]
-      , testGroup "All two day cases"
-          [ let days_to_repeat = def & repeat_day_1_lens_ .~ True
-                                     & repeat_day_2_lens_ .~ True
-            in testCase (repeatDays days_to_repeat ⊕ " " ⊕ today_day_of_week_name) $
-              takeWhile (> -14) (previousWeekliesOffsets days_to_repeat today_day_of_week)
-                @?= let offset_1 = (today_day_of_week - repeat_day_1) `mod` 7
-                        offset_2 = (today_day_of_week - repeat_day_2) `mod` 7
-                    in [-offset_1, -offset_1-7, -offset_2, -offset_2-7] |> nub |> sort |> reverse
-          | (repeat_day_1, DaysToRepeatLens repeat_day_1_lens_) ←
-                                  zip [0..] (V.toList days_to_repeat_lenses)
-          , (repeat_day_2, DaysToRepeatLens repeat_day_2_lens_) ←
-              drop repeat_day_1 $ zip [0..] (V.toList days_to_repeat_lenses)
-          , (today_day_of_week, today_day_of_week_name) ←
-              zip [0..] day_of_week_names
+      , previousWeekliesBeforePresentCase
+          (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
+          (def & monday_ .~ True)
+          1
+          (LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0))
+          [ LocalTime (fromWeekDate 1 2 1) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
           ]
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "previousWeekliesOffsetsWithShift"
-    ----------------------------------------------------------------------------
-      [ testProperty "No shift" $ do
-          days_to_repeat ← arbitrary
-          day_of_week ← choose (0, 6)
-          pure $
-            takeWhile (> -100) (previousWeekliesOffsetsWithShift False days_to_repeat day_of_week)
-              == takeWhile (> -100) (previousWeekliesOffsets days_to_repeat day_of_week)
-      , testCase "M M" $
-          takeWhile (> -14) (previousWeekliesOffsetsWithShift True (def & monday_ .~ True) 0)
-            @?= [0, -7]
-      , testCase "M T" $
-          takeWhile (> -14) (previousWeekliesOffsetsWithShift True (def & monday_ .~ True) 1)
-            @?= [-1, -8]
-      , testCase "T Th" $
-          takeWhile (> -14) (previousWeekliesOffsetsWithShift True (def & tuesday_ .~ True) 3)
-            @?= [-2, -9]
-      , testCase "M Sun" $
-          takeWhile (> -14) (previousWeekliesOffsetsWithShift True (def & monday_ .~ True) 6)
-            @?= [-6, -13]
-      , testCase "MW F" $
-          takeWhile (> -14) (previousWeekliesOffsetsWithShift True (def & monday_ .~ True & wednesday_ .~ True) 4)
-            @?= [-2, -4, -9, -11]
-      , testCase "MF W" $
-          takeWhile (> -14) (previousWeekliesOffsetsWithShift True (def & monday_ .~ True & friday_ .~ True) 2)
-            @?= [-2, -5, -9, -12]
-      , testGroup "All single day cases"
-          [ let days_to_repeat = def & days_to_repeat_lens_ .~ True
-            in testCase (day_to_repeat_name ⊕ " " ⊕ today_day_of_week_name) $
-              takeWhile (> -14) (previousWeekliesOffsetsWithShift True days_to_repeat today_day_of_week)
-                @?= let offset = (today_day_of_week - repeat_day) `mod` 7 in [-offset, -offset-7]
-          | (repeat_day, day_to_repeat_name, DaysToRepeatLens days_to_repeat_lens_) ←
-              zip3 [0..] day_of_week_names (V.toList days_to_repeat_lenses)
-          , (today_day_of_week, today_day_of_week_name) ←
-              zip [0..] day_of_week_names
-          ]
-      , testGroup "Two day cases starting on a repeat day"
-          [ let days_to_repeat = def & repeat_day_1_lens_ .~ True
-                                     & repeat_day_2_lens_ .~ True
-                offset = (repeat_day_1 - repeat_day_2) `mod` 7
-            in testCase (repeatDays days_to_repeat) $
-              takeWhile (> -14) (previousWeekliesOffsets days_to_repeat repeat_day_1)
-                @?= ([0, -7, -offset, -offset-7] |> nub |> sort |> reverse)
-          | (repeat_day_1, DaysToRepeatLens repeat_day_1_lens_) ←
-                                  zip [0..] (V.toList days_to_repeat_lenses)
-          , (repeat_day_2, DaysToRepeatLens repeat_day_2_lens_) ←
-              drop repeat_day_1 $ zip [0..] (V.toList days_to_repeat_lenses)
+      , previousWeekliesBeforePresentCase
+          (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
+          (def & monday_ .~ True & thursday_ .~ True)
+          2
+          (LocalTime (fromWeekDate 1 5 4) (TimeOfDay 1 0 0))
+          [ LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 3 4) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 1 4) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
           ]
       ]
     ----------------------------------------------------------------------------

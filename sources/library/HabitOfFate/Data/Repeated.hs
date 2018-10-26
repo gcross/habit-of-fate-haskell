@@ -108,24 +108,6 @@ days_to_repeat_lenses = V.fromList $
 instance Default DaysToRepeat where
   def = DaysToRepeat False False False False False False False
 
-days_to_repeat_lenses_rotated_by ∷ Vector (Vector DaysToRepeatLens)
-days_to_repeat_lenses_rotated_by = V.fromList
-  [ let (days_next_week, rest_of_days_this_week) = V.splitAt index days_to_repeat_lenses
-    in rest_of_days_this_week ⊕ days_next_week
-  | index ← [0..7-1]
-  ]
-
--- Each entry is a table corresponding to a day of the week such that the
--- element at each index in the entry (which is itself a table) corresponds to
--- the day of the week field lens for that many days in the past.
-reversed_days_to_repeat_lenses_rotated_by ∷ Vector (Vector DaysToRepeatLens)
-reversed_days_to_repeat_lenses_rotated_by =
-  days_to_repeat_lenses_rotated_by
-  |> V.splitAt 1 -- in the next two lines we rotate so that the first day is now last
-  |> (\(first_day, rest_days) → rest_days ⊕ first_day)
-  |> V.map V.reverse -- reverse so that index walking goes in the opposite direction;
-                     -- note that now the first day is back to being first again
-
 checkDayRepeated ∷ DaysToRepeat → DaysToRepeatLens → Bool
 checkDayRepeated = (^.) >>> (unwrapDaysToRepeatLens >>>)
 
@@ -163,52 +145,42 @@ nextWeeklyAfterPresent days_to_repeat period today deadline
         (+1) -- the index counts the number of days to the next repeated day minus 1
     |> toInteger
 
-previousWeekliesOffsets ∷ DaysToRepeat → Int → [Int]
-previousWeekliesOffsets days_to_repeat day_of_week =
-  reversed_days_to_repeat_lenses_rotated_by
+previousWeekliesBeforePresent ∷ DaysToRepeat → Int → LocalTime → [LocalTime]
+previousWeekliesBeforePresent days_to_repeat period next_deadline =
+  map
+    (\day_int → next_deadline { localDay = ModifiedJulianDay day_int })
+    (next_deadline_week_day_ints ⊕ previous_weeks_day_ints)
+ where
+  period_as_integer = toInteger period
+  next_deadline_day = localDay next_deadline
+  next_deadline_int = next_deadline_day |> toModifiedJulianDay |> fromInteger
+  (_, _, day_of_week_1_based) = toWeekDate next_deadline_day
+  day_of_week = toInteger (day_of_week_1_based-1)
+  days_to_repeat_as_offsets =
+    days_to_repeat
+    |> checkDayRepeated
+    |> flip V.findIndices days_to_repeat_lenses
+    |> V.reverse
+    |> V.map toInteger
+  next_deadline_week_day_ints =
+    days_to_repeat_as_offsets
+    |> V.dropWhile (>= day_of_week)
+    |> V.map (+ (next_deadline_int - day_of_week))
+    |> V.toList
+  previous_weeks_day_ints =
+    next_deadline_int
+    -- Move to the start of the week as we already have the current week
+    -- covered.
+    |> subtract day_of_week
 
-  -- Look up the appropriate table for this day of the week.
-  |> (! day_of_week)
+    -- Jump period weeks into the past to move to the start of the previous week
+    -- with repeated days.
+    |> subtract (period_as_integer*7)
 
-  -- Because we constructed the table this way, the index in the table
-  -- corresponds to how far back the previous weekly is.
-  |> V.findIndices (unwrapDaysToRepeatLens >>> (days_to_repeat ^.))
+    -- Generate an infinite list of the starts of the week of all weeks in the
+    -- past with repeated days.
+    |> iterate (subtract (period_as_integer*7))
 
-  |> (\indices →
-        if V.length indices == 0
-          then []
-          else
-            -- Not necessary, but since it takes so little effort we convert to
-            -- an unboxed vector because it is more efficient and the conversion
-            -- is so little trouble.
-            UV.generate (V.length indices) (indices !)
-
-            -- Because we are measuring distances into the past we negate them.
-            |> UV.map negate
-
-            -- These two lines construct an infinite list of offsets going
-            -- infinitely far into the past. It is the responsibility of the
-            -- caller to truncate this list after all of the values that they
-            -- care about.
-            |> iterate (UV.map $ subtract 7)
-            |> concatMap UV.toList
-     )
-
-previousWeekliesOffsetsWithShift ∷ Bool → DaysToRepeat → Int → [Int]
-previousWeekliesOffsetsWithShift should_shift days_to_repeat day_of_week
-  | should_shift =
-      previousWeekliesOffsets days_to_repeat shifted_day_of_week
-      |> fmap (+1)
-      |> (\case
-          [] → []
-          list@(first:rest)
-            | first > 0 → map (subtract 7) list
-            | otherwise → list
-         )
-  | otherwise =
-      previousWeekliesOffsets days_to_repeat day_of_week
-  where
-    shifted_day_of_week =
-      day_of_week
-      |> (+1) -- Shift to the next day.
-      |> (`mod` 7) -- Wrap around.
+    -- For each of these weeks, add the offsets of all the repeated days to the
+    -- start of the week, and then concantenate all of the resulting lists.
+    |> concatMap ((+) >>> flip map (V.toList days_to_repeat_as_offsets))
