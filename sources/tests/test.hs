@@ -408,35 +408,35 @@ main = defaultMain $ testGroup "All Tests"
       [ testNextWeeklyAfterPresentCase
           (def & monday_ .~ True & tuesday_ .~ True)
           1
-          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 1 0 0))
-          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0))
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True & tuesday_ .~ True)
           1
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 1 0 0))
-          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 1 0 0)) -- should be the same
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0)) -- should be the same
       , testProperty "today < deadline => deadline" $ \days_to_repeat (Positive period) today deadline →
           today < deadline ==> nextWeeklyAfterPresent days_to_repeat period today deadline == deadline
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True)
           2
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 1 0 0))
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 3 1)) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 3 1) (TimeOfDay 0 0 0))
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True)
           3
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 4 1)) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 4 1) (TimeOfDay 0 0 0))
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True)
           2
-          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 3 1)) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 3 1) (TimeOfDay 0 0 0))
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True & wednesday_ .~ True)
           2
@@ -446,21 +446,21 @@ main = defaultMain $ testGroup "All Tests"
       , testNextWeeklyAfterPresentCase
           (def & wednesday_ .~ True)
           2
-          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 3 3)) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 3 3) (TimeOfDay 0 0 0))
       , testNextWeeklyAfterPresentCase
           (def & tuesday_ .~ True & wednesday_ .~ True)
           2
-          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 3 2)) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 3 2) (TimeOfDay 0 0 0))
       , testNextWeeklyAfterPresentCase
           (def & tuesday_ .~ True & friday_ .~ True)
           2
-          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 2)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 5)) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
+          (LocalTime (fromWeekDate 1 1 5) (TimeOfDay 0 0 0))
       ]
     ----------------------------------------------------------------------------
     , testGroup "previousWeekliesOffsets"
