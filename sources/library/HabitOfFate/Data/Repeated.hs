@@ -129,10 +129,13 @@ reversed_days_to_repeat_lenses_rotated_by =
 checkDayRepeated ∷ DaysToRepeat → DaysToRepeatLens → Bool
 checkDayRepeated = (^.) >>> (unwrapDaysToRepeatLens >>>)
 
+addDaysToLocalTime ∷ Integer → LocalTime → LocalTime
+addDaysToLocalTime number_of_days (LocalTime day time) = LocalTime (addDays number_of_days day) time
+
 nextWeeklyAfterPresent ∷ DaysToRepeat → Int → LocalTime → LocalTime → LocalTime
 nextWeeklyAfterPresent days_to_repeat period today deadline
   | today < deadline = deadline
-  | otherwise = deadline { localDay = addDays days_to_add deadline_day }
+  | otherwise = addDaysToLocalTime days_to_add deadline
  where
   today_int, deadline_int ∷ Int
   today_int = today |> localDay |> toModifiedJulianDay |> fromInteger
