@@ -100,6 +100,11 @@ repeatDays days_to_repeat =
     , days_to_repeat ^. days_to_repeat_lens_
     ]
 
+instance Arbitrary DaysToKeep where
+  arbitrary = do
+    n ← arbitrary `suchThat` (> 0)
+    elements [KeepNumberOfDays, KeepDaysInPast] <&> ($ n)
+
 instance Arbitrary DaysToRepeat where
   arbitrary =
     (DaysToRepeat
@@ -393,77 +398,67 @@ main = defaultMain $ testGroup "All Tests"
                 (next_deadline, map (flip mkLocal t_2pm) [17])
       ]
     ----------------------------------------------------------------------------
-    , testGroup "nextWeeklyAfterPresentOffset" $
+    , testGroup "nextWeeklyAfterPresent" $
     ----------------------------------------------------------------------------
-      let testNextWeeklyAfterPresentCase days_to_repeat period today deadline next_deadline =
+      let testNextWeeklyAfterPresentCase days_to_repeat period today next_deadline =
             testCase
-              (printf "%s %i %s %s"
+              (printf "%s %i %s"
                 (repeatDays days_to_repeat)
                 period
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
+                (formatTime defaultTimeLocale "%y-%m-%d" today)
               )
-              (nextWeeklyAfterPresent days_to_repeat period today deadline @?= next_deadline)
+              (nextWeeklyAfterPresent days_to_repeat period today @?= next_deadline)
       in
-      [ testNextWeeklyAfterPresentCase
-          (def & monday_ .~ True & tuesday_ .~ True)
-          1
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0))
+      [ testProperty "next_deadline >= today" $ \days_to_repeat (Positive period) today →
+          nextWeeklyAfterPresent days_to_repeat period today >= today
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True & tuesday_ .~ True)
           1
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0)) -- should be the same
-      , testProperty "today < deadline => deadline" $ \days_to_repeat (Positive period) today deadline →
-          today < deadline ==> nextWeeklyAfterPresent days_to_repeat period today deadline == deadline
+          (fromWeekDate 1 1 1)
+          (fromWeekDate 1 1 2)
+      , testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True & wednesday_ .~ True)
+          1
+          (fromWeekDate 1 1 2)
+          (fromWeekDate 1 1 3)
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True)
           2
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 3 1) (TimeOfDay 0 0 0))
+          (fromWeekDate 1 1 1)
+          (fromWeekDate 1 3 1)
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True)
           3
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 4 1) (TimeOfDay 0 0 0))
+          (fromWeekDate 1 1 1)
+          (fromWeekDate 1 4 1)
       , testNextWeeklyAfterPresentCase
           (def & monday_ .~ True)
           2
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 3 1) (TimeOfDay 0 0 0))
-      , testNextWeeklyAfterPresentCase
-          (def & monday_ .~ True & wednesday_ .~ True)
-          2
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 1)) (TimeOfDay 0 0 0))
-          (LocalTime ((fromWeekDate 1 1 3)) (TimeOfDay 0 0 0))
+          (fromWeekDate 1 1 2)
+          (fromWeekDate 1 3 1)
       , testNextWeeklyAfterPresentCase
           (def & wednesday_ .~ True)
           2
-          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 3 3) (TimeOfDay 0 0 0))
+          (fromWeekDate 1 1 3)
+          (fromWeekDate 1 3 3)
       , testNextWeeklyAfterPresentCase
           (def & tuesday_ .~ True & wednesday_ .~ True)
           2
-          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 3 2) (TimeOfDay 0 0 0))
+          (fromWeekDate 1 1 4)
+          (fromWeekDate 1 3 2)
       , testNextWeeklyAfterPresentCase
           (def & tuesday_ .~ True & friday_ .~ True)
           2
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 0 0 0))
-          (LocalTime (fromWeekDate 1 1 5) (TimeOfDay 0 0 0))
+          (fromWeekDate 1 1 2)
+          (fromWeekDate 1 1 5)
+      , testNextWeeklyAfterPresentCase
+          (def & monday_ .~ True & wednesday_ .~ True)
+          2
+          (fromWeekDate 1 5 5)
+          (fromWeekDate 1 7 1)
       ]
     ----------------------------------------------------------------------------
-    , testGroup "nextWeeklyAfterPresentOffset" $
+    , testGroup "previousWeekliesBeforePresent" $
     ----------------------------------------------------------------------------
       let previousWeekliesBeforePresentCase takeDays days_to_repeat period next_deadline previous_deadlines =
             testCase
@@ -504,9 +499,76 @@ main = defaultMain $ testGroup "All Tests"
           , LocalTime (fromWeekDate 1 1 4) (TimeOfDay 1 0 0)
           , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
           ]
+      , previousWeekliesBeforePresentCase
+          (take 5)
+          (def & monday_ .~ True & wednesday_ .~ True)
+          2
+          (LocalTime (fromWeekDate 1 5 5) (TimeOfDay 1 0 0))
+          [ LocalTime (fromWeekDate 1 5 3) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 3 3) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
+          , LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
+          ]
       ]
     ----------------------------------------------------------------------------
+    , testGroup "nextAndPreviousWeeklies" $
+    ----------------------------------------------------------------------------
+      let nextAndPreviousWeekliesCase days_to_keep days_to_repeat period today deadline result =
+            testCase
+              (printf "%s %s %i %s %s"
+                (show days_to_keep)
+                (repeatDays days_to_repeat)
+                period
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
+              )
+              (nextAndPreviousWeeklies days_to_keep days_to_repeat period today deadline @?= result)
+      in
+      [ testProperty "today < deadline" $ \days_to_keep days_to_repeat (Positive period) today deadline →
+          today < deadline ==>
+            nextAndPreviousWeeklies days_to_keep days_to_repeat period today deadline == (deadline, [])
+      , nextAndPreviousWeekliesCase
+          (KeepDaysInPast 100)
+          (def & monday_ .~ True & wednesday_ .~ True)
+          1
+          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
+          ( LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
+          , [ LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
+            ]
+          )
+      , nextAndPreviousWeekliesCase
+          (KeepNumberOfDays 5)
+          (def & monday_ .~ True & wednesday_ .~ True)
+          2
+          (LocalTime (fromWeekDate 1 5 5) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
+          ( LocalTime (fromWeekDate 1 7 1) (TimeOfDay 1 0 0)
+          , [ LocalTime (fromWeekDate 1 5 3) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 3 3) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
+            ]
+          )
+      , nextAndPreviousWeekliesCase
+          (KeepNumberOfDays 100)
+          (def & monday_ .~ True & wednesday_ .~ True)
+          2
+          (LocalTime (fromWeekDate 1 5 5) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0))
+          ( LocalTime (fromWeekDate 1 7 1) (TimeOfDay 1 0 0)
+          , [ LocalTime (fromWeekDate 1 5 3) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 3 3) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
+            , LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
+            ]
+          )
+      ]
     ]
+  ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Server"
   ------------------------------------------------------------------------------
     [ testGroup "JSON API" $
