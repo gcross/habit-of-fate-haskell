@@ -37,7 +37,7 @@ import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Random
 
-import HabitOfFate.Data.Credits
+import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
@@ -83,9 +83,9 @@ newState ∷ InitialQuestRunner State
 newState = do
   InitialQuestResult
     <$> pure (State test_substitutions False)
-    <*> (Credits
-          <$> (Successes <$> numberUntilEvent 5)
-          <*> (Failures <$> numberUntilEvent 1)
+    <*> (Tagged
+          <$> (Success <$> numberUntilEvent 5)
+          <*> (Failure <$> numberUntilEvent 1)
         )
 
 intro ∷ IntroQuestRunner State

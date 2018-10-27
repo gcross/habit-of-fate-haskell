@@ -76,7 +76,6 @@ library
                      , yaml
   exposed-modules:     HabitOfFate.API
                      , HabitOfFate.Data.Account
-                     , HabitOfFate.Data.Credits
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Data.ItemsSequence
                      , HabitOfFate.Data.Repeated

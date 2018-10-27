@@ -36,8 +36,8 @@ import Web.Scotty (ActionM, ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
-import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.Tagged
 import HabitOfFate.Logging
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
@@ -61,7 +61,7 @@ runGame = do
   stored_credits ← use stored_credits_
   renderTopOnlyPageResult "Habit of Fate - Event" ["story"] ok200 >>> pure $ do
     H.div ! A.class_ "story" $ rendered_event
-    if stored_credits ^. successes_ /= 0 || stored_credits ^. failures_ /= 0
+    if stored_credits ^. success_ /= 0 || stored_credits ^. failure_ /= 0
       then H.form ! A.method "post" $ H.input ! A.formaction "/run" ! A.type_ "submit" ! A.value "Next"
       else H.a ! A.href "/" $ H.toHtml ("Done" ∷ Text)
 

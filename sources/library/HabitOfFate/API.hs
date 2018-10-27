@@ -46,10 +46,10 @@ import Network.HTTP.Simple
 import Network.HTTP.Types
 import Web.Cookie
 
-import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Tagged
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.XML
 
@@ -253,14 +253,14 @@ getHabits = do
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-getCredits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Credits
+getCredits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Tagged Double)
 getCredits = do
   response ← requestForJSON GET "credits"
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → SessionT m Credits
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → SessionT m (Tagged Double)
 markHabits success_habits failure_habits = do
   response ←
     requestWithJSONForJSON

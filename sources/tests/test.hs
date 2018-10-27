@@ -61,10 +61,10 @@ import Network.HTTP.Types.Status (found302, ok200)
 import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
 import Text.Printf
-import Test.QuickCheck
+import Test.QuickCheck hiding (Failure, Success)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
-import Test.Tasty.QuickCheck
+import Test.Tasty.QuickCheck hiding (Failure, Success)
 import Text.HTML.DOM (sinkDoc)
 import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
@@ -73,11 +73,11 @@ import Text.XML (documentRoot, parseText)
 import Web.Scotty (parseParam)
 
 import HabitOfFate.API
-import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.Tagged
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
@@ -716,7 +716,7 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits [test_habit_id] [test_habit_id_2]
-                getCredits >>= (@?= Credits (Successes 0.5) (Failures 4))
+                getCredits >>= (@?= Tagged (Success 0.5) (Failure 4))
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
@@ -740,15 +740,15 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits [test_habit_id] [test_habit_id_2]
-                credits @(Credits actual_successes actual_failures) ← getCredits
+                credits @(Tagged (Success actual_successes) (Failure actual_failures)) ← getCredits
                 let expected_successes = test_habit ^. difficulty_ |> scaleFactor
                     expected_failures = test_habit_2 ^. importance_ |> scaleFactor
                 assertBool
                   ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
-                  (abs ((credits ^. successes_) - expected_successes) < 0.1)
+                  (abs ((credits ^. success_) - expected_successes) < 0.1)
                 assertBool
                   ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
-                  (abs ((credits ^. failures_ ) - expected_failures ) < 0.1)
+                  (abs ((credits ^. failure_ ) - expected_failures ) < 0.1)
             ]
         ]
     ----------------------------------------------------------------------------

@@ -27,12 +27,12 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Random
 
-import HabitOfFate.Data.Credits
+import HabitOfFate.Data.Tagged
 import HabitOfFate.Story
 
 data InitialQuestResult α = InitialQuestResult
   { initialQuestState ∷ α
-  , initialQuestCredits ∷ Credits
+  , initialQuestCredits ∷ Tagged Double
   }
 makeLenses ''InitialQuestResult
 

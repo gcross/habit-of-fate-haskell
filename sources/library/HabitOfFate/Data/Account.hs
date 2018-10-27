@@ -35,14 +35,13 @@ import Control.Exception
 import Control.Monad.Catch (MonadThrow(throwM))
 import Control.Monad.Random (StdGen, newStdGen, runRand, uniform)
 import Crypto.PasswordStore
-import Data.Aeson hiding ((.=))
+import Data.Aeson (FromJSON(..), FromJSONKey(..), ToJSON(..), ToJSONKey(..), Value(..))
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Zones.All (TZLabel(America__New_York))
 import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import Web.Scotty (Parsable)
 
-import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
@@ -74,8 +73,8 @@ type Groups = ItemsSequence Group
 data Account = Account
   {   _password_ ∷ Text
   ,   _habits_ ∷ ItemsSequence Habit
-  ,   _stored_credits_ ∷ Credits
-  ,   _awaited_credits_ ∷ Credits
+  ,   _stored_credits_ ∷ Tagged Double
+  ,   _awaited_credits_ ∷ Tagged Double
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
   ,   _rng_ ∷ StdGen
   ,   _timezone_ ∷ TZLabel
@@ -94,8 +93,8 @@ newAccount password =
           (decodeUtf8 >>> evaluate)
         )
     <*> pure def
-    <*> pure def
-    <*> pure def
+    <*> pure (Tagged (Success 0) (Failure 0))
+    <*> pure (Tagged (Success 0) (Failure 0))
     <*> pure Nothing
     <*> newStdGen
     <*> pure America__New_York
@@ -138,7 +137,7 @@ runAccount = do
       pure $ event
     Just current_quest_state → do
       stored_credits ← use stored_credits_
-      if (stored_credits ^. successes_ <= 0) && (stored_credits ^. failures_ <= 0)
+      if (stored_credits ^. success_ <= 0) && (stored_credits ^. failure_ <= 0)
         then pure []
         else do
           awaited_credits ← use awaited_credits_
@@ -146,7 +145,7 @@ runAccount = do
                 Quest s →
                 (s → CurrentQuestState) →
                 s →
-                Lens' Credits Double →
+                Lens' (Tagged Double) Double →
                 Getter (Quest s) (ProgressToMilestoneQuestRunner s) →
                 Getter (Quest s) (AttainedMilestoneQuestRunner s) →
                 State Account Event
@@ -181,20 +180,20 @@ runAccount = do
 
               run ∷ ∀ s. Quest s → s → State Account Event
               run quest quest_state
-                | stored_credits ^. successes_ > 0 =
+                | stored_credits ^. success_ > 0 =
                     spend
                       quest
                       (^. re (questPrism quest))
                       quest_state
-                      successes_
+                      success_
                       (to progressToMilestones . success_)
                       (to attainedMilestones . success_)
-                | stored_credits ^. failures_ > 0 =
+                | stored_credits ^. failure_ > 0 =
                     spend
                       quest
                       (^. re (questPrism quest))
                       quest_state
-                      failures_
+                      failure_
                       (to progressToMilestones . failure_)
                       (to attainedMilestones . failure_)
                 | otherwise = pure []
@@ -203,9 +202,9 @@ runAccount = do
 
 data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
 
-creditLensForResult ∷ SuccessOrFailureResult → Lens' Credits Double
-creditLensForResult SuccessResult = successes_
-creditLensForResult FailureResult = failures_
+creditLensForResult ∷ SuccessOrFailureResult → Lens' (Tagged Double) Double
+creditLensForResult SuccessResult = success_
+creditLensForResult FailureResult = failure_
 
 scaleLensForResult ∷ SuccessOrFailureResult → Lens' Habit Scale
 scaleLensForResult SuccessResult = difficulty_
