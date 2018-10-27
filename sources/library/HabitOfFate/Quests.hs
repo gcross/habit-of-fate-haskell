@@ -56,7 +56,7 @@ quests =
        _Forest
        Forest.newState
        Forest.intro
-       Forest.runGetStatus
+       Forest.getStatus
        (Tagged
          (Success (Forest.runProgressToSuccessMilestone))
          (Failure Forest.runProgressToFailureMilestone)

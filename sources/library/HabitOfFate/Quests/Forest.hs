@@ -252,8 +252,8 @@ An |Illsbane] plant in hand, |Susie continues home.
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
-runGetStatus ∷ GetStatusQuestRunner State
-runGetStatus s = substitute (s ^. substitutions_) story
+getStatus ∷ GetStatusQuestRunner State
+getStatus s = substitute (s ^. substitutions_) story
  where
   story
    | s ^. herb_found_ = returning_home_story
