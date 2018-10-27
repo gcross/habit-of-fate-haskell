@@ -17,7 +17,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -32,72 +31,13 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch
 
 import Data.Aeson
-import qualified Data.Text.Lazy as Lazy
 import Data.UUID
 
-import Text.Blaze (Markup, ToMarkup(..))
-
+import Text.Blaze (ToMarkup(..))
 import Web.Scotty (Parsable(..))
 
+import HabitOfFate.Data.Scale
 import HabitOfFate.TH
-
-data Scale = None | VeryLow | Low | Medium | High | VeryHigh
-  deriving (Bounded,Enum,Eq,Ord,Read,Show)
-deriveJSON ''Scale
-
-instance Default Scale where
-  def = Medium
-
-instance Parsable Scale where
-  parseParam p =
-    p
-    |> unpack
-    |> readMaybe
-    |> maybe (Left $ "Unrecognized scale \"" ⊕ p ⊕ "\".") Right
-
-instance ToMarkup Scale where
-  toMarkup = displayScale >>> toMarkup
-
-showScale ∷ (Wrapped α, Unwrapped α ~ Scale) ⇒ String → α → String
-showScale name =
-  (^. _Wrapped')
-  >>>
-  show
-  >>>
-  (⊕ name)
-
-toMarkupScale ∷ (Wrapped α, Unwrapped α ~ Scale) ⇒ Text → α → Markup
-toMarkupScale name =
-  (^. _Wrapped')
-  >>>
-  displayScale
-  >>>
-  (\scale_str → scale_str ⊕ " " ⊕ name)
-  >>>
-  toMarkup
-
-readPrecsScale ∷ (Wrapped α, Unwrapped α ~ Scale) ⇒ String → Int → String → [(α, String)]
-readPrecsScale name p =
-  readsPrec p
-  >>>
-  \case
-    [(scale, rest)]
-      | rest == name → [(scale ^. _Unwrapped', "")]
-      | otherwise → []
-    _ → []
-
-parseParamScale ∷ (Wrapped α, Unwrapped α ~ Scale) ⇒ Lazy.Text → Lazy.Text → Either Lazy.Text α
-parseParamScale name p =
-  case words p of
-    [scale_text, name_]
-      | name_ == name →
-          parseParam scale_text
-          |> bimap
-              (\error_message →
-                 "Error parsing scale \"" ⊕ scale_text ⊕ "\" in \"" ⊕ p ⊕ "\": " ⊕ error_message)
-              (^. _Unwrapped')
-      | otherwise → Left $ "Second word in \"%" ⊕ p ⊕ "\" was not " ⊕ name
-    _ → Left $ "Wrong number of words in \"" ⊕ p ⊕ "\""
 
 newtype Difficulty = Difficulty { unwrapDifficulty ∷ Scale }
   deriving (Bounded,Enum,Eq,FromJSON,Ord,ToJSON)
@@ -136,25 +76,6 @@ instance Read Importance where
 
 instance Parsable Importance where
   parseParam = parseParamScale "Importance"
-
-scales ∷ [Scale]
-scales = enumFromTo minBound maxBound
-
-displayScale ∷ Scale → Text
-displayScale None = "None"
-displayScale VeryLow = "Very Low"
-displayScale Low = "Low"
-displayScale Medium = "Medium"
-displayScale High = "High"
-displayScale VeryHigh = "Very High"
-
-scaleFactor ∷ Scale → Double
-scaleFactor None = 0
-scaleFactor VeryLow = 1/4
-scaleFactor Low = 1/2
-scaleFactor Medium = 1
-scaleFactor High = 2
-scaleFactor VeryHigh = 4
 
 data Frequency = Indefinite | Once deriving (Eq, Read, Show, Ord)
 deriveJSON ''Frequency

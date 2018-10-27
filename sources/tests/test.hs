@@ -77,6 +77,7 @@ import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
+import HabitOfFate.Data.Scale
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote

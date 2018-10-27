@@ -80,6 +80,7 @@ library
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Data.ItemsSequence
                      , HabitOfFate.Data.Repeated
+                     , HabitOfFate.Data.Scale
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread

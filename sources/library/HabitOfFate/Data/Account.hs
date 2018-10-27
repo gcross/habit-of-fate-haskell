@@ -45,6 +45,7 @@ import Web.Scotty (Parsable)
 import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Scale
 import HabitOfFate.Quest
 import HabitOfFate.Quests
 import HabitOfFate.Story

@@ -41,6 +41,7 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Scale
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
