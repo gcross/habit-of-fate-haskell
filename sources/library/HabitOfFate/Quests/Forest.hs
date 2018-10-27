@@ -79,17 +79,15 @@ test_substitutions =
     , ( "Illsbane", Gendered "Tigerlamp" Neuter )
     ]
 
-newState ∷ InitialQuestRunner State
-newState = do
+initialize ∷ InitializeQuestRunner State
+initialize = do
   InitialQuestResult
     <$> pure (State test_substitutions False)
     <*> (Tagged
           <$> (Success <$> numberUntilEvent 5)
           <*> (Failure <$> numberUntilEvent 1)
         )
-
-intro ∷ IntroQuestRunner State
-intro s = pure (substitute (s ^. substitutions_) intro_story)
+    <*> pure (substitute test_substitutions intro_story)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
