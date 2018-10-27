@@ -30,12 +30,12 @@ import Control.Monad.Random
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Story
 
-data InitialQuestResult α = InitialQuestResult
+data InitializeQuestResult α = InitializeQuestResult
   { initialQuestState ∷ α
   , initialQuestCredits ∷ Tagged Double
   , initialQuestEvent ∷ Event
   }
-makeLenses ''InitialQuestResult
+makeLenses ''InitializeQuestResult
 
 data RunQuestResult s = RunQuestResult
   { maybeRunQuestState ∷ Maybe s
@@ -50,7 +50,7 @@ data QuestResult = QuestResult
   , questEvent ∷ Event
   }
 
-type InitializeQuestRunner s = Rand StdGen (InitialQuestResult s)
+type InitializeQuestRunner s = Rand StdGen (InitializeQuestResult s)
 type GetStatusQuestRunner s = s → Event
 type ProgressToMilestoneQuestRunner s = s → (Rand StdGen) Event
 type AttainedMilestoneQuestRunner s = StateT s (Rand StdGen) QuestResult

@@ -81,7 +81,7 @@ test_substitutions =
 
 initialize ∷ InitializeQuestRunner State
 initialize = do
-  InitialQuestResult
+  InitializeQuestResult
     <$> pure (State test_substitutions False)
     <*> (Tagged
           <$> (Success <$> numberUntilEvent 5)

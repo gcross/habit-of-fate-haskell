@@ -123,7 +123,7 @@ runAccount = do
     Nothing → do
       let ((new_current_quest_state, new_awaited_credits, event), new_rng) = flip runRand rng $ do
             WrappedQuest quest ← uniform quests
-            InitialQuestResult quest_state initial_credits intro_event ← questInitialize quest
+            InitializeQuestResult quest_state initial_credits intro_event ← questInitialize quest
             pure
               ( quest_state ^. re (questPrism quest)
               , initial_credits
