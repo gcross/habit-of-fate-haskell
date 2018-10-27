@@ -46,10 +46,10 @@ import HabitOfFate.Data.Credits
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests
 import HabitOfFate.Story
-import HabitOfFate.Tag
 import HabitOfFate.TH
 
 instance ToJSON StdGen where

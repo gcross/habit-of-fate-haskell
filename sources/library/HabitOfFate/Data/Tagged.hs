@@ -20,7 +20,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Tag where
+module HabitOfFate.Data.Tagged where
 
 import HabitOfFate.Prelude
 

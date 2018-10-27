@@ -81,6 +81,7 @@ library
                      , HabitOfFate.Data.ItemsSequence
                      , HabitOfFate.Data.Repeated
                      , HabitOfFate.Data.Scale
+                     , HabitOfFate.Data.Tagged
                      , HabitOfFate.Logging
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
@@ -118,7 +119,6 @@ library
                      , HabitOfFate.Story.Renderer.HTML
                      , HabitOfFate.Story.Renderer.XML
                      , HabitOfFate.Substitution
-                     , HabitOfFate.Tag
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   other-modules:       Paths_habit_of_fate

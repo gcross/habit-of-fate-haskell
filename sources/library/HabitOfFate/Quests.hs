@@ -26,10 +26,10 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Random
 
+import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest
 import HabitOfFate.Story
-import HabitOfFate.Tag
 import HabitOfFate.TH
 
 data CurrentQuestState =
