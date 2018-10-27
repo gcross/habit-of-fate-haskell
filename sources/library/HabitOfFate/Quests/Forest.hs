@@ -133,6 +133,18 @@ in time now.
      |]
   ]
 
+failure_averted_stories ∷ [SubEvent]
+failure_averted_stories =
+  [ event ^. failure_common_paragraphs_ ⊕ event ^. failure_averted_paragraphs_
+  | event ← failure_stories
+  ]
+
+failure_happened_stories ∷ [SubEvent]
+failure_happened_stories =
+  [ event ^. failure_common_paragraphs_ ⊕ event ^. failure_happened_paragraphs_
+  | event ← failure_stories
+  ]
+
 --------------------------------------------------------------------------------
 ------------------------------------ Wander ------------------------------------
 --------------------------------------------------------------------------------
@@ -257,16 +269,17 @@ getStatus s = substitute (s ^. substitutions_) story
    | s ^. herb_found_ = returning_home_story
    | otherwise = looking_for_herb_story
 
+pickStoryUsingState ∷ (MonadRandom m, MonadState State m) ⇒ [SubEvent] → m Event
+pickStoryUsingState stories = substitute <$> use substitutions_ <*> uniform stories
+
+pickStory ∷ MonadRandom m ⇒ State → [SubEvent] → m Event
+pickStory s stories = substitute (s ^. substitutions_) <$> uniform stories
+
 runProgressToSuccessMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToSuccessMilestone s =
-  uniform wander_stories <&> substitute (s ^. substitutions_)
+runProgressToSuccessMilestone s = pickStory s wander_stories
 
 runProgressToFailureMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToFailureMilestone s = do
-  failure_event ← uniform failure_stories
-  pure $ substitute (s ^. substitutions_) $
-    failure_event ^. failure_common_paragraphs_
-      ⊕ failure_event ^. failure_averted_paragraphs_
+runProgressToFailureMilestone s = pickStory s failure_averted_stories
 
 runAttainedSuccessMilestone ∷ AttainedMilestoneQuestRunner State
 runAttainedSuccessMilestone = do
@@ -278,15 +291,10 @@ runAttainedSuccessMilestone = do
       herb_found_ .= True
       QuestResult
         <$> (QuestInProgress <$> numberUntilEvent 5)
-        <*> (substitute substitutions <$> uniform found_stories)
+        <*> pickStoryUsingState found_stories
 
 runAttainedFailureMilestone ∷ AttainedMilestoneQuestRunner State
-runAttainedFailureMilestone = do
-  substitutions ← use substitutions_
-  failure_event ← uniform failure_stories
-  pure $ QuestResult QuestHasEnded $ substitute substitutions $
-    failure_event ^. failure_common_paragraphs_
-      ⊕ failure_event ^. failure_happened_paragraphs_
+runAttainedFailureMilestone = QuestResult QuestHasEnded <$> pickStoryUsingState failure_happened_stories
 
 --------------------------------------------------------------------------------
 --------------------------------- Proofreading ---------------------------------
