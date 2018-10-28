@@ -150,6 +150,7 @@ handler environment = do
           , ("name", "Habit Name")
           , ("", ""∷Text)
           , ("centered", "Last Marked")
+          , ("centered", "Deadline")
           , ("centered", "Difficulty")
           , ("centered", "Importance")
           , ("", ""∷Text)
@@ -164,13 +165,14 @@ handler environment = do
                     ! A.class_ "edit"
                     ! A.href (H.toValue [i|/habits/#{UUID.toText uuid}|])
                     $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
-                last_marked =
-                  habit
-                    |> (^. maybe_last_marked_)
-                    |>  maybe
-                          (H.toHtml ("Never" ∷ Text))
-                          renderLocalTime
-                    |> ((H.div ! A.class_ "centered") $)
+                timeFor (text_if_nothing ∷ Text) =
+                  (habit ^.)
+                  >>>
+                  maybe
+                    (H.toHtml text_if_nothing)
+                    renderLocalTime
+                  >>>
+                  ((H.div ! A.class_ "centered") $)
                 scaleFor scale_lens =
                   H.div ! A.class_ "centered" $ H.toHtml $ displayScale $ habit ^. scale_lens
                 markButtonFor (habit_name ∷ Text) class_ scale_lens_
@@ -201,7 +203,8 @@ handler environment = do
             , position
             , name
             , edit_button
-            , last_marked
+            , timeFor "Never" maybe_last_marked_
+            , timeFor "None" maybe_deadline_
             , scaleFor difficulty_
             , scaleFor importance_
             , move_form
