@@ -128,7 +128,7 @@ runAccount = do
               )
       maybe_current_quest_state_ .= Just new_current_quest_state
       rng_ .= new_rng
-      pure $ event
+      pure event
     Just current_quest_state → do
       let run ∷ ∀ s. Quest s → s → State Account Event
           run quest quest_state = do
