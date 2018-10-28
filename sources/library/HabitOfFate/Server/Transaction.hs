@@ -95,14 +95,17 @@ getBodyJSON = do
 getParams ∷ TransactionProgram [Param]
 getParams = wrapTransactionInstruction GetParamsInstruction
 
+convertUTCToLocalTime ∷ UTCTime → TransactionProgram LocalTime
+convertUTCToLocalTime utc_time =
+  utcToLocalTimeTZ
+    <$> (tzByLabel <$> use timezone_)
+    <*> pure utc_time
+
 getCurrentTime ∷ TransactionProgram UTCTime
 getCurrentTime = wrapTransactionInstruction GetCurrentTimeInstruction
 
 getCurrentTimeAsLocalTime ∷ TransactionProgram LocalTime
-getCurrentTimeAsLocalTime =
-  utcToLocalTimeTZ
-    <$> (tzByLabel <$> use timezone_)
-    <*> getCurrentTime
+getCurrentTimeAsLocalTime = getCurrentTime >>= convertUTCToLocalTime
 
 getParam ∷ Parsable α ⇒ Lazy.Text → TransactionProgram α
 getParam param_name = do
@@ -144,10 +147,7 @@ log ∷ String → TransactionProgram ()
 log = LogInstruction >>> wrapTransactionInstruction
 
 getLastSeenAsLocalTime ∷ TransactionProgram LocalTime
-getLastSeenAsLocalTime =
-  utcToLocalTimeTZ
-    <$> (tzByLabel <$> use timezone_)
-    <*> (use last_seen_)
+getLastSeenAsLocalTime = use last_seen_ >>= convertUTCToLocalTime
 
 lookupHabit ∷ UUID → TransactionProgram Habit
 lookupHabit habit_id =
