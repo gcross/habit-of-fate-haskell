@@ -149,9 +149,9 @@ handler environment = do
           , ("position", "#")
           , ("name", "Habit Name")
           , ("", ""∷Text)
-          , ("time", "Last Marked")
-          , ("scale", "Difficulty")
-          , ("scale", "Importance")
+          , ("centered", "Last Marked")
+          , ("centered", "Difficulty")
+          , ("centered", "Importance")
           , ("", ""∷Text)
           ]
         ⊕
@@ -170,9 +170,9 @@ handler environment = do
                     |>  maybe
                           (H.toHtml ("Never" ∷ Text))
                           renderLocalTime
-                    |> ((H.div ! A.class_ "time") $)
+                    |> ((H.div ! A.class_ "centered") $)
                 scaleFor scale_lens =
-                  H.div ! A.class_ "scale" $ H.toHtml $ displayScale $ habit ^. scale_lens
+                  H.div ! A.class_ "centered" $ H.toHtml $ displayScale $ habit ^. scale_lens
                 markButtonFor (habit_name ∷ Text) class_ scale_lens_
                   | habit ^. scale_lens_ == None = mempty
                   | otherwise =

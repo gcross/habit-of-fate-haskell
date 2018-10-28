@@ -46,13 +46,9 @@
     margin-top: auto;
 }
 
-.time {
+.centered {
     margin: auto;
     text-align: center;
-}
-
-.scale {
-    margin: auto;
 }
 
 .move {
