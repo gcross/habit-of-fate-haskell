@@ -32,19 +32,16 @@ module HabitOfFate.Data.Account where
 import HabitOfFate.Prelude
 
 import Control.Exception
-import Control.Monad.Catch (MonadThrow(throwM))
 import Control.Monad.Random (StdGen, newStdGen, runRand, uniform)
 import Crypto.PasswordStore
 import Data.Aeson (FromJSON(..), FromJSONKey(..), ToJSON(..), ToJSONKey(..), Value(..))
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Zones.All (TZLabel(America__New_York))
 import Data.Typeable (Typeable)
-import Data.UUID (UUID)
 import Web.Scotty (Parsable)
 
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
-import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests
@@ -147,36 +144,6 @@ runAccount = do
                 QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
             pure event
       runCurrentQuest run current_quest_state
-
-data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
-
-creditLensForResult ∷ SuccessOrFailureResult → Lens' (Tagged Double) Double
-creditLensForResult SuccessResult = success_
-creditLensForResult FailureResult = failure_
-
-scaleLensForResult ∷ SuccessOrFailureResult → Lens' Habit Scale
-scaleLensForResult SuccessResult = difficulty_
-scaleLensForResult FailureResult = importance_
-
-data MarkException =
-  HabitToMarkDoesNotExistException UUID
- deriving (Show, Typeable)
-
-instance Exception MarkException where
-
-markHabit ∷ MonadThrow m ⇒ SuccessOrFailureResult → UUID → Account → m Account
-markHabit result habit_id account =
-  maybe
-    (throwM $ HabitToMarkDoesNotExistException habit_id)
-    (\habit → pure $ (account
-      & stored_credits_ . creditLensForResult result +~
-          scaleFactor (habit ^. scaleLensForResult result)
-      & if habit ^. frequency_ == Once then habits_ . at habit_id .~ Nothing else identity
-    ))
-    (account ^. habits_ . at habit_id)
-
-markHabits ∷ MonadThrow m ⇒ [(SuccessOrFailureResult, UUID)] → Account → m Account
-markHabits marks account = foldM (markHabit |> uncurry |> flip) account marks
 
 newtype Username = Username { unwrapUsername ∷ Text } deriving
   ( Eq
