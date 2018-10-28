@@ -168,13 +168,10 @@ markHabit ∷ MonadThrow m ⇒ SuccessOrFailureResult → UUID → Account → m
 markHabit result habit_id account =
   maybe
     (throwM $ HabitToMarkDoesNotExistException habit_id)
-    (\habit → pure $ (account &
-      (
-        (stored_credits_ . creditLensForResult result +~
-          (scaleFactor $ habit ^. scaleLensForResult result))
-        >>>
-        if habit ^. frequency_ == Once then habits_ . at habit_id .~ Nothing else identity
-      )
+    (\habit → pure $ (account
+      & stored_credits_ . creditLensForResult result +~
+          scaleFactor (habit ^. scaleLensForResult result)
+      & if habit ^. frequency_ == Once then habits_ . at habit_id .~ Nothing else identity
     ))
     (account ^. habits_ . at habit_id)
 
