@@ -740,7 +740,7 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits [test_habit_id] [test_habit_id_2]
-                credits @(Tagged (Success actual_successes) (Failure actual_failures)) ← getCredits
+                credits@(Tagged (Success actual_successes) (Failure actual_failures)) ← getCredits
                 let expected_successes = test_habit ^. difficulty_ |> scaleFactor
                     expected_failures = test_habit_2 ^. importance_ |> scaleFactor
                 assertBool
