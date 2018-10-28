@@ -68,10 +68,13 @@ runGame = do
 handleMarkHabitApi ∷ Environment → ScottyM ()
 handleMarkHabitApi environment =
   Scotty.post "/api/mark" <<< apiTransaction environment $ do
-    HabitsToMark{..} ← getBodyJSON
-    log [i|Marking #{succeeded} successes and #{failed} failures.|]
+    Tagged (Success success_habit_ids) (Failure failure_habit_ids) ← getBodyJSON
+    log [i|Marking #{success_habit_ids} as successes and #{failure_habit_ids} as failures.|]
     old_account ← get
-    case markHabits (map (SuccessResult,) succeeded ⊕ map (FailureResult,) failed) old_account of
+    case markHabits (
+        map (SuccessResult,) success_habit_ids ⊕
+        map (FailureResult,) failure_habit_ids
+     ) old_account of
       Left habit_id → raiseStatus 400 $ "No such habit: " ⊕ show habit_id
       Right new_account → do
         put new_account

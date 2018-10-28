@@ -178,12 +178,6 @@ markHabit result habit_id account =
 markHabits ∷ MonadThrow m ⇒ [(SuccessOrFailureResult, UUID)] → Account → m Account
 markHabits marks account = foldM (markHabit |> uncurry |> flip) account marks
 
-data HabitsToMark = HabitsToMark
-  { succeeded ∷ [UUID]
-  , failed ∷ [UUID]
-  } deriving (Eq, Ord, Read, Show)
-deriveJSON ''HabitsToMark
-
 newtype Username = Username { unwrapUsername ∷ Text } deriving
   ( Eq
   , FromJSONKey

@@ -260,13 +260,13 @@ getCredits = do
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [UUID] → [UUID] → SessionT m (Tagged Double)
-markHabits success_habits failure_habits = do
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ Tagged [UUID] → SessionT m (Tagged Double)
+markHabits marks = do
   response ←
     requestWithJSONForJSON
       POST
       "mark"
-      (HabitsToMark success_habits failure_habits)
+      marks
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code

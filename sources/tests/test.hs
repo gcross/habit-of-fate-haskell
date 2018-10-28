@@ -715,7 +715,7 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
-                markHabits [test_habit_id] [test_habit_id_2]
+                markHabits $ Tagged (Success [test_habit_id]) (Failure [test_habit_id_2])
                 getCredits >>= (@?= Tagged (Success 0.5) (Failure 4))
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
@@ -739,7 +739,7 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
-                markHabits [test_habit_id] [test_habit_id_2]
+                markHabits $ Tagged (Success [test_habit_id]) (Failure [test_habit_id_2])
                 credits@(Tagged (Success actual_successes) (Failure actual_failures)) ← getCredits
                 let expected_successes = test_habit ^. difficulty_ |> scaleFactor
                     expected_failures = test_habit_2 ^. importance_ |> scaleFactor
