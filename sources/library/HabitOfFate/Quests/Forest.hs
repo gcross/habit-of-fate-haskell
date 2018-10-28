@@ -52,6 +52,7 @@ import HabitOfFate.Trial
 data State = State
   { _substitutions_ ∷ HashMap Text Gendered
   , _herb_found_ ∷ Bool
+  , _remaining_credits_ ∷ Tagged Double
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makeLenses ''State
@@ -82,10 +83,12 @@ test_substitutions =
 initialize ∷ InitializeQuestRunner State
 initialize = do
   InitializeQuestResult
-    <$> pure (State test_substitutions False)
-    <*> (Tagged
-          <$> (Success <$> numberUntilEvent 5)
-          <*> (Failure <$> numberUntilEvent 1)
+    <$> (State test_substitutions False
+         <$>
+         (Tagged
+           <$> (Success <$> numberUntilEvent 5)
+           <*> (Failure <$> numberUntilEvent 1)
+         )
         )
     <*> pure (substitute test_substitutions intro_story)
 
@@ -275,26 +278,49 @@ pickStoryUsingState stories = substitute <$> use substitutions_ <*> uniform stor
 pickStory ∷ MonadRandom m ⇒ State → [SubEvent] → m Event
 pickStory s stories = substitute (s ^. substitutions_) <$> uniform stories
 
-runProgressToSuccessMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToSuccessMilestone s = pickStory s wander_stories
-
-runProgressToFailureMilestone ∷ ProgressToMilestoneQuestRunner State
-runProgressToFailureMilestone s = pickStory s failure_averted_stories
-
-runAttainedSuccessMilestone ∷ AttainedMilestoneQuestRunner State
-runAttainedSuccessMilestone = do
-  substitutions ← use substitutions_
-  herb_found ← use herb_found_
-  if herb_found
-    then pure $ QuestResult QuestHasEnded $ substitute substitutions $ won_story
-    else do
-      herb_found_ .= True
-      QuestResult
-        <$> (QuestInProgress <$> numberUntilEvent 5)
-        <*> pickStoryUsingState found_stories
-
-runAttainedFailureMilestone ∷ AttainedMilestoneQuestRunner State
-runAttainedFailureMilestone = QuestResult QuestHasEnded <$> pickStoryUsingState failure_happened_stories
+trial ∷ TrialQuestRunner State
+trial (Tagged (Success available_success_credits) (Failure available_failure_credits)) = do
+  Tagged
+    (Success remaining_success_credits)
+    (Failure remaining_failure_credits) ← use remaining_credits_
+  if available_success_credits >= remaining_success_credits
+    then do
+      herb_already_found ← herb_found_ <<.= True
+      TryQuestResult
+        (if herb_already_found then QuestHasEnded else QuestInProgress)
+        (Tagged
+          (Success $ available_success_credits - remaining_success_credits)
+          (Failure available_failure_credits)
+        )
+        <$> (if herb_already_found
+              then use substitutions_ <&> flip substitute won_story
+              else pickStoryUsingState found_stories
+            )
+    else
+      if available_failure_credits >= remaining_failure_credits
+        then
+          TryQuestResult
+            QuestHasEnded
+            (Tagged
+              (Success 0)
+              (Failure $ available_failure_credits - remaining_failure_credits)
+            )
+            <$> pickStoryUsingState failure_happened_stories
+        else do
+          remaining_credits_ .=
+            Tagged
+              (Success $ remaining_success_credits - available_success_credits)
+              (Failure $ remaining_failure_credits - available_failure_credits)
+          let stories
+                | available_failure_credits > 0 = failure_averted_stories
+                | otherwise = wander_stories
+          TryQuestResult
+            QuestInProgress
+            (Tagged
+              (Success 0)
+              (Failure 0)
+            )
+            <$> pickStoryUsingState stories
 
 --------------------------------------------------------------------------------
 --------------------------------- Proofreading ---------------------------------

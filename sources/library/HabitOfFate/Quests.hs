@@ -26,10 +26,8 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Random
 
-import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest
-import HabitOfFate.Story
 import HabitOfFate.TH
 
 data CurrentQuestState =
@@ -42,8 +40,7 @@ data Quest s = Quest
   { questPrism ∷ Prism' CurrentQuestState s
   , questInitialize ∷ InitializeQuestRunner s
   , questGetStatus ∷ GetStatusQuestRunner s
-  , progressToMilestones ∷ Tagged (ProgressToMilestoneQuestRunner s)
-  , attainedMilestones ∷ Tagged (AttainedMilestoneQuestRunner s)
+  , questTrial ∷ TrialQuestRunner s
   }
 
 data WrappedQuest = ∀ s. WrappedQuest (Quest s)
@@ -55,14 +52,7 @@ quests =
        _Forest
        Forest.initialize
        Forest.getStatus
-       (Tagged
-         (Success (Forest.runProgressToSuccessMilestone))
-         (Failure Forest.runProgressToFailureMilestone)
-       )
-       (Tagged
-         (Success Forest.runAttainedSuccessMilestone)
-         (Failure Forest.runAttainedFailureMilestone)
-       )
+       Forest.trial
   ]
 
 type RunCurrentQuestResult = RunQuestResult CurrentQuestState

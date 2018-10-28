@@ -32,7 +32,6 @@ import HabitOfFate.Story
 
 data InitializeQuestResult α = InitializeQuestResult
   { initialQuestState ∷ α
-  , initialQuestCredits ∷ Tagged Double
   , initialQuestEvent ∷ Event
   }
 makeLenses ''InitializeQuestResult
@@ -43,17 +42,17 @@ data RunQuestResult s = RunQuestResult
   } deriving (Functor)
 makeLenses ''RunQuestResult
 
-data QuestStatus = QuestInProgress Double | QuestHasEnded
+data QuestStatus = QuestInProgress | QuestHasEnded
 
-data QuestResult = QuestResult
-  { questStatus ∷ QuestStatus
-  , questEvent ∷ Event
+data TryQuestResult = TryQuestResult
+  { tryQuestStatus ∷ QuestStatus
+  , tryQuestPostAvailableCredits ∷ Tagged Double
+  , tryQuestEvent ∷ Event
   }
 
 type InitializeQuestRunner s = Rand StdGen (InitializeQuestResult s)
 type GetStatusQuestRunner s = s → Event
-type ProgressToMilestoneQuestRunner s = s → (Rand StdGen) Event
-type AttainedMilestoneQuestRunner s = StateT s (Rand StdGen) QuestResult
+type TrialQuestRunner s = Tagged Double → StateT s (Rand StdGen) TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join

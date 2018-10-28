@@ -74,7 +74,6 @@ data Account = Account
   {   _password_ ∷ Text
   ,   _habits_ ∷ ItemsSequence Habit
   ,   _stored_credits_ ∷ Tagged Double
-  ,   _awaited_credits_ ∷ Tagged Double
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
   ,   _rng_ ∷ StdGen
   ,   _timezone_ ∷ TZLabel
@@ -93,7 +92,6 @@ newAccount password =
           (decodeUtf8 >>> evaluate)
         )
     <*> pure def
-    <*> pure (Tagged (Success 0) (Failure 0))
     <*> pure (Tagged (Success 0) (Failure 0))
     <*> pure Nothing
     <*> newStdGen
@@ -121,82 +119,34 @@ runAccount = do
   rng ← use rng_
   case maybe_current_quest_state of
     Nothing → do
-      let ((new_current_quest_state, new_awaited_credits, event), new_rng) = flip runRand rng $ do
+      let ((new_current_quest_state, event), new_rng) = flip runRand rng $ do
             WrappedQuest quest ← uniform quests
-            InitializeQuestResult quest_state initial_credits intro_event ← questInitialize quest
+            InitializeQuestResult quest_state intro_event ← questInitialize quest
             pure
               ( quest_state ^. re (questPrism quest)
-              , initial_credits
               , intro_event
               )
-      awaited_credits_ .= new_awaited_credits
       maybe_current_quest_state_ .= Just new_current_quest_state
       rng_ .= new_rng
       pure $ event
     Just current_quest_state → do
-      stored_credits ← use stored_credits_
-      if (stored_credits ^. success_ <= 0) && (stored_credits ^. failure_ <= 0)
-        then pure []
-        else do
-          awaited_credits ← use awaited_credits_
-          let spend ∷
-                Quest s →
-                (s → CurrentQuestState) →
-                s →
-                Lens' (Tagged Double) Double →
-                Getter (Quest s) (ProgressToMilestoneQuestRunner s) →
-                Getter (Quest s) (AttainedMilestoneQuestRunner s) →
-                State Account Event
-              spend quest wrapQuestState quest_state credits_lens_ partial_lens_ complete_lens_
-                | awaited_credits ^. credits_lens_ > stored_credits ^. credits_lens_ = do
-                    awaited_credits_ . credits_lens_ -= stored_credits ^. credits_lens_
-                    stored_credits_ . credits_lens_ .= 0
-                    let (event, new_rng) =
-                          quest
-                            |> (^. partial_lens_)
-                            |> ($ quest_state)
-                            |> flip runRand rng
-                    rng_ .= new_rng
-                    pure event
-                | otherwise = do
-                    awaited_credits_ . credits_lens_ .= 0
-                    stored_credits_ . credits_lens_ -= stored_credits ^. credits_lens_
-                    let ((result, new_quest_state), new_rng) =
-                          quest
-                            |> (^. complete_lens_)
-                            |> flip runStateT quest_state
-                            |> flip runRand rng
-                    rng_ .= new_rng
-                    case questStatus result of
-                      QuestInProgress new_awaited_credits→ do
-                        awaited_credits_ . credits_lens_ .= new_awaited_credits
-                        maybe_current_quest_state_ .=
-                          (Just $ wrapQuestState new_quest_state)
-                      QuestHasEnded →
-                        maybe_current_quest_state_ .= Nothing
-                    pure $ questEvent result
-
-              run ∷ ∀ s. Quest s → s → State Account Event
-              run quest quest_state
-                | stored_credits ^. success_ > 0 =
-                    spend
-                      quest
-                      (^. re (questPrism quest))
-                      quest_state
-                      success_
-                      (to progressToMilestones . success_)
-                      (to attainedMilestones . success_)
-                | stored_credits ^. failure_ > 0 =
-                    spend
-                      quest
-                      (^. re (questPrism quest))
-                      quest_state
-                      failure_
-                      (to progressToMilestones . failure_)
-                      (to attainedMilestones . failure_)
-                | otherwise = pure []
-
-          runCurrentQuest run current_quest_state
+      let run ∷ ∀ s. Quest s → s → State Account Event
+          run quest quest_state = do
+            stored_credits ← use stored_credits_
+            let ((TryQuestResult quest_status new_stored_credits event, new_quest_state), new_rng) =
+                  quest
+                    |> questTrial
+                    |> ($ stored_credits)
+                    |> flip runStateT quest_state
+                    |> flip runRand rng ∷ ((TryQuestResult, s), StdGen)
+            rng_ .= new_rng
+            stored_credits_ .= new_stored_credits
+            maybe_current_quest_state_ .=
+              case quest_status of
+                QuestHasEnded → Nothing
+                QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
+            pure event
+      runCurrentQuest run current_quest_state
 
 data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
 
