@@ -79,8 +79,8 @@ handleMarkHabitApi environment =
 
 handleMarkHabitWeb ∷ Environment → ScottyM ()
 handleMarkHabitWeb environment = do
-  Scotty.post "/mark/success/:habit_id" $ mark SuccessResult
-  Scotty.post "/mark/failure/:habit_id" $ mark FailureResult
+  Scotty.post "/habits/:habit_id/mark/success" $ mark SuccessResult
+  Scotty.post "/habits/:habit_id/mark/failure" $ mark FailureResult
  where
   mark ∷ SuccessOrFailureResult → ActionM ()
   mark result = webTransaction environment $ do
