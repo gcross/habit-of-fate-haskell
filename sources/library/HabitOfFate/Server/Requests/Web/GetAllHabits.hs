@@ -60,7 +60,7 @@ handler environment = do
             log [i|Filtering habits with group #{group_id}...|]
             pure $ filter (\(_, habit) → group_id `member` (habit ^. group_membership_)) habits
     quest_status ← get <&> getAccountStatus
-    current_time_as_local_time ← getLastSeenAsLocalTime
+    current_time_as_local_time ← getCurrentTimeAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
     renderPageResult "Habit of Fate - List of Habits" ["list"] ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
