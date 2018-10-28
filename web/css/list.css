@@ -8,7 +8,7 @@
 .list {
     display: grid;
     font-size: 24;
-    grid-template-columns: 100px 100px 3em auto 25px 100px 100px 9em;
+    grid-template-columns: 100px 100px 3em auto 50px 100px 100px 100px 9em;
     padding: 10px;
 }
 
@@ -44,6 +44,11 @@
 .name {
     margin-bottom: auto;
     margin-top: auto;
+}
+
+.time {
+    margin: auto;
+    text-align: center;
 }
 
 .scale {

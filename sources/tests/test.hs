@@ -194,8 +194,8 @@ apiTestCase test_name action =
   |> serverTestCase test_name
 
 test_habit, test_habit_2 ∷ Habit
-test_habit = Habit "name" (Difficulty Low) (Importance Medium) Indefinite []
-test_habit_2 = Habit "test" (Difficulty Medium) (Importance VeryHigh) Indefinite []
+test_habit = Habit "name" (Difficulty Low) (Importance Medium) Indefinite [] Nothing
+test_habit_2 = Habit "test" (Difficulty Medium) (Importance VeryHigh) Indefinite [] Nothing
 
 test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
@@ -341,6 +341,7 @@ extractHabit tags =
     <*> (Importance <$> extractSelect "importance" tags)
     <*> extractRadio "frequency" tags
     <*> pure []
+    <*> pure Nothing
 
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []

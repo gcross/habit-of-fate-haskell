@@ -240,6 +240,7 @@ extractHabit = do
         (Importance importance_value)
         frequency_value
         group_membership_value
+        (default_habit ^. maybe_last_marked_)
     , find (onull >>> not) >>> fromMaybe "" $
        [ name_error
        , difficulty_error

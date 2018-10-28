@@ -31,6 +31,7 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch
 
 import Data.Aeson
+import Data.Time.LocalTime (LocalTime)
 import Data.UUID
 
 import Text.Blaze (ToMarkup(..))
@@ -89,6 +90,7 @@ data Habit = Habit
   , _importance_ ∷ Importance
   , _frequency_ ∷ Frequency
   , _group_membership_ ∷ Set UUID
+  , _maybe_last_marked_ ∷ Maybe LocalTime
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
@@ -111,5 +113,8 @@ frequency_ = lens _frequency_ (\old new_frequency → old { _frequency_ = new_fr
 group_membership_ ∷ Lens' Habit (Set UUID)
 group_membership_ = lens _group_membership_ (\old new_group_membership → old { _group_membership_ = new_group_membership })
 
+maybe_last_marked_ ∷ Lens' Habit (Maybe LocalTime)
+maybe_last_marked_ = lens _maybe_last_marked_ (\old new_maybe_last_marked → old { _maybe_last_marked_ = new_maybe_last_marked })
+
 instance Default Habit where
-  def = Habit "" (Difficulty def) (Importance def) def mempty
+  def = Habit "" (Difficulty def) (Importance def) def mempty Nothing

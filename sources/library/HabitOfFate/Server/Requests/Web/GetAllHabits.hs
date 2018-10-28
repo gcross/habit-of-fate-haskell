@@ -28,7 +28,7 @@ import HabitOfFate.Prelude
 
 import Data.Time.Calendar (diffDays)
 import Data.Time.Format (defaultTimeLocale, formatTime)
-import Data.Time.LocalTime (localDay)
+import Data.Time.LocalTime (LocalTime, localDay, utcToLocalTime)
 import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
@@ -62,6 +62,17 @@ handler environment = do
     quest_status ← get <&> getAccountStatus
     current_time_as_local_time ← getCurrentTimeAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
+    let renderLocalTime ∷ LocalTime → H.Html
+        renderLocalTime time =
+          foldMap
+            (
+              (\fmt → formatTime defaultTimeLocale fmt time)
+              >>>
+              H.toHtml
+              >>>
+              H.div
+            )
+            ["%b %e, %Y", "%I:%M%P"]
     renderPageResult "Habit of Fate - List of Habits" ["list"] ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "groups" $ mconcat $
@@ -138,6 +149,7 @@ handler environment = do
           , ("position", "#")
           , ("name", "Habit Name")
           , ("", ""∷Text)
+          , ("time", "Last Marked")
           , ("scale", "Difficulty")
           , ("scale", "Importance")
           , ("", ""∷Text)
@@ -152,6 +164,13 @@ handler environment = do
                     ! A.class_ "edit"
                     ! A.href (H.toValue [i|/habits/#{UUID.toText uuid}|])
                     $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
+                last_marked =
+                  habit
+                    |> (^. maybe_last_marked_)
+                    |>  maybe
+                          (H.toHtml ("Never" ∷ Text))
+                          renderLocalTime
+                    |> ((H.div ! A.class_ "time") $)
                 scaleFor scale_lens =
                   H.div ! A.class_ "scale" $ H.toHtml $ displayScale $ habit ^. scale_lens
                 markButtonFor (habit_name ∷ Text) class_ scale_lens_
@@ -182,6 +201,7 @@ handler environment = do
             , position
             , name
             , edit_button
+            , last_marked
             , scaleFor difficulty_
             , scaleFor importance_
             , move_form
