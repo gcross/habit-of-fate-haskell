@@ -55,7 +55,6 @@ rationalToLocalTime =
   >>>
   \(day, time_of_day) → LocalTime (ModifiedJulianDay day) (dayFractionToTimeOfDay time_of_day)
 
-data DaysToKeep = KeepDaysInPast Int | KeepNumberOfDays Int deriving (Eq, Ord, Read, Show)
 
 nextAndPreviousDailies ∷ Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
 nextAndPreviousDailies period today deadline
@@ -188,6 +187,7 @@ nextAndPreviousWeeklies days_to_repeat period today deadline
     -- is the case handled by nextWeeklyAfterPresent.
     | otherwise = deadline { localDay = nextWeeklyAfterPresent days_to_repeat period (localDay today) }
 
+data DaysToKeep = KeepDaysInPast Int | KeepNumberOfDays Int deriving (Eq, Ord, Read, Show)
 data Repeated = Daily Int | Weekly Int DaysToRepeat deriving (Eq, Ord, Read, Show)
 
 nextAndPreviousDeadlines ∷ DaysToKeep → Repeated → LocalTime → LocalTime → (LocalTime, [LocalTime])
