@@ -5,13 +5,8 @@
 }
 
 .label {
-    grid-column: 1;
     text-align: right;
     margin-right: 10px;
-}
-
-.value {
-    grid-column: 2;
 }
 
 .error_message {
