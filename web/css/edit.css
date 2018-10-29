@@ -2,6 +2,7 @@
     display: grid;
     grid-template-columns: 120px auto;
     grid-template-rows: auto auto auto auto auto auto;
+    row-gap: 5px;
 }
 
 .label {
