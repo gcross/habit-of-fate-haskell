@@ -112,7 +112,7 @@ habitPage habit_id error_message deletion_mode habit groups = do
                   (habit ^. maybe_deadline_)
                 )
 
-        H.toHtml ("Groups:" ∷ Text)
+        H.div ! A.class_ "label" $ H.toHtml ("Groups:" ∷ Text)
 
         H.div ! A.id "group_input" $ do
           forM_ (groups ^. items_list_) $ \(group_id, group_name) → do
