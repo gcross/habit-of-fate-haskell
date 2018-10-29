@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
@@ -33,6 +34,8 @@ import Network.Wai.Handler.WarpTLS
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Scale
 import HabitOfFate.Logging
 import HabitOfFate.Server
 import HabitOfFate.TH (textChar8)
@@ -93,21 +96,21 @@ makeInitialAccounts ∷ IO (Map Username Account)
 makeInitialAccounts =
   [ ( ("a", "a")
     ,
-      [ ("d6d95381-9a66-453f-a134-64667cb0ef63", Habit "Test 1" (Difficulty Medium) (Importance Medium) Indefinite)
-      , ("4e512d1e-99f2-4953-9c9c-9fcbc1e61018", Habit "Test 2" (Difficulty Low) (Importance High) Indefinite)
-      , ("7709fdc1-caaf-4c3a-93ee-5ab4137ab653", Habit "Test 3" (Difficulty VeryHigh) (Importance Medium) Indefinite)
+      [ ("d6d95381-9a66-453f-a134-64667cb0ef63", Habit "Test 1" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing Nothing)
+      , ("4e512d1e-99f2-4953-9c9c-9fcbc1e61018", Habit "Test 2" (Difficulty Low) (Importance High) Indefinite [] Nothing Nothing)
+      , ("7709fdc1-caaf-4c3a-93ee-5ab4137ab653", Habit "Test 3" (Difficulty VeryHigh) (Importance Medium) Indefinite [] Nothing Nothing)
       ]
     )
   , ( ("b", "c")
     ,
-      [ ("4ea70d5f-b225-4364-a1e5-26693599b221", Habit "Test A" (Difficulty Medium) (Importance Medium) Indefinite)
+      [ ("4ea70d5f-b225-4364-a1e5-26693599b221", Habit "Test A" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing Nothing)
       ]
     )
   , ( ("c", "b")
     ,
-      [ ("b2bfb271-a4ac-4dd8-8974-8055258c858d", Habit "Test α" (Difficulty Low) (Importance Low) Indefinite)
-      , ("728b4e0e-a6c3-43ad-9a97-e55d585ab48c", Habit "Test β" (Difficulty Medium) (Importance Medium) Indefinite)
-      , ("04fe33fe-048f-4875-9f4d-bfe7ea71013f", Habit "Test c" (Difficulty High) (Importance High) Indefinite)
+      [ ("b2bfb271-a4ac-4dd8-8974-8055258c858d", Habit "Test α" (Difficulty Low) (Importance Low) Indefinite [] Nothing Nothing)
+      , ("728b4e0e-a6c3-43ad-9a97-e55d585ab48c", Habit "Test β" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing Nothing)
+      , ("04fe33fe-048f-4875-9f4d-bfe7ea71013f", Habit "Test c" (Difficulty High) (Importance High) Indefinite [] Nothing Nothing)
       ]
     )
   ]
@@ -118,16 +121,16 @@ makeInitialAccounts =
               habit_map = habit_list |> mapFromList
               habit_id_seq = unzip habit_list ^. _1 |> fromList
           account ← newAccount password
-          pure (Username name, account & habits_ .~ Habits habit_map habit_id_seq)
+          pure (Username name, account & habits_ .~ ItemsSequence habit_map habit_id_seq)
       )
   |> fmap mapFromList
 
 main = do
   mapM_ logIO
-    ["THIS SERVER IS RUNNING IN TEST MODE.  It uses test certificates hard-coded"
-    ,"in the binary and it only stores the account data in memory so all account"
-    ,"data will be lost when the server exits."
-    ]
+    (["THIS SERVER IS RUNNING IN TEST MODE.  It uses test certificates hard-coded"
+     ,"in the binary and it only stores the account data in memory so all account"
+     ,"data will be lost when the server exits."
+     ] ∷ [String])
   accounts_tvar ←
     makeInitialAccounts
     >>=
