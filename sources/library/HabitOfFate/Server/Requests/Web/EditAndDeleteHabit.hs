@@ -95,10 +95,17 @@ habitPage habit_id error_message deletion_mode habit groups = do
             ! A.type_ "radio"
             ! A.name "frequency"
             ! A.value "Once"
-            & if habit ^. frequency_ == Once then (! A.checked "checked") else identity
-          H.toHtml ("Once" ∷ Text)
+            & case habit ^. frequency_ of {Once _ → (! A.checked "checked"); _ → identity}
+          H.div ! A.class_ "once" $ do
+            H.div ! A.class_ "once_label" $ H.toHtml ("Once" ∷ Text)
+            H.div $ do
+              H.input
+                ! A.type_ "checkbox"
+                ! A.name "once_has_deadline"
+                & case habit ^. frequency_ of { Once True → (! A.checked "checked"); _ → identity }
+              H.toHtml ("With Deadline" ∷ Text)
 
-        H.div ! A.class_ "label" $ H.toHtml ("Next Deadline:" ∷ Text)
+        H.div ! A.class_ "label" $ H.toHtml ("(Next) Deadline:" ∷ Text)
 
         H.div $
           H.input
@@ -210,6 +217,7 @@ extractHabit = do
         | difficulty_value == None && importance_value == None =
             "Either the difficulty or the importance must not be None."
         | otherwise = ""
+  once_has_deadline ← getParamMaybe "once_has_deadline" <&> maybe False (== ("on" ∷ Text))
   (frequency_value, frequency_error) ←
     getParamMaybe "frequency"
     <&>
@@ -218,21 +226,34 @@ extractHabit = do
       (\value →
         case value of
           "Indefinite" → (Indefinite, "")
-          "Once" → (Once, "")
+          "Once" → (Once once_has_deadline, "")
           _ → (Indefinite, "Frequency must be Indefinite or Once, not " ⊕ value)
       )
+  current_time_as_local_time ← getCurrentTimeAsLocalTime
   (maybe_deadline_value, maybe_deadline_error) ←
     getParamMaybe "deadline"
     <&>
     maybe
       (default_habit ^. maybe_deadline_, "")
-      (\deadline_string →
-        deadline_string
-          |> parseTimeM False defaultTimeLocale "%FT%R"
-          |> maybe
-              (Nothing, pack $ "Error parsing deadline: " ⊕ deadline_string)
-              (\deadline → (Just deadline, ""))
+      (\case
+        "" → (Nothing, "")
+        deadline_string →
+          deadline_string
+            |> parseTimeM False defaultTimeLocale "%FT%R"
+            |> maybe
+                (Nothing, pack $ "Error parsing deadline: " ⊕ deadline_string)
+                (\deadline →
+                   ( Just deadline
+                   , if deadline < current_time_as_local_time
+                       then "Deadline must not be in the past."
+                       else ""
+                   )
+                 )
       )
+  let deadline_required_error =
+        case (frequency_value, maybe_deadline_value) of
+          (Once True, Nothing) → "Must specify the deadline."
+          _ → ""
   all_params ← getParams
   log [i|PARAMS = #{show all_params}|]
   (group_membership_error ∷ Lazy.Text, group_membership_value ∷ Set UUID) ←
@@ -268,7 +289,7 @@ extractHabit = do
         frequency_value
         group_membership_value
         (default_habit ^. maybe_last_marked_)
-        maybe_deadline_value
+        (case frequency_value of { Once True → maybe_deadline_value; _ → Nothing })
     , find (onull >>> not) >>> fromMaybe "" $
        [ name_error
        , difficulty_error
@@ -277,6 +298,7 @@ extractHabit = do
        , frequency_error
        , group_membership_error
        , maybe_deadline_error
+       , deadline_required_error
        ]
     )
 

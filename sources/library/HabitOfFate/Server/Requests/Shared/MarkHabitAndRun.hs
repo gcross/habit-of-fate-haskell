@@ -85,7 +85,7 @@ markHabit result habit_id =
     (\habit → do
       stored_credits_ . creditLensForResult result += scaleFactor (habit ^. scaleLensForResult result)
       case habit ^. frequency_ of
-        Once → habits_ . at habit_id .= Nothing
+        Once _ → habits_ . at habit_id .= Nothing
         Indefinite → do
           new_last_marked ← getCurrentTimeAsLocalTime
           habits_ . at habit_id .= Just (habit & maybe_last_marked_ .~ Just new_last_marked)

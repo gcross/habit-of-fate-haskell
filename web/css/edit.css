@@ -1,6 +1,6 @@
 .fields {
     display: grid;
-    grid-template-columns: 120px auto;
+    grid-template-columns: 130px auto;
     grid-template-rows: auto auto auto auto auto auto;
     row-gap: 5px;
 }
@@ -12,15 +12,25 @@
     margin-top: auto;
 }
 
+.once {
+    display: flex;
+}
+
+.once_label {
+    margin-right: 5px;
+}
+
 .error_message {
     color: red;
 }
 
 #frequency_input {
+    column-gap: 1px;
     display: grid;
     grid-template-columns: auto auto;
     grid-template-rows: auto auto;
     margin-right: auto;
+    row-gap: 5px;
 }
 
 #group_input {

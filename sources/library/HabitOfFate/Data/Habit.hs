@@ -78,7 +78,7 @@ instance Read Importance where
 instance Parsable Importance where
   parseParam = parseParamScale "Importance"
 
-data Frequency = Indefinite | Once deriving (Eq, Read, Show, Ord)
+data Frequency = Indefinite | Once Bool deriving (Eq, Read, Show, Ord)
 deriveJSON ''Frequency
 
 instance Default Frequency where
