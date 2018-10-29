@@ -83,11 +83,7 @@ import HabitOfFate.Story
 import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
 
-mkDay ∷ Int → Day
-mkDay = toInteger >>> ModifiedJulianDay
-
-mkLocal ∷ Int → TimeOfDay → LocalTime
-mkLocal = mkDay >>> LocalTime
+dayHour d h = LocalTime (ModifiedJulianDay d) (TimeOfDay h 0 0)
 
 day_of_week_names ∷ [String]
 day_of_week_names = ["M", "T", "W", "Th", "F", "Sat", "Sun"]
@@ -351,25 +347,9 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   [ testGroup "HabitOfFate.Repeated"
   ------------------------------------------------------------------------------
-    [ testGroup "nextDailyAfterPresent"
+    [ testGroup "nextDaily" $
     ----------------------------------------------------------------------------
-      [ testProperty "deadline after today" $
-          \(Positive period) (Positive deadline) (Positive offset) →
-            let today = deadline - offset
-            in ioProperty $ nextDailyAfterPresent period today deadline @?=
-                 ((toRational ((floor ((today - deadline) / period) ∷ Integer) + 1) * period) + deadline)
-      , testProperty "deadline before today" $
-          \(Positive period) (Positive deadline) (Positive offset) →
-            let today = deadline + offset
-            in ioProperty $ nextDailyAfterPresent period today deadline @?=
-                 ((toRational ((floor ((today - deadline) / period) ∷ Integer) + 1) * period) + deadline)
-      , testCase "period = 2, today = 4, deadline = 3" $ nextDailyAfterPresent 2 4 3 @?= 5
-      , testCase "period = 1, today = 4.2, deadline = 3.6" $ nextDailyAfterPresent 1 4.2 3.6 @?= 4.6
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "nextAndPreviousDailies" $
-    ----------------------------------------------------------------------------
-      let testNextAndPreviousDailiesCase takeDays period today deadline expected_result =
+      let testNextDailyCase period today deadline expected_result =
             testCase
               (printf
                 "%i %s %s"
@@ -377,105 +357,129 @@ main = defaultMain $ testGroup "All Tests"
                 (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
                 (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
               )
-              ((second takeDays $ nextAndPreviousDailies period today deadline) @?= expected_result)
+              (nextDaily period today deadline @?= expected_result)
       in
-      [ testNextAndPreviousDailiesCase
-          identity
-          1
-          (LocalTime (ModifiedJulianDay 10) (TimeOfDay 14 0 0))
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0)
-          , []
-          )
-      , testNextAndPreviousDailiesCase
-          (take 7)
-          1
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          (LocalTime (ModifiedJulianDay 10) (TimeOfDay 14 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 14 0 0)
-          , [ (LocalTime (ModifiedJulianDay d) (TimeOfDay 14 0 0)) | d ← [19, 18..13] ]
-          )
-      , testNextAndPreviousDailiesCase
-          (take 3)
-          2
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          (LocalTime (ModifiedJulianDay 10) (TimeOfDay 14 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 14 0 0)
-          , [ (LocalTime (ModifiedJulianDay d) (TimeOfDay 14 0 0)) | d ← [18, 16, 14] ]
-          )
-      , testNextAndPreviousDailiesCase
-          (take 3)
-          3
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          (LocalTime (ModifiedJulianDay 17) (TimeOfDay 14 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 14 0 0)
-          , [ (LocalTime (ModifiedJulianDay d) (TimeOfDay 14 0 0)) | d ← [17, 14, 11] ]
-          )
+      [ testNextDailyCase 2 (dayHour 4 0) (dayHour 3 0) (dayHour 5 0)
+      , testNextDailyCase 1 (dayHour 4 1) (dayHour 3 2) (dayHour 4 2)
       ]
     ----------------------------------------------------------------------------
-    , testGroup "nextWeeklyAfterPresent" $
+    , testGroup "previousDailies" $
     ----------------------------------------------------------------------------
-      let testNextWeeklyAfterPresentCase days_to_repeat period today next_deadline =
+      let testPreviousDailiesCase takeDays period next_deadline expected_result =
+            testCase
+              (printf
+                "%i %s"
+                period
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" next_deadline)
+              )
+              (takeDays (previousDailies period next_deadline) @?= expected_result)
+      in
+      [ testPreviousDailiesCase (take 7) 1 (dayHour 20 2) [ dayHour d 2 | d ← [19, 18..13] ]
+      , testPreviousDailiesCase (take 3) 2 (dayHour 20 2) [ dayHour d 2 | d ← [18, 16, 14] ]
+      , testPreviousDailiesCase (take 3) 3 (dayHour 17 2) [ dayHour d 2 | d ← [14, 11,  8] ]
+      ]
+    ----------------------------------------------------------------------------
+    , testGroup "nextWeeklyDay" $
+    ----------------------------------------------------------------------------
+      let testNextWeeklyDayCase days_to_repeat period today next_deadline =
             testCase
               (printf "%s %i %s"
                 (repeatDays days_to_repeat)
                 period
                 (formatTime defaultTimeLocale "%y-%m-%d" today)
               )
-              (nextWeeklyAfterPresent days_to_repeat period today @?= next_deadline)
+              (nextWeeklyDay days_to_repeat period today @?= next_deadline)
       in
       [ testProperty "next_deadline >= today" $ \days_to_repeat (Positive period) today →
-          nextWeeklyAfterPresent days_to_repeat period today >= today
-      , testNextWeeklyAfterPresentCase
+          nextWeeklyDay days_to_repeat period today >= today
+      , testNextWeeklyDayCase
           (def & monday_ .~ True & tuesday_ .~ True)
           1
           (fromWeekDate 1 1 1)
           (fromWeekDate 1 1 2)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & monday_ .~ True & wednesday_ .~ True)
           1
           (fromWeekDate 1 1 2)
           (fromWeekDate 1 1 3)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & monday_ .~ True)
           2
           (fromWeekDate 1 1 1)
           (fromWeekDate 1 3 1)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & monday_ .~ True)
           3
           (fromWeekDate 1 1 1)
           (fromWeekDate 1 4 1)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & monday_ .~ True)
           2
           (fromWeekDate 1 1 2)
           (fromWeekDate 1 3 1)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & wednesday_ .~ True)
           2
           (fromWeekDate 1 1 3)
           (fromWeekDate 1 3 3)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & tuesday_ .~ True & wednesday_ .~ True)
           2
           (fromWeekDate 1 1 4)
           (fromWeekDate 1 3 2)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & tuesday_ .~ True & friday_ .~ True)
           2
           (fromWeekDate 1 1 2)
           (fromWeekDate 1 1 5)
-      , testNextWeeklyAfterPresentCase
+      , testNextWeeklyDayCase
           (def & monday_ .~ True & wednesday_ .~ True)
           2
           (fromWeekDate 1 5 5)
           (fromWeekDate 1 7 1)
       ]
     ----------------------------------------------------------------------------
+    , testGroup "nextWeeklies" $
+    ----------------------------------------------------------------------------
+      let testNextWeeklyCase days_to_repeat period today deadline result =
+            testCase
+              (printf "%s %i %s %s"
+                (repeatDays days_to_repeat)
+                period
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
+                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
+              )
+              (nextWeekly period days_to_repeat today deadline @?= result)
+      in
+      [ testNextWeeklyCase
+          (def & monday_ .~ True & wednesday_ .~ True)
+          1
+          (LocalTime (fromWeekDate 1 1 2) midnight)
+          (LocalTime (fromWeekDate 1 1 1) midnight)
+          (LocalTime (fromWeekDate 1 1 3) midnight)
+      , testNextWeeklyCase
+          (def & monday_ .~ True & wednesday_ .~ True)
+          2
+          (LocalTime (fromWeekDate 1 5 5) midnight)
+          (LocalTime (fromWeekDate 1 1 1) midnight)
+          (LocalTime (fromWeekDate 1 7 1) midnight)
+      , testNextWeeklyCase
+          (def & monday_ .~ True & wednesday_ .~ True)
+          1
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 1 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0))
+      , testNextWeeklyCase
+          (def & monday_ .~ True & wednesday_ .~ True)
+          1
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 1 0))
+          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 1 0))
+      ]
+    ----------------------------------------------------------------------------
     , testGroup "previousWeekliesBeforePresent" $
     ----------------------------------------------------------------------------
-      let testPreviousWeekliesBeforePresentCase takeDays days_to_repeat period next_deadline previous_deadlines =
+      let testPreviousWeekliesCase takeDays days_to_repeat period next_deadline previous_deadlines =
             testCase
               (printf "%s %i %s"
                 (repeatDays days_to_repeat)
@@ -483,11 +487,11 @@ main = defaultMain $ testGroup "All Tests"
                 (formatTime defaultTimeLocale "%y-%m-%d.%Hh" next_deadline)
               )
               (
-                takeDays (previousWeekliesBeforePresent days_to_repeat period next_deadline)
+                takeDays (previousWeeklies period days_to_repeat next_deadline)
                   @?= previous_deadlines
               )
       in
-      [ testPreviousWeekliesBeforePresentCase
+      [ testPreviousWeekliesCase
           (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
           (def & monday_ .~ True & tuesday_ .~ True)
           1
@@ -495,7 +499,7 @@ main = defaultMain $ testGroup "All Tests"
           [ LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0)
           , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
           ]
-      , testPreviousWeekliesBeforePresentCase
+      , testPreviousWeekliesCase
           (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
           (def & monday_ .~ True)
           1
@@ -503,7 +507,7 @@ main = defaultMain $ testGroup "All Tests"
           [ LocalTime (fromWeekDate 1 2 1) (TimeOfDay 1 0 0)
           , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
           ]
-      , testPreviousWeekliesBeforePresentCase
+      , testPreviousWeekliesCase
           (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
           (def & monday_ .~ True & thursday_ .~ True)
           2
@@ -514,7 +518,7 @@ main = defaultMain $ testGroup "All Tests"
           , LocalTime (fromWeekDate 1 1 4) (TimeOfDay 1 0 0)
           , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
           ]
-      , testPreviousWeekliesBeforePresentCase
+      , testPreviousWeekliesCase
           (take 5)
           (def & monday_ .~ True & wednesday_ .~ True)
           2
@@ -525,44 +529,6 @@ main = defaultMain $ testGroup "All Tests"
           , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
           , LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
           ]
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "nextAndPreviousWeeklies" $
-    ----------------------------------------------------------------------------
-      let testNextAndPreviousWeekliesCase takeDays days_to_repeat period today deadline result =
-            testCase
-              (printf "%s %i %s %s"
-                (repeatDays days_to_repeat)
-                period
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
-              )
-              ((second takeDays $ nextAndPreviousWeeklies days_to_repeat period today deadline) @?= result)
-      in
-      [ testNextAndPreviousWeekliesCase
-          (take 1)
-          (def & monday_ .~ True & wednesday_ .~ True)
-          1
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          ( LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
-          , [ LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
-            ]
-          )
-      , testNextAndPreviousWeekliesCase
-          (take 5)
-          (def & monday_ .~ True & wednesday_ .~ True)
-          2
-          (LocalTime (fromWeekDate 1 5 5) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          ( LocalTime (fromWeekDate 1 7 1) (TimeOfDay 1 0 0)
-          , [ LocalTime (fromWeekDate 1 5 3) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 3 3) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
-            ]
-          )
       ]
     ----------------------------------------------------------------------------
     , testGroup "nextAndPreviousDeadlines" $

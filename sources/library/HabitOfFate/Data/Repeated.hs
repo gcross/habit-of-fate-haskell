@@ -34,17 +34,6 @@ import qualified Data.Vector.Unboxed as UV
 
 import HabitOfFate.TH
 
-nextDailyAfterPresent ∷ Rational → Rational → Rational → Rational
-nextDailyAfterPresent period today deadline =
-  deadline
-  |> (today -)
-  |> (/ period)
-  |> (floor ∷ Rational → Int)
-  |> toRational
-  |> (+ 1)
-  |> (* period)
-  |> (+ deadline)
-
 localTimeToRational ∷ LocalTime → Rational
 localTimeToRational (LocalTime (ModifiedJulianDay day) time_of_day) =
   toRational day + timeOfDayToDayFraction time_of_day
@@ -55,22 +44,29 @@ rationalToLocalTime =
   >>>
   \(day, time_of_day) → LocalTime (ModifiedJulianDay day) (dayFractionToTimeOfDay time_of_day)
 
-
-nextAndPreviousDailies ∷ Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
-nextAndPreviousDailies period today deadline
-  | today < deadline = (deadline, [])
-  | otherwise =
-      ( rationalToLocalTime next_deadline_rational
-      , next_deadline_rational
-        |> subtract period_rational
-        |> iterate (subtract period_rational)
-        |> map rationalToLocalTime
-      )
+nextDaily ∷ Int → LocalTime → LocalTime → LocalTime
+nextDaily period today deadline =
+  deadline_rational
+  |> (today_rational -)
+  |> (/ period_rational)
+  |> (floor ∷ Rational → Int)
+  |> toRational
+  |> (+ 1)
+  |> (* period_rational)
+  |> (+ deadline_rational)
+  |> rationalToLocalTime
  where
   period_rational = toRational period
   deadline_rational = localTimeToRational deadline
   today_rational = localTimeToRational today
-  next_deadline_rational = nextDailyAfterPresent period_rational today_rational deadline_rational
+
+addDaysToLocalTime ∷ Integral α ⇒ α → LocalTime → LocalTime
+addDaysToLocalTime number_of_days (LocalTime day time) = LocalTime (addDays (toInteger number_of_days) day) time
+
+previousDailies ∷ Int → LocalTime → [LocalTime]
+previousDailies period = subtractPeriod >>> iterate (subtractPeriod)
+ where
+  subtractPeriod = addDaysToLocalTime (-period)
 
 data DaysToRepeat = DaysToRepeat
   { _monday_ ∷ Bool
@@ -103,14 +99,11 @@ instance Default DaysToRepeat where
 checkDayRepeated ∷ DaysToRepeat → DaysToRepeatLens → Bool
 checkDayRepeated = (^.) >>> (unwrapDaysToRepeatLens >>>)
 
-addDaysToLocalTime ∷ Integer → LocalTime → LocalTime
-addDaysToLocalTime number_of_days (LocalTime day time) = LocalTime (addDays number_of_days day) time
-
-nextWeeklyAfterPresent ∷ DaysToRepeat → Int → Day → Day
-nextWeeklyAfterPresent days_to_repeat period today =
+nextWeeklyDay ∷ DaysToRepeat → Int → Day → Day
+nextWeeklyDay days_to_repeat period today =
   addDays days_to_add today
  where
-  (_, deadline_week, day_of_week_1_based) = toWeekDate today
+  (_, _, day_of_week_1_based) = toWeekDate today
   day_of_week = day_of_week_1_based - 1
   day_of_week_of_first_deadline =
     fromMaybe
@@ -125,8 +118,23 @@ nextWeeklyAfterPresent days_to_repeat period today =
         (+1) -- the index counts the number of days to the next repeated day minus 1
     |> toInteger
 
-previousWeekliesBeforePresent ∷ DaysToRepeat → Int → LocalTime → [LocalTime]
-previousWeekliesBeforePresent days_to_repeat period next_deadline =
+nextWeekly ∷ Int → DaysToRepeat → LocalTime → LocalTime → LocalTime
+nextWeekly period days_to_repeat today deadline
+  -- If we are on a day to be repeated and the repeat time is later in the day
+  -- then the next deadline is *today* at that time.
+  | days_to_repeat ^. (unwrapDaysToRepeatLens $ days_to_repeat_lenses ! today_day_of_week)
+      && localTimeOfDay today < localTimeOfDay deadline
+        = today { localTimeOfDay = localTimeOfDay deadline }
+
+  -- Otherwise, we can assume that the next deadline is a day after this one, which
+  -- is the case handled by nextWeeklyAfterPresent.
+  | otherwise = deadline { localDay = nextWeeklyDay days_to_repeat period (localDay today) }
+ where
+  (_, _, today_day_of_week_1_based) = toWeekDate $ localDay today
+  today_day_of_week = today_day_of_week_1_based - 1
+
+previousWeeklies ∷ Int → DaysToRepeat → LocalTime → [LocalTime]
+previousWeeklies period days_to_repeat next_deadline =
   map
     (\day_int → next_deadline { localDay = ModifiedJulianDay day_int })
     (next_deadline_week_day_ints ⊕ previous_weeks_day_ints)
@@ -165,42 +173,23 @@ previousWeekliesBeforePresent days_to_repeat period next_deadline =
     -- start of the week, and then concantenate all of the resulting lists.
     |> concatMap ((+) >>> flip map (V.toList days_to_repeat_as_offsets))
 
-
-nextAndPreviousWeeklies ∷ DaysToRepeat → Int → LocalTime → LocalTime → (LocalTime, [LocalTime])
-nextAndPreviousWeeklies days_to_repeat period today deadline
-  | today < deadline = (deadline, [])
-  | otherwise =
-      ( next_deadline
-      , previousWeekliesBeforePresent days_to_repeat period next_deadline
-      )
- where
-  (_, _, today_day_of_week_1_based) = toWeekDate $ localDay today
-  today_day_of_week = today_day_of_week_1_based - 1
-  next_deadline
-    -- If we are on a day to be repeated and the repeat time is later in the day
-    -- then the next deadline is *today* at that time.
-    | days_to_repeat ^. (unwrapDaysToRepeatLens $ days_to_repeat_lenses ! today_day_of_week)
-        && localTimeOfDay today < localTimeOfDay deadline
-          = today { localTimeOfDay = localTimeOfDay deadline }
-
-    -- Otherwise, we can assume that the next deadline is a day after this one, which
-    -- is the case handled by nextWeeklyAfterPresent.
-    | otherwise = deadline { localDay = nextWeeklyAfterPresent days_to_repeat period (localDay today) }
-
 data DaysToKeep = KeepDaysInPast Int | KeepNumberOfDays Int deriving (Eq, Ord, Read, Show)
 data Repeated = Daily Int | Weekly Int DaysToRepeat deriving (Eq, Ord, Read, Show)
 
 nextAndPreviousDeadlines ∷ DaysToKeep → Repeated → LocalTime → LocalTime → (LocalTime, [LocalTime])
-nextAndPreviousDeadlines days_to_keep repeated today deadline =
-  (next_deadline, previous_deadlines)
+nextAndPreviousDeadlines days_to_keep repeated today deadline
+  | today < deadline = (deadline, [])
+  | otherwise = (next_deadline, previous_deadlines)
  where
-  (next_deadline, previous_deadlines_stream) =
-    (case repeated of
-      Daily period → nextAndPreviousDailies period
-      Weekly period days_to_repeat → nextAndPreviousWeeklies days_to_repeat period
-    ) today deadline
+  (nextDeadline, previousDeadlines) =
+    case repeated of
+      Daily period →
+        (nextDaily period, previousDailies period)
+      Weekly period days_to_repeat →
+        (nextWeekly period days_to_repeat, previousWeeklies period days_to_repeat)
+  next_deadline = nextDeadline today deadline
   previous_deadlines =
-    previous_deadlines_stream
+    previousDeadlines next_deadline
       |> case days_to_keep of
           KeepDaysInPast days_in_past →
             takeWhile (>= addDaysToLocalTime (-toInteger days_in_past) today)
