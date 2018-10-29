@@ -29,6 +29,7 @@ module HabitOfFate.Server.Requests.Web.EditAndDeleteHabit (handler) where
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
+import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
@@ -96,6 +97,20 @@ habitPage habit_id error_message deletion_mode habit groups = do
             ! A.value "Once"
             & if habit ^. frequency_ == Once then (! A.checked "checked") else identity
           H.toHtml ("Once" ∷ Text)
+
+        H.div ! A.class_ "label" $ H.toHtml ("Next Deadline:" ∷ Text)
+
+        H.div $
+          H.input
+            ! A.type_ "datetime-local"
+            ! A.name "deadline"
+            ! A.value
+                (H.toValue $
+                 maybe
+                  ""
+                  (formatTime defaultTimeLocale "%FT%R")
+                  (habit ^. maybe_deadline_)
+                )
 
         H.toHtml ("Groups:" ∷ Text)
 
@@ -206,6 +221,18 @@ extractHabit = do
           "Once" → (Once, "")
           _ → (Indefinite, "Frequency must be Indefinite or Once, not " ⊕ value)
       )
+  (maybe_deadline_value, maybe_deadline_error) ←
+    getParamMaybe "deadline"
+    <&>
+    maybe
+      (default_habit ^. maybe_deadline_, "")
+      (\deadline_string →
+        deadline_string
+          |> parseTimeM False defaultTimeLocale "%FT%R"
+          |> maybe
+              (Nothing, pack $ "Error parsing deadline: " ⊕ deadline_string)
+              (\deadline → (Just deadline, ""))
+      )
   all_params ← getParams
   log [i|PARAMS = #{show all_params}|]
   (group_membership_error ∷ Lazy.Text, group_membership_value ∷ Set UUID) ←
@@ -241,7 +268,7 @@ extractHabit = do
         frequency_value
         group_membership_value
         (default_habit ^. maybe_last_marked_)
-        (default_habit ^. maybe_deadline_)
+        maybe_deadline_value
     , find (onull >>> not) >>> fromMaybe "" $
        [ name_error
        , difficulty_error
@@ -249,6 +276,7 @@ extractHabit = do
        , irrelevant_error
        , frequency_error
        , group_membership_error
+       , maybe_deadline_error
        ]
     )
 
