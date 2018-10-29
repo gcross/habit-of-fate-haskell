@@ -81,7 +81,7 @@ habitPage habit_id error_message deletion_mode habit groups = do
         generateScaleEntry "difficulty" "Difficulty:" difficulty_
         generateScaleEntry "importance" "Importance:" importance_
 
-        H.toHtml ("Frequency:" ∷ Text)
+        H.div ! A.class_ "label" $ H.toHtml ("Frequency:" ∷ Text)
 
         H.div ! A.id "frequency_input" $ do
           H.input
