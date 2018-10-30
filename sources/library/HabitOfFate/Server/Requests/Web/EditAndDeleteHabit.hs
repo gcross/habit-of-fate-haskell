@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -49,6 +50,17 @@ import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
 data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
+
+weekdays ∷ [(Text, Lazy.Text, Lens' DaysToRepeat Bool)]
+weekdays =
+  [ ("S", "sunday", sunday_)
+  , ("M", "monday", monday_)
+  , ("T", "tuesday", tuesday_)
+  , ("W", "wednesday", wednesday_)
+  , ("T", "thursday", thursday_)
+  , ("F", "friday", friday_)
+  , ("S", "saturday", saturday_)
+  ]
 
 habitPage ∷ Monad m ⇒ UUID → Maybe Lazy.Text → DeletionMode → Habit → Groups → m TransactionResult
 habitPage habit_id maybe_error_message deletion_mode habit groups = do
@@ -125,8 +137,8 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
             H.div ! A.class_ "label" $ H.toHtml ("Repeated" ∷ Text)
 
           H.div ! A.class_ "indent" $ do
-            let createBasicRepeatedControl ∷ Text → Text → (Repeated → Maybe Int) → H.Html
-                createBasicRepeatedControl label plural extractPeriod = do
+            let createBasicRepeatedControl ∷ Text → Text → Text → (Repeated → Maybe Int) → H.Html
+                createBasicRepeatedControl label lowercase_label plural extractPeriod = do
                   let maybe_period =
                         case habit ^. frequency_ of
                           Repeated repeated → extractPeriod repeated
@@ -146,14 +158,15 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                         H.input
                           ! A.class_ "period right5px"
                           ! A.type_ "number"
-                          ! A.name (H.toValue $ plural ⊕ "_period")
+                          ! A.name (H.toValue $ lowercase_label ⊕ "_period")
                           ! A.value (H.toValue $ maybe "1" show maybe_period)
                           ! A.size "2"
                         H.toHtml (plural ⊕ "." ∷ Text)
 
-            createBasicRepeatedControl "Daily" "days" (\case { Daily period → Just period; _ → Nothing })
-
-            createBasicRepeatedControl "Weekly" "weeks" (\case { Weekly period _ → Just period; _ → Nothing })
+            createBasicRepeatedControl
+              "Daily" "daily" "days" (\case { Daily period → Just period; _ → Nothing })
+            createBasicRepeatedControl
+              "Weekly" "weekly" "weeks" (\case { Weekly period _ → Just period; _ → Nothing })
 
             H.div ! A.class_ "indent row row_spacer" $ do
               mconcat
@@ -167,15 +180,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                           _ → identity
                         )
                     H.toHtml weekday_abbrev
-                | (weekday_abbrev ∷ Text, weekday_name ∷ Text, weekday_lens_) ←
-                    [ ("S", "sunday", sunday_)
-                    , ("M", "monday", sunday_)
-                    , ("T", "tuesday", sunday_)
-                    , ("W", "wednesday", sunday_)
-                    , ("T", "thursday", sunday_)
-                    , ("F", "friday", sunday_)
-                    , ("S", "saturday", sunday_)
-                    ]
+                | (weekday_abbrev, weekday_name, weekday_lens_) ← weekdays
                 ]
 
         H.div ! A.class_ "label" $ H.toHtml ("(Next) Deadline:" ∷ Text)
@@ -279,7 +284,7 @@ extractHabit = do
 
     getParamMaybeLiftedReportingError
       "name"
-      ("No value for the name was present.")
+      "No value for the name was present."
       (\value →
         if null value
           then reportError "Name for the habit may not be empty."
@@ -305,30 +310,39 @@ extractHabit = do
       reportError "Either the difficulty or the importance must not be None."
 
     let updateDeadline =
-          getParamMaybeLifted "deadline" >>=
-            maybe
-              (pure ())
-              (\case
-                "" → maybe_deadline_ .= Nothing
-                deadline_string → do
-                  new_maybe_deadline ←
-                    deadline_string
-                      |> parseTimeM False defaultTimeLocale "%FT%R"
-                      |> maybe
-                          (do reportError $ pack $ "Error parsing deadline: " ⊕ deadline_string
-                              pure Nothing
-                          )
-                          (\deadline → do
-                            when (deadline < current_time_as_local_time) $
-                              reportError "Deadline must not be in the past."
-                            pure $ Just deadline
-                          )
-                  frequency ← use frequency_
-                  case (frequency, new_maybe_deadline) of
-                    (Once True, Nothing) → reportError "Must specify the deadline."
-                    _ → pure ()
-                  maybe_deadline_ .= new_maybe_deadline
-              )
+          getParamMaybeLifted "deadline"
+          >>=
+          maybe
+            (reportError "Must specify the deadline.")
+            (\case
+              "" → reportError "Must specify the deadline."
+              deadline_string →
+                deadline_string
+                  |> parseTimeM False defaultTimeLocale "%FT%R"
+                  |> maybe
+                      (reportError $ pack $ "Error parsing deadline: " ⊕ deadline_string)
+                      (\deadline → do
+                        when (deadline < current_time_as_local_time) $
+                          reportError "Deadline must not be in the past."
+                        maybe_deadline_ .= Just deadline
+                      )
+            )
+
+        tryGetPeriod ∷ Lazy.Text → (Int → HabitExtractor ()) → HabitExtractor ()
+        tryGetPeriod period_param f =
+          getParamMaybeLifted period_param
+          >>=
+          maybe
+            (reportError "No value for the period was present.")
+            (\value →
+              if null value
+                then reportError "The period must not be empty."
+                else
+                  maybe
+                    (reportError "The period must be a number.")
+                    f
+                    (readMaybe value)
+            )
 
     getParamMaybeLiftedReportingError
       "frequency"
@@ -343,6 +357,43 @@ extractHabit = do
             if once_has_deadline
               then updateDeadline
               else maybe_deadline_ .= Nothing
+          "Repeated" →
+            getParamMaybeLiftedReportingError
+              "repeated"
+              "The frequency was set to Repeated, but neither of the options were chosen."
+              (\case
+                "Daily" →
+                  tryGetPeriod "daily_period" $ \period → do
+                    frequency_ .= Repeated (Daily period)
+                    updateDeadline
+                "Weekly" →
+                  tryGetPeriod "weekly_period" $ \period → do
+                    days_to_repeat ←
+                      mapM (\(_, key, _) → getParamMaybeLifted key) weekdays
+                      <&>
+                      (
+                        zip weekdays
+                        >>>
+                        foldl'
+                          (\days_to_repeat ((_, _, lens_ ∷ Lens' DaysToRepeat Bool), maybe_value) →
+                            maybe
+                              days_to_repeat
+                              (\value →
+                                if value == ("on" ∷ Text)
+                                  then days_to_repeat & lens_ .~ True
+                                  else days_to_repeat
+                              )
+                              maybe_value
+                          )
+                          def
+                      )
+                    if days_to_repeat == def
+                      then reportError "No days of the week were marked to be repeated."
+                      else do
+                        frequency_ .= Repeated (Weekly period days_to_repeat)
+                        updateDeadline
+                other → reportError $ "Repeated must be Daily or Weekly, not " ⊕ other
+              )
           other → do
             frequency_ .= Indefinite
             reportError $ "Frequency must be Indefinite or Once, not " ⊕ other
