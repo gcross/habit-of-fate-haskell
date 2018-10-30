@@ -37,6 +37,7 @@ import Data.UUID
 import Text.Blaze (ToMarkup(..))
 import Web.Scotty (Parsable(..))
 
+import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.TH
 
@@ -78,7 +79,7 @@ instance Read Importance where
 instance Parsable Importance where
   parseParam = parseParamScale "Importance"
 
-data Frequency = Indefinite | Once Bool deriving (Eq, Read, Show, Ord)
+data Frequency = Indefinite | Once Bool | Repeated Repeated deriving (Eq, Read, Show, Ord)
 deriveJSON ''Frequency
 
 instance Default Frequency where

@@ -38,6 +38,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server.Common
@@ -86,9 +87,18 @@ markHabit result habit_id =
       stored_credits_ . creditLensForResult result += scaleFactor (habit ^. scaleLensForResult result)
       case habit ^. frequency_ of
         Once _ → habits_ . at habit_id .= Nothing
-        Indefinite → do
-          new_last_marked ← getCurrentTimeAsLocalTime
-          habits_ . at habit_id .= Just (habit & maybe_last_marked_ .~ Just new_last_marked)
+        _ →
+          (flip execStateT habit $ do
+            current_time ← lift getCurrentTimeAsLocalTime
+            maybe_last_marked_ .= Just current_time
+            case habit ^. frequency_ of
+              Repeated repeated →
+                maybe
+                  (lift $ log [i|Internal inconsistency: habit #{habit_id} is repeating but does not have a deadline.|])
+                  (nextDeadline repeated current_time >>> Just >>> (maybe_deadline_ .=))
+                  (habit ^. maybe_deadline_)
+              _ → pure ()
+          ) >>= \new_habit → habits_ . at habit_id .= Just new_habit
     )
 
 markHabits ∷ [(SuccessOrFailureResult, UUID)] → TransactionProgram ()
