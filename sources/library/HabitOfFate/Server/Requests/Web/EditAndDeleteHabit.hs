@@ -28,6 +28,7 @@ module HabitOfFate.Server.Requests.Web.EditAndDeleteHabit (handler) where
 
 import HabitOfFate.Prelude
 
+import Data.Maybe (catMaybes)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Data.UUID (UUID)
@@ -36,7 +37,7 @@ import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
 import Text.Blaze.Html5 ((!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Web.Scotty (ScottyM)
+import Web.Scotty (Parsable, ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
@@ -49,8 +50,8 @@ import HabitOfFate.Server.Transaction
 
 data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 
-habitPage ∷ Monad m ⇒ UUID → Lazy.Text → DeletionMode → Habit → Groups → m TransactionResult
-habitPage habit_id error_message deletion_mode habit groups = do
+habitPage ∷ Monad m ⇒ UUID → Maybe Lazy.Text → DeletionMode → Habit → Groups → m TransactionResult
+habitPage habit_id maybe_error_message deletion_mode habit groups = do
   renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ok200 >>> pure $
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
@@ -204,7 +205,9 @@ habitPage habit_id error_message deletion_mode habit groups = do
 
       H.hr
 
-      H.div ! A.id "error_message" $ H.toHtml error_message
+      case maybe_error_message of
+        Just error_message → H.div ! A.id "error_message" $ H.toHtml error_message
+        Nothing → pure ()
 
       H.div ! A.class_ "submit" $ do
         H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
@@ -245,94 +248,110 @@ handleEditHabitGet environment = do
     log [i|Web GET request for habit with id #{habit_id}.|]
     maybe_habit ← use (habits_ . at habit_id)
     use groups_ >>=
-      (uncurry (habitPage habit_id "") $
+      (uncurry (habitPage habit_id Nothing) $
         case maybe_habit of
           Nothing → (NoDeletion, def)
           Just habit → (DeletionAvailable, habit)
       )
 
-extractHabit ∷ TransactionProgram (Habit, Lazy.Text)
+type HabitExtractor = WriterT (First Lazy.Text) (StateT Habit TransactionProgram)
+
+extractHabit ∷ TransactionProgram (Habit, Maybe Lazy.Text)
 extractHabit = do
   group_ids ∷ Set UUID ← use groups_ <&> ((^. items_seq_) >>> toList >>> setFromList)
   habit_id ← getParam "habit_id"
   default_habit ← use (habits_ . at habit_id) <&> fromMaybe def
-  (name_value, name_error) ←
-    getParamMaybe "name"
-    <&>
-    maybe
-      (default_habit ^. name_, "No value for the name was present.")
-      (\value →
-        if null value
-          then ("", "Name for the habit may not be empty.")
-          else (pack value, "")
-      )
-  let getScale ∷ Lazy.Text → Lens' Habit Scale → TransactionProgram (Scale, Lazy.Text)
-      getScale param_name param_lens_ =
-        getParamMaybe param_name
-        <&>
-        (maybe
-          (
-            default_habit ^. param_lens_
-          , "No value for the " ⊕ param_name ⊕ " was present."
-          )
-          (
-            readMaybe
-            >>>
-            maybe
-              (def, "Invalid value for the " ⊕ param_name ⊕ ".")
-              (, "")
-          )
-        )
-  (difficulty_value, difficulty_error) ← getScale "difficulty" difficulty_
-  (importance_value, importance_error) ← getScale "importance" importance_
-  let irrelevant_error
-        | difficulty_value == None && importance_value == None =
-            "Either the difficulty or the importance must not be None."
-        | otherwise = ""
-  once_has_deadline ← getParamMaybe "once_has_deadline" <&> maybe False (== ("on" ∷ Text))
-  (frequency_value, frequency_error) ←
-    getParamMaybe "frequency"
-    <&>
-    maybe
-      (default_habit ^. frequency_, "No value for the frequency was present.")
-      (\value →
-        case value of
-          "Indefinite" → (Indefinite, "")
-          "Once" → (Once once_has_deadline, "")
-          _ → (Indefinite, "Frequency must be Indefinite or Once, not " ⊕ value)
-      )
   current_time_as_local_time ← getCurrentTimeAsLocalTime
-  (maybe_deadline_value, maybe_deadline_error) ←
-    getParamMaybe "deadline"
-    <&>
-    maybe
-      (default_habit ^. maybe_deadline_, "")
-      (\case
-        "" → (Nothing, "")
-        deadline_string →
-          deadline_string
-            |> parseTimeM False defaultTimeLocale "%FT%R"
-            |> maybe
-                (Nothing, pack $ "Error parsing deadline: " ⊕ deadline_string)
-                (\deadline →
-                   ( Just deadline
-                   , if deadline < current_time_as_local_time
-                       then "Deadline must not be in the past."
-                       else ""
-                   )
-                 )
-      )
-  let deadline_required_error =
-        case (frequency_value, maybe_deadline_value) of
-          (Once True, Nothing) → "Must specify the deadline."
-          _ → ""
+
   all_params ← getParams
   log [i|PARAMS = #{show all_params}|]
-  (group_membership_error ∷ Lazy.Text, group_membership_value ∷ Set UUID) ←
-    getParams
-    <&>
-    (
-      mapMaybe (
+
+  (First maybe_first_error, new_habit) ← execWriterT >>> flip runStateT default_habit $ do
+    let getParamMaybeLifted ∷ Parsable α ⇒ Lazy.Text → HabitExtractor (Maybe α)
+        getParamMaybeLifted = getParamMaybe >>> lift >>> lift
+
+        getParamMaybeLiftedReportingError ∷ Parsable α ⇒ Lazy.Text → Lazy.Text → (α → HabitExtractor ()) → HabitExtractor ()
+        getParamMaybeLiftedReportingError param_name error_message f =
+          getParamMaybeLifted param_name >>= maybe (reportError error_message) f
+
+        reportError ∷ Lazy.Text → HabitExtractor ()
+        reportError = Just >>> First >>> tell
+
+    getParamMaybeLiftedReportingError
+      "name"
+      ("No value for the name was present.")
+      (\value →
+        if null value
+          then reportError "Name for the habit may not be empty."
+          else name_ .= pack value
+      )
+
+    let getScale ∷ Lazy.Text → Lens' Habit Scale → HabitExtractor ()
+        getScale param_name param_lens_ =
+          getParamMaybeLiftedReportingError
+            param_name
+            ("No value for the " ⊕ param_name ⊕ " was present.")
+            (
+              readMaybe
+              >>>
+              maybe
+                (reportError $ "Invalid value for the " ⊕ param_name ⊕ ".")
+                (param_lens_ .=)
+            )
+    getScale "difficulty" difficulty_; new_difficulty ← use difficulty_
+    getScale "importance" importance_; new_importance ← use importance_
+
+    when (new_difficulty == None && new_importance == None) $
+      reportError "Either the difficulty or the importance must not be None."
+
+    let updateDeadline =
+          getParamMaybeLifted "deadline" >>=
+            maybe
+              (pure ())
+              (\case
+                "" → maybe_deadline_ .= Nothing
+                deadline_string → do
+                  new_maybe_deadline ←
+                    deadline_string
+                      |> parseTimeM False defaultTimeLocale "%FT%R"
+                      |> maybe
+                          (do reportError $ pack $ "Error parsing deadline: " ⊕ deadline_string
+                              pure Nothing
+                          )
+                          (\deadline → do
+                            when (deadline < current_time_as_local_time) $
+                              reportError "Deadline must not be in the past."
+                            pure $ Just deadline
+                          )
+                  frequency ← use frequency_
+                  case (frequency, new_maybe_deadline) of
+                    (Once True, Nothing) → reportError "Must specify the deadline."
+                    _ → pure ()
+                  maybe_deadline_ .= new_maybe_deadline
+              )
+
+    getParamMaybeLiftedReportingError
+      "frequency"
+      "No value for the frequency was present."
+      (\case
+          "Indefinite" → do
+            frequency_ .= Indefinite
+            maybe_deadline_ .= Nothing
+          "Once" → do
+            once_has_deadline ← getParamMaybeLifted "once_has_deadline" <&> maybe False (== ("on" ∷ Text))
+            frequency_ .= Once once_has_deadline
+            if once_has_deadline
+              then updateDeadline
+              else maybe_deadline_ .= Nothing
+          other → do
+            frequency_ .= Indefinite
+            reportError $ "Frequency must be Indefinite or Once, not " ⊕ other
+      )
+
+    -- group membership
+    (getParams |> lift |> lift)
+      >>=
+      mapM (
         \(key, value) →
           case key of
             "group" →
@@ -340,59 +359,39 @@ extractHabit = do
               |> Lazy.toStrict
               |> UUID.fromText
               |> maybe
-                  (Just $ Left ("Group UUID has invalid format: " ⊕ value))
-                  (\group_id → Just $
+                  (reportError ("Group UUID has invalid format: " ⊕ value) >> pure Nothing)
+                  (\group_id →
                      if member group_id group_ids
-                       then Right group_id
-                       else Left ("Group with UUID " ⊕ value ⊕ " does not exist.")
+                       then pure $ Just group_id
+                       else reportError ("Group with UUID " ⊕ value ⊕ " does not exist.") >> pure Nothing
                   )
-            _ → Nothing
+            _ → pure Nothing
       )
-      >>>
-      partitionEithers
-      >>>
-      (\case { error_message:_ → error_message; _ → ""} *** setFromList)
-    )
-  pure
-    ( Habit
-        name_value
-        (Difficulty difficulty_value)
-        (Importance importance_value)
-        frequency_value
-        group_membership_value
-        (default_habit ^. maybe_last_marked_)
-        (case frequency_value of { Once True → maybe_deadline_value; _ → Nothing })
-    , find (onull >>> not) >>> fromMaybe "" $
-       [ name_error
-       , difficulty_error
-       , importance_error
-       , irrelevant_error
-       , frequency_error
-       , group_membership_error
-       , maybe_deadline_error
-       , deadline_required_error
-       ]
-    )
+      >>=
+      (catMaybes >>> setFromList >>> pure)
+      >>=
+      (group_membership_ .=)
+  pure (new_habit, maybe_first_error)
 
 handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do
   Scotty.post "/habits/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request for habit with id #{habit_id}.|]
-    (extracted_habit, error_message) ← extractHabit
-    if onull error_message
-      then do
+    (extracted_habit, maybe_error_message) ← extractHabit
+    case maybe_error_message of
+      Nothing → do
         log [i|Updating habit #{habit_id} to #{extracted_habit}|]
         habits_ . at habit_id .= Just extracted_habit
         pure $ redirectsToResult temporaryRedirect307 "/habits"
-      else do
+      Just error_message → do
         log [i|Failed to update habit #{habit_id}:|]
         log [i|    Error message: #{error_message}|]
         deletion_mode ←
           use (habits_ . items_map_)
           <&>
           (member habit_id >>> bool NoDeletion DeletionAvailable)
-        use groups_ >>= habitPage habit_id error_message deletion_mode extracted_habit
+        use groups_ >>= habitPage habit_id (Just error_message) deletion_mode extracted_habit
 
 handleDeleteHabitGet ∷ Environment → ScottyM ()
 handleDeleteHabitGet environment = do
@@ -402,7 +401,7 @@ handleDeleteHabitGet environment = do
     maybe_habit ← use (habits_ . at habit_id)
     case maybe_habit of
       Nothing → pure $ redirectsToResult temporaryRedirect307 "/habits"
-      Just habit → use groups_ >>= habitPage habit_id "" DeletionAvailable habit
+      Just habit → use groups_ >>= habitPage habit_id Nothing DeletionAvailable habit
 
 handleDeleteHabitPost ∷ Environment → ScottyM ()
 handleDeleteHabitPost environment = do
@@ -417,8 +416,8 @@ handleDeleteHabitPost environment = do
         pure $ redirectsToResult temporaryRedirect307 "/habits"
       else do
         log [i|Confirming delete for habit #{habit_id}|]
-        (extracted_habit, error_message) ← extractHabit
-        use groups_ >>= habitPage habit_id error_message ConfirmDeletion extracted_habit
+        (extracted_habit, maybe_error_message) ← extractHabit
+        use groups_ >>= habitPage habit_id maybe_error_message ConfirmDeletion extracted_habit
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
