@@ -12,12 +12,9 @@
     margin-top: auto;
 }
 
-.once {
-    display: flex;
-}
-
-.once_label {
-    margin-right: 5px;
+.frequency_label {
+    text-align: right;
+    margin-right: 10px;
 }
 
 .error_message {
@@ -26,11 +23,59 @@
 
 #frequency_input {
     column-gap: 1px;
-    display: grid;
-    grid-template-columns: auto auto;
-    grid-template-rows: auto auto;
+    display: flex;
+    flex-direction: column;
     margin-right: auto;
-    row-gap: 5px;
+}
+
+.repeated {
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    display: flex;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+}
+
+.left10px {
+    margin-left: 10px
+}
+
+.indent {
+    margin-left: 30px;
+}
+
+.right5px {
+    margin-right: 5px;
+}
+
+.right10px {
+    margin-right: 10px;
+}
+
+.row_spacer {
+    margin-top: 5px;
+}
+
+.period {
+    width: 40px;
+}
+
+.radio {
+    margin-bottom: auto;
+    margin-right: 1px;
+    margin-top: auto;
+}
+
+.weekday {
+    display: flex;
+    flex-direction: column;
+    margin-left: 10px;
 }
 
 #group_input {

@@ -42,6 +42,7 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
@@ -82,28 +83,99 @@ habitPage habit_id error_message deletion_mode habit groups = do
         generateScaleEntry "difficulty" "Difficulty:" difficulty_
         generateScaleEntry "importance" "Importance:" importance_
 
-        H.div ! A.class_ "label" $ H.toHtml ("Frequency:" ∷ Text)
+        H.div ! A.class_ "frequency_label" $ H.toHtml ("Frequency:" ∷ Text)
 
         H.div ! A.id "frequency_input" $ do
-          H.input
-            ! A.type_ "radio"
-            ! A.name "frequency"
-            ! A.value "Indefinite"
-            & if habit ^. frequency_ == Indefinite then (! A.checked "checked") else identity
-          H.toHtml ("Indefinite" ∷ Text)
-          H.input
-            ! A.type_ "radio"
-            ! A.name "frequency"
-            ! A.value "Once"
-            & case habit ^. frequency_ of {Once _ → (! A.checked "checked"); _ → identity}
-          H.div ! A.class_ "once" $ do
-            H.div ! A.class_ "once_label" $ H.toHtml ("Once" ∷ Text)
-            H.div $ do
-              H.input
-                ! A.type_ "checkbox"
-                ! A.name "once_has_deadline"
-                & case habit ^. frequency_ of { Once True → (! A.checked "checked"); _ → identity }
-              H.toHtml ("With Deadline" ∷ Text)
+          H.div ! A.class_ "row" $ do
+            H.input
+              ! A.class_ "radio"
+              ! A.type_ "radio"
+              ! A.name "frequency"
+              ! A.value "Indefinite"
+              & if habit ^. frequency_ == Indefinite then (! A.checked "checked") else identity
+            H.toHtml ("Indefinite" ∷ Text)
+
+          H.div ! A.class_ "row row_spacer" $ do
+            H.input
+              ! A.class_ "radio"
+              ! A.type_ "radio"
+              ! A.name "frequency"
+              ! A.value "Once"
+              & case habit ^. frequency_ of {Once _ → (! A.checked "checked"); _ → identity}
+            H.div ! A.class_ "row" $ do
+              H.div ! A.class_ "label" $ H.toHtml ("Once" ∷ Text)
+              H.div $ do
+                H.input
+                  ! A.type_ "checkbox"
+                  ! A.name "once_has_deadline"
+                  & case habit ^. frequency_ of { Once True → (! A.checked "checked"); _ → identity }
+                H.toHtml ("With Deadline" ∷ Text)
+
+          H.div ! A.class_ "row row_spacer" $ do
+            H.input
+              ! A.class_ "radio"
+              ! A.type_ "radio"
+              ! A.name "frequency"
+              ! A.value "Repeated"
+              & (case habit ^. frequency_ of
+                  Repeated _ → (! A.checked "checked")
+                  _ → identity
+                )
+            H.div ! A.class_ "label" $ H.toHtml ("Repeated" ∷ Text)
+
+          H.div ! A.class_ "indent" $ do
+            let createBasicRepeatedControl ∷ Text → Text → (Repeated → Maybe Int) → H.Html
+                createBasicRepeatedControl label plural extractPeriod = do
+                  let maybe_period =
+                        case habit ^. frequency_ of
+                          Repeated repeated → extractPeriod repeated
+                          _ → Nothing
+                  H.div ! A.class_ "row_spacer" $ do
+                    H.div ! A.class_ "row" $ do
+                      H.input
+                        ! A.class_ "radio"
+                        ! A.type_ "radio"
+                        ! A.name "repeated"
+                        ! A.value (H.toValue label)
+                        & if isJust maybe_period then (! A.checked "checked") else identity
+                      H.div ! A.class_ "label" $ H.toHtml label
+                    H.div ! A.class_ "indent" $ do
+                      H.div ! A.class_ "row row_spacer" $ do
+                        H.div ! A.class_ "right5px" $ H.toHtml ("Every" ∷ Text)
+                        H.input
+                          ! A.class_ "period right5px"
+                          ! A.type_ "number"
+                          ! A.name (H.toValue $ plural ⊕ "_period")
+                          ! A.value (H.toValue $ maybe "1" show maybe_period)
+                          ! A.size "2"
+                        H.toHtml (plural ⊕ "." ∷ Text)
+
+            createBasicRepeatedControl "Daily" "days" (\case { Daily period → Just period; _ → Nothing })
+
+            createBasicRepeatedControl "Weekly" "weeks" (\case { Weekly period _ → Just period; _ → Nothing })
+
+            H.div ! A.class_ "indent row row_spacer" $ do
+              mconcat
+                [ H.div ! A.class_ "column right10px" $ do
+                    H.input
+                      ! A.type_ "checkbox"
+                      ! A.name (H.toValue weekday_name)
+                      & (case habit ^. frequency_ of
+                          Repeated (Weekly _ days_to_repeat)
+                            | days_to_repeat ^. weekday_lens_ → (! A.checked "checked")
+                          _ → identity
+                        )
+                    H.toHtml weekday_abbrev
+                | (weekday_abbrev ∷ Text, weekday_name ∷ Text, weekday_lens_) ←
+                    [ ("S", "sunday", sunday_)
+                    , ("M", "monday", sunday_)
+                    , ("T", "tuesday", sunday_)
+                    , ("W", "wednesday", sunday_)
+                    , ("T", "thursday", sunday_)
+                    , ("F", "friday", sunday_)
+                    , ("S", "saturday", sunday_)
+                    ]
+                ]
 
         H.div ! A.class_ "label" $ H.toHtml ("(Next) Deadline:" ∷ Text)
 
