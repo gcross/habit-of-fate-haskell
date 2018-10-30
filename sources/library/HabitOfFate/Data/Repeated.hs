@@ -175,24 +175,21 @@ previousWeeklies period days_to_repeat next_deadline =
 
 data DaysToKeep = KeepDaysInPast Int | KeepNumberOfDays Int deriving (Eq, Ord, Read, Show)
 data Repeated = Daily Int | Weekly Int DaysToRepeat deriving (Eq, Ord, Read, Show)
+deriveJSON ''Repeated
 
-nextAndPreviousDeadlines ∷ DaysToKeep → Repeated → LocalTime → LocalTime → (LocalTime, [LocalTime])
-nextAndPreviousDeadlines days_to_keep repeated today deadline
-  | today < deadline = (deadline, [])
-  | otherwise = (next_deadline, previous_deadlines)
- where
-  (nextDeadline, previousDeadlines) =
-    case repeated of
-      Daily period →
-        (nextDaily period, previousDailies period)
-      Weekly period days_to_repeat →
-        (nextWeekly period days_to_repeat, previousWeeklies period days_to_repeat)
-  next_deadline = nextDeadline today deadline
-  previous_deadlines =
-    previousDeadlines next_deadline
-      |> case days_to_keep of
-          KeepDaysInPast days_in_past →
-            takeWhile (>= addDaysToLocalTime (-toInteger days_in_past) today)
-          KeepNumberOfDays number_of_days →
-            take number_of_days
-      |> takeWhile (>= deadline)
+nextDeadline ∷ Repeated → LocalTime → LocalTime → LocalTime
+nextDeadline (Daily period) = nextDaily period
+nextDeadline (Weekly period days_to_repeat) = nextWeekly period days_to_repeat
+
+previousDeadlines ∷ Repeated → LocalTime → [LocalTime]
+previousDeadlines (Daily period) = previousDailies period
+previousDeadlines (Weekly period days_to_repeat) = previousWeeklies period days_to_repeat
+
+takePreviousDeadlines ∷ DaysToKeep → LocalTime → LocalTime → [LocalTime] → [LocalTime]
+takePreviousDeadlines days_to_keep today deadline =
+  (case days_to_keep of
+    KeepDaysInPast days_in_past → takeWhile (>= addDaysToLocalTime (toInteger (-days_in_past)) today)
+    KeepNumberOfDays number_of_days → take number_of_days
+  )
+  >>>
+  takeWhile (>= deadline)

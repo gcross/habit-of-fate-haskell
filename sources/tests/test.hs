@@ -84,6 +84,7 @@ import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
 
 dayHour d h = LocalTime (ModifiedJulianDay d) (TimeOfDay h 0 0)
+day = flip dayHour 0
 
 day_of_week_names ∷ [String]
 day_of_week_names = ["M", "T", "W", "Th", "F", "Sat", "Sun"]
@@ -531,73 +532,22 @@ main = defaultMain $ testGroup "All Tests"
           ]
       ]
     ----------------------------------------------------------------------------
-    , testGroup "nextAndPreviousDeadlines" $
+    , testGroup "takeDays" $
     ----------------------------------------------------------------------------
-      let testNextAndPreviousDeadlinesCase days_to_keep repeated today deadline expected_result =
+      let testTakePreviousDeadlinesCase days_to_keep today deadline previous_deadlines expected_result =
             testCase
               (printf
-                "(%s) (%s) %s %s"
+                "(%s) %s %s"
                 (show days_to_keep)
-                (show repeated)
                 (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
                 (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
               )
-              (nextAndPreviousDeadlines days_to_keep repeated today deadline @?= expected_result)
+              (takePreviousDeadlines days_to_keep today deadline previous_deadlines @?= expected_result)
       in
-      [ testNextAndPreviousDeadlinesCase
-          (KeepDaysInPast 7)
-          (Daily 1)
-          (LocalTime (ModifiedJulianDay 10) (TimeOfDay 14 0 0))
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0)
-          , []
-          )
-      , testNextAndPreviousDeadlinesCase
-          (KeepDaysInPast 7)
-          (Daily 1)
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          (LocalTime (ModifiedJulianDay 10) (TimeOfDay 14 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 14 0 0)
-          , [ (LocalTime (ModifiedJulianDay d) (TimeOfDay 14 0 0)) | d ← [19, 18..13] ]
-          )
-      , testNextAndPreviousDeadlinesCase
-          (KeepNumberOfDays 3)
-          (Daily 2)
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          (LocalTime (ModifiedJulianDay 10) (TimeOfDay 14 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 14 0 0)
-          , [ (LocalTime (ModifiedJulianDay d) (TimeOfDay 14 0 0)) | d ← [18, 16, 14] ]
-          )
-      , testNextAndPreviousDeadlinesCase
-          (KeepNumberOfDays 3)
-          (Daily 3)
-          (LocalTime (ModifiedJulianDay 20) (TimeOfDay 4 0 0))
-          (LocalTime (ModifiedJulianDay 17) (TimeOfDay 14 0 0))
-          ( LocalTime (ModifiedJulianDay 20) (TimeOfDay 14 0 0)
-          , [ (LocalTime (ModifiedJulianDay 17) (TimeOfDay 14 0 0)) ]
-          )
-      , testNextAndPreviousDeadlinesCase
-          (KeepDaysInPast 100)
-          (Weekly 1 (def & monday_ .~ True & wednesday_ .~ True))
-          (LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          ( LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
-          , [ LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
-            ]
-          )
-      , testNextAndPreviousDeadlinesCase
-          (KeepNumberOfDays 5)
-          (Weekly 2 (def & monday_ .~ True & wednesday_ .~ True))
-          (LocalTime (fromWeekDate 1 5 5) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          ( LocalTime (fromWeekDate 1 7 1) (TimeOfDay 1 0 0)
-          , [ LocalTime (fromWeekDate 1 5 3) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 3 3) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
-            , LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
-            ]
-          )
+      [ testTakePreviousDeadlinesCase (KeepNumberOfDays 1) (day 3) (day 0) [day 2, day 1] [day 2]
+      , testTakePreviousDeadlinesCase (KeepNumberOfDays 3) (day 3) (day 0) [day 2, day 1] [day 2, day 1]
+      , testTakePreviousDeadlinesCase (KeepDaysInPast 1) (day 3) (day 0) [day 2, day 1] [day 2]
+      , testTakePreviousDeadlinesCase (KeepDaysInPast 3) (day 3) (day 0) [day 2, day 1] [day 2, day 1]
       ]
     ]
   ------------------------------------------------------------------------------
