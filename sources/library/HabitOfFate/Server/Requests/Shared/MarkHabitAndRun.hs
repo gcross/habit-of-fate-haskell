@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -87,18 +88,20 @@ markHabit result habit_id =
       stored_credits_ . creditLensForResult result += scaleFactor (habit ^. scaleLensForResult result)
       case habit ^. frequency_ of
         Once _ → habits_ . at habit_id .= Nothing
-        _ →
-          (flip execStateT habit $ do
-            current_time ← lift getCurrentTimeAsLocalTime
-            maybe_last_marked_ .= Just current_time
-            case habit ^. frequency_ of
-              Repeated repeated →
-                maybe
-                  (lift $ log [i|Internal inconsistency: habit #{habit_id} is repeating but does not have a deadline.|])
-                  (nextDeadline repeated current_time >>> Just >>> (maybe_deadline_ .=))
-                  (habit ^. maybe_deadline_)
-              _ → pure ()
-          ) >>= \new_habit → habits_ . at habit_id .= Just new_habit
+        _ → do
+          current_time ← getCurrentTimeAsLocalTime
+          habits_ . at habit_id . _Just %=
+            (
+              (maybe_last_marked_ .~ Just current_time)
+              >>>
+              (frequency_ %~
+                (\case
+                  Repeated deadline repeated →
+                    Repeated (nextDeadline repeated current_time deadline) repeated
+                  other → other
+                )
+              )
+            )
     )
 
 markHabits ∷ [(SuccessOrFailureResult, UUID)] → TransactionProgram ()

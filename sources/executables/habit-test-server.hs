@@ -96,21 +96,21 @@ makeInitialAccounts ∷ IO (Map Username Account)
 makeInitialAccounts =
   [ ( ("a", "a")
     ,
-      [ ("d6d95381-9a66-453f-a134-64667cb0ef63", Habit "Test 1" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing Nothing)
-      , ("4e512d1e-99f2-4953-9c9c-9fcbc1e61018", Habit "Test 2" (Difficulty Low) (Importance High) Indefinite [] Nothing Nothing)
-      , ("7709fdc1-caaf-4c3a-93ee-5ab4137ab653", Habit "Test 3" (Difficulty VeryHigh) (Importance Medium) Indefinite [] Nothing Nothing)
+      [ ("d6d95381-9a66-453f-a134-64667cb0ef63", Habit "Test 1" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing)
+      , ("4e512d1e-99f2-4953-9c9c-9fcbc1e61018", Habit "Test 2" (Difficulty Low) (Importance High) Indefinite [] Nothing)
+      , ("7709fdc1-caaf-4c3a-93ee-5ab4137ab653", Habit "Test 3" (Difficulty VeryHigh) (Importance Medium) Indefinite [] Nothing)
       ]
     )
   , ( ("b", "c")
     ,
-      [ ("4ea70d5f-b225-4364-a1e5-26693599b221", Habit "Test A" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing Nothing)
+      [ ("4ea70d5f-b225-4364-a1e5-26693599b221", Habit "Test A" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing)
       ]
     )
   , ( ("c", "b")
     ,
-      [ ("b2bfb271-a4ac-4dd8-8974-8055258c858d", Habit "Test α" (Difficulty Low) (Importance Low) Indefinite [] Nothing Nothing)
-      , ("728b4e0e-a6c3-43ad-9a97-e55d585ab48c", Habit "Test β" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing Nothing)
-      , ("04fe33fe-048f-4875-9f4d-bfe7ea71013f", Habit "Test c" (Difficulty High) (Importance High) Indefinite [] Nothing Nothing)
+      [ ("b2bfb271-a4ac-4dd8-8974-8055258c858d", Habit "Test α" (Difficulty Low) (Importance Low) Indefinite [] Nothing)
+      , ("728b4e0e-a6c3-43ad-9a97-e55d585ab48c", Habit "Test β" (Difficulty Medium) (Importance Medium) Indefinite [] Nothing)
+      , ("04fe33fe-048f-4875-9f4d-bfe7ea71013f", Habit "Test c" (Difficulty High) (Importance High) Indefinite [] Nothing)
       ]
     )
   ]

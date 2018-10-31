@@ -32,6 +32,7 @@ import HabitOfFate.Prelude
 import Data.Maybe (catMaybes)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
+import Data.Time.LocalTime (LocalTime)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
@@ -121,7 +122,9 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                 H.input
                   ! A.type_ "checkbox"
                   ! A.name "once_has_deadline"
-                  & case habit ^. frequency_ of { Once True → (! A.checked "checked"); _ → identity }
+                  & case habit ^. frequency_ of
+                      Once (Just _) → (! A.checked "checked")
+                      _ → identity
                 H.toHtml ("With Deadline" ∷ Text)
 
           H.div ! A.class_ "row row_spacer" $ do
@@ -131,7 +134,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.name "frequency"
               ! A.value "Repeated"
               & (case habit ^. frequency_ of
-                  Repeated _ → (! A.checked "checked")
+                  Repeated _ _ → (! A.checked "checked")
                   _ → identity
                 )
             H.div ! A.class_ "label" $ H.toHtml ("Repeated" ∷ Text)
@@ -141,7 +144,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                 createBasicRepeatedControl label lowercase_label plural extractPeriod = do
                   let maybe_period =
                         case habit ^. frequency_ of
-                          Repeated repeated → extractPeriod repeated
+                          Repeated _ repeated → extractPeriod repeated
                           _ → Nothing
                   H.div ! A.class_ "row_spacer" $ do
                     H.div ! A.class_ "row" $ do
@@ -175,7 +178,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                       ! A.type_ "checkbox"
                       ! A.name (H.toValue weekday_name)
                       & (case habit ^. frequency_ of
-                          Repeated (Weekly _ days_to_repeat)
+                          Repeated _ (Weekly _ days_to_repeat)
                             | days_to_repeat ^. weekday_lens_ → (! A.checked "checked")
                           _ → identity
                         )
@@ -190,12 +193,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
             ! A.type_ "datetime-local"
             ! A.name "deadline"
             ! A.value
-                (H.toValue $
-                 maybe
-                  ""
-                  (formatTime defaultTimeLocale "%FT%R")
-                  (habit ^. maybe_deadline_)
-                )
+                (H.toValue $ maybe "" (formatTime defaultTimeLocale "%FT%R") (getHabitDeadline habit))
 
         H.div ! A.class_ "label" $ H.toHtml ("Groups:" ∷ Text)
 
@@ -309,7 +307,8 @@ extractHabit = do
     when (new_difficulty == None && new_importance == None) $
       reportError "Either the difficulty or the importance must not be None."
 
-    let updateDeadline =
+    let tryGetDeadline ∷ (LocalTime → HabitExtractor ()) → HabitExtractor ()
+        tryGetDeadline f =
           getParamMaybeLifted "deadline"
           >>=
           maybe
@@ -320,11 +319,11 @@ extractHabit = do
                 deadline_string
                   |> parseTimeM False defaultTimeLocale "%FT%R"
                   |> maybe
-                      (reportError $ pack $ "Error parsing deadline: " ⊕ deadline_string)
+                      ((reportError $ pack $ "Error parsing deadline: " ⊕ deadline_string))
                       (\deadline → do
                         when (deadline < current_time_as_local_time) $
                           reportError "Deadline must not be in the past."
-                        maybe_deadline_ .= Just deadline
+                        f deadline
                       )
             )
 
@@ -348,24 +347,20 @@ extractHabit = do
       "frequency"
       "No value for the frequency was present."
       (\case
-          "Indefinite" → do
-            frequency_ .= Indefinite
-            maybe_deadline_ .= Nothing
+          "Indefinite" → frequency_ .= Indefinite
           "Once" → do
             once_has_deadline ← getParamMaybeLifted "once_has_deadline" <&> maybe False (== ("on" ∷ Text))
-            frequency_ .= Once once_has_deadline
             if once_has_deadline
-              then updateDeadline
-              else maybe_deadline_ .= Nothing
+              then tryGetDeadline $ \deadline → frequency_ .= Once (Just deadline)
+              else frequency_ .= Once Nothing
           "Repeated" →
             getParamMaybeLiftedReportingError
               "repeated"
               "The frequency was set to Repeated, but neither of the options were chosen."
               (\case
                 "Daily" →
-                  tryGetPeriod "daily_period" $ \period → do
-                    frequency_ .= Repeated (Daily period)
-                    updateDeadline
+                  tryGetPeriod "daily_period" $ \period →
+                    tryGetDeadline $ \deadline → frequency_ .= Repeated deadline (Daily period)
                 "Weekly" →
                   tryGetPeriod "weekly_period" $ \period → do
                     days_to_repeat ←
@@ -389,9 +384,8 @@ extractHabit = do
                       )
                     if days_to_repeat == def
                       then reportError "No days of the week were marked to be repeated."
-                      else do
-                        frequency_ .= Repeated (Weekly period days_to_repeat)
-                        updateDeadline
+                      else tryGetDeadline $ \deadline →
+                             frequency_ .= Repeated deadline (Weekly period days_to_repeat)
                 other → reportError $ "Repeated must be Daily or Weekly, not " ⊕ other
               )
           other → do

@@ -166,7 +166,7 @@ handler environment = do
                     ! A.href (H.toValue [i|/habits/#{UUID.toText uuid}|])
                     $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
                 timeFor (text_if_nothing ∷ Text) =
-                  (habit ^.)
+                  ($ habit)
                   >>>
                   maybe
                     (H.toHtml text_if_nothing)
@@ -203,8 +203,8 @@ handler environment = do
             , position
             , name
             , edit_button
-            , timeFor "Never" maybe_last_marked_
-            , timeFor "None" maybe_deadline_
+            , timeFor "Never" (^. maybe_last_marked_)
+            , timeFor "None" getHabitDeadline
             , scaleFor difficulty_
             , scaleFor importance_
             , move_form

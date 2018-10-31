@@ -17,6 +17,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -79,7 +80,10 @@ instance Read Importance where
 instance Parsable Importance where
   parseParam = parseParamScale "Importance"
 
-data Frequency = Indefinite | Once Bool | Repeated Repeated deriving (Eq, Read, Show, Ord)
+data Frequency =
+    Indefinite
+  | Once (Maybe LocalTime)
+  | Repeated LocalTime Repeated deriving (Eq, Read, Show, Ord)
 deriveJSON ''Frequency
 
 instance Default Frequency where
@@ -92,7 +96,6 @@ data Habit = Habit
   , _frequency_ ∷ Frequency
   , _group_membership_ ∷ Set UUID
   , _maybe_last_marked_ ∷ Maybe LocalTime
-  , _maybe_deadline_ ∷ Maybe LocalTime
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
@@ -118,8 +121,15 @@ group_membership_ = lens _group_membership_ (\old new_group_membership → old {
 maybe_last_marked_ ∷ Lens' Habit (Maybe LocalTime)
 maybe_last_marked_ = lens _maybe_last_marked_ (\old new_maybe_last_marked → old { _maybe_last_marked_ = new_maybe_last_marked })
 
-maybe_deadline_ ∷ Lens' Habit (Maybe LocalTime)
-maybe_deadline_ = lens _maybe_deadline_ (\old new_maybe_deadline → old { _maybe_deadline_ = new_maybe_deadline })
+getHabitDeadline ∷ Habit → Maybe LocalTime
+getHabitDeadline =
+  (^. frequency_)
+  >>>
+  (\case
+    Once maybe_deadline → maybe_deadline
+    Repeated deadline _ → Just deadline
+    Indefinite → Nothing
+  )
 
 instance Default Habit where
-  def = Habit "" (Difficulty def) (Importance def) def mempty Nothing Nothing
+  def = Habit "" (Difficulty def) (Importance def) def mempty Nothing
