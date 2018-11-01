@@ -76,6 +76,12 @@
     margin-top: auto;
 }
 
+.checkbock {
+    margin-bottom: auto;
+    margin-right: 1px;
+    margin-top: auto;
+}
+
 .weekday {
     display: flex;
     flex-direction: column;
@@ -100,4 +106,13 @@ select {
 
 .submit * {
     margin: 10px;
+}
+
+.disabled {
+    color: darkgray;
+}
+
+.vertically_centered {
+    margin-bottom: auto;
+    margin-top: auto;
 }

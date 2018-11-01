@@ -65,7 +65,7 @@ weekdays =
 
 habitPage ∷ Monad m ⇒ UUID → Maybe Lazy.Text → DeletionMode → Habit → Groups → m TransactionResult
 habitPage habit_id maybe_error_message deletion_mode habit groups = do
-  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ok200 >>> pure $
+  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ["edit"] ok200 >>> pure $
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
         -- Name
@@ -106,8 +106,11 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.type_ "radio"
               ! A.name "frequency"
               ! A.value "Indefinite"
+              ! A.id "indefinite_radio"
+              ! A.onclick "clickedIndefinite()"
               & if habit ^. frequency_ == Indefinite then (! A.checked "checked") else identity
-            H.toHtml ("Indefinite" ∷ Text)
+            H.div ! A.onclick "document.getElementById(\"indefinite_radio\").click()" $
+              H.toHtml ("Indefinite" ∷ Text)
 
           H.div ! A.class_ "row row_spacer" $ do
             H.input
@@ -115,17 +118,23 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.type_ "radio"
               ! A.name "frequency"
               ! A.value "Once"
+              ! A.id "once_radio"
+              ! A.onclick "clickedOnce()"
               & case habit ^. frequency_ of {Once _ → (! A.checked "checked"); _ → identity}
-            H.div ! A.class_ "row" $ do
-              H.div ! A.class_ "label" $ H.toHtml ("Once" ∷ Text)
-              H.div $ do
+            H.div ! A.class_ "row vertically_centered" $ do
+              H.div
+                ! A.class_ "label"
+                ! A.onclick "document.getElementById(\"once_radio\").click()"
+                $ H.toHtml ("Once" ∷ Text)
+              H.div ! A.class_ "row right10px" $ do
                 H.input
+                  ! A.class_ "checkbox once_control"
                   ! A.type_ "checkbox"
                   ! A.name "once_has_deadline"
                   & case habit ^. frequency_ of
                       Once (Just _) → (! A.checked "checked")
                       _ → identity
-                H.toHtml ("With Deadline" ∷ Text)
+                H.div ! A.class_ "once_control" $ H.toHtml ("With Deadline" ∷ Text)
 
           H.div ! A.class_ "row row_spacer" $ do
             H.input
@@ -133,11 +142,14 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.type_ "radio"
               ! A.name "frequency"
               ! A.value "Repeated"
+              ! A.id "repeated_radio"
+              ! A.onclick "clickedRepeated()"
               & (case habit ^. frequency_ of
                   Repeated _ _ → (! A.checked "checked")
                   _ → identity
                 )
-            H.div ! A.class_ "label" $ H.toHtml ("Repeated" ∷ Text)
+            H.div ! A.onclick "document.getElementById(\"repeated_radio\").click()" $
+              H.toHtml ("Repeated" ∷ Text)
 
           H.div ! A.class_ "indent" $ do
             let createBasicRepeatedControl ∷ Text → Text → Text → (Repeated → Maybe Int) → H.Html

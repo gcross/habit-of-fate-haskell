@@ -38,6 +38,7 @@ handler = do
   Scotty.get "/css/:filename" $ fetch "css" "css" "text/css" Nothing
   Scotty.get "/fonts/:filename" $ fetch "fonts" "woff2" "application/font-woff2" Nothing
   Scotty.get "/images/:filename" $ fetch "images" "svgz" "image/svg+xml" (Just "gzip")
+  Scotty.get "/js/:filename" $ fetch "js" "js" "text/javascript" Nothing
  where
   fetch ∷ FilePath → String → Lazy.Text → Maybe Lazy.Text → ActionM ()
   fetch subdirectory extension content_type maybe_compression = do

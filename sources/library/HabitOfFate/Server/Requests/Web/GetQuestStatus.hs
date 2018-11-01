@@ -41,5 +41,5 @@ handler environment =
       >>>
       renderEventToHTML
       >>>
-      renderTopOnlyPageResult "Habit of Fate - Quest Status" [] ok200
+      renderTopOnlyPageResult "Habit of Fate - Quest Status" [] [] ok200
     )

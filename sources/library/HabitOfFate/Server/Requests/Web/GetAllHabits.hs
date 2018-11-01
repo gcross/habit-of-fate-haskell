@@ -73,7 +73,7 @@ handler environment = do
               H.div
             )
             ["%b %e, %Y", "%I:%M%P"]
-    renderPageResult "Habit of Fate - List of Habits" ["list"] ok200 >>> pure $ do
+    renderPageResult "Habit of Fate - List of Habits" ["list"] [] ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
       H.div ! A.class_ "groups" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)

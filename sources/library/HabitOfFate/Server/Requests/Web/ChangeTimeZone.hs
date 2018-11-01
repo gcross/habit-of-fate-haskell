@@ -38,7 +38,7 @@ handleChangeTimeZoneGet ∷ Environment → ScottyM ()
 handleChangeTimeZoneGet environment = do
   Scotty.get "/timezone" <<< webTransaction environment $ do
     timezone ← use timezone_
-    renderTopOnlyPageResult "Habit of Fate - Changing the Time Zone" [] ok200 >>> pure $
+    renderTopOnlyPageResult "Habit of Fate - Changing the Time Zone" [] [] ok200 >>> pure $
       H.form ! A.method "post" $ do
         H.div ! A.class_ "fields" $ do
           H.div $ H.toHtml ("Time Zone:" ∷ Text)
@@ -62,14 +62,14 @@ handleChangeTimeZonePost environment = do
     maybe_timezone_label ← getParamMaybe "timezone"
     case maybe_timezone_label of
       Nothing → do
-        renderPageResult "Bad Time Zone Change" [] badRequest400 >>> pure $ do
+        renderPageResult "Bad Time Zone Change" [] [] badRequest400 >>> pure $ do
           H.body $ do
             H.h1 $ H.toHtml ("Missing Time Zone" ∷ Text)
             H.p $ H.toHtml ("Timezone field was not present." ∷ Text)
       Just timezone_label →
         case readEither timezone_label of
           Left error_message → do
-            renderPageResult "Bad Time Zone Change" [] badRequest400 >>> pure $ do
+            renderPageResult "Bad Time Zone Change" [] [] badRequest400 >>> pure $ do
               H.body $ do
                 H.h1 $ H.toHtml ("Missing Time Zone" ∷ Text)
                 H.p $ H.toHtml ("Timezone field value was not recognized: " ⊕ error_message)

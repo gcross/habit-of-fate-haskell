@@ -20,6 +20,7 @@ data-files:          web/css/common.css
                      web/images/good.svgz
                      web/images/logo.svgz
                      web/images/treasure-chest.svgz
+                     web/js/edit.js
 
 library
   hs-source-dirs:      sources/library

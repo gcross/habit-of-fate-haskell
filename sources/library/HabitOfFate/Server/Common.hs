@@ -69,8 +69,8 @@ paramGuardingAgainstMissing name =
     Scotty.finish
    )
 
-renderPage ∷ Text → [Text] → Html → Lazy.Text
-renderPage title stylesheets content =
+renderPage ∷ Text → [Text] → [Text] → Html → Lazy.Text
+renderPage title stylesheets scripts content =
   renderHtml $
     H.docTypeHtml $
       (H.head <<< mconcat $
@@ -82,6 +82,14 @@ renderPage title stylesheets content =
               ! A.type_ "text/css"
               ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
           | stylesheet ← "normalize":"common":stylesheets
+          ]
+        , mconcat
+          [ H.script
+              ! A.rel "script"
+              ! A.type_ "text/javascript"
+              ! A.src (H.toValue $ mconcat ["/js/", script, ".js"])
+              $ mempty
+          | script ← scripts
           ]
         ]
       )
@@ -95,5 +103,5 @@ generateTopHTML content = H.div ! A.class_ "top" $ do
   H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
   H.div ! A.class_ "content" $ content
 
-renderTopOnlyPage ∷ Text → [Text] → Html → Lazy.Text
-renderTopOnlyPage title stylesheets = generateTopHTML >>> renderPage title stylesheets
+renderTopOnlyPage ∷ Text → [Text] → [Text] → Html → Lazy.Text
+renderTopOnlyPage title stylesheets scripts = generateTopHTML >>> renderPage title stylesheets scripts

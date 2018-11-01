@@ -172,15 +172,15 @@ jsonResult s = JSONContent >>> TransactionResult s
 redirectsToResult ∷ Status → Lazy.Text → TransactionResult
 redirectsToResult status_ url = RedirectsTo status_ url
 
-renderPageResult ∷ Text → [Text] → Status → Html → TransactionResult
-renderPageResult title stylesheets status =
-  renderPage title stylesheets
+renderPageResult ∷ Text → [Text] → [Text] → Status → Html → TransactionResult
+renderPageResult title stylesheets scripts status =
+  renderPage title stylesheets scripts
   >>>
   lazyTextAsHTMLResult status
 
-renderTopOnlyPageResult ∷ Text → [Text] → Status → Html → TransactionResult
-renderTopOnlyPageResult title stylesheets status =
-  renderTopOnlyPage title stylesheets
+renderTopOnlyPageResult ∷ Text → [Text] → [Text] → Status → Html → TransactionResult
+renderTopOnlyPageResult title stylesheets scripts status =
+  renderTopOnlyPage title stylesheets scripts
   >>>
   lazyTextAsHTMLResult status
 
