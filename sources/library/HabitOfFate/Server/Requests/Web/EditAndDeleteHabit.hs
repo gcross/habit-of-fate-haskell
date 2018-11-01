@@ -97,7 +97,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
         generateScaleEntry "difficulty" "Difficulty:" difficulty_
         generateScaleEntry "importance" "Importance:" importance_
 
-        H.div ! A.class_ "frequency_label" $ H.toHtml ("Frequency:" ∷ Text)
+        H.div ! A.class_ "top_aligned_label" $ H.toHtml ("Frequency:" ∷ Text)
 
         H.div ! A.id "frequency_input" $ do
           H.div ! A.class_ "row" $ do
@@ -185,6 +185,44 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                     H.toHtml weekday_abbrev
                 | (weekday_abbrev, weekday_name, weekday_lens_) ← weekdays
                 ]
+
+          H.div ! A.class_ "indent row double_row_spacer" $ do
+            H.div ! A.class_ "label" $ H.toHtml ("Days to Keep:" ∷ Text)
+
+            H.input
+              ! A.class_ "period right5px"
+              ! A.type_ "number"
+              ! A.name (H.toValue ("days_to_keep" ∷ Text))
+              ! A.value (
+                  H.toValue $
+                  case habit ^. days_to_keep_ of
+                    KeepNumberOfDays n → n
+                    KeepDaysInPast n → n
+                )
+              ! A.size "2"
+
+            H.div $ do
+              H.div ! A.class_ "row" $ do
+                H.input
+                  ! A.class_ "radio"
+                  ! A.type_ "radio"
+                  ! A.name "days_to_keep_mode"
+                  ! A.value "KeepNumberOfDays"
+                  & case habit ^. days_to_keep_ of
+                      KeepNumberOfDays _ → (! A.checked "checked")
+                      _ → identity
+                H.div ! A.class_ "label" $ H.toHtml ("in total" ∷ Text)
+
+              H.div ! A.class_ "row" $ do
+                H.input
+                  ! A.class_ "radio"
+                  ! A.type_ "radio"
+                  ! A.name "days_to_keep_mode"
+                  ! A.value "KeepDaysInPast"
+                  & case habit ^. days_to_keep_ of
+                      KeepDaysInPast _ → (! A.checked "checked")
+                      _ → identity
+                H.div ! A.class_ "label" $ H.toHtml ("into the past" ∷ Text)
 
         H.div ! A.class_ "label" $ H.toHtml ("Groups:" ∷ Text)
 
@@ -383,6 +421,37 @@ extractHabit = do
             frequency_ .= Indefinite
             reportError $ "Frequency must be Indefinite or Once, not " ⊕ other
       )
+
+    getParamMaybeLifted
+      "days_to_keep"
+      >>=
+      maybe
+        (
+          use frequency_
+          >>=
+          \case
+            Repeated _ _ → reportError "Frequency set to Repeated but Days to Keep not given."
+            _ → pure ()
+        )
+        (
+          readMaybe
+          >>>
+          maybe
+            (reportError "Days to Keep was not a number.")
+            (\n →
+              if n <= 0
+                then reportError "Days to Keep must be a positive number."
+                else
+                  getParamMaybeLiftedReportingError
+                    "days_to_keep_mode"
+                    "Neither mode for Days to Keep was chosen"
+                    (\case
+                      "KeepNumberOfDays" → days_to_keep_ .= KeepNumberOfDays n
+                      "KeepDaysInPast" → days_to_keep_ .= KeepDaysInPast n
+                      other → reportError $ "Invalid mode for Days to Keep: " ⊕ other
+                    )
+            )
+        )
 
     -- group membership
     (getParams |> lift |> lift)

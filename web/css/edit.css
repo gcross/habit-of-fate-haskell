@@ -12,7 +12,7 @@
     margin-top: auto;
 }
 
-.frequency_label {
+.top_aligned_label {
     text-align: right;
     margin-right: 10px;
 }
@@ -60,6 +60,10 @@
 
 .row_spacer {
     margin-top: 5px;
+}
+
+.double_row_spacer {
+    margin-top: 10px;
 }
 
 .period {
