@@ -174,6 +174,8 @@ previousWeeklies period days_to_repeat next_deadline =
     |> concatMap ((+) >>> flip map (V.toList days_to_repeat_as_offsets))
 
 data DaysToKeep = KeepDaysInPast Int | KeepNumberOfDays Int deriving (Eq, Ord, Read, Show)
+deriveJSON ''DaysToKeep
+
 data Repeated = Daily Int | Weekly Int DaysToRepeat deriving (Eq, Ord, Read, Show)
 deriveJSON ''Repeated
 
