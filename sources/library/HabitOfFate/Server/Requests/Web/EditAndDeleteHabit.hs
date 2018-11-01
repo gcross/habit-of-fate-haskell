@@ -236,6 +236,15 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                       _ → identity
                 H.div ! A.class_ "label" $ H.toHtml ("into the past" ∷ Text)
 
+        H.div ! A.class_ "label" $ H.toHtml ("(Next) Deadline:" ∷ Text)
+
+        H.div $
+          H.input
+            ! A.type_ "datetime-local"
+            ! A.name "deadline"
+            ! A.value
+                (H.toValue $ maybe "" (formatTime defaultTimeLocale "%FT%R") (getHabitDeadline habit))
+
         H.div ! A.class_ "label" $ H.toHtml ("Groups:" ∷ Text)
 
         H.div ! A.id "group_input" $ do
