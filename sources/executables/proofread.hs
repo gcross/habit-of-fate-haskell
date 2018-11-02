@@ -32,7 +32,7 @@ import HabitOfFate.Substitution (Substitutions)
 
 main = do
   writeFile "forest.html" $
-    renderTopOnlyPage "Forest Stories" [] $
+    renderTopOnlyPage "Forest Stories" [] [] Nothing $
       foldMap
         (\(category, category_stories) →
           H.h1 (H.toHtml category) ⊕ mconcat (intersperse H.hr (map renderEventToHTML category_stories))
