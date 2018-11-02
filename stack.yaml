@@ -2,7 +2,7 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-resolver: lts-11.6
+resolver: lts-12.16
 extra-deps:
 - 'cookie-0.4.2.1'
-- 'labels-0.3.3'
+- 'pwstore-fast-2.4.4'

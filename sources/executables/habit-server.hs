@@ -109,7 +109,7 @@ main = do
           pure mempty
       )
       (do logIO $ "Reading existing data file at " ⊕ data_path
-          BS.readFile data_path >>= (decodeEither >>> either error pure)
+          BS.readFile data_path >>= decodeThrow
       )
     >>=
     (\accounts → atomically $ traverse newTVar accounts >>= newTVar)

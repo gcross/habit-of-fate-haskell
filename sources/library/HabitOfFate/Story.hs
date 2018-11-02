@@ -67,14 +67,16 @@ type SubEvent = GenEvent SubstitutionData
 instance IsString (GenParagraph s) where
   fromString = pack >>> TextP
 
+instance Semigroup (GenParagraph s) where
+  (<>) (TextP x) ys | onull x = ys
+  (<>) xs (TextP y) | onull y = xs
+  (<>) (MergedP xs) (MergedP ys) = MergedP $ xs ⊕ ys
+  (<>) (MergedP xs) y = MergedP $ xs ⊢ y
+  (<>) x (MergedP ys) = MergedP $ x ⊣ ys
+  (<>) x y = MergedP $ fromList [x,y]
+
 instance Monoid (GenParagraph s) where
   mempty = MergedP mempty
-  mappend (TextP x) ys | onull x = ys
-  mappend xs (TextP y) | onull y = xs
-  mappend (MergedP xs) (MergedP ys) = MergedP $ xs ⊕ ys
-  mappend (MergedP xs) y = MergedP $ xs ⊢ y
-  mappend x (MergedP ys) = MergedP $ x ⊣ ys
-  mappend x y = MergedP $ fromList [x,y]
 
 mapOverEventSubstitutions ∷ (SubstitutionData → Text) → SubEvent → Event
 mapOverEventSubstitutions f = map go

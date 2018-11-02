@@ -497,15 +497,15 @@ extractHabit = do
                                 mapM (\(_, key, _) → getParamMaybeExtraLifted key) weekdays
                                 <&>
                                 (
-                                  zip weekdays
+                                  zip (weekdays <&> (\(x, y, lens_) → (x, y, (lens_ .~))))
                                   >>>
                                   foldl'
-                                    (\days_to_repeat ((_, _, lens_ ∷ Lens' DaysToRepeat Bool), maybe_value) →
+                                    (\days_to_repeat ((_, _, setTo), maybe_value) →
                                       maybe
                                         days_to_repeat
                                         (\value →
                                           if value == ("on" ∷ Text)
-                                            then days_to_repeat & lens_ .~ True
+                                            then days_to_repeat & setTo True
                                             else days_to_repeat
                                         )
                                         maybe_value

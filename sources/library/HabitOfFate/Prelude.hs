@@ -46,7 +46,6 @@ module HabitOfFate.Prelude
   , module Data.List
   , module Data.Map.Strict
   , module Data.Maybe
-  , module Data.Monoid
   , module Data.MonoTraversable
   , module Data.Sequence
   , module Data.Sequences
@@ -60,6 +59,9 @@ module HabitOfFate.Prelude
   , module Text.Printf
   , module Text.Read
   , module System.FilePath
+  -- Classes
+  , Monoid(..)
+  , Semigroup(..)
   -- Operators
   , (⊕)
   , (⊕~)
@@ -199,6 +201,8 @@ import Data.Maybe hiding (catMaybes)
 import Data.Monoid
 
 import Data.MonoTraversable hiding (Element)
+
+import Data.Semigroup
 
 import Data.Sequence (Seq)
 
