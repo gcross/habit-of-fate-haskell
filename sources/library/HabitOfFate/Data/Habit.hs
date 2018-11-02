@@ -83,7 +83,7 @@ instance Parsable Importance where
 data Frequency =
     Indefinite
   | Once (Maybe LocalTime)
-  | Repeated LocalTime Repeated deriving (Eq, Read, Show, Ord)
+  | Repeated DaysToKeep LocalTime Repeated deriving (Eq, Read, Show, Ord)
 deriveJSON ''Frequency
 
 instance Default Frequency where
@@ -96,7 +96,6 @@ data Habit = Habit
   , _frequency_ ∷ Frequency
   , _group_membership_ ∷ Set UUID
   , _maybe_last_marked_ ∷ Maybe LocalTime
-  , _days_to_keep_ ∷ DaysToKeep
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
@@ -122,18 +121,15 @@ group_membership_ = lens _group_membership_ (\old new_group_membership → old {
 maybe_last_marked_ ∷ Lens' Habit (Maybe LocalTime)
 maybe_last_marked_ = lens _maybe_last_marked_ (\old new_maybe_last_marked → old { _maybe_last_marked_ = new_maybe_last_marked })
 
-days_to_keep_ ∷ Lens' Habit DaysToKeep
-days_to_keep_ = lens _days_to_keep_ (\old new_days_to_keep → old { _days_to_keep_ = new_days_to_keep })
-
 getHabitDeadline ∷ Habit → Maybe LocalTime
 getHabitDeadline =
   (^. frequency_)
   >>>
   (\case
     Once maybe_deadline → maybe_deadline
-    Repeated deadline _ → Just deadline
+    Repeated _ deadline _ → Just deadline
     Indefinite → Nothing
   )
 
 instance Default Habit where
-  def = Habit "" (Difficulty def) (Importance def) def mempty Nothing (KeepNumberOfDays 3)
+  def = Habit "" (Difficulty def) (Importance def) def mempty Nothing

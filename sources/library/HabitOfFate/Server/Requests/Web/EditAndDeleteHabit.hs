@@ -145,7 +145,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.id "repeated_radio"
               ! A.onclick "clickedRepeated()"
               & (case habit ^. frequency_ of
-                  Repeated _ _ → (! A.checked "checked")
+                  Repeated _ _ _ → (! A.checked "checked")
                   _ → identity
                 )
             H.div ! A.onclick "document.getElementById(\"repeated_radio\").click()" $
@@ -156,7 +156,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                 createBasicRepeatedControl label lowercase_label plural extractPeriod = do
                   let maybe_period =
                         case habit ^. frequency_ of
-                          Repeated _ repeated → extractPeriod repeated
+                          Repeated _ _ repeated → extractPeriod repeated
                           _ → Nothing
                   H.div ! A.class_ "row_spacer" $ do
                     H.div ! A.class_ "row" $ do
@@ -190,7 +190,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                       ! A.type_ "checkbox"
                       ! A.name (H.toValue weekday_name)
                       & (case habit ^. frequency_ of
-                          Repeated _ (Weekly _ days_to_repeat)
+                          Repeated _ _ (Weekly _ days_to_repeat)
                             | days_to_repeat ^. weekday_lens_ → (! A.checked "checked")
                           _ → identity
                         )
@@ -207,9 +207,10 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.name (H.toValue ("days_to_keep" ∷ Text))
               ! A.value (
                   H.toValue $
-                  case habit ^. days_to_keep_ of
-                    KeepNumberOfDays n → n
-                    KeepDaysInPast n → n
+                  case habit ^. frequency_ of
+                    Repeated (KeepNumberOfDays n) _ _ → n
+                    Repeated (KeepDaysInPast n) _ _ → n
+                    _ → 3
                 )
               ! A.size "2"
 
@@ -220,8 +221,8 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                   ! A.type_ "radio"
                   ! A.name "days_to_keep_mode"
                   ! A.value "KeepNumberOfDays"
-                  & case habit ^. days_to_keep_ of
-                      KeepNumberOfDays _ → (! A.checked "checked")
+                  & case habit ^. frequency_ of
+                      Repeated (KeepNumberOfDays _) _ _ → (! A.checked "checked")
                       _ → identity
                 H.div ! A.class_ "label" $ H.toHtml ("in total" ∷ Text)
 
@@ -231,8 +232,8 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                   ! A.type_ "radio"
                   ! A.name "days_to_keep_mode"
                   ! A.value "KeepDaysInPast"
-                  & case habit ^. days_to_keep_ of
-                      KeepDaysInPast _ → (! A.checked "checked")
+                  & case habit ^. frequency_ of
+                      Repeated (KeepDaysInPast _) _ _ → (! A.checked "checked")
                       _ → identity
                 H.div ! A.class_ "label" $ H.toHtml ("into the past" ∷ Text)
 
@@ -308,6 +309,7 @@ handleEditHabitGet environment = do
       )
 
 type HabitExtractor = WriterT (First Lazy.Text) (StateT Habit TransactionProgram)
+type HabitExtractorWithExceptT = ExceptT Lazy.Text HabitExtractor
 
 extractHabit ∷ TransactionProgram (Habit, Maybe Lazy.Text)
 extractHabit = do
@@ -357,122 +359,122 @@ extractHabit = do
     when (new_difficulty == None && new_importance == None) $
       reportError "Either the difficulty or the importance must not be None."
 
-    let tryGetDeadline ∷ (LocalTime → HabitExtractor ()) → HabitExtractor ()
-        tryGetDeadline f =
+    let getDeadline ∷ HabitExtractor (Either Lazy.Text LocalTime)
+        getDeadline =
           getParamMaybeLifted "deadline"
           >>=
-          maybe
-            (reportError "Must specify the deadline.")
-            (\case
-              "" → reportError "Must specify the deadline."
-              deadline_string →
-                deadline_string
-                  |> parseTimeM False defaultTimeLocale "%FT%R"
-                  |> maybe
-                      ((reportError $ pack $ "Error parsing deadline: " ⊕ deadline_string))
-                      (\deadline → do
-                        when (deadline < current_time_as_local_time) $
-                          reportError "Deadline must not be in the past."
-                        f deadline
-                      )
-            )
-
-        tryGetPeriod ∷ Lazy.Text → (Int → HabitExtractor ()) → HabitExtractor ()
-        tryGetPeriod period_param f =
-          getParamMaybeLifted period_param
-          >>=
-          maybe
-            (reportError "No value for the period was present.")
-            (\value →
-              if null value
-                then reportError "The period must not be empty."
-                else
-                  maybe
-                    (reportError "The period must be a number.")
-                    f
-                    (readMaybe value)
-            )
+          (
+            maybe
+              (Left "Must specify the deadline.")
+              (\case
+                "" → Left "Must specify the deadline."
+                deadline_string →
+                  deadline_string
+                    |> parseTimeM False defaultTimeLocale "%FT%R"
+                    |> maybe
+                        (Left $ pack $ "Error parsing deadline: " ⊕ deadline_string)
+                        (\deadline →
+                          if deadline < current_time_as_local_time
+                            then Left "Deadline must not be in the past."
+                            else Right deadline
+                        )
+              )
+            >>>
+            pure
+          )
 
     getParamMaybeLiftedReportingError
       "frequency"
       "No value for the frequency was present."
       (\case
-          "Indefinite" → frequency_ .= Indefinite
+          ("Indefinite" ∷ Lazy.Text) → frequency_ .= Indefinite
           "Once" → do
             once_has_deadline ← getParamMaybeLifted "once_has_deadline" <&> maybe False (== ("on" ∷ Text))
             if once_has_deadline
-              then tryGetDeadline $ \deadline → frequency_ .= Once (Just deadline)
+              then getDeadline >>= either reportError (\deadline → frequency_ .= Once (Just deadline))
               else frequency_ .= Once Nothing
-          "Repeated" →
-            getParamMaybeLiftedReportingError
-              "repeated"
-              "The frequency was set to Repeated, but neither of the options were chosen."
-              (\case
-                "Daily" →
-                  tryGetPeriod "daily_period" $ \period →
-                    tryGetDeadline $ \deadline → frequency_ .= Repeated deadline (Daily period)
-                "Weekly" →
-                  tryGetPeriod "weekly_period" $ \period → do
-                    days_to_repeat ←
-                      mapM (\(_, key, _) → getParamMaybeLifted key) weekdays
-                      <&>
-                      (
-                        zip weekdays
-                        >>>
-                        foldl'
-                          (\days_to_repeat ((_, _, lens_ ∷ Lens' DaysToRepeat Bool), maybe_value) →
-                            maybe
-                              days_to_repeat
-                              (\value →
-                                if value == ("on" ∷ Text)
-                                  then days_to_repeat & lens_ .~ True
-                                  else days_to_repeat
-                              )
-                              maybe_value
-                          )
-                          def
-                      )
-                    if days_to_repeat == def
-                      then reportError "No days of the week were marked to be repeated."
-                      else tryGetDeadline $ \deadline →
-                             frequency_ .= Repeated deadline (Weekly period days_to_repeat)
-                other → reportError $ "Repeated must be Daily or Weekly, not " ⊕ other
-              )
-          other → do
-            frequency_ .= Indefinite
-            reportError $ "Frequency must be Indefinite or Once, not " ⊕ other
+          "Repeated" → do
+            let getParamMaybeExtraLifted ∷ Parsable α ⇒ Lazy.Text → HabitExtractorWithExceptT (Maybe α)
+                getParamMaybeExtraLifted = getParamMaybe >>> lift >>> lift >>> lift
+            runExceptT (
+              getParamMaybeExtraLifted "repeated"
+              >>=
+              maybe
+                (throwError "The frequency was set to Repeated, but neither of the options were chosen.")
+                (\repeated_mode →
+                  Repeated
+                    <$> (getParamMaybeExtraLifted "days_to_keep"
+                          >>=
+                          maybe
+                            (throwError "Frequency set to Repeated but Days to Keep not given.")
+                            (
+                              readMaybe
+                              >>>
+                              maybe
+                                (throwError "Days to Keep was not a number.")
+                                (\n →
+                                  if n <= 0
+                                    then throwError "Days to Keep must be a positive number."
+                                    else
+                                      getParamMaybeExtraLifted "days_to_keep_mode"
+                                      >>=
+                                      maybe
+                                        (throwError "Neither mode for Days to Keep was chosen")
+                                        (\case
+                                          "KeepNumberOfDays" → pure $ KeepNumberOfDays n
+                                          "KeepDaysInPast" → pure $ KeepDaysInPast n
+                                          other → throwError $ "Invalid mode for Days to Keep: " ⊕ other
+                                        )
+                                )
+                            )
+                        )
+                    <*> (lift getDeadline >>= either throwError pure)
+                    <*> let getPeriod ∷ Lazy.Text → HabitExtractorWithExceptT Int
+                            getPeriod name =
+                              getParamMaybeExtraLifted name
+                              >>=
+                              maybe
+                                (throwError "No value for the period was present.")
+                                (\value →
+                                  if null value
+                                    then throwError "The period must not be empty."
+                                    else
+                                      maybe
+                                        (throwError "The period must be a number.")
+                                        pure
+                                        (readMaybe value)
+                                )
+                        in case (repeated_mode ∷ Lazy.Text) of
+                            "Daily" → Daily <$> getPeriod "daily_period"
+                            "Weekly" → do
+                              period ← getPeriod "weekly_period"
+                              days_to_repeat ←
+                                mapM (\(_, key, _) → getParamMaybeExtraLifted key) weekdays
+                                <&>
+                                (
+                                  zip weekdays
+                                  >>>
+                                  foldl'
+                                    (\days_to_repeat ((_, _, lens_ ∷ Lens' DaysToRepeat Bool), maybe_value) →
+                                      maybe
+                                        days_to_repeat
+                                        (\value →
+                                          if value == ("on" ∷ Text)
+                                            then days_to_repeat & lens_ .~ True
+                                            else days_to_repeat
+                                        )
+                                        maybe_value
+                                    )
+                                    def
+                                )
+                              when (days_to_repeat == def) $
+                                throwError "No days of the week were marked to be repeated."
+                              pure $ Weekly period days_to_repeat
+                            other → throwError $ "Repeated must be Daily or Weekly, not " ⊕ other ⊕ "."
+                )
+              ∷ HabitExtractorWithExceptT Frequency) >>= either reportError (frequency_ .=)
+          other → reportError $ "Frequency must be Indefinite, Once, or Repeated, not " ⊕ other ⊕ "."
       )
-
-    getParamMaybeLifted
-      "days_to_keep"
-      >>=
-      maybe
-        (
-          use frequency_
-          >>=
-          \case
-            Repeated _ _ → reportError "Frequency set to Repeated but Days to Keep not given."
-            _ → pure ()
-        )
-        (
-          readMaybe
-          >>>
-          maybe
-            (reportError "Days to Keep was not a number.")
-            (\n →
-              if n <= 0
-                then reportError "Days to Keep must be a positive number."
-                else
-                  getParamMaybeLiftedReportingError
-                    "days_to_keep_mode"
-                    "Neither mode for Days to Keep was chosen"
-                    (\case
-                      "KeepNumberOfDays" → days_to_keep_ .= KeepNumberOfDays n
-                      "KeepDaysInPast" → days_to_keep_ .= KeepDaysInPast n
-                      other → reportError $ "Invalid mode for Days to Keep: " ⊕ other
-                    )
-            )
-        )
 
     -- group membership
     (getParams |> lift |> lift)

@@ -96,8 +96,8 @@ markHabit result habit_id =
               >>>
               (frequency_ %~
                 (\case
-                  Repeated deadline repeated →
-                    Repeated (nextDeadline repeated current_time deadline) repeated
+                  Repeated days_to_keep deadline repeated →
+                    Repeated days_to_keep (nextDeadline repeated current_time deadline) repeated
                   other → other
                 )
               )
