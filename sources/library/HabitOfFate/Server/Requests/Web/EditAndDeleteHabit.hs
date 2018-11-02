@@ -18,6 +18,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -65,7 +66,10 @@ weekdays =
 
 habitPage ∷ Monad m ⇒ UUID → Maybe Lazy.Text → DeletionMode → Habit → Groups → m TransactionResult
 habitPage habit_id maybe_error_message deletion_mode habit groups = do
-  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ["edit"] ok200 >>> pure $
+  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ["edit"] (Just "updateEnabled();") ok200 >>> pure $ do
+    let clickRadio, clickCheckbox ∷ Text → H.AttributeValue
+        clickRadio name = H.toValue $ "document.getElementById(\"" ⊕ name ⊕ "_radio\").click()"
+        clickCheckbox name = H.toValue $ "document.getElementById(\"" ⊕ name ⊕ "_checkbox\").click()"
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
         -- Name
@@ -107,10 +111,11 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.name "frequency"
               ! A.value "Indefinite"
               ! A.id "indefinite_radio"
-              ! A.onclick "clickedIndefinite()"
+              ! A.onclick "updateEnabled()"
               & if habit ^. frequency_ == Indefinite then (! A.checked "checked") else identity
-            H.div ! A.onclick "document.getElementById(\"indefinite_radio\").click()" $
-              H.toHtml ("Indefinite" ∷ Text)
+            H.div
+              ! A.onclick (clickRadio "indefinite")
+              $ H.toHtml ("Indefinite" ∷ Text)
 
           H.div ! A.class_ "row row_spacer" $ do
             H.input
@@ -119,22 +124,26 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.name "frequency"
               ! A.value "Once"
               ! A.id "once_radio"
-              ! A.onclick "clickedOnce()"
+              ! A.onclick "updateEnabled()"
               & case habit ^. frequency_ of {Once _ → (! A.checked "checked"); _ → identity}
             H.div ! A.class_ "row vertically_centered" $ do
               H.div
                 ! A.class_ "label"
-                ! A.onclick "document.getElementById(\"once_radio\").click()"
+                ! A.onclick (clickRadio "once")
                 $ H.toHtml ("Once" ∷ Text)
               H.div ! A.class_ "row right10px" $ do
                 H.input
                   ! A.class_ "checkbox once_control"
+                  ! A.id "once_has_deadline"
                   ! A.type_ "checkbox"
                   ! A.name "once_has_deadline"
+                  ! A.onclick "updateNextDeadlineControlBasedOnOnceHasDeadline()"
                   & case habit ^. frequency_ of
                       Once (Just _) → (! A.checked "checked")
                       _ → identity
-                H.div ! A.class_ "once_control" $ H.toHtml ("With Deadline" ∷ Text)
+                H.div
+                  ! A.class_ "once_control"
+                  $ H.toHtml ("With Deadline" ∷ Text)
 
           H.div ! A.class_ "row row_spacer" $ do
             H.input
@@ -143,66 +152,88 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.name "frequency"
               ! A.value "Repeated"
               ! A.id "repeated_radio"
-              ! A.onclick "clickedRepeated()"
+              ! A.onclick "updateEnabled()"
               & (case habit ^. frequency_ of
                   Repeated _ _ _ → (! A.checked "checked")
                   _ → identity
                 )
-            H.div ! A.onclick "document.getElementById(\"repeated_radio\").click()" $
-              H.toHtml ("Repeated" ∷ Text)
+            H.div
+              ! A.onclick (clickRadio "repeated")
+              $ H.toHtml ("Repeated" ∷ Text)
 
           H.div ! A.class_ "indent" $ do
-            let createBasicRepeatedControl ∷ Text → Text → Text → (Repeated → Maybe Int) → H.Html
-                createBasicRepeatedControl label lowercase_label plural extractPeriod = do
-                  let maybe_period =
-                        case habit ^. frequency_ of
-                          Repeated _ _ repeated → extractPeriod repeated
-                          _ → Nothing
+            let createBasicRepeatedControl ∷ Text → Text → Text → (Bool, Int) → H.Html
+                createBasicRepeatedControl label lowercase_label plural (checked, period) =
                   H.div ! A.class_ "row_spacer" $ do
                     H.div ! A.class_ "row" $ do
                       H.input
-                        ! A.class_ "radio"
+                        ! A.class_ "radio repeated_control"
+                        ! A.id (H.toValue $ lowercase_label ⊕ "_radio")
                         ! A.type_ "radio"
                         ! A.name "repeated"
                         ! A.value (H.toValue label)
-                        & if isJust maybe_period then (! A.checked "checked") else identity
-                      H.div ! A.class_ "label" $ H.toHtml label
+                        ! A.onclick "updateRepeated()"
+                        & if checked then (! A.checked "checked") else identity
+                      H.div
+                        ! A.class_ "label repeated_control"
+                        ! A.onclick (clickRadio lowercase_label)
+                        $ H.toHtml label
                     H.div ! A.class_ "indent" $ do
                       H.div ! A.class_ "row row_spacer" $ do
-                        H.div ! A.class_ "right5px" $ H.toHtml ("Every" ∷ Text)
+                        H.div
+                          ! A.class_ (H.toValue $ "right5px " ⊕ lowercase_label ⊕ "_control repeated_control")
+                          $ H.toHtml ("Every" ∷ Text)
                         H.input
-                          ! A.class_ "period right5px"
+                          ! A.class_ (H.toValue $ "period right5px " ⊕ lowercase_label ⊕ "_control repeated_control")
                           ! A.type_ "number"
                           ! A.name (H.toValue $ lowercase_label ⊕ "_period")
-                          ! A.value (H.toValue $ maybe "1" show maybe_period)
+                          ! A.value (H.toValue period)
                           ! A.size "2"
-                        H.toHtml (plural ⊕ "." ∷ Text)
+                        H.div
+                          ! A.class_ (H.toValue $ lowercase_label ⊕ "_control repeated_control")
+                          $ H.toHtml (plural ⊕ "." ∷ Text)
 
             createBasicRepeatedControl
-              "Daily" "daily" "days" (\case { Daily period → Just period; _ → Nothing })
+              "Daily" "daily" "days"
+              (case habit ^. frequency_ of
+                Repeated _ _ (Daily period) → (True, period)
+                Repeated _ _ _ → (False, 1)
+                _ → (True, 1)
+              )
             createBasicRepeatedControl
-              "Weekly" "weekly" "weeks" (\case { Weekly period _ → Just period; _ → Nothing })
+              "Weekly" "weekly" "weeks"
+              (case habit ^. frequency_ of
+                Repeated _ _ (Weekly period _) → (True, period)
+                Repeated _ _ _ → (False, 1)
+                _ → (False, 1)
+              )
 
             H.div ! A.class_ "indent row row_spacer" $ do
               mconcat
                 [ H.div ! A.class_ "column right10px" $ do
                     H.input
+                      ! A.class_ (H.toValue ("weekly_control repeated_control" ∷ Text))
+                      ! A.id (H.toValue $ weekday_name ⊕ "_checkbox")
                       ! A.type_ "checkbox"
                       ! A.name (H.toValue weekday_name)
-                      & (case habit ^. frequency_ of
+                      & case habit ^. frequency_ of
                           Repeated _ _ (Weekly _ days_to_repeat)
                             | days_to_repeat ^. weekday_lens_ → (! A.checked "checked")
                           _ → identity
-                        )
-                    H.toHtml weekday_abbrev
+                    H.div
+                      ! A.class_ "weekly_control repeated_control"
+                      ! A.onclick (clickCheckbox (Lazy.toStrict weekday_name))
+                      $ H.toHtml weekday_abbrev
                 | (weekday_abbrev, weekday_name, weekday_lens_) ← weekdays
                 ]
 
           H.div ! A.class_ "indent row double_row_spacer" $ do
-            H.div ! A.class_ "label" $ H.toHtml ("Days to Keep:" ∷ Text)
+            H.div
+              ! A.class_ "label repeated_control"
+              $ H.toHtml ("Days to Keep:" ∷ Text)
 
             H.input
-              ! A.class_ "period right5px"
+              ! A.class_ "period right5px repeated_control"
               ! A.type_ "number"
               ! A.name (H.toValue ("days_to_keep" ∷ Text))
               ! A.value (
@@ -214,33 +245,40 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                 )
               ! A.size "2"
 
-            H.div $ do
-              H.div ! A.class_ "row" $ do
-                H.input
-                  ! A.class_ "radio"
-                  ! A.type_ "radio"
-                  ! A.name "days_to_keep_mode"
-                  ! A.value "KeepNumberOfDays"
-                  & case habit ^. frequency_ of
-                      Repeated (KeepNumberOfDays _) _ _ → (! A.checked "checked")
-                      _ → identity
-                H.div ! A.class_ "label" $ H.toHtml ("in total" ∷ Text)
+            H.div $ mconcat
+              [ H.div ! A.class_ "row" $ do
+                  H.input
+                    ! A.class_ "radio repeated_control"
+                    ! A.id (H.toValue $ value ⊕ "_radio")
+                    ! A.type_ "radio"
+                    ! A.name "days_to_keep_mode"
+                    ! A.value (H.toValue value)
+                    & bool identity (! A.checked "checked") is_checked
+                  H.div
+                    ! A.class_ "label repeated_control"
+                    ! A.onclick (clickRadio value)
+                    $ H.toHtml label
+              | (value ∷ Text, label ∷ Text, is_checked) ←
+                  [ ("KeepNumberOfDays", "in total",
+                     case habit ^. frequency_ of
+                       Repeated (KeepNumberOfDays _) _ _ → True
+                       Repeated _ _ _ → False
+                       _ → True
+                    )
+                  , ("KeepDaysInPast", "into the past",
+                     case habit ^. frequency_ of
+                       Repeated (KeepDaysInPast _) _ _ → True
+                       Repeated _ _ _ → False
+                       _ → False
+                    )
+                  ]
+              ]
 
-              H.div ! A.class_ "row" $ do
-                H.input
-                  ! A.class_ "radio"
-                  ! A.type_ "radio"
-                  ! A.name "days_to_keep_mode"
-                  ! A.value "KeepDaysInPast"
-                  & case habit ^. frequency_ of
-                      Repeated (KeepDaysInPast _) _ _ → (! A.checked "checked")
-                      _ → identity
-                H.div ! A.class_ "label" $ H.toHtml ("into the past" ∷ Text)
-
-        H.div ! A.class_ "label" $ H.toHtml ("(Next) Deadline:" ∷ Text)
+        H.div ! A.class_ "label next_deadline_control" $ H.toHtml ("(Next) Deadline:" ∷ Text)
 
         H.div $
           H.input
+            ! A.class_ "next_deadline_control"
             ! A.type_ "datetime-local"
             ! A.name "deadline"
             ! A.value
@@ -248,14 +286,21 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
 
         H.div ! A.class_ "label" $ H.toHtml ("Groups:" ∷ Text)
 
-        H.div ! A.id "group_input" $ do
-          forM_ (groups ^. items_list_) $ \(group_id, group_name) → do
-            H.input
-              ! A.type_ "checkbox"
-              ! A.name (H.toValue ("group" ∷ Text))
-              ! A.value (H.toValue $ UUID.toText group_id)
-              & if member group_id (habit ^. group_membership_) then (! A.checked "checked") else identity
-            H.toHtml group_name
+        H.div ! A.id "group_input" $
+          mconcat
+            [ do H.input
+                  ! A.id (H.toValue $ "group_" ⊕ show group_number ⊕ "_checkbox")
+                  ! A.type_ "checkbox"
+                  ! A.name (H.toValue ("group" ∷ Text))
+                  ! A.value (H.toValue $ UUID.toText group_id)
+                  & if member group_id (habit ^. group_membership_) then (! A.checked "checked") else identity
+                 H.div
+                   ! A.class_ "label"
+                   ! A.onclick (clickCheckbox $ pack $ "group_" ⊕ show group_number)
+                   $ H.toHtml group_name
+            | (group_id, group_name) ← groups ^. items_list_
+            | group_number ← [0 ∷ Int ..]
+            ]
 
       H.hr
 

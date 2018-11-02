@@ -62,7 +62,7 @@ runGame = do
         | (not <<< null) event = renderEventToHTML event
         | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
   stored_credits ← use stored_credits_
-  renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] ok200 >>> pure $ do
+  renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
     H.div ! A.class_ "story" $ rendered_event
     if stored_credits ^. success_ /= 0 || stored_credits ^. failure_ /= 0
       then H.form ! A.method "post" $ H.input ! A.formaction "/run" ! A.type_ "submit" ! A.value "Next"

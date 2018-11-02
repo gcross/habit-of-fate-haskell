@@ -69,8 +69,8 @@ paramGuardingAgainstMissing name =
     Scotty.finish
    )
 
-renderPage ∷ Text → [Text] → [Text] → Html → Lazy.Text
-renderPage title stylesheets scripts content =
+renderPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Lazy.Text
+renderPage title stylesheets scripts maybe_onload content =
   renderHtml $
     H.docTypeHtml $
       (H.head <<< mconcat $
@@ -94,7 +94,7 @@ renderPage title stylesheets scripts content =
         ]
       )
       ⊕
-      (H.body content)
+      ((H.body & maybe identity (\onload → (!A.onload (H.toValue onload))) maybe_onload) $ content)
 
 generateTopHTML ∷ Html → Html
 generateTopHTML content = H.div ! A.class_ "top" $ do
@@ -103,5 +103,6 @@ generateTopHTML content = H.div ! A.class_ "top" $ do
   H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
   H.div ! A.class_ "content" $ content
 
-renderTopOnlyPage ∷ Text → [Text] → [Text] → Html → Lazy.Text
-renderTopOnlyPage title stylesheets scripts = generateTopHTML >>> renderPage title stylesheets scripts
+renderTopOnlyPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Lazy.Text
+renderTopOnlyPage title stylesheets scripts maybe_onload =
+  generateTopHTML >>> renderPage title stylesheets scripts maybe_onload

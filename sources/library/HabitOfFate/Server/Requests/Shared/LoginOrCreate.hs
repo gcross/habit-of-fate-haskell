@@ -172,7 +172,7 @@ handleCreateAccountWeb environment@Environment{..} = do
                 _ | password1 == password2 → ""
                 _ | otherwise → "The passwords did not agree."
 
-    renderTopOnlyPage "Habit of Fate - Account Creation" ["enter"] [] >>> Scotty.html $
+    renderTopOnlyPage "Habit of Fate - Account Creation" ["enter"] [] Nothing >>> Scotty.html $
       H.div ! A.class_ "enter" $ do
         H.div ! A.class_ "tabs" $ do
           H.span ! A.class_ "inactive" $ H.a ! A.href "/login" $ H.toHtml ("Login" ∷ Text)
@@ -223,7 +223,7 @@ handleLoginWeb environment@Environment{..} = do
                   logIO [i|Incorrect password for #{username_}.|]
                   pure "No account has that username."
 
-    renderTopOnlyPage "Habit of Fate - Login" ["enter"] [] >>> Scotty.html $
+    renderTopOnlyPage "Habit of Fate - Login" ["enter"] [] Nothing >>> Scotty.html $
       H.div ! A.class_ "enter" $ do
         H.div ! A.class_ "tabs" $ do
           H.span ! A.class_ "active" $ H.toHtml ("Login" ∷ Text)
