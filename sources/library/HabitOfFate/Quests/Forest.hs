@@ -36,11 +36,10 @@ module HabitOfFate.Quests.Forest where
 import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Random
+import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
-import HabitOfFate.Story
-import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
@@ -61,13 +60,13 @@ makeLenses ''State
 ------------------------------------ Intro -------------------------------------
 --------------------------------------------------------------------------------
 
-intro_story ∷ SubEvent
-intro_story = [s_fixed|
-The last thing in the world that <introduce>|Susie</introduce> wanted to do was
+intro_stories ∷ [Story]
+intro_stories = [s|
+The last thing in the world that <strong>|Susie</strong> wanted to do was
 to wander alone in the Wicked Forest at night, but his/her|Susie
-son/daughter|Tommy, little <introduce>|Tommy</introduce>, was sick and would not
-live through the night unless |Susie could find <introduce>an
-|Illsbane</introduce> plant. It is a hopeless task, but he/she| has no
+son/daughter|Tommy, little <strong>|Tommy</strong>, was sick and would not
+live through the night unless |Susie could find <strong>an
+|Illsbane</strong> plant. It is a hopeless task, but he/she| has no
 other choice.
 |]
 
@@ -90,7 +89,7 @@ initialize = do
            <*> (Failure <$> numberUntilEvent 1)
          )
         )
-    <*> pure (substitute test_substitutions intro_story)
+    <*> (substitute test_substitutions <$> uniform intro_stories)
 
 --------------------------------------------------------------------------------
 ------------------------------------- Lost -------------------------------------
@@ -99,13 +98,13 @@ initialize = do
 data FailureResult = FailureAverted | FailureHappened
 
 data FailureEvent = FailureEvent
-  { _failure_common_paragraphs_ ∷ SubEvent
-  , _failure_averted_paragraphs_ ∷ SubEvent
-  , _failure_happened_paragraphs_ ∷ SubEvent
+  { _failure_common_paragraphs_ ∷ Story
+  , _failure_averted_paragraphs_ ∷ Story
+  , _failure_happened_paragraphs_ ∷ Story
   }
 makeLenses ''FailureEvent
 
-makeFailureEvent ∷ (SubEvent, SubEvent, SubEvent) → FailureEvent
+makeFailureEvent ∷ (Story, Story, Story) → FailureEvent
 makeFailureEvent (common,averted,happened) = FailureEvent common averted happened
 
 failure_stories ∷ [FailureEvent]
@@ -136,13 +135,13 @@ in time now.
      |]
   ]
 
-failure_averted_stories ∷ [SubEvent]
+failure_averted_stories ∷ [Story]
 failure_averted_stories =
   [ event ^. failure_common_paragraphs_ ⊕ event ^. failure_averted_paragraphs_
   | event ← failure_stories
   ]
 
-failure_happened_stories ∷ [SubEvent]
+failure_happened_stories ∷ [Story]
 failure_happened_stories =
   [ event ^. failure_common_paragraphs_ ⊕ event ^. failure_happened_paragraphs_
   | event ← failure_stories
@@ -152,7 +151,7 @@ failure_happened_stories =
 ------------------------------------ Wander ------------------------------------
 --------------------------------------------------------------------------------
 
-wander_stories ∷ [SubEvent]
+wander_stories ∷ [Story]
 wander_stories = [s|
 Nothing happens as |Susie wanders through the forest.
 ================================================================================
@@ -204,7 +203,7 @@ behind.
 ------------------------------------ Found -------------------------------------
 --------------------------------------------------------------------------------
 
-found_stories ∷ [SubEvent]
+found_stories ∷ [Story]
 found_stories = [s|
 After searching for what feels like hours, |Susie nearly steps on an |Illsbane
 plant. his/her| heart leaps and he/she| gives a short prayer of thanks. He/she|
@@ -230,7 +229,7 @@ He/she| then gets up and starts heading back to his/her| home.
 ------------------------------------- Won --------------------------------------
 --------------------------------------------------------------------------------
 
-won_story ∷ SubEvent
+won_story ∷ Story
 won_story = [s_fixed|
 |Susie is starting to feel like he/she| will never make it back when he/she|
 notices that things are starting to get brighter -- he/she| must be getting close
@@ -250,12 +249,12 @@ builds an alter to you out of gratitude.
 ------------------------------------ Status ------------------------------------
 --------------------------------------------------------------------------------
 
-looking_for_herb_story ∷ SubEvent
+looking_for_herb_story ∷ Story
 looking_for_herb_story = [s_fixed|
 |Susie continues to search in the dark for an |Illsbane plant.
 |]
 
-returning_home_story ∷ SubEvent
+returning_home_story ∷ Story
 returning_home_story = [s_fixed|
 An |Illsbane] plant in hand, |Susie continues home.
 |]
@@ -265,18 +264,18 @@ An |Illsbane] plant in hand, |Susie continues home.
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
+pickStoryUsingState ∷ (MonadRandom m, MonadState State m) ⇒ [Story] → m Lazy.Text
+pickStoryUsingState stories = substitute <$> use substitutions_ <*> uniform stories
+
+pickStory ∷ MonadRandom m ⇒ State → [Story] → m Lazy.Text
+pickStory s stories = substitute (s ^. substitutions_) <$> uniform stories
+
 getStatus ∷ GetStatusQuestRunner State
 getStatus s = substitute (s ^. substitutions_) story
  where
   story
    | s ^. herb_found_ = returning_home_story
    | otherwise = looking_for_herb_story
-
-pickStoryUsingState ∷ (MonadRandom m, MonadState State m) ⇒ [SubEvent] → m Event
-pickStoryUsingState stories = substitute <$> use substitutions_ <*> uniform stories
-
-pickStory ∷ MonadRandom m ⇒ State → [SubEvent] → m Event
-pickStory s stories = substitute (s ^. substitutions_) <$> uniform stories
 
 trial ∷ TrialQuestRunner State
 trial (Tagged (Success available_success_credits) (Failure available_failure_credits)) = do
@@ -326,10 +325,10 @@ trial (Tagged (Success available_success_credits) (Failure available_failure_cre
 --------------------------------- Proofreading ---------------------------------
 --------------------------------------------------------------------------------
 
-stories ∷ [(Text, [Event])]
+stories ∷ [(Text, [Lazy.Text])]
 stories =
   map (second (map (substitute test_substitutions)))
-  [ ("Introduction", [intro_story])
+  [ ("Introduction", intro_stories)
   , ("Wandering", wander_stories)
   , ("Found", found_stories)
   , ("Won", [won_story])

@@ -23,13 +23,13 @@ module HabitOfFate.Server.Requests.Web.GetQuestStatus (handler) where
 import HabitOfFate.Prelude
 
 import Network.HTTP.Types.Status (ok200)
+import qualified Text.Blaze.Html5 as H
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
-import HabitOfFate.Story.Renderer.HTML
 
 handler ∷ Environment → ScottyM ()
 handler environment =
@@ -39,7 +39,7 @@ handler environment =
     (
       getAccountStatus
       >>>
-      renderEventToHTML
+      H.lazyText
       >>>
       renderTopOnlyPageResult "Habit of Fate - Quest Status" [] [] Nothing ok200
     )

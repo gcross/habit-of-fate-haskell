@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -32,10 +33,12 @@ import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
-import Data.Void
+import Data.List.Split
 import Language.Haskell.TH.Lift (Lift)
+import qualified Language.Haskell.TH.Lift as Lift
+import Language.Haskell.TH.Quote (QuasiQuoter(..))
+import qualified Data.Text.Lazy as Lazy
 import Text.Parsec hiding ((<|>), optional, uncons)
-import Text.XML (Element(..), Name)
 
 import HabitOfFate.TH
 
@@ -48,11 +51,6 @@ first_uppercase_ = _head . uppercase_
 isVowel ∷ Char → Bool
 isVowel = (∈ "aeiouAEIOU")
 
-data Kind =
-    Name
-  | Referrent Referrent
-  deriving (Eq, Lift, Ord, Read, Show)
-
 data Referrent =
     Subject
   | Object
@@ -64,6 +62,11 @@ data Referrent =
   | Offspring
   | OffspringPlural
   deriving (Bounded, Enum, Eq, Lift, Ord, Read, Show)
+
+data Kind =
+    Name
+  | Referrent Referrent
+  deriving (Eq, Lift, Ord, Read, Show)
 
 referrents ∷ [(String, Referrent)]
 referrents =
@@ -93,8 +96,10 @@ data SubstitutionData = SubstitutionData
   deriving (Eq, Lift, Ord, Read, Show)
 makeLenses ''SubstitutionData
 
-data Atom = Literal Char | Substitution SubstitutionData
-  deriving (Eq, Ord, Read, Show)
+data Chunk α = Literal α | Substitution SubstitutionData
+  deriving (Eq, Functor, Lift, Ord, Read, Show)
+
+type Story = [Chunk Text]
 
 type Parser = Parsec String ()
 
@@ -103,8 +108,8 @@ getCase c
   | isUpper c = Upper
   | otherwise = Lower
 
-parseSubstitutionAtom ∷ HasArticle → Maybe Case → Parser Atom
-parseSubstitutionAtom article maybe_case = do
+parseSubstitutionChunk ∷ HasArticle → Maybe Case → Parser (Chunk Char)
+parseSubstitutionChunk article maybe_case = do
   kind ←
     try (string "|" >> pure Name)
     <|>
@@ -127,77 +132,81 @@ parseSubstitutionAtom article maybe_case = do
       kind
       key
 
-parseAtom ∷ Parser Atom
-parseAtom = do
+parseChunk ∷ Parser (Chunk Char)
+parseChunk = do
   maybe_case_ ← (lookAhead letter <&> (getCase >>> Just)) <|> pure Nothing
   (try $ do
     _ ← (char 'a' <|> char 'A')
     _ ← optional $ char 'n'
     _ ← many1 <<< choice $ map char " \t\r\n"
-    parseSubstitutionAtom HasArticle maybe_case_
+    parseSubstitutionChunk HasArticle maybe_case_
    )
-    <|> (parseSubstitutionAtom HasNoArticle maybe_case_)
+    <|> (parseSubstitutionChunk HasNoArticle maybe_case_)
     <|> (anyToken <&> Literal)
 
 instance Exception ParseError
 
-convertSubstitutionDataToTag ∷ SubstitutionData → Text
-convertSubstitutionDataToTag s =
-  pack [i|<sub has_article="#{s ^. has_article_}" case="#{s ^. is_uppercase_}" kind="#{s ^. kind_}" key="#{s ^. key_}"/>|]
-
-convertSubstitutionsToTags ∷ MonadThrow m ⇒ String → m Text
-convertSubstitutionsToTags story =
+parseSubstitutions ∷ MonadThrow m ⇒ String → m Story
+parseSubstitutions story =
   (
-    (runParser (many parseAtom ∷ Parser [Atom]) () "<story>" story
+    (runParser (many parseChunk ∷ Parser [Chunk Char]) () "<story>" story
     |> either throwM pure)
   )
   <&>
+  (mergeChunks >>> map (pack <$>))
+ where
+  mergeChunks ∷ [Chunk Char] → [Chunk [Char]]
+  mergeChunks [] = []
+  mergeChunks (first:rest) = go (singleton <$> first) rest
+   where
+    go ∷ Chunk [Char] → [Chunk Char] → [Chunk [Char]]
+    go previous [] = previous:[]
+    go previous (next@(Substitution _):rest) = previous:go (singleton <$> next) rest
+    go previous@(Substitution _) (next:rest) = previous:go (singleton <$> next) rest
+    go (Literal x) (Literal y:rest) = go (Literal (y:x)) rest
+
+splitStories ∷ String → [String]
+splitStories =
+  lines
+  >>>
+  splitWhen (
+    \case
+      '=':_ → True
+      _ → False
+  )
+  >>>
+  map unlines
+
+s ∷ QuasiQuoter
+s = QuasiQuoter
+  ((splitStories >>> mapM parseSubstitutions) >=> Lift.lift)
+  (error "Cannot use s as a pattern")
+  (error "Cannot use s as a type")
+  (error "Cannot use s as a dec")
+
+s_fixed ∷ QuasiQuoter
+s_fixed = QuasiQuoter
   (
-    foldMap (
-      \case
-        Literal c → singleton c
-        Substitution s → convertSubstitutionDataToTag s
+    (splitStories >>> mapM parseSubstitutions)
+    >=>
+    (\case
+      [] → [|()|]
+      [x1] → [|x1|]
+      [x1,x2] → [|(x1,x2)|]
+      [x1,x2,x3] → [|(x1,x2,x3)|]
+      [x1,x2,x3,x4] → [|(x1,x2,x3,x4)|]
+      [x1,x2,x3,x4,x5] → [|(x1,x2,x3,x4,x5)|]
+      [x1,x2,x3,x4,x5,x6] → [|(x1,x2,x3,x4,x5,x6)|]
+      [x1,x2,x3,x4,x5,x6,x7] → [|(x1,x2,x3,x4,x5,x6,x7)|]
+      [x1,x2,x3,x4,x5,x6,x7,x8] → [|(x1,x2,x3,x4,x5,x6,x7,x8)|]
+      [x1,x2,x3,x4,x5,x6,x7,x8,x9] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9)|]
+      [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)|]
+      xs → error [i|saw #{olength xs} events, which is too many (> 10)|]
     )
   )
-
-data SubstitutionTagParseError =
-    SubstitutionTagMustHaveTagSub
-  | SubstitutionTagMayNotHaveChildren
-  | SubstitutionTagIsMissingAttribute Name
-  | SubstitutionTagHasInvalidValueFor Name String
-  | SubstitutionTagNotAllowed
-  deriving (Eq, Show)
-instance Exception SubstitutionTagParseError where
-
-parseSubstitutionTag ∷ MonadThrow m ⇒ Element → m SubstitutionData
-parseSubstitutionTag (Element tag attrs childs)
-  | tag /= "sub" = throwM SubstitutionTagMustHaveTagSub
-  | (not <<< null) childs = throwM SubstitutionTagMayNotHaveChildren
-  | otherwise =
-      SubstitutionData
-        <$> attribute "has_article" (unpack >>> readEither)
-        <*> attribute "case" (unpack >>> readEither)
-        <*> attribute "kind" (unpack >>> readEither)
-        <*> attribute "key" Right
-  where
-    attribute name reader =
-      maybe
-        (throwM $ SubstitutionTagIsMissingAttribute name)
-        (
-          reader
-          >>>
-          either
-            (
-              SubstitutionTagHasInvalidValueFor name
-              >>>
-              throwM
-            )
-            pure
-        )
-        (lookup name attrs)
-
-parseSubstitutionTagNotAllowed ∷ MonadThrow m ⇒ Element → m Void
-parseSubstitutionTagNotAllowed _ = throwM SubstitutionTagNotAllowed
+  (error "Cannot use s1 as a pattern")
+  (error "Cannot use s1 as a type")
+  (error "Cannot use s1 as a dec")
 
 data Gender = Male | Female | Neuter deriving (Enum,Eq,Ord,Read,Show)
 
@@ -248,6 +257,16 @@ lookupAndApplySubstitution table s = do
       word = applyKind (s ^. kind_) gendered
   pure $
     (article ⊕ word) & first_uppercase_ .~ (s ^. is_uppercase_)
+
+substitute ∷ HashMap Text Gendered → Story → Lazy.Text
+substitute table =
+  map (
+    \case
+      Literal l → l
+      Substitution s → lookupAndApplySubstitution table s |> either (show >>> error) identity
+  )
+  >>>
+  Lazy.fromChunks
 
 applyKind ∷ Kind → Gendered → Text
 applyKind Name (Gendered name _) = name

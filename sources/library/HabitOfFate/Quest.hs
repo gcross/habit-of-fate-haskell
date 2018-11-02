@@ -26,19 +26,19 @@ module HabitOfFate.Quest where
 import HabitOfFate.Prelude
 
 import Control.Monad.Random
+import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Data.Tagged
-import HabitOfFate.Story
 
 data InitializeQuestResult α = InitializeQuestResult
   { initialQuestState ∷ α
-  , initialQuestEvent ∷ Event
+  , initialQuestEvent ∷ Lazy.Text
   }
 makeLenses ''InitializeQuestResult
 
 data RunQuestResult s = RunQuestResult
   { maybeRunQuestState ∷ Maybe s
-  , runQuestEvent ∷ Event
+  , runQuestEvent ∷ Lazy.Text
   } deriving (Functor)
 makeLenses ''RunQuestResult
 
@@ -47,11 +47,11 @@ data QuestStatus = QuestInProgress | QuestHasEnded
 data TryQuestResult = TryQuestResult
   { tryQuestStatus ∷ QuestStatus
   , tryQuestPostAvailableCredits ∷ Tagged Double
-  , tryQuestEvent ∷ Event
+  , tryQuestEvent ∷ Lazy.Text
   }
 
 type InitializeQuestRunner s = Rand StdGen (InitializeQuestResult s)
-type GetStatusQuestRunner s = s → Event
+type GetStatusQuestRunner s = s → Lazy.Text
 type TrialQuestRunner s = Tagged Double → StateT s (Rand StdGen) TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α

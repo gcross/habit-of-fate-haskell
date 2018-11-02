@@ -38,6 +38,7 @@ import Control.Monad.Trans.Control
 import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Text.Lazy as Lazy
 import Data.Typeable
 import Data.UUID hiding (toByteString)
 import qualified Data.UUID as UUID
@@ -50,8 +51,6 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Tagged
-import HabitOfFate.Story
-import HabitOfFate.Story.Parser.XML
 
 data SecureMode = Testing | Secure
 
@@ -271,16 +270,16 @@ markHabits marks = do
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-getQuestStatus ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Event
+getQuestStatus ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Lazy.Text
 getQuestStatus = do
   response ← request GET "status"
   case responseStatusCode response of
-    200 → response |> responseBody |> decodeUtf8 |> parseEventFromText
+    200 → response |> responseBody |> decodeUtf8 |> pure
     code → throwM $ UnexpectedStatus [200] code
 
-runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Event
+runGame ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Lazy.Text
 runGame = do
   response ← request POST "run"
   case responseStatusCode response of
-    200 → response |> responseBody |> decodeUtf8 |> parseEventFromText
+    200 → response |> responseBody |> decodeUtf8 |> pure
     code → throwM $ UnexpectedStatus [200] code

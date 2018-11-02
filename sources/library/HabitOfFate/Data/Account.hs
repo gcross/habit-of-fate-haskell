@@ -35,6 +35,7 @@ import Control.Exception
 import Control.Monad.Random (StdGen, newStdGen, runRand, uniform)
 import Crypto.PasswordStore
 import Data.Aeson (FromJSON(..), FromJSONKey(..), ToJSON(..), ToJSONKey(..), Value(..))
+import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Zones.All (TZLabel(America__New_York))
 import Data.Typeable (Typeable)
@@ -45,7 +46,6 @@ import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests
-import HabitOfFate.Story
 import HabitOfFate.TH
 
 instance ToJSON StdGen where
@@ -100,17 +100,17 @@ passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password account =
   verifyPassword (encodeUtf8 password) (encodeUtf8 $ account ^. password_)
 
-getAccountStatus ∷ Account → Event
+getAccountStatus ∷ Account → Lazy.Text
 getAccountStatus account =
   maybe
-    ["You are between quests."]
+    "You are between quests."
     (runCurrentQuest run)
     (account ^. maybe_current_quest_state_)
   where
-   run ∷ ∀ s. Quest s → s → Event
+   run ∷ ∀ s. Quest s → s → Lazy.Text
    run quest quest_state = questGetStatus quest quest_state
 
-runAccount ∷ State Account Event
+runAccount ∷ State Account Lazy.Text
 runAccount = do
   maybe_current_quest_state ← use maybe_current_quest_state_
   rng ← use rng_
@@ -127,7 +127,7 @@ runAccount = do
       rng_ .= new_rng
       pure event
     Just current_quest_state → do
-      let run ∷ ∀ s. Quest s → s → State Account Event
+      let run ∷ ∀ s. Quest s → s → State Account Lazy.Text
           run quest quest_state = do
             stored_credits ← use stored_credits_
             let ((TryQuestResult quest_status new_stored_credits event, new_quest_state), new_rng) =

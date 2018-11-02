@@ -79,8 +79,6 @@ import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server
-import HabitOfFate.Story
-import HabitOfFate.Story.Parser.Quote
 import HabitOfFate.Substitution
 
 dayHour d h = LocalTime (ModifiedJulianDay d) (TimeOfDay h 0 0)
@@ -798,67 +796,42 @@ main = defaultMain $ testGroup "All Tests"
         ------------------------------------------------------------------------
     ]
   ------------------------------------------------------------------------------
-  , testGroup "HabitOfFate.Story"
-  ------------------------------------------------------------------------------
-    [ testGroup "s"
-    ----------------------------------------------------------------------------
-      [ testCase "just a substitution" $ olength ([s|{test}|] ∷ [SubEvent]) @?= 1
-      , testCase "single story plain text" $
-          olength ([s|line1|] ∷ [SubEvent]) @?= 1
-      , testCase "2 stories: both non-empty" $
-          olength ([s|line1
-                     =
-                     line2
-                     |] ∷ [SubEvent]) @?= 2
-      ]
-    ]
-  ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Substitution"
   ------------------------------------------------------------------------------
-    [ testGroup "parseAtom"
+    [ testGroup "parseChunk"
     ----------------------------------------------------------------------------
       [ testCase "literal, one char" $
-          runParser parseAtom () "<story>" "literal" @?= Right (Literal 'l')
+          runParser parseChunk () "<story>" "literal" @?= Right (Literal 'l')
       , testCase "literal, whole string" $
-          runParser (many parseAtom) () "<story>" "xyz" @?= Right [Literal 'x', Literal 'y', Literal 'z']
+          runParser (many parseChunk) () "<story>" "xyz" @?= Right [Literal 'x', Literal 'y', Literal 'z']
       , testCase "substitution, name" $
-          runParser parseAtom () "<story>" "|" @?=
+          runParser parseChunk () "<story>" "|" @?=
             Right (Substitution $ SubstitutionData False True Name "")
       , testCase "substitution, subject" $
-          runParser parseAtom () "<story>" "he/she|x" @?=
+          runParser parseChunk () "<story>" "he/she|x" @?=
             Right (Substitution $ SubstitutionData False False (Referrent Subject) "x")
       , testCase "substitution, subject, multiparse" $
-          runParser (many parseAtom) () "<story>" "he/she|x" @?=
+          runParser (many parseChunk) () "<story>" "he/she|x" @?=
             Right [Substitution $ SubstitutionData False False (Referrent Subject) "x"]
       , testCase "substitution, proper possessive" $
-          runParser parseAtom () "<story>" "his/hers|Sue" @?=
+          runParser parseChunk () "<story>" "his/hers|Sue" @?=
             Right (Substitution $ SubstitutionData False False (Referrent ProperPossessive) "Sue")
       , testCase "substitution, with article" $
-          runParser parseAtom () "<story>" "an |illsbane" @?=
+          runParser parseChunk () "<story>" "an |illsbane" @?=
             Right (Substitution $ SubstitutionData True False Name "illsbane")
       , testCase "substitution, with capitalized article" $
-          runParser parseAtom () "<story>" "An |illsbane" @?=
+          runParser parseChunk () "<story>" "An |illsbane" @?=
             Right (Substitution $ SubstitutionData True True Name "illsbane")
       , testCase "substitution, with article and a newline" $
-          runParser parseAtom () "<story>" "an\n|illsbane" @?=
+          runParser parseChunk () "<story>" "an\n|illsbane" @?=
             Right (Substitution $ SubstitutionData True False Name "illsbane")
       , testCase "substitution, uppercase referrant" $
-          runParser parseAtom () "<story>" "His/hers|Katie" @?=
+          runParser parseChunk () "<story>" "His/hers|Katie" @?=
             Right (Substitution $ SubstitutionData False True (Referrent ProperPossessive) "Katie")
       , testCase "substitution, uppercase name" $
-          runParser parseAtom () "<story>" "|Katie" @?=
+          runParser parseChunk () "<story>" "|Katie" @?=
             Right (Substitution $ SubstitutionData False True Name "Katie")
       ]
-    ----------------------------------------------------------------------------
-    , testProperty "round-trip" $ \x →
-        x |> convertSubstitutionDataToTag
-          |> Lazy.fromStrict
-          |> parseText def
-          |> fmap documentRoot
-          |> (>>= parseSubstitutionTag)
-          |> (_Left %~ show)
-          |> (@?= Right x)
-          |> ioProperty
     ----------------------------------------------------------------------------
     ]
   ]

@@ -59,6 +59,7 @@ library
                      , rainbow
                      , random
                      , scotty
+                     , split
                      , stm
                      , text
                      , th-lift
@@ -112,12 +113,6 @@ library
                      , HabitOfFate.Server.Requests.Web.MoveHabit
                      , HabitOfFate.Server.Requests.Web.NewGroup
                      , HabitOfFate.Server.Requests.Web.NewHabit
-                     , HabitOfFate.Story
-                     , HabitOfFate.Story.Parser.Quote
-                     , HabitOfFate.Story.Parser.XML
-                     , HabitOfFate.Story.Renderer.Console
-                     , HabitOfFate.Story.Renderer.HTML
-                     , HabitOfFate.Story.Renderer.XML
                      , HabitOfFate.Substitution
                      , HabitOfFate.Trial
                      , HabitOfFate.TH

@@ -29,6 +29,7 @@ module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (handler) where
 
 import HabitOfFate.Prelude
 
+import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID)
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
@@ -44,11 +45,8 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
-import HabitOfFate.Story
-import HabitOfFate.Story.Renderer.HTML
-import HabitOfFate.Story.Renderer.XML
 
-runEvent ∷ TransactionProgram Event
+runEvent ∷ TransactionProgram Lazy.Text
 runEvent = do
   account ← get
   let (event, new_account) = runState runAccount account
@@ -59,7 +57,7 @@ runGame ∷ TransactionProgram TransactionResult
 runGame = do
   event ← runEvent
   let rendered_event
-        | (not <<< null) event = renderEventToHTML event
+        | (not <<< onull) event = H.lazyText event
         | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
   stored_credits ← use stored_credits_
   renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
@@ -129,8 +127,8 @@ handleMarkHabitWeb environment = do
 
 handleRunApi ∷ Environment → ScottyM ()
 handleRunApi environment =
-  Scotty.post "/api/run" <<< apiTransaction environment $ do
-    runEvent >>= (renderEventToXMLText >>> lazyTextResult ok200 >>> pure)
+  Scotty.post "/api/run" <<< apiTransaction environment $
+    runEvent <&> lazyTextResult ok200
 
 handleRunWeb ∷ Environment → ScottyM ()
 handleRunWeb environment =

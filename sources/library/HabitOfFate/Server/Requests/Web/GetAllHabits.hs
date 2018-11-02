@@ -43,7 +43,6 @@ import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
-import HabitOfFate.Story.Renderer.HTML
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
@@ -74,7 +73,7 @@ handler environment = do
             )
             ["%b %e, %Y", "%I:%M%P"]
     renderPageResult "Habit of Fate - List of Habits" ["list"] [] Nothing ok200 >>> pure $ do
-      generateTopHTML $ H.div ! A.class_ "story" $ renderEventToHTML quest_status
+      generateTopHTML $ H.div ! A.class_ "story" $ H.lazyText quest_status
       H.div ! A.class_ "groups" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
           [ ("position", "#")
