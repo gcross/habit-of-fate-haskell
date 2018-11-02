@@ -93,9 +93,9 @@ repeatDays ∷ DaysToRepeat → String
 repeatDays days_to_repeat =
   intercalate "+"
     [ day_of_week_name
-    | (DaysToRepeatLens days_to_repeat_lens_, day_of_week_name) ←
+    | (days_to_repeat_lens_, day_of_week_name) ←
         zip (V.toList days_to_repeat_lenses) day_of_week_names
-    , days_to_repeat ^. days_to_repeat_lens_
+    , days_to_repeat ^# days_to_repeat_lens_
     ]
 
 instance Arbitrary DaysToKeep where

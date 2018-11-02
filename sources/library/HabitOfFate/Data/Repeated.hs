@@ -80,24 +80,19 @@ data DaysToRepeat = DaysToRepeat
 deriveJSON ''DaysToRepeat
 makeLenses ''DaysToRepeat
 
-newtype DaysToRepeatLens = DaysToRepeatLens { unwrapDaysToRepeatLens ∷ Lens' DaysToRepeat Bool }
-
-days_to_repeat_lenses ∷ Vector DaysToRepeatLens
+days_to_repeat_lenses ∷ Vector (ALens' DaysToRepeat Bool)
 days_to_repeat_lenses = V.fromList $
-  [ DaysToRepeatLens monday_
-  , DaysToRepeatLens tuesday_
-  , DaysToRepeatLens wednesday_
-  , DaysToRepeatLens thursday_
-  , DaysToRepeatLens friday_
-  , DaysToRepeatLens saturday_
-  , DaysToRepeatLens sunday_
+  [ monday_
+  , tuesday_
+  , wednesday_
+  , thursday_
+  , friday_
+  , saturday_
+  , sunday_
   ]
 
 instance Default DaysToRepeat where
   def = DaysToRepeat False False False False False False False
-
-checkDayRepeated ∷ DaysToRepeat → DaysToRepeatLens → Bool
-checkDayRepeated = (^.) >>> (unwrapDaysToRepeatLens >>>)
 
 nextWeeklyDay ∷ DaysToRepeat → Int → Day → Day
 nextWeeklyDay days_to_repeat period today =
@@ -108,11 +103,11 @@ nextWeeklyDay days_to_repeat period today =
   day_of_week_of_first_deadline =
     fromMaybe
       (error "no days of the week are repeated")
-      (V.findIndex (checkDayRepeated days_to_repeat) days_to_repeat_lenses)
+      (V.findIndex (days_to_repeat ^#) days_to_repeat_lenses)
   days_to_add =
     days_to_repeat_lenses
     |> V.drop (day_of_week+1)
-    |> V.findIndex (checkDayRepeated days_to_repeat)
+    |> V.findIndex (days_to_repeat ^#)
     |> maybe
         (period*7 - day_of_week + day_of_week_of_first_deadline)
         (+1) -- the index counts the number of days to the next repeated day minus 1
@@ -122,7 +117,7 @@ nextWeekly ∷ Int → DaysToRepeat → LocalTime → LocalTime → LocalTime
 nextWeekly period days_to_repeat today deadline
   -- If we are on a day to be repeated and the repeat time is later in the day
   -- then the next deadline is *today* at that time.
-  | days_to_repeat ^. (unwrapDaysToRepeatLens $ days_to_repeat_lenses ! today_day_of_week)
+  | days_to_repeat ^# (days_to_repeat_lenses ! today_day_of_week)
       && localTimeOfDay today < localTimeOfDay deadline
         = today { localTimeOfDay = localTimeOfDay deadline }
 
@@ -146,7 +141,7 @@ previousWeeklies period days_to_repeat next_deadline =
   day_of_week = toInteger (day_of_week_1_based-1)
   days_to_repeat_as_offsets =
     days_to_repeat
-    |> checkDayRepeated
+    |> (^#)
     |> flip V.findIndices days_to_repeat_lenses
     |> V.reverse
     |> V.map toInteger

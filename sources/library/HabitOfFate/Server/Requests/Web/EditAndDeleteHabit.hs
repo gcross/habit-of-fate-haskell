@@ -53,7 +53,7 @@ import HabitOfFate.Server.Transaction
 
 data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 
-weekdays ∷ [(Text, Lazy.Text, Lens' DaysToRepeat Bool)]
+weekdays ∷ [(Text, Lazy.Text, ALens' DaysToRepeat Bool)]
 weekdays =
   [ ("S", "sunday", sunday_)
   , ("M", "monday", monday_)
@@ -218,7 +218,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                       ! A.name (H.toValue weekday_name)
                       & case habit ^. frequency_ of
                           Repeated _ _ (Weekly _ days_to_repeat)
-                            | days_to_repeat ^. weekday_lens_ → (! A.checked "checked")
+                            | days_to_repeat ^# weekday_lens_ → (! A.checked "checked")
                           _ → identity
                     H.div
                       ! A.class_ "weekly_control repeated_control"
@@ -497,15 +497,15 @@ extractHabit = do
                                 mapM (\(_, key, _) → getParamMaybeExtraLifted key) weekdays
                                 <&>
                                 (
-                                  zip (weekdays <&> (\(x, y, lens_) → (x, y, (lens_ .~))))
+                                  zip weekdays
                                   >>>
                                   foldl'
-                                    (\days_to_repeat ((_, _, setTo), maybe_value) →
+                                    (\days_to_repeat ((_, _, lens_), maybe_value) →
                                       maybe
                                         days_to_repeat
                                         (\value →
                                           if value == ("on" ∷ Text)
-                                            then days_to_repeat & setTo True
+                                            then days_to_repeat & lens_ #~ True
                                             else days_to_repeat
                                         )
                                         maybe_value
