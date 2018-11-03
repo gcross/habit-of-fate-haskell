@@ -34,13 +34,18 @@ import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
 import Data.List.Split
+import Language.Haskell.TH (Exp, Q)
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
+import System.FilePath ((</>))
+import System.IO (readFile)
 import qualified Data.Text.Lazy as Lazy
 import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.TH
+
+import Paths_habit_of_fate (getDataFileName)
 
 uppercase_ ∷ Lens' Char Bool
 uppercase_ = lens isUpper (\c → bool (toLower c) (toUpper c))
@@ -177,9 +182,12 @@ splitStories =
   >>>
   map unlines
 
+splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
+splitAndParseSubstitutions = splitStories >>> mapM parseSubstitutions
+
 s ∷ QuasiQuoter
 s = QuasiQuoter
-  ((splitStories >>> mapM parseSubstitutions) >=> Lift.lift)
+  (splitAndParseSubstitutions >=> Lift.lift)
   (error "Cannot use s as a pattern")
   (error "Cannot use s as a type")
   (error "Cannot use s as a dec")
@@ -187,7 +195,7 @@ s = QuasiQuoter
 s_fixed ∷ QuasiQuoter
 s_fixed = QuasiQuoter
   (
-    (splitStories >>> mapM parseSubstitutions)
+    splitAndParseSubstitutions
     >=>
     (\case
       [] → [|()|]
@@ -207,6 +215,18 @@ s_fixed = QuasiQuoter
   (error "Cannot use s1 as a pattern")
   (error "Cannot use s1 as a type")
   (error "Cannot use s1 as a dec")
+
+loadStories ∷ String → String → Q Exp
+loadStories quest section =
+  liftIO (
+    getDataFileName ("stories" </> quest </> section ⊕ ".txt")
+    >>=
+    readFile
+  )
+  >>=
+  splitAndParseSubstitutions
+  >>=
+  Lift.lift
 
 data Gender = Male | Female | Neuter deriving (Enum,Eq,Ord,Read,Show)
 
