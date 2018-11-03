@@ -170,30 +170,34 @@ parseSubstitutions story =
     go previous@(Substitution _) (next:rest) = previous:go (singleton <$> next) rest
     go (Literal x) (Literal y:rest) = go (Literal (y:x)) rest
 
-splitStories ∷ String → [String]
-splitStories =
-  lines
-  >>>
+splitWhenEquals ∷ [String] → [[String]]
+splitWhenEquals =
   splitWhen (
     \case
       '=':_ → True
       _ → False
   )
+
+splitStories ∷ String → [String]
+splitStories =
+  lines
+  >>>
+  splitWhenEquals
   >>>
   map unlines
 
 splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
 splitAndParseSubstitutions = splitStories >>> mapM parseSubstitutions
 
-s ∷ QuasiQuoter
-s = QuasiQuoter
+stories ∷ QuasiQuoter
+stories = QuasiQuoter
   (splitAndParseSubstitutions >=> Lift.lift)
   (error "Cannot use s as a pattern")
   (error "Cannot use s as a type")
   (error "Cannot use s as a dec")
 
-s_fixed ∷ QuasiQuoter
-s_fixed = QuasiQuoter
+stories_fixed ∷ QuasiQuoter
+stories_fixed = QuasiQuoter
   (
     splitAndParseSubstitutions
     >=>
@@ -225,6 +229,48 @@ loadStories quest section =
   )
   >>=
   splitAndParseSubstitutions
+  >>=
+  Lift.lift
+
+subSplitStories ∷ String → [[String]]
+subSplitStories =
+  lines
+  >>>
+  splitWhenEquals
+  >>>
+  map (
+    splitWhen (
+      \case
+        '-':_ → True
+        _ → False
+    )
+    >>>
+    map unlines
+  )
+
+subSplitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [[Story]]
+subSplitAndParseSubstitutions = subSplitStories >>> mapM (mapM parseSubstitutions)
+
+subStories ∷ QuasiQuoter
+subStories = QuasiQuoter
+  (subSplitAndParseSubstitutions >=> Lift.lift)
+  (error "Cannot use s as a pattern")
+  (error "Cannot use s as a type")
+  (error "Cannot use s as a dec")
+
+loadSubStoriesWithoutLifting ∷ (MonadIO m, MonadThrow m) ⇒ String → String → m [[Story]]
+loadSubStoriesWithoutLifting quest section =
+  liftIO (
+    getDataFileName ("stories" </> quest </> section ⊕ ".txt")
+    >>=
+    readFile
+  )
+  >>=
+  subSplitAndParseSubstitutions
+
+loadSubStories ∷ String → String → Q Exp
+loadSubStories quest section =
+  loadSubStoriesWithoutLifting quest section
   >>=
   Lift.lift
 

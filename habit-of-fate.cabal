@@ -89,6 +89,7 @@ library
                      , HabitOfFate.Quest
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
+                     , HabitOfFate.Quests.Forest.Parser
                      , HabitOfFate.Server
                      , HabitOfFate.Server.Actions.Queries
                      , HabitOfFate.Server.Actions.Results

@@ -40,6 +40,7 @@ import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
+import HabitOfFate.Quests.Forest.Parser
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
@@ -55,62 +56,6 @@ data State = State
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''State
 makeLenses ''State
-
---------------------------------------------------------------------------------
-------------------------------------- Lost -------------------------------------
---------------------------------------------------------------------------------
-
-data FailureResult = FailureAverted | FailureHappened
-
-data FailureEvent = FailureEvent
-  { _failure_common_paragraphs_ ∷ Story
-  , _failure_averted_paragraphs_ ∷ Story
-  , _failure_happened_paragraphs_ ∷ Story
-  }
-makeLenses ''FailureEvent
-
-makeFailureEvent ∷ (Story, Story, Story) → FailureEvent
-makeFailureEvent (common,averted,happened) = FailureEvent common averted happened
-
-failure_stories ∷ [FailureEvent]
-failure_stories = fmap makeFailureEvent
------------------------------- Gingerbread House -------------------------------
-  [[s_fixed|
-|Susie sees a house made out of... gingerbread?
-
-He/she| feels a strange compulsion to approach it.
-================================================================================
-He/she| fights the compulsion, and continues on his/her| search.
-================================================================================
-As he/she| gets closer, the door opens and an old woman beckons her in.
-“You've arrived just in time!” she says. “Dinner has just finished cooking. Come
-on in!”
-
-Not knowing why he/she| was doing this, |Susie entered the... cottage? The woman
-leads her to an oven. “Here, look inside.”
-
-|Susie looks inside the oven and sees... little |Tommy? he/she| screams, and
-faints.
-
-Daylight awakens her. He/she|Susie looks around, but the gingerbread house is
-nowhere to be found.
-
-He/she| sobs -- there is no way that he/she| will be able to make it home
-in time now.
-     |]
-  ]
-
-failure_averted_stories ∷ [Story]
-failure_averted_stories =
-  [ event ^. failure_common_paragraphs_ ⊕ event ^. failure_averted_paragraphs_
-  | event ← failure_stories
-  ]
-
-failure_happened_stories ∷ [Story]
-failure_happened_stories =
-  [ event ^. failure_common_paragraphs_ ⊕ event ^. failure_happened_paragraphs_
-  | event ← failure_stories
-  ]
 
 --------------------------------------------------------------------------------
 ------------------------------------ Stories -----------------------------------
@@ -129,14 +74,33 @@ won_stories ∷ [Story]
 won_stories = $(loadStories "forest" "won")
 
 looking_for_herb_story ∷ Story
-looking_for_herb_story = [s_fixed|
+looking_for_herb_story = [stories_fixed|
 |Susie continues to search in the dark for an |Illsbane plant.
 |]
 
 returning_home_story ∷ Story
-returning_home_story = [s_fixed|
+returning_home_story = [stories_fixed|
 An |Illsbane] plant in hand, |Susie continues home.
 |]
+
+--------------------------------------------------------------------------------
+-------------------------------- Failure Stories -------------------------------
+--------------------------------------------------------------------------------
+
+failure_stories ∷ [FailureStory]
+failure_stories = $(loadFailureStories)
+
+failure_averted_stories ∷ [Story]
+failure_averted_stories =
+  [ failure_story ^. common_story_ ⊕ failure_story ^. averted_story_
+  | failure_story ← failure_stories
+  ]
+
+failure_happened_stories ∷ [Story]
+failure_happened_stories =
+  [ failure_story ^. common_story_ ⊕ failure_story ^. happened_story_
+  | failure_story ← failure_stories
+  ]
 
 --------------------------------------------------------------------------------
 ------------------------------------ Logic -------------------------------------
