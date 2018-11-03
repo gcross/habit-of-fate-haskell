@@ -178,13 +178,27 @@ splitWhenEquals =
       _ → False
   )
 
+addParagraphTags ∷ [String] → [String]
+addParagraphTags = go False
+ where
+  go False [] = []
+  go False (line:rest) =
+    case find ((∈ " \t") >>> not) line of
+      Nothing → go False rest
+      Just '<' → line:go False rest
+      _ → "<p>":line:go True rest
+  go True [] = ["</p>"]
+  go True (line:rest)
+    | all (∈ " \t") line = "</p>":go True rest
+    | otherwise = line:go True rest
+
 splitStories ∷ String → [String]
 splitStories =
   lines
   >>>
   splitWhenEquals
   >>>
-  map unlines
+  map (addParagraphTags >>> unlines)
 
 splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
 splitAndParseSubstitutions = splitStories >>> mapM parseSubstitutions
@@ -245,7 +259,7 @@ subSplitStories =
         _ → False
     )
     >>>
-    map unlines
+    map (addParagraphTags >>> unlines)
   )
 
 subSplitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [[Story]]
