@@ -163,8 +163,10 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
 
     Scotty.notFound $ do
       r ← Scotty.request
-      logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}.  Redirecting to /...|]
-      setStatusAndRedirect temporaryRedirect307 "/"
+      logIO [i|URL not found! #{requestMethod r} #{rawPathInfo r}#{rawQueryString r}.|]
+      case pathInfo r of
+        "api":_ → finishWithStatusMessage 404 "API path not found."
+        _ → setStatusAndRedirect temporaryRedirect307 "/"
 
 makeApp ∷ TVar (Map Username (TVar Account)) → MVar () → IO Application
 makeApp = makeAppWithTestMode False
