@@ -43,6 +43,7 @@ import Web.Scotty (Parsable)
 
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests
@@ -70,7 +71,7 @@ type Groups = ItemsSequence Group
 data Account = Account
   {   _password_ ∷ Text
   ,   _habits_ ∷ ItemsSequence Habit
-  ,   _stored_credits_ ∷ Tagged Double
+  ,   _marks_ ∷ Tagged (Seq Scale)
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
   ,   _rng_ ∷ StdGen
   ,   _timezone_ ∷ TZLabel
@@ -89,7 +90,7 @@ newAccount password =
           (decodeUtf8 >>> evaluate)
         )
     <*> pure def
-    <*> pure (Tagged (Success 0) (Failure 0))
+    <*> pure (Tagged (Success def) (Failure def))
     <*> pure Nothing
     <*> newStdGen
     <*> pure America__New_York
@@ -129,20 +130,34 @@ runAccount = do
     Just current_quest_state → do
       let run ∷ ∀ s. Quest s → s → State Account Lazy.Text
           run quest quest_state = do
-            stored_credits ← use stored_credits_
-            let ((TryQuestResult quest_status new_stored_credits event, new_quest_state), new_rng) =
-                  quest
-                    |> questTrial
-                    |> ($ stored_credits)
-                    |> flip runStateT quest_state
-                    |> flip runRand rng ∷ ((TryQuestResult, s), StdGen)
-            rng_ .= new_rng
-            stored_credits_ .= new_stored_credits
-            maybe_current_quest_state_ .=
-              case quest_status of
-                QuestHasEnded → Nothing
-                QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
-            pure event
+            marks ← use marks_
+            maybe_runQuestTrial ←
+              case uncons (marks ^. success_) of
+                Just (scale, rest) → do
+                  marks_ . success_ .= rest
+                  pure $ Just $ questTrial >>> (^. success_) >>> ($ scale)
+                Nothing →
+                  case uncons (marks ^. failure_) of
+                    Just (scale, rest) → do
+                      marks_ . failure_ .= rest
+                      pure $ Just $ questTrial >>> (^. failure_) >>> ($ scale)
+                    Nothing →
+                      pure Nothing
+            case maybe_runQuestTrial of
+              Just runQuestTrial → do
+                let ((TryQuestResult quest_status event, new_quest_state), new_rng) =
+                      quest
+                        |> runQuestTrial
+                        |> flip runStateT quest_state
+                        |> flip runRand rng ∷ ((TryQuestResult, s), StdGen)
+                rng_ .= new_rng
+                maybe_current_quest_state_ .=
+                  case quest_status of
+                    QuestHasEnded → Nothing
+                    QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
+                pure event
+              Nothing →
+                pure ""
       runCurrentQuest run current_quest_state
 
 newtype Username = Username { unwrapUsername ∷ Text } deriving

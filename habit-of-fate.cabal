@@ -97,8 +97,8 @@ library
                      , HabitOfFate.Server.Transaction
                      , HabitOfFate.Server.Requests.Api.DeleteHabit
                      , HabitOfFate.Server.Requests.Api.GetAllHabits
-                     , HabitOfFate.Server.Requests.Api.GetCredits
                      , HabitOfFate.Server.Requests.Api.GetHabit
+                     , HabitOfFate.Server.Requests.Api.GetMarks
                      , HabitOfFate.Server.Requests.Api.GetQuestStatus
                      , HabitOfFate.Server.Requests.Api.PutHabit
                      , HabitOfFate.Server.Requests.Shared.LoginOrCreate

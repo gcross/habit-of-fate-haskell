@@ -19,29 +19,24 @@
 
 module HabitOfFate.Trial where
 
-import Control.Lens
-import Control.Monad.Random (MonadRandom(getRandomR))
-import Control.Monad.State
+import HabitOfFate.Prelude
 
-numberUntilEvent ∷ MonadRandom m ⇒ Double → m Double
-numberUntilEvent median = getRandomR (0,1) <&> (\rnd → logBase 2 (1-rnd) * (-median))
+import Control.Monad.Random (MonadRandom(getRandom))
 
-data Outcome = NoCredits | NothingHappened | SomethingHappened
-  deriving (Eq, Ord, Read, Show)
+import HabitOfFate.Data.Scale
 
-spendCredits ∷ MonadState s m ⇒ Lens' s Double → Lens' s Double → m Outcome
-spendCredits credits_until_event_lens credits_lens = do
-  credits ← use credits_lens
-  if credits <= 0
-    then return NoCredits
-    else do
-      credits_until_event ← use credits_until_event_lens
-      if credits < credits_until_event
-        then do
-          credits_lens .= 0
-          credits_until_event_lens .= credits_until_event - credits
-          return NothingHappened
-        else do
-          credits_lens .= credits - credits_until_event
-          credits_until_event_lens .= 0
-          return SomethingHappened
+tryBinomial ∷ MonadRandom m ⇒ Float → Scale → m Bool
+tryBinomial probability scale = getRandom <&> (< threshold)
+ where
+  inverse_probability ∷ Float
+  inverse_probability = 1-probability
+
+  threshold ∷ Float
+  threshold =
+    case scale of
+      None → 0
+      VeryLow → 1 - inverse_probability**(1/3)
+      Low → 1 - inverse_probability**(1/2)
+      Medium → probability
+      High → 1 - inverse_probability^(2 ∷ Int)
+      VeryHigh → 1 - inverse_probability^(3 ∷ Int)

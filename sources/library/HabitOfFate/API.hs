@@ -50,6 +50,7 @@ import Web.Cookie
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 
 data SecureMode = Testing | Secure
@@ -252,19 +253,19 @@ getHabits = do
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-getCredits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Tagged Double)
-getCredits = do
-  response ← requestForJSON GET "credits"
+getMarks ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Tagged [Scale])
+getMarks = do
+  response ← requestForJSON GET "marks"
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
 
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ Tagged [UUID] → SessionT m (Tagged Double)
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ Tagged [UUID] → SessionT m (Tagged [Scale])
 markHabits marks = do
   response ←
     requestWithJSONForJSON
       POST
-      "mark"
+      "marks"
       marks
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response

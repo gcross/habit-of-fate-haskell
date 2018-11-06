@@ -60,8 +60,8 @@ import HabitOfFate.Server.Common
 
 import qualified HabitOfFate.Server.Requests.Api.DeleteHabit as Api.DeleteHabit
 import qualified HabitOfFate.Server.Requests.Api.GetAllHabits as Api.GetAllHabits
-import qualified HabitOfFate.Server.Requests.Api.GetCredits as Api.GetCredits
 import qualified HabitOfFate.Server.Requests.Api.GetHabit as Api.GetHabit
+import qualified HabitOfFate.Server.Requests.Api.GetMarks as Api.GetMarks
 import qualified HabitOfFate.Server.Requests.Api.GetQuestStatus as Api.GetQuestStatus
 import qualified HabitOfFate.Server.Requests.Api.PutHabit as Api.PutHabit
 
@@ -137,8 +137,8 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
     mapM_ ($ environment)
       [ Api.DeleteHabit.handler
       , Api.GetAllHabits.handler
-      , Api.GetCredits.handler
       , Api.GetHabit.handler
+      , Api.GetMarks.handler
       , Api.GetQuestStatus.handler
       , Api.PutHabit.handler
 

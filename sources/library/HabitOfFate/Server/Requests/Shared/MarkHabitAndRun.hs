@@ -59,18 +59,18 @@ runGame = do
   let rendered_event
         | (not <<< onull) event = H.preEscapedLazyText event
         | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
-  stored_credits ← use stored_credits_
+  marks ← use marks_
   renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
     H.div ! A.class_ "story" $ rendered_event
-    if stored_credits ^. success_ /= 0 || stored_credits ^. failure_ /= 0
-      then H.form ! A.method "post" $ H.input ! A.formaction "/run" ! A.type_ "submit" ! A.value "Next"
-      else H.a ! A.href "/" $ H.toHtml ("Done" ∷ Text)
+    if null (marks ^. success_) && null (marks ^. failure_)
+      then H.a ! A.href "/" $ H.toHtml ("Done" ∷ Text)
+      else H.form ! A.method "post" $ H.input ! A.formaction "/run" ! A.type_ "submit" ! A.value "Next"
 
 data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
 
-creditLensForResult ∷ SuccessOrFailureResult → Lens' (Tagged Double) Double
-creditLensForResult SuccessResult = success_
-creditLensForResult FailureResult = failure_
+taggedLensForResult ∷ SuccessOrFailureResult → Lens' (Tagged α) α
+taggedLensForResult SuccessResult = success_
+taggedLensForResult FailureResult = failure_
 
 scaleLensForResult ∷ SuccessOrFailureResult → Lens' Habit Scale
 scaleLensForResult SuccessResult = difficulty_
@@ -83,7 +83,7 @@ markHabit result habit_id =
   maybe
     (raiseStatus 400 (printf "Cannot mark habit %s because it does not exist." $ show habit_id))
     (\habit → do
-      stored_credits_ . creditLensForResult result += scaleFactor (habit ^. scaleLensForResult result)
+      marks_ . taggedLensForResult result %= (`snoc` (habit ^. scaleLensForResult result))
       case habit ^. frequency_ of
         Once _ → habits_ . at habit_id .= Nothing
         _ → do
@@ -107,11 +107,11 @@ markHabits = mapM_ $ uncurry markHabit
 
 handleMarkHabitApi ∷ Environment → ScottyM ()
 handleMarkHabitApi environment =
-  Scotty.post "/api/mark" <<< apiTransaction environment $ do
+  Scotty.post "/api/marks" <<< apiTransaction environment $ do
     Tagged (Success success_habit_ids) (Failure failure_habit_ids) ← getBodyJSON
     log [i|Marking #{success_habit_ids} as successes and #{failure_habit_ids} as failures.|]
     markHabits $ map (SuccessResult,) success_habit_ids ⊕ map (FailureResult,) failure_habit_ids
-    use stored_credits_ <&> jsonResult ok200
+    use marks_ <&> jsonResult ok200
 
 handleMarkHabitWeb ∷ Environment → ScottyM ()
 handleMarkHabitWeb environment = do
@@ -123,6 +123,8 @@ handleMarkHabitWeb environment = do
     habit_id ← getParam "habit_id"
     log [i|Marking #{habit_id} as #{result}.|]
     markHabit result habit_id
+    marks ← use marks_
+    log [i|MARKS = #{marks}|]
     runGame
 
 handleRunApi ∷ Environment → ScottyM ()

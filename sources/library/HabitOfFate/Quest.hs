@@ -28,6 +28,7 @@ import HabitOfFate.Prelude
 import Control.Monad.Random
 import qualified Data.Text.Lazy as Lazy
 
+import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 
 data InitializeQuestResult α = InitializeQuestResult
@@ -46,13 +47,12 @@ data QuestStatus = QuestInProgress | QuestHasEnded
 
 data TryQuestResult = TryQuestResult
   { tryQuestStatus ∷ QuestStatus
-  , tryQuestPostAvailableCredits ∷ Tagged Double
   , tryQuestEvent ∷ Lazy.Text
   }
 
 type InitializeQuestRunner s = Rand StdGen (InitializeQuestResult s)
 type GetStatusQuestRunner s = s → Lazy.Text
-type TrialQuestRunner s = Tagged Double → StateT s (Rand StdGen) TryQuestResult
+type TrialQuestRunner s = Scale → StateT s (Rand StdGen) TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join

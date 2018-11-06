@@ -19,7 +19,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Api.GetCredits (handler) where
+module HabitOfFate.Server.Requests.Api.GetMarks (handler) where
 
 import HabitOfFate.Prelude
 
@@ -33,6 +33,6 @@ import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment =
-  Scotty.get "/api/credits" <<< apiTransaction environment $ do
-    log "Requested credits."
-    use (stored_credits_) <&> jsonResult ok200
+  Scotty.get "/api/marks" <<< apiTransaction environment $ do
+    log "Requested marks."
+    use marks_ <&> jsonResult ok200

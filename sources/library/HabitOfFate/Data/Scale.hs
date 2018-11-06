@@ -59,14 +59,6 @@ displayScale Medium = "Medium"
 displayScale High = "High"
 displayScale VeryHigh = "Very High"
 
-scaleFactor ∷ Scale → Double
-scaleFactor None = 0
-scaleFactor VeryLow = 1/4
-scaleFactor Low = 1/2
-scaleFactor Medium = 1
-scaleFactor High = 2
-scaleFactor VeryHigh = 4
-
 showScale ∷ (Wrapped α, Unwrapped α ~ Scale) ⇒ String → α → String
 showScale name =
   (^. _Wrapped')

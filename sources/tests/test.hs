@@ -694,7 +694,12 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits $ Tagged (Success [test_habit_id]) (Failure [test_habit_id_2])
-                getCredits >>= (@?= Tagged (Success 0.5) (Failure 4))
+                getMarks >>=
+                  (@?=
+                    Tagged
+                      (Success [test_habit ^. difficulty_])
+                      (Failure [test_habit_2 ^. importance_])
+                  )
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
@@ -713,20 +718,17 @@ main = defaultMain $ testGroup "All Tests"
         ----------------------------------------------------------------------------
         , testGroup "markHabits"
         ----------------------------------------------------------------------------
-            [ apiTestCase "Marking a habit gets the right credits" $ do
+            [ apiTestCase "Marking a habit gets the right marks" $ do
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits $ Tagged (Success [test_habit_id]) (Failure [test_habit_id_2])
-                credits@(Tagged (Success actual_successes) (Failure actual_failures)) ← getCredits
-                let expected_successes = test_habit ^. difficulty_ |> scaleFactor
-                    expected_failures = test_habit_2 ^. importance_ |> scaleFactor
-                assertBool
-                  ("successes should be " ⊕ show expected_successes ⊕ " not " ⊕ show actual_successes)
-                  (abs ((credits ^. success_) - expected_successes) < 0.1)
-                assertBool
-                  ("failures should be " ⊕ show expected_failures ⊕ " not " ⊕ show actual_failures)
-                  (abs ((credits ^. failure_ ) - expected_failures ) < 0.1)
+                getMarks >>=
+                  (@?=
+                    Tagged
+                      (Success [test_habit ^. difficulty_])
+                      (Failure [test_habit_2 ^. importance_])
+                  )
             ]
         ]
     ----------------------------------------------------------------------------
