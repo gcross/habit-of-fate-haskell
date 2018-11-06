@@ -40,6 +40,7 @@ import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import System.FilePath ((</>))
 import System.IO (readFile)
+import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
 import Text.Parsec hiding ((<|>), optional, uncons)
 
@@ -158,7 +159,7 @@ parseSubstitutions story =
     |> either throwM pure
   )
   <&>
-  (mergeChunks >>> map (pack <$>))
+  (mergeChunks >>> map ((pack >>> Text.reverse) <$>))
  where
   mergeChunks ∷ [Chunk Char] → [Chunk [Char]]
   mergeChunks [] = []

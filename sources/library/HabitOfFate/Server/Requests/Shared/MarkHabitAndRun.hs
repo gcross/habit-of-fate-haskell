@@ -57,7 +57,7 @@ runGame ∷ TransactionProgram TransactionResult
 runGame = do
   event ← runEvent
   let rendered_event
-        | (not <<< onull) event = H.lazyText event
+        | (not <<< onull) event = H.preEscapedLazyText event
         | otherwise = H.p $ H.toHtml ("Nothing happened." ∷ Text)
   stored_credits ← use stored_credits_
   renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do

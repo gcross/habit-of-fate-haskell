@@ -39,7 +39,7 @@ handler environment =
     (
       getAccountStatus
       >>>
-      H.lazyText
+      H.preEscapedLazyText
       >>>
       renderTopOnlyPageResult "Habit of Fate - Quest Status" [] [] Nothing ok200
     )
