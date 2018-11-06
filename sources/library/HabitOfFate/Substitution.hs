@@ -141,12 +141,12 @@ parseChunk ∷ Parser (Chunk Char)
 parseChunk = do
   maybe_case_ ← (lookAhead letter <&> (getCase >>> Just)) <|> pure Nothing
   (try $ do
-    _ ← (char 'a' <|> char 'A')
+    _ ← char 'a' <|> char 'A'
     _ ← optional $ char 'n'
     _ ← many1 <<< choice $ map char " \t\r\n"
     parseSubstitutionChunk HasArticle maybe_case_
    )
-    <|> (parseSubstitutionChunk HasNoArticle maybe_case_)
+    <|> parseSubstitutionChunk HasNoArticle maybe_case_
     <|> (anyToken <&> Literal)
 
 instance Exception ParseError
@@ -154,8 +154,8 @@ instance Exception ParseError
 parseSubstitutions ∷ MonadThrow m ⇒ String → m Story
 parseSubstitutions story =
   (
-    (runParser (many parseChunk ∷ Parser [Chunk Char]) () "<story>" story
-    |> either throwM pure)
+    runParser (many parseChunk ∷ Parser [Chunk Char]) () "<story>" story
+    |> either throwM pure
   )
   <&>
   (mergeChunks >>> map (pack <$>))
