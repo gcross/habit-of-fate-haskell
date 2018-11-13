@@ -308,13 +308,6 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
         Just error_message → H.div ! A.id "error_message" $ H.toHtml error_message
         Nothing → pure ()
 
-      H.div ! A.class_ "submit" $ do
-        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
-        H.input
-          ! A.class_ "sub"
-          ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}|])
-          ! A.type_ "submit"
-
       case deletion_mode of
         NoDeletion → mempty
         DeletionAvailable → do
@@ -339,6 +332,13 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.type_ "submit"
               ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}/delete|])
               ! A.value "Confirm Delete?"
+
+      H.div ! A.class_ "submit" $ do
+        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
+        H.input
+          ! A.class_ "sub"
+          ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}|])
+          ! A.type_ "submit"
 
 handleEditHabitGet ∷ Environment → ScottyM ()
 handleEditHabitGet environment = do
