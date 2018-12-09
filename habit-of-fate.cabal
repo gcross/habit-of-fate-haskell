@@ -114,6 +114,7 @@ library
                      , HabitOfFate.Server.Requests.Web.MoveHabit
                      , HabitOfFate.Server.Requests.Web.NewGroup
                      , HabitOfFate.Server.Requests.Web.NewHabit
+                     , HabitOfFate.Story
                      , HabitOfFate.Substitution
                      , HabitOfFate.Trial
                      , HabitOfFate.TH

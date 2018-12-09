@@ -31,7 +31,7 @@ import Language.Haskell.TH (Exp, Q)
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 
-import HabitOfFate.Substitution
+import HabitOfFate.Story
 
 data FailureStory = FailureStory
   { _common_story_ ∷ Story

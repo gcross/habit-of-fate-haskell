@@ -42,6 +42,7 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests.Forest.Parser
 import HabitOfFate.Substitution
+import HabitOfFate.Story
 import HabitOfFate.TH
 import HabitOfFate.Trial
 
