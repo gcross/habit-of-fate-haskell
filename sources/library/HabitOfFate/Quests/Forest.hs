@@ -65,7 +65,52 @@ intro_stories ∷ [Story]
 intro_stories = $(loadStories "forest" "intro")
 
 wander_stories ∷ [Story]
-wander_stories = $(loadStories "forest" "wander")
+wander_stories = [stories|
+Nothing happens as |Susie wanders through the forest.
+================================================================================
+As |Susie continues to search he/she| hears the howling of wolves, which makes
+him/her| shiver. Thank goodness they seem to be in the distance!
+================================================================================
+|Susie is paying so much attention to looking for |Illsbane that he/she|
+almost misses the ominous circle of mushrooms. He/she| says a prayer of thanks
+that he/she| noticed it before stepping inside.
+================================================================================
+|Susie starts to notice that it is growing brighter. He/she| looks around and
+sees an unnaturally glowing clearing in the distance. He/she| feels drawn to it,
+but he/she| knows that no good could possibly come to him/her| there, so he/she|
+summons his/her| will and turns away from it.
+================================================================================
+|Susie's candle goes out; the resulting darkness is oppressive. Fortunately,
+he/she| prepared for this. He/she| reached into his/her| pack and drew out
+flintstone, which he/she| uses to re-light the candle.
+================================================================================
+|Susie can feel that something is amiss, but he/she| can't figure out what. He/she|
+pauses for a moment and looks around. After a moment, he/she| realizes that
+his/her| shadow didn't stop walking when he/she| did. He/she| backs away slowly as
+his/her| shadow gets further and further away from him/her|. He/she| decide to
+start searching in a different direction.
+================================================================================
+|Susie looks up at the Moon. For reasons that nobody understands, the Moon is
+always full in the Wicked Forest. The good news is that this makes it easier to
+search for |Illsbane, but the bad news is that he/she| has to worry about
+werewolves...
+================================================================================
+“Hello, human. It isn't often that I get to see one of your kind here.”
+
+|Susie jumped and looked around for the source of the voice. He/she| heard it
+laugh. “You are just as stupid as the rest of your kind. Look, I am over here.”
+
+|Susie finally realized that the voice was coming from the tree right next to
+her.
+
+“Why are you here?” it asked. |Susie replied, “I am looking for an |Illsbane
+plant. I down't suppose you have seen one?” It laughed. “Do I look like I have
+legs?” |Susie replied, “Umm, no, I guess not; I guess I'll just be going on my
+way then...”
+
+|Susie resumed searching, the laugher of the tree receding as he/she| left it
+behind.
+|]
 
 found_stories ∷ [Story]
 found_stories = $(loadStories "forest" "found")
@@ -159,8 +204,8 @@ trialFailure =
 --------------------------------- Proofreading ---------------------------------
 --------------------------------------------------------------------------------
 
-stories ∷ [(Text, [Lazy.Text])]
-stories =
+proofread_stories ∷ [(Text, [Lazy.Text])]
+proofread_stories =
   map (second (map (substitute test_substitutions)))
   [ ("Introduction", intro_stories)
   , ("Wandering", wander_stories)

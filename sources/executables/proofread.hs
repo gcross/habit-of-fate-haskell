@@ -36,4 +36,4 @@ main = do
         (\(category, category_stories) →
           H.h1 (H.toHtml category) ⊕ mconcat (intersperse H.hr (map H.lazyText category_stories))
         )
-        Forest.stories
+        Forest.proofread_stories
