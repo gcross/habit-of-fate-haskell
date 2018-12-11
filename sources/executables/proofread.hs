@@ -34,6 +34,6 @@ main = do
     renderTopOnlyPage "Forest Stories" [] [] Nothing $
       foldMap
         (\(category, category_stories) →
-          H.h1 (H.toHtml category) ⊕ mconcat (intersperse H.hr (map H.lazyText category_stories))
+          H.h1 (H.toHtml category) ⊕ mconcat (intersperse H.hr (map H.preEscapedLazyText category_stories))
         )
         Forest.proofread_stories
