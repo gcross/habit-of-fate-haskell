@@ -47,19 +47,12 @@ splitRegionsOn marker =
       _ → False
   )
 
-addParagraphTags ∷ [String] → [String]
-addParagraphTags = go False
+addParagraphTags ∷ String → String
+addParagraphTags text = "<p>" ⊕ go text
  where
-  go False [] = []
-  go False (line:rest) =
-    case find ((∈ " \t") >>> not) line of
-      Nothing → go False rest
-      Just '<' → line:go False rest
-      _ → "<p>":line:go True rest
-  go True [] = ["</p>"]
-  go True (line:rest)
-    | all (∈ " \t") line = "</p>":go True rest
-    | otherwise = line:go True rest
+  go ('\n':'\n':rest) = "</p><p>" ⊕ go rest
+  go (x:rest) = x:go rest
+  go [] = "</p>"
 
 splitStories ∷ String → [String]
 splitStories =
@@ -67,7 +60,7 @@ splitStories =
   >>>
   splitRegionsOn '='
   >>>
-  map (addParagraphTags >>> unlines)
+  map (unlines >>> addParagraphTags)
 
 splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
 splitAndParseSubstitutions = splitStories >>> mapM parseSubstitutions
@@ -124,7 +117,7 @@ subSplitStories =
   map (
     splitRegionsOn '-'
     >>>
-    map (addParagraphTags >>> unlines)
+    map (unlines >>> addParagraphTags)
   )
 
 subSplitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [[Story]]
