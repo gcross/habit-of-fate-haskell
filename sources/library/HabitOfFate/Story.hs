@@ -14,20 +14,27 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Story where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Catch (MonadThrow)
+import Control.Monad.Catch (Exception, MonadThrow(throwM))
+import Data.List (dropWhileEnd, tail)
 import Data.List.Split
+import Data.Typeable (Typeable)
 import Language.Haskell.TH (Exp, Q)
+import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import System.FilePath ((</>))
@@ -39,6 +46,20 @@ import Paths_habit_of_fate (getDataFileName)
 
 type Story = [Chunk Text]
 
+addParagraphTags ∷ String → String
+addParagraphTags text = "<p>" ⊕ go text
+ where
+  go ('\n':'\n':rest) = "</p><p>" ⊕ go rest
+  go (x:rest) = x:go rest
+  go [] = "</p>"
+
+story ∷ QuasiQuoter
+story = QuasiQuoter
+  ((addParagraphTags >>> parseSubstitutions) >=> Lift.lift)
+  (error "Cannot use story as a pattern")
+  (error "Cannot use story as a type")
+  (error "Cannot use story as a dec")
+
 splitRegionsOn ∷ Char → [String] → [[String]]
 splitRegionsOn marker =
   splitWhen (
@@ -46,13 +67,6 @@ splitRegionsOn marker =
       c:_ | c == marker → True
       _ → False
   )
-
-addParagraphTags ∷ String → String
-addParagraphTags text = "<p>" ⊕ go text
- where
-  go ('\n':'\n':rest) = "</p><p>" ⊕ go rest
-  go (x:rest) = x:go rest
-  go [] = "</p>"
 
 splitStories ∷ String → [String]
 splitStories =
@@ -145,3 +159,94 @@ loadSubStories quest section =
   loadSubStoriesWithoutLifting quest section
   >>=
   Lift.lift
+
+splitNamedRegionsOn ∷ Char → String → [(String, String)]
+splitNamedRegionsOn marker =
+  -- Break the string into lines to make it easier to see the deliminators.
+      lines
+
+  -- Split into regions deliminated by lines starting with the given marker
+  >>> split (keepDelimsL $ whenElt (\line → line ^? _head == Just marker))
+
+  -- Drop the first region; in theory it could be absent but in practice there
+  -- will always be whitespace.
+  >>> tail
+
+  -- Extract the label from each region; note that an invariant of the split is
+  -- that every region must have its first line be the header as deliminated by
+  -- the marker.
+  >>> map (\(header:text) →
+        ( header
+            |> dropWhile (== marker)
+            |> dropWhile (== ' ')
+            |> dropWhileEnd (== marker)
+            |> dropWhileEnd (== ' ')
+        , text |> unlines |> addParagraphTags
+        )
+      )
+
+data StoryOutcomes = StoryOutcomes
+  { _story_common_ ∷ Story
+  , _story_success_ ∷ Story
+  , _story_success_or_averted_ ∷ Story
+  , _story_averted_or_failure_ ∷ Story
+  , _story_averted_ ∷ Story
+  , _story_failure_ ∷ Story
+  } deriving (Lift)
+makeLenses ''StoryOutcomes
+
+instance Default StoryOutcomes where
+  def = StoryOutcomes def def def def def def
+
+story_outcome_labels ∷ [(String, ALens' StoryOutcomes Story)]
+story_outcome_labels =
+  [("Common", story_common_)
+  ,("Success", story_success_)
+  ,("Success/Averted", story_success_or_averted_)
+  ,("Averted/Failure", story_averted_or_failure_)
+  ,("Averted", story_averted_)
+  ,("Failure", story_failure_)
+  ]
+
+data NoSuchStoryOutcomeLabel = NoSuchStoryOutcomeLabel String deriving (Show, Typeable)
+instance Exception NoSuchStoryOutcomeLabel where
+
+extractStoryOutcomes ∷ MonadThrow m ⇒ String → m StoryOutcomes
+extractStoryOutcomes regions = do
+  outcome_list ←
+    regions
+      |> splitNamedRegionsOn '-'
+      |> traverse (\(label, region) → (label,) <$> parseSubstitutions region)
+  flip execStateT def $ forM_ outcome_list $ \(label, story) →
+    maybe
+      (throwM $ NoSuchStoryOutcomeLabel label)
+      (#= story)
+      (lookup label story_outcome_labels)
+
+story_outcomes ∷ QuasiQuoter
+story_outcomes = QuasiQuoter
+  (extractStoryOutcomes >=> Lift.lift)
+  (error "Cannot use story_outcomes as a pattern")
+  (error "Cannot use story_outcomes as a type")
+  (error "Cannot use story_outcomes as a dec")
+
+{-
+Typical usage:
+
+... = [story_outcomes|
+------------------------------------ Common ------------------------------------
+------------------------------------ Success -----------------------------------
+-------------------------------- Averted/Failure -------------------------------
+------------------------------------ Averted -----------------------------------
+------------------------------------ Failure -----------------------------------
+|]
+-}
+
+storyForSuccess ∷ StoryOutcomes → Story
+storyForSuccess StoryOutcomes{..} = _story_common_ ⊕ _story_success_or_averted_ ⊕ _story_success_
+
+storyForAverted ∷ StoryOutcomes → Story
+storyForAverted StoryOutcomes{..} = _story_common_ ⊕ _story_success_or_averted_ ⊕ _story_averted_or_failure_ ⊕ _story_averted_
+
+storyForFailure ∷ StoryOutcomes → Story
+storyForFailure StoryOutcomes{..} = _story_common_ ⊕ _story_averted_or_failure_ ⊕ _story_failure_
