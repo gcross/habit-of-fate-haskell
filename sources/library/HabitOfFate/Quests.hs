@@ -39,7 +39,7 @@ data Quest s = Quest
   { questPrism ∷ Prism' CurrentQuestState s
   , questInitialize ∷ InitializeQuestRunner s
   , questGetStatus ∷ GetStatusQuestRunner s
-  , questTrial ∷ Tagged (TrialQuestRunner s)
+  , questTrial ∷ TrialQuestRunner s
   }
 
 data WrappedQuest = ∀ s. WrappedQuest (Quest s)
@@ -51,7 +51,7 @@ quests =
        _Forest
        Forest.initialize
        Forest.getStatus
-       (Tagged (Success Forest.trialSuccess) (Failure Forest.trialFailure))
+       Forest.trial
   ]
 
 type RunCurrentQuestResult = RunQuestResult CurrentQuestState

@@ -135,12 +135,12 @@ runAccount = do
               case uncons (marks ^. success_) of
                 Just (scale, rest) → do
                   marks_ . success_ .= rest
-                  pure $ Just $ questTrial >>> (^. success_) >>> ($ scale)
+                  pure $ Just $ questTrial >>> ($ SuccessResult) >>> ($ scale)
                 Nothing →
                   case uncons (marks ^. failure_) of
                     Just (scale, rest) → do
                       marks_ . failure_ .= rest
-                      pure $ Just $ questTrial >>> (^. failure_) >>> ($ scale)
+                      pure $ Just $ questTrial >>> ($ FailureResult) >>> ($ scale)
                     Nothing →
                       pure Nothing
             case maybe_runQuestTrial of

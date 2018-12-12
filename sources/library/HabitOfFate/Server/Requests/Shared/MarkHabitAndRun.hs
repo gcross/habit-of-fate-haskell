@@ -43,6 +43,7 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
+import HabitOfFate.Quest
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
@@ -65,8 +66,6 @@ runGame = do
     if null (marks ^. success_) && null (marks ^. failure_)
       then H.a ! A.href "/" $ H.toHtml ("Done" ∷ Text)
       else H.form ! A.method "post" $ H.input ! A.formaction "/run" ! A.type_ "submit" ! A.value "Next"
-
-data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
 
 taggedLensForResult ∷ SuccessOrFailureResult → Lens' (Tagged α) α
 taggedLensForResult SuccessResult = success_

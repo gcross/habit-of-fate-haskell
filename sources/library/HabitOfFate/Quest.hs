@@ -43,6 +43,8 @@ data RunQuestResult s = RunQuestResult
   } deriving (Functor)
 makeLenses ''RunQuestResult
 
+data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
+
 data QuestStatus = QuestInProgress | QuestHasEnded
 
 data TryQuestResult = TryQuestResult
@@ -52,7 +54,7 @@ data TryQuestResult = TryQuestResult
 
 type InitializeQuestRunner s = Rand StdGen (InitializeQuestResult s)
 type GetStatusQuestRunner s = s → Lazy.Text
-type TrialQuestRunner s = Scale → StateT s (Rand StdGen) TryQuestResult
+type TrialQuestRunner s = SuccessOrFailureResult → Scale → StateT s (Rand StdGen) TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join

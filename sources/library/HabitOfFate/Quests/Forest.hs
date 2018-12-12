@@ -179,8 +179,8 @@ getStatus s = substitute (s ^. substitutions_) story
    | s ^. herb_found_ = returning_home_story
    | otherwise = looking_for_herb_story
 
-trialSuccess ∷ TrialQuestRunner State
-trialSuccess =
+trial ∷ TrialQuestRunner State
+trial SuccessResult =
   tryBinomial (1/3)
   >=>
   bool
@@ -191,9 +191,7 @@ trialSuccess =
        (TryQuestResult QuestInProgress <$> pickStoryUsingState found_stories)
        (TryQuestResult QuestHasEnded <$> pickStoryUsingState won_stories)
     )
-
-trialFailure ∷ TrialQuestRunner State
-trialFailure =
+trial FailureResult =
   tryBinomial (1/2)
   >=>
   bool
