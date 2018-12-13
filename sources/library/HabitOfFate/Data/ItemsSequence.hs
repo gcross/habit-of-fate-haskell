@@ -45,13 +45,17 @@ makeLenses ''ItemsSequence
 items_count_ ∷ Getter (ItemsSequence α) Int
 items_count_ = items_seq_ . to length
 
-items_list_ ∷ Show α ⇒ Getter (ItemsSequence α) [(UUID, α)]
-items_list_ = to $ \items@(ItemsSequence items_map items_seq) →
-  [ let error_message =
-          "IdSequence id " ⊕ show item_id ⊕ " was in the sequence but not in the map (items = " ⊕ show items ⊕ ")"
-    in (item_id, fromMaybe (error error_message) (lookup item_id items_map))
-  | item_id ← toList items_seq
-  ]
+items_list_ ∷ Show α ⇒ Lens' (ItemsSequence α) [(UUID, α)]
+items_list_ =
+  lens
+    (\items@(ItemsSequence items_map items_seq) →
+      [ let error_message =
+              "IdSequence id " ⊕ show item_id ⊕ " was in the sequence but not in the map (items = " ⊕ show items ⊕ ")"
+        in (item_id, fromMaybe (error error_message) (lookup item_id items_map))
+      | item_id ← toList items_seq
+      ]
+    )
+    (\items → itemsFromList)
 
 items_values_ ∷ Show α ⇒ Getter (ItemsSequence α) [α]
 items_values_ = to ((^. items_list_) >>> map snd)
