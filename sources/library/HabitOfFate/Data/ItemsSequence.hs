@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -37,7 +38,7 @@ import HabitOfFate.TH
 data ItemsSequence α = ItemsSequence
   { _items_map_ ∷ HashMap UUID α
   , _items_seq_ ∷ Seq UUID
-  } deriving (Eq,Ord,Read,Show)
+  } deriving (Eq,Functor,Ord,Read,Show)
 deriveJSON ''ItemsSequence
 makeLenses ''ItemsSequence
 
