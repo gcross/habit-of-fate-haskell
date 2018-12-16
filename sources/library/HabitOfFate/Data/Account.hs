@@ -37,10 +37,10 @@ import Crypto.PasswordStore
 import Data.Aeson (FromJSON(..), FromJSONKey(..), ToJSON(..), ToJSONKey(..), Value(..))
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime, getCurrentTime)
-import Data.Time.Zones.All (TZLabel(America__New_York))
 import Data.Typeable (Typeable)
 import Web.Scotty (Parsable)
 
+import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
@@ -55,16 +55,6 @@ instance ToJSON StdGen where
 instance FromJSON StdGen where
   parseJSON = parseJSON >>> fmap read
 
-instance ToJSON TZLabel where
-  toJSON = show >>> toJSON
-
-instance FromJSON TZLabel where
-  parseJSON (String label) =
-    case readEither (unpack label) of
-      Left error_message → fail error_message
-      Right timezone → pure timezone
-  parseJSON _ = fail "Expected a string."
-
 type Group = Text
 type Groups = ItemsSequence Group
 
@@ -74,7 +64,7 @@ data Account = Account
   ,   _marks_ ∷ Tagged (Seq Scale)
   ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
   ,   _rng_ ∷ StdGen
-  ,   _timezone_ ∷ TZLabel
+  ,   _configuration_ ∷ Configuration
   ,   _last_seen_ ∷ UTCTime
   ,   _groups_ ∷ Groups
   } deriving (Read,Show)
@@ -93,7 +83,7 @@ newAccount password =
     <*> pure (Tagged (Success def) (Failure def))
     <*> pure Nothing
     <*> newStdGen
-    <*> pure America__New_York
+    <*> pure def
     <*> getCurrentTime
     <*> pure []
 

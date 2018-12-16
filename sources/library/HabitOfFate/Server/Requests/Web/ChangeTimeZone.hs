@@ -31,13 +31,14 @@ import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Configuration
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
 handleChangeTimeZoneGet ∷ Environment → ScottyM ()
 handleChangeTimeZoneGet environment = do
   Scotty.get "/timezone" <<< webTransaction environment $ do
-    timezone ← use timezone_
+    timezone ← use $ configuration_ . timezone_
     renderTopOnlyPageResult "Habit of Fate - Changing the Time Zone" [] [] Nothing ok200 >>> pure $
       H.form ! A.method "post" $ do
         H.div ! A.class_ "fields" $ do
@@ -74,7 +75,7 @@ handleChangeTimeZonePost environment = do
                 H.h1 $ H.toHtml ("Missing Time Zone" ∷ Text)
                 H.p $ H.toHtml ("Timezone field value was not recognized: " ⊕ error_message)
           Right timezone → do
-            timezone_ .= timezone
+            configuration_ . timezone_ .= timezone
             pure $ redirectsToResult temporaryRedirect307 "/"
 
 handler ∷ Environment → ScottyM ()

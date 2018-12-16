@@ -50,6 +50,7 @@ import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
 import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Queries (authorizeWith)
@@ -98,7 +99,7 @@ getParams = wrapTransactionInstruction GetParamsInstruction
 convertUTCToLocalTime ∷ UTCTime → TransactionProgram LocalTime
 convertUTCToLocalTime utc_time =
   utcToLocalTimeTZ
-    <$> (tzByLabel <$> use timezone_)
+    <$> (tzByLabel <$> use (configuration_ . timezone_))
     <*> pure utc_time
 
 getCurrentTime ∷ TransactionProgram UTCTime
