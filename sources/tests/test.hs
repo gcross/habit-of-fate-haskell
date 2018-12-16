@@ -750,6 +750,15 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id (test_habit & frequency_ .~ (Once (Just (dayHour 0 0))))
                 createHabit test_habit_id_2 (test_habit_2 & frequency_ .~ (Once (Just (dayHour 1 1))))
                 getDeadlines >>= (@?= [(test_habit_id, [dayHour 0 0]), (test_habit_id_2, [dayHour 1 1])])
+            ------------------------------------------------------------------------
+            , apiTestCase "One habit repeated daily" $ do
+            ------------------------------------------------------------------------
+                ZonedTime (LocalTime (ModifiedJulianDay d) _) _ ← liftIO getZonedTime
+                createHabit test_habit_id
+                  (test_habit &
+                    frequency_ .~ Repeated (KeepNumberOfDays 3) (dayHour 0 0) (Daily 1)
+                  )
+                getDeadlines >>= (@?= [(test_habit_id, [dayHour (d-i) 0 | i ← [0,1,2]])])
             ]
         ]
     ----------------------------------------------------------------------------
