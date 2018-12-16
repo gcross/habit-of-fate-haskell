@@ -58,6 +58,7 @@ import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
+import qualified HabitOfFate.Server.Requests.Api.Deadlines as Api.Deadlines
 import qualified HabitOfFate.Server.Requests.Api.DeleteHabit as Api.DeleteHabit
 import qualified HabitOfFate.Server.Requests.Api.GetAllHabits as Api.GetAllHabits
 import qualified HabitOfFate.Server.Requests.Api.GetHabit as Api.GetHabit
@@ -135,7 +136,8 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
     Web.GetFile.handler
 
     mapM_ ($ environment)
-      [ Api.DeleteHabit.handler
+      [ Api.Deadlines.handler
+      , Api.DeleteHabit.handler
       , Api.GetAllHabits.handler
       , Api.GetHabit.handler
       , Api.GetMarks.handler

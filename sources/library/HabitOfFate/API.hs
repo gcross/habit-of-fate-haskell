@@ -39,6 +39,7 @@ import Data.Aeson
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text.Lazy as Lazy
+import Data.Time.LocalTime (LocalTime)
 import Data.Typeable
 import Data.UUID hiding (toByteString)
 import qualified Data.UUID as UUID
@@ -256,6 +257,13 @@ getHabits = do
 getMarks ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Tagged [Scale])
 getMarks = do
   response ← requestForJSON GET "marks"
+  case responseStatusCode response of
+    200 → either throwM pure $ responseBody response
+    code → throwM $ UnexpectedStatus [200] code
+
+getDeadlines ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m [(UUID, [LocalTime])]
+getDeadlines = do
+  response ← requestForJSON GET "deadlines"
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code

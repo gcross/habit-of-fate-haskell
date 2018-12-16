@@ -99,6 +99,9 @@ data Habit = Habit
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Habit
 
+instance Default Habit where
+  def = Habit "" (Difficulty def) (Importance def) def mempty Nothing
+
 name_ ∷ Lens' Habit Text
 name_ = lens _name_ (\old new_name → old { _name_ = new_name })
 
@@ -131,5 +134,26 @@ getHabitDeadline =
     Indefinite → Nothing
   )
 
-instance Default Habit where
-  def = Habit "" (Difficulty def) (Importance def) def mempty Nothing
+nextHabitDeadline ∷ Habit → LocalTime → Maybe LocalTime
+nextHabitDeadline habit today =
+  case habit ^. frequency_ of
+    Repeated _ deadline repeated → Just $ nextDeadline repeated today deadline
+    _ → Nothing
+
+updateHabitDeadline ∷ Habit → LocalTime → Habit
+updateHabitDeadline habit today =
+  case habit ^. frequency_ of
+    Repeated days_to_keep deadline repeated | today >= deadline →
+      habit & frequency_ .~ Repeated days_to_keep (nextDeadline repeated today deadline) repeated
+    _ → habit
+
+previousHabitDeadlines ∷ Habit → LocalTime → [LocalTime]
+previousHabitDeadlines habit today =
+  case habit ^. frequency_ of
+    Once (Just deadline) | today >= deadline → [deadline]
+    Repeated days_to_keep deadline repeated →
+      deadline
+        |> nextDeadline repeated today
+        |> previousDeadlines repeated
+        |> takePreviousDeadlines days_to_keep today deadline
+    _ → []

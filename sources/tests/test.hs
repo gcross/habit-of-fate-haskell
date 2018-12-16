@@ -730,6 +730,27 @@ main = defaultMain $ testGroup "All Tests"
                       (Failure [test_habit_2 ^. importance_])
                   )
             ]
+        ----------------------------------------------------------------------------
+        , testGroup "deadlines"
+        ----------------------------------------------------------------------------
+            [ apiTestCase "Two habits with neither having any deadlines" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id test_habit
+                createHabit test_habit_id_2 test_habit_2
+                getDeadlines >>= (@?= [])
+            ------------------------------------------------------------------------
+            , apiTestCase "Two habits with one having a Once deadline" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id (test_habit & frequency_ .~ (Once (Just (dayHour 0 0))))
+                createHabit test_habit_id_2 test_habit_2
+                getDeadlines >>= (@?= [(test_habit_id, [dayHour 0 0])])
+            ------------------------------------------------------------------------
+            , apiTestCase "Two habits with both having Once deadlines" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id (test_habit & frequency_ .~ (Once (Just (dayHour 0 0))))
+                createHabit test_habit_id_2 (test_habit_2 & frequency_ .~ (Once (Just (dayHour 1 1))))
+                getDeadlines >>= (@?= [(test_habit_id, [dayHour 0 0]), (test_habit_id_2, [dayHour 1 1])])
+            ]
         ]
     ----------------------------------------------------------------------------
     , testGroup "Web" $

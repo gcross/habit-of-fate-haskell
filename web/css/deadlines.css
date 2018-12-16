@@ -1,0 +1,6 @@
+.deadlines {
+    display: grid;
+    font-size: 24;
+    grid-template-columns: auto auto auto;
+    padding: 10px;
+}

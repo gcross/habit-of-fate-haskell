@@ -94,12 +94,14 @@ library
                      , HabitOfFate.Server.Actions.Results
                      , HabitOfFate.Server.Common
                      , HabitOfFate.Server.Transaction
+                     , HabitOfFate.Server.Requests.Api.Deadlines
                      , HabitOfFate.Server.Requests.Api.DeleteHabit
                      , HabitOfFate.Server.Requests.Api.GetAllHabits
                      , HabitOfFate.Server.Requests.Api.GetHabit
                      , HabitOfFate.Server.Requests.Api.GetMarks
                      , HabitOfFate.Server.Requests.Api.GetQuestStatus
                      , HabitOfFate.Server.Requests.Api.PutHabit
+                     , HabitOfFate.Server.Requests.Shared.Deadlines
                      , HabitOfFate.Server.Requests.Shared.LoginOrCreate
                      , HabitOfFate.Server.Requests.Shared.Logout
                      , HabitOfFate.Server.Requests.Shared.MarkHabitAndRun
