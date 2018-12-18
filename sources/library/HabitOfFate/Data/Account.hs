@@ -111,7 +111,7 @@ runAccount = do
             WrappedQuest quest ← uniform quests
             InitializeQuestResult quest_state intro_event ← questInitialize quest
             pure
-              ( quest_state ^. re (questPrism quest)
+              ( questPrism quest # quest_state
               , intro_event
               )
       maybe_current_quest_state_ .= Just new_current_quest_state
