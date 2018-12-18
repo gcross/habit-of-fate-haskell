@@ -65,6 +65,7 @@ import Test.QuickCheck hiding (Failure, Success)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
 import Test.Tasty.QuickCheck hiding (Failure, Success)
+import Data.Time.Zones
 import Data.Time.Zones.All
 import Text.HTML.DOM (sinkDoc)
 import Text.HTML.Scalpel
@@ -779,11 +780,12 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
             , apiTestCase "One habit repeated daily" $ do
             ------------------------------------------------------------------------
-                ZonedTime (LocalTime (ModifiedJulianDay d) timezone) _ ← liftIO getZonedTime
+                putConfiguration $ Configuration Etc__UTC
                 createHabit test_habit_id
                   (test_habit &
                     frequency_ .~ Repeated (KeepNumberOfDays 3) (dayHour 0 0) (Daily 1)
                   )
+                LocalTime (ModifiedJulianDay d) _ ← liftIO getCurrentTime <&> utcToLocalTime utc
                 getDeadlines >>= (@?= [(test_habit_id, [dayHour (d-i) 0 | i ← [0,1,2]])])
             ]
         ]
