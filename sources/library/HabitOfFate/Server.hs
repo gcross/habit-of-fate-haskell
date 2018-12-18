@@ -59,11 +59,14 @@ import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
 import qualified HabitOfFate.Server.Requests.Api.Deadlines as Api.Deadlines
+import qualified HabitOfFate.Server.Requests.Api.DeleteConfiguration as Api.DeleteConfiguration
 import qualified HabitOfFate.Server.Requests.Api.DeleteHabit as Api.DeleteHabit
 import qualified HabitOfFate.Server.Requests.Api.GetAllHabits as Api.GetAllHabits
+import qualified HabitOfFate.Server.Requests.Api.GetConfiguration as Api.GetConfiguration
 import qualified HabitOfFate.Server.Requests.Api.GetHabit as Api.GetHabit
 import qualified HabitOfFate.Server.Requests.Api.GetMarks as Api.GetMarks
 import qualified HabitOfFate.Server.Requests.Api.GetQuestStatus as Api.GetQuestStatus
+import qualified HabitOfFate.Server.Requests.Api.PutConfiguration as Api.PutConfiguration
 import qualified HabitOfFate.Server.Requests.Api.PutHabit as Api.PutHabit
 
 import qualified HabitOfFate.Server.Requests.Shared.LoginOrCreate as Shared.LoginOrCreate
@@ -137,11 +140,14 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
 
     mapM_ ($ environment)
       [ Api.Deadlines.handler
+      , Api.DeleteConfiguration.handler
       , Api.DeleteHabit.handler
       , Api.GetAllHabits.handler
+      , Api.GetConfiguration.handler
       , Api.GetHabit.handler
       , Api.GetMarks.handler
       , Api.GetQuestStatus.handler
+      , Api.PutConfiguration.handler
       , Api.PutHabit.handler
 
       , Shared.LoginOrCreate.handler

@@ -49,6 +49,7 @@ import Network.HTTP.Types
 import Web.Cookie
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
@@ -267,6 +268,30 @@ getDeadlines = do
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
+
+getConfiguration ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m Configuration
+getConfiguration = do
+  response ← requestForJSON GET "configuration"
+  case responseStatusCode response of
+    200 → either throwM pure $ responseBody response
+    code → throwM $ UnexpectedStatus [200] code
+
+putConfiguration ∷ (MonadIO m, MonadThrow m) ⇒ Configuration → SessionT m ()
+putConfiguration configuration = do
+  response ←
+    makeRequest PUT "configuration"
+    >>=
+    (setRequestBodyJSON configuration >>> sendRequest)
+  case responseStatusCode response of
+    204 → pure ()
+    code → throwM $ UnexpectedStatus [204] code
+
+resetConfiguration ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m ()
+resetConfiguration = do
+  response ← makeRequest DELETE "configuration" >>= sendRequest
+  case responseStatusCode response of
+    204 → pure ()
+    code → throwM $ UnexpectedStatus [204] code
 
 markHabits ∷ (MonadIO m, MonadThrow m) ⇒ Tagged [UUID] → SessionT m (Tagged [Scale])
 markHabits marks = do

@@ -65,6 +65,7 @@ import Test.QuickCheck hiding (Failure, Success)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
 import Test.Tasty.QuickCheck hiding (Failure, Success)
+import Data.Time.Zones.All
 import Text.HTML.DOM (sinkDoc)
 import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
@@ -73,6 +74,7 @@ import Text.XML (documentRoot, parseText)
 import Web.Scotty (parseParam)
 
 import HabitOfFate.API
+import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
@@ -731,6 +733,30 @@ main = defaultMain $ testGroup "All Tests"
                   )
             ]
         ----------------------------------------------------------------------------
+        , testGroup "configuration"
+        ----------------------------------------------------------------------------
+            [ apiTestCase "Put then get" $ do
+            ------------------------------------------------------------------------
+                Configuration old_tzlabel ← getConfiguration
+                let new_tzlabel = case old_tzlabel of
+                      Pacific__Pago_Pago → Pacific__Palau
+                      _ → Pacific__Pago_Pago
+                    new_configuration = Configuration new_tzlabel
+                putConfiguration $ new_configuration
+                getConfiguration >>= (@?= new_configuration)
+            ------------------------------------------------------------------------
+            , apiTestCase "Put then reset" $ do
+            ------------------------------------------------------------------------
+                old_configuration@(Configuration old_tzlabel) ← getConfiguration
+                let new_tzlabel = case old_tzlabel of
+                      Pacific__Pago_Pago → Pacific__Palau
+                      _ → Pacific__Pago_Pago
+                    new_configuration = Configuration new_tzlabel
+                putConfiguration $ new_configuration
+                resetConfiguration
+                getConfiguration >>= (@?= old_configuration)
+            ]
+        ----------------------------------------------------------------------------
         , testGroup "deadlines"
         ----------------------------------------------------------------------------
             [ apiTestCase "Two habits with neither having any deadlines" $ do
@@ -753,7 +779,7 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
             , apiTestCase "One habit repeated daily" $ do
             ------------------------------------------------------------------------
-                ZonedTime (LocalTime (ModifiedJulianDay d) _) _ ← liftIO getZonedTime
+                ZonedTime (LocalTime (ModifiedJulianDay d) timezone) _ ← liftIO getZonedTime
                 createHabit test_habit_id
                   (test_habit &
                     frequency_ .~ Repeated (KeepNumberOfDays 3) (dayHour 0 0) (Daily 1)
