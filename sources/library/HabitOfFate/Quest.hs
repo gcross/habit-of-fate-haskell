@@ -29,7 +29,7 @@ import Control.Monad.Random
 import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Data.Scale
-import HabitOfFate.Data.Tagged
+import HabitOfFate.Data.SuccessOrFailureResult
 
 data InitializeQuestResult α = InitializeQuestResult
   { initialQuestState ∷ α
@@ -42,8 +42,6 @@ data RunQuestResult s = RunQuestResult
   , runQuestEvent ∷ Lazy.Text
   } deriving (Functor)
 makeLenses ''RunQuestResult
-
-data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
 
 data QuestStatus = QuestInProgress | QuestHasEnded
 

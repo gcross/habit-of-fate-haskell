@@ -44,6 +44,7 @@ import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests

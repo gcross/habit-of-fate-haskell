@@ -42,8 +42,8 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
-import HabitOfFate.Quest
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 

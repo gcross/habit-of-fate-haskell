@@ -38,7 +38,7 @@ import HabitOfFate.Prelude hiding (State)
 import Control.Monad.Random
 import qualified Data.Text.Lazy as Lazy
 
-import HabitOfFate.Data.Tagged
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Quest
 import HabitOfFate.Substitution
 import HabitOfFate.Story
