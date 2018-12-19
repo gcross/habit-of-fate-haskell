@@ -25,7 +25,11 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (handler) where
+module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (
+  SuccessOrFailureResult(..),
+  handler,
+  markHabit
+) where
 
 import HabitOfFate.Prelude
 
@@ -75,14 +79,17 @@ scaleLensForResult ∷ SuccessOrFailureResult → Lens' Habit Scale
 scaleLensForResult SuccessResult = difficulty_
 scaleLensForResult FailureResult = importance_
 
-markHabit ∷ SuccessOrFailureResult → UUID → TransactionProgram ()
-markHabit result habit_id =
+markHabit ∷ UUID → Maybe SuccessOrFailureResult → TransactionProgram ()
+markHabit habit_id maybe_result =
   use (habits_ . at habit_id)
   >>=
   maybe
     (raiseStatus 400 (printf "Cannot mark habit %s because it does not exist." $ show habit_id))
     (\habit → do
-      marks_ . taggedLensForResult result %= (`snoc` (habit ^. scaleLensForResult result))
+      case maybe_result of
+        Nothing → pure ()
+        Just result →
+          marks_ . taggedLensForResult result %= (`snoc` (habit ^. scaleLensForResult result))
       case habit ^. frequency_ of
         Once _ → habits_ . at habit_id .= Nothing
         _ → do
@@ -101,15 +108,15 @@ markHabit result habit_id =
             )
     )
 
-markHabits ∷ [(SuccessOrFailureResult, UUID)] → TransactionProgram ()
+markHabits ∷ [(UUID, Maybe SuccessOrFailureResult)] → TransactionProgram ()
 markHabits = mapM_ $ uncurry markHabit
 
 handleMarkHabitApi ∷ Environment → ScottyM ()
 handleMarkHabitApi environment =
   Scotty.post "/api/marks" <<< apiTransaction environment $ do
-    Tagged (Success success_habit_ids) (Failure failure_habit_ids) ← getBodyJSON
-    log [i|Marking #{success_habit_ids} as successes and #{failure_habit_ids} as failures.|]
-    markHabits $ map (SuccessResult,) success_habit_ids ⊕ map (FailureResult,) failure_habit_ids
+    marks ← getBodyJSON
+    log [i|Marking: #{marks}|]
+    markHabits marks
     use marks_ <&> jsonResult ok200
 
 handleMarkHabitWeb ∷ Environment → ScottyM ()
@@ -121,7 +128,7 @@ handleMarkHabitWeb environment = do
   mark result = webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Marking #{habit_id} as #{result}.|]
-    markHabit result habit_id
+    markHabit habit_id (Just result)
     marks ← use marks_
     log [i|MARKS = #{marks}|]
     runGame

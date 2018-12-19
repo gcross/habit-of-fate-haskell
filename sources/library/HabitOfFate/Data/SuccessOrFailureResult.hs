@@ -15,10 +15,14 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Data.SuccessOrFailureResult where
 
 import HabitOfFate.Prelude
 
+import HabitOfFate.TH
+
 data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
+deriveJSON ''SuccessOrFailureResult

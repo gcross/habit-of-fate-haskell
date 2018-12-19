@@ -80,6 +80,7 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server
 import HabitOfFate.Substitution
@@ -696,12 +697,16 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
-                markHabits $ Tagged (Success [test_habit_id]) (Failure [test_habit_id_2])
+                markHabits
+                  [ (test_habit_id, Just FailureResult)
+                  , (test_habit_id_2, Just SuccessResult)
+                  , (test_habit_id_2, Nothing)
+                  ]
                 getMarks >>=
                   (@?=
                     Tagged
-                      (Success [test_habit ^. difficulty_])
-                      (Failure [test_habit_2 ^. importance_])
+                      (Success [test_habit_2 ^. difficulty_])
+                      (Failure [test_habit ^. importance_])
                   )
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
@@ -725,7 +730,11 @@ main = defaultMain $ testGroup "All Tests"
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
-                markHabits $ Tagged (Success [test_habit_id]) (Failure [test_habit_id_2])
+                markHabits
+                  [ (test_habit_id, Just SuccessResult)
+                  , (test_habit_id_2, Just FailureResult)
+                  , (test_habit_id, Nothing)
+                  ]
                 getMarks >>=
                   (@?=
                     Tagged

@@ -53,6 +53,7 @@ import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 
 data SecureMode = Testing | Secure
@@ -293,7 +294,7 @@ resetConfiguration = do
     204 → pure ()
     code → throwM $ UnexpectedStatus [204] code
 
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ Tagged [UUID] → SessionT m (Tagged [Scale])
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [(UUID, Maybe SuccessOrFailureResult)] → SessionT m (Tagged [Scale])
 markHabits marks = do
   response ←
     requestWithJSONForJSON
