@@ -308,30 +308,32 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
         Just error_message → H.div ! A.id "error_message" $ H.toHtml error_message
         Nothing → pure ()
 
+      H.hr
+
       case deletion_mode of
         NoDeletion → mempty
         DeletionAvailable → do
+          H.input
+            ! A.type_ "hidden"
+            ! A.name "confirm"
+            ! A.value "0"
+          H.input
+            ! A.type_ "submit"
+            ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}/delete|])
+            ! A.method "get"
+            ! A.value "Delete"
           H.hr
-          H.form ! A.method "get" $ do
-            H.input
-              ! A.type_ "hidden"
-              ! A.name "confirm"
-              ! A.value "0"
-            H.input
-              ! A.type_ "submit"
-              ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}/delete|])
-              ! A.value "Delete"
         ConfirmDeletion → do
+          H.input
+            ! A.type_ "hidden"
+            ! A.name "confirm"
+            ! A.value "1"
+          H.input
+            ! A.type_ "submit"
+            ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}/delete|])
+            ! A.method "get"
+            ! A.value "Confirm Delete?"
           H.hr
-          H.form ! A.method "post" $ do
-            H.input
-              ! A.type_ "hidden"
-              ! A.name "confirm"
-              ! A.value "1"
-            H.input
-              ! A.type_ "submit"
-              ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}/delete|])
-              ! A.value "Confirm Delete?"
 
       H.div ! A.class_ "submit" $ do
         H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
