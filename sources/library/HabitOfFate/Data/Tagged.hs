@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -29,14 +30,14 @@ import Data.Aeson (FromJSON(), ToJSON())
 import HabitOfFate.TH
 
 newtype Success α = Success { unwrapSuccess ∷ α }
-  deriving (Eq,FromJSON,Ord,Read,Show,ToJSON)
+  deriving (Eq,FromJSON,Functor,Ord,Read,Show,ToJSON)
 
 instance Wrapped (Success α) where
   type Unwrapped (Success α) = α
   _Wrapped' = iso unwrapSuccess Success
 
 newtype Failure α = Failure { unwrapFailure ∷ α }
-  deriving (Eq,FromJSON,Ord,Read,Show,ToJSON)
+  deriving (Eq,FromJSON,Functor,Ord,Read,Show,ToJSON)
 
 instance Wrapped (Failure α) where
   type Unwrapped (Failure α) = α
@@ -45,7 +46,7 @@ instance Wrapped (Failure α) where
 data Tagged α = Tagged
   { _success_ ∷ Success α
   , _failure_ ∷ Failure α
-  } deriving (Eq,Ord,Read,Show)
+  } deriving (Eq,Functor,Ord,Read,Show)
 deriveJSON ''Tagged
 
 success_ ∷ Lens' (Tagged α) α
