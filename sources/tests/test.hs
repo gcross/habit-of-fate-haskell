@@ -782,12 +782,21 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id (test_habit & frequency_ .~ (Once (Just (dayHour 0 0))))
                 createHabit test_habit_id_2 test_habit_2
                 getDeadlines >>= (@?= [(test_habit_id, [dayHour 0 0])])
+                markHabits [(test_habit_id, def), (test_habit_id_2, def & success_ .~ 1)]
+                  >>= (@?= (def & success_ .~ [test_habit_2 ^. scales_ . success_]))
+                getDeadlines >>= (@?= [])
+                getHabit test_habit_id >>= (@?= Nothing)
             ------------------------------------------------------------------------
             , apiTestCase "Two habits with both having Once deadlines" $ do
             ------------------------------------------------------------------------
                 createHabit test_habit_id (test_habit & frequency_ .~ (Once (Just (dayHour 0 0))))
-                createHabit test_habit_id_2 (test_habit_2 & frequency_ .~ (Once (Just (dayHour 1 1))))
-                getDeadlines >>= (@?= [(test_habit_id, [dayHour 0 0]), (test_habit_id_2, [dayHour 1 1])])
+                let test_habit_2_once = test_habit_2 & frequency_ .~ (Once (Just (dayHour 1 1)))
+                createHabit test_habit_id_2 test_habit_2_once
+                markHabits [(test_habit_id, def & failure_ .~ 1)]
+                  >>= (@?= (def & failure_ .~ [test_habit ^. scales_ . failure_]))
+                getDeadlines >>= (@?= [(test_habit_id_2, [dayHour 1 1])])
+                getHabit test_habit_id >>= (@?= Nothing)
+                getHabit test_habit_id_2 >>= (@?= Just test_habit_2_once)
             ------------------------------------------------------------------------
             , apiTestCase "One habit repeated daily" $ do
             ------------------------------------------------------------------------
@@ -798,6 +807,22 @@ main = defaultMain $ testGroup "All Tests"
                   )
                 LocalTime (ModifiedJulianDay d) _ ← liftIO getCurrentTime <&> utcToLocalTime utc
                 getDeadlines >>= (@?= [(test_habit_id, [dayHour (d-i) 0 | i ← [0,1,2]])])
+                markHabits [(test_habit_id, def & success_ .~ 1)]
+                  >>= (@?= (def & success_ .~ [test_habit ^. scales_ . success_]))
+                getDeadlines >>= (@?= [])
+                new_test_habit ← getHabit test_habit_id >>= maybe (assertFailure "Habit not found.") pure
+                new_test_habit @?= (
+                  test_habit
+                    & maybe_last_marked_ .~ new_test_habit ^. maybe_last_marked_
+                    & frequency_ .~ Repeated (KeepNumberOfDays 3) (dayHour (fromInteger (d+1)) 0) (Daily 1)
+                 )
+                last_marked_time ←
+                  maybe
+                    (assertFailure "Habit was not marked.")
+                    pure
+                    (new_test_habit ^. maybe_last_marked_)
+                current_time ← liftIO getCurrentTime <&> utcToLocalTime utc
+                assertBool "Current time was before last marked time." (current_time >= last_marked_time)
             ]
         ]
     ----------------------------------------------------------------------------
