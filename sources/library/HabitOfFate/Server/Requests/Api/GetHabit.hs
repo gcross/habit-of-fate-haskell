@@ -27,7 +27,6 @@ import Network.HTTP.Types.Status (ok200)
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
@@ -36,5 +35,4 @@ handler environment =
   Scotty.get "/api/habits/:habit_id" <<< apiTransaction environment $ do
     habit_id ← getParam "habit_id"
     log $ [i|Requested habit with id #{habit_id}.|]
-    (use $ habits_ . at habit_id)
-      >>= maybe raiseNoSuchHabit (jsonResult ok200 >>> pure)
+    lookupHabit habit_id >>= (jsonResult ok200 >>> pure)

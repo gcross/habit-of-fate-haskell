@@ -46,6 +46,7 @@ import Data.Time.Zones.All (tzByLabel)
 import Data.UUID (UUID)
 import Network.HTTP.Types.Status (Status(..), temporaryRedirect307)
 import Text.Blaze.Html5 (Html)
+import Text.Printf (printf)
 import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
 
@@ -141,9 +142,6 @@ raiseStatus code =
   >>>
   wrapTransactionInstruction
 
-raiseNoSuchHabit ∷ TransactionProgram α
-raiseNoSuchHabit = raiseStatus 404 "Not found: No such habit"
-
 log ∷ String → TransactionProgram ()
 log = LogInstruction >>> wrapTransactionInstruction
 
@@ -154,7 +152,7 @@ lookupHabit ∷ UUID → TransactionProgram Habit
 lookupHabit habit_id =
   use (habits_ . at habit_id)
   >>=
-  maybe raiseNoSuchHabit return
+  maybe (raiseStatus 404 $ printf "No such habit %s" (show habit_id)) pure
 
 data TransactionResult = RedirectsTo Status Lazy.Text | TransactionResult Status Content
 
