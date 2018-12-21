@@ -193,8 +193,8 @@ apiTestCase test_name action =
   |> serverTestCase test_name
 
 test_habit, test_habit_2 ∷ Habit
-test_habit = Habit "name" (Difficulty Low) (Importance Medium) Indefinite [] Nothing
-test_habit_2 = Habit "test" (Difficulty Medium) (Importance VeryHigh) Indefinite [] Nothing
+test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
+test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
 
 test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
@@ -336,8 +336,10 @@ extractHabit ∷ MonadIO m ⇒ Tags → m Habit
 extractHabit tags =
   Habit
     <$> extractTextInput "name" tags
-    <*> (Difficulty <$> extractSelect "difficulty" tags)
-    <*> (Importance <$> extractSelect "importance" tags)
+    <*> (Tagged
+          <$> (Success <$> extractSelect "difficulty" tags)
+          <*> (Failure <$> extractSelect "importance" tags)
+        )
     <*> extractRadio "frequency" tags
     <*> pure []
     <*> pure Nothing

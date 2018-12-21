@@ -49,6 +49,9 @@ data Tagged α = Tagged
   } deriving (Eq,Functor,Ord,Read,Show)
 deriveJSON ''Tagged
 
+instance Default α ⇒ Default (Tagged α) where
+  def = Tagged (Success def) (Failure def)
+
 success_ ∷ Lens' (Tagged α) α
 success_ =
   lens
