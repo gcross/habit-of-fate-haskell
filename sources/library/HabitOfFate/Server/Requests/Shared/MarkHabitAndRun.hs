@@ -34,6 +34,7 @@ module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
+import Data.Time.LocalTime (LocalTime)
 import Data.UUID (UUID)
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
@@ -71,44 +72,30 @@ runGame = do
       then H.a ! A.href "/" $ H.toHtml ("Done" ∷ Text)
       else H.form ! A.method "post" $ H.input ! A.formaction "/run" ! A.type_ "submit" ! A.value "Next"
 
-taggedLensForResult ∷ SuccessOrFailureResult → Lens' (Tagged α) α
-taggedLensForResult SuccessResult = success_
-taggedLensForResult FailureResult = failure_
-
-scaleLensForResult ∷ SuccessOrFailureResult → Lens' Habit Scale
-scaleLensForResult SuccessResult = difficulty_
-scaleLensForResult FailureResult = importance_
-
-markHabit ∷ UUID → Maybe SuccessOrFailureResult → TransactionProgram ()
-markHabit habit_id maybe_result =
-  use (habits_ . at habit_id)
-  >>=
-  maybe
-    (raiseStatus 400 (printf "Cannot mark habit %s because it does not exist." $ show habit_id))
-    (\habit → do
-      case maybe_result of
-        Nothing → pure ()
-        Just result →
-          marks_ . taggedLensForResult result %= (`snoc` (habit ^. scaleLensForResult result))
-      case habit ^. frequency_ of
-        Once _ → habits_ . at habit_id .= Nothing
-        _ → do
-          current_time ← getCurrentTimeAsLocalTime
-          habits_ . at habit_id . _Just %=
-            (
-              (maybe_last_marked_ .~ Just current_time)
-              >>>
-              (frequency_ %~
-                (\case
-                  Repeated days_to_keep deadline repeated →
-                    Repeated days_to_keep (nextDeadline repeated current_time deadline) repeated
-                  other → other
-                )
-              )
+resetDeadline ∷ LocalTime → Habit → Maybe Habit
+resetDeadline current_time habit =
+  case habit ^. frequency_ of
+    Once _ → Nothing
+    _ → habit
+        |> (maybe_last_marked_ .~ Just current_time)
+        |> (frequency_ %~
+            (\case
+              Repeated days_to_keep deadline repeated →
+                Repeated days_to_keep (nextDeadline repeated current_time deadline) repeated
+              other → other
             )
-    )
+           )
+        |> Just
 
-markHabits ∷ [(UUID, Maybe SuccessOrFailureResult)] → TransactionProgram ()
+markHabit ∷ UUID → Tagged Int → TransactionProgram ()
+markHabit habit_id result_counts = do
+  habit ← lookupHabit habit_id
+  current_time ← getCurrentTimeAsLocalTime
+  habits_ . at habit_id .= resetDeadline current_time habit
+  forEachTaggedLens_ $ \lens_ →
+    marks_ . lens_ ⊕= replicate (result_counts ^. lens_) (habit ^. scales_ . lens_)
+
+markHabits ∷ [(UUID, Tagged Int)] → TransactionProgram ()
 markHabits = mapM_ $ uncurry markHabit
 
 handleMarkHabitApi ∷ Environment → ScottyM ()
@@ -128,7 +115,7 @@ handleMarkHabitWeb environment = do
   mark result = webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Marking #{habit_id} as #{result}.|]
-    markHabit habit_id (Just result)
+    markHabit habit_id (def & taggedLensForResult result .~ 1)
     marks ← use marks_
     log [i|MARKS = #{marks}|]
     runGame

@@ -700,9 +700,9 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits
-                  [ (test_habit_id, Just FailureResult)
-                  , (test_habit_id_2, Just SuccessResult)
-                  , (test_habit_id_2, Nothing)
+                  [ (test_habit_id, def & failure_ .~ 1)
+                  , (test_habit_id_2, def & success_ .~ 1)
+                  , (test_habit_id_2, def)
                   ]
                 getMarks >>=
                   (@?=
@@ -733,9 +733,9 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
                 markHabits
-                  [ (test_habit_id, Just SuccessResult)
-                  , (test_habit_id_2, Just FailureResult)
-                  , (test_habit_id, Nothing)
+                  [ (test_habit_id, def & success_ .~ 1)
+                  , (test_habit_id_2, def & failure_ .~ 1)
+                  , (test_habit_id, def)
                   ]
                 getMarks >>=
                   (@?=

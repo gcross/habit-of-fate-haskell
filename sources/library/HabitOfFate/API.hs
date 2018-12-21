@@ -294,7 +294,7 @@ resetConfiguration = do
     204 → pure ()
     code → throwM $ UnexpectedStatus [204] code
 
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [(UUID, Maybe SuccessOrFailureResult)] → SessionT m (Tagged [Scale])
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [(UUID, Tagged Int)] → SessionT m (Tagged [Scale])
 markHabits marks = do
   response ←
     requestWithJSONForJSON

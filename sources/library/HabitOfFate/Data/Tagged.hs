@@ -17,6 +17,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -27,6 +28,7 @@ import HabitOfFate.Prelude
 
 import Data.Aeson (FromJSON(), ToJSON())
 
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.TH
 
 newtype Success α = Success { unwrapSuccess ∷ α }
@@ -63,3 +65,16 @@ failure_ =
   lens
     (_failure_ >>> unwrapFailure)
     (\old new → old { _failure_ = Failure new })
+
+taggedLensForResult ∷ SuccessOrFailureResult → Lens' (Tagged α) α
+taggedLensForResult SuccessResult = success_
+taggedLensForResult FailureResult = failure_
+
+forEachTaggedLens ∷ Applicative f ⇒ ((∀ α. Lens' (Tagged α) α) → f β) → f (Tagged β)
+forEachTaggedLens runWithLens =
+  Tagged
+    <$> (Success <$> runWithLens success_)
+    <*> (Failure <$> runWithLens failure_)
+
+forEachTaggedLens_ ∷ Applicative f ⇒ ((∀ α. Lens' (Tagged α) α) → f ()) → f ()
+forEachTaggedLens_ runWithLens = liftA2 (\_ _ → ()) (runWithLens success_) (runWithLens failure_)
