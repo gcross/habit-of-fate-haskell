@@ -25,11 +25,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (
-  SuccessOrFailureResult(..),
-  handler,
-  markHabit
-) where
+module HabitOfFate.Server.Requests.Shared.MarkHabitAndRun (handler, markHabit) where
 
 import HabitOfFate.Prelude
 
@@ -46,7 +42,6 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.Repeated
-import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server.Common
