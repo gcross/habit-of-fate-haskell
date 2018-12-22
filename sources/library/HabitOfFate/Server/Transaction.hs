@@ -33,6 +33,7 @@ import HabitOfFate.Prelude
 import Control.Concurrent (tryPutMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, writeTVar)
+import Control.DeepSeq (NFData)
 import qualified Control.Monad.Operational as Operational
 import Control.Monad.Random (RandT, StdGen, evalRandT, newStdGen)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
@@ -165,7 +166,7 @@ lazyTextResult s = TextContent >>> TransactionResult s
 lazyTextAsHTMLResult ∷ Status → Lazy.Text → TransactionResult
 lazyTextAsHTMLResult s = TextContentAsHTML >>> TransactionResult s
 
-jsonResult ∷ ToJSON α ⇒ Status → α → TransactionResult
+jsonResult ∷ (NFData α, ToJSON α) ⇒ Status → α → TransactionResult
 jsonResult s = JSONContent >>> TransactionResult s
 
 redirectsToResult ∷ Status → Lazy.Text → TransactionResult

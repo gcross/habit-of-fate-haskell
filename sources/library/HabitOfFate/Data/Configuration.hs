@@ -22,6 +22,7 @@ module HabitOfFate.Data.Configuration where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq (NFData(..))
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.Time.Zones.All (TZLabel(America__New_York))
 
@@ -38,10 +39,12 @@ instance FromJSON TZLabel where
   parseJSON _ = fail "Expected a string."
 
 data Configuration = Configuration
-  {  _timezone_ ∷ TZLabel
+  {  _timezone_ ∷ !TZLabel
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Configuration
 makeLenses ''Configuration
+
+instance NFData Configuration where rnf (Configuration tz) = rnf tz
 
 instance Default Configuration where
   def = Configuration America__New_York

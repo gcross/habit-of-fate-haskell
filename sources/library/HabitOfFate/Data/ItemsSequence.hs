@@ -26,6 +26,7 @@ module HabitOfFate.Data.ItemsSequence where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq (NFData(..))
 import Control.Exception
 import Control.Monad.Catch
 import Data.HashMap.Strict (HashMap)
@@ -37,11 +38,14 @@ import qualified GHC.Exts as Exts
 import HabitOfFate.TH
 
 data ItemsSequence α = ItemsSequence
-  { _items_map_ ∷ HashMap UUID α
-  , _items_seq_ ∷ Seq UUID
+  { _items_map_ ∷ !(HashMap UUID α)
+  , _items_seq_ ∷ !(Seq UUID)
   } deriving (Eq,Foldable,Functor,Ord,Read,Show)
 deriveJSON ''ItemsSequence
 makeLenses ''ItemsSequence
+
+instance NFData α ⇒ NFData (ItemsSequence α) where
+  rnf (ItemsSequence m s) = rnf m `seq` rnf s `seq` ()
 
 items_count_ ∷ Getter (ItemsSequence α) Int
 items_count_ = items_seq_ . to length
