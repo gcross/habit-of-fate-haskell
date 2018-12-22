@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -25,6 +26,7 @@ module HabitOfFate.Data.Scale where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq (NFData(..))
 import qualified Data.Text.Lazy as Lazy
 import Text.Blaze (Markup, ToMarkup(..))
 import Web.Scotty (Parsable(..))
@@ -35,8 +37,9 @@ data Scale = None | VeryLow | Low | Medium | High | VeryHigh
   deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''Scale
 
-instance Default Scale where
-  def = Medium
+instance NFData Scale where rnf !_ = ()
+
+instance Default Scale where def = Medium
 
 instance Parsable Scale where
   parseParam p =

@@ -15,7 +15,9 @@
 -}
 
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -24,6 +26,8 @@ module HabitOfFate.Server.Actions.Results where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq (NFData, force)
+import Control.Exception (SomeException, catch, displayException, evaluate)
 import Data.Aeson (ToJSON)
 import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (Status(..))
@@ -48,14 +52,31 @@ data Content =
   | TextContent Lazy.Text
   | TextContentAsHTML Lazy.Text
   | HtmlContent Html
-  | ∀ α. ToJSON α ⇒ JSONContent α
+  | ∀ α. (NFData α, ToJSON α) ⇒ JSONContent α
 
 setContent ∷ Content → ActionM ()
-setContent NoContent = pure ()
-setContent (TextContent t) = Scotty.text t
-setContent (TextContentAsHTML t) = Scotty.html t
-setContent (HtmlContent h) = h |> toHtml |> renderHtml |> Scotty.html
-setContent (JSONContent j) = Scotty.json j
+setContent c = case c of
+  NoContent → pure ()
+  TextContent t → check t >>= Scotty.text
+  TextContentAsHTML t → check t >>= Scotty.html
+  HtmlContent h → check (h |> toHtml |> renderHtml) >>= Scotty.html
+  JSONContent j → check j >>= Scotty.json
+ where
+  check ∷ NFData α ⇒ α → ActionM α
+  check x =
+    liftIO
+      (
+        (Right <$> (x |> force |> evaluate))
+        `catch`
+        (\(e ∷ SomeException) → pure $ Left e)
+      )
+    >>=
+    \case
+      Right result → pure result
+      Left exc → do
+        logIO "ERROR RENDERING PAGE CONTENT:"
+        logIO $ pack $ displayException exc
+        Scotty.raise "A server error occurred when rendering the page content.  Please try reloading the page."
 
 setStatusAndLog ∷ Status → ActionM ()
 setStatusAndLog status_@(Status code message) = do

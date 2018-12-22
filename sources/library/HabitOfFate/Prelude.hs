@@ -115,6 +115,7 @@ import Prelude
   , odd
   , read
   , realToFrac
+  , seq
   , snd
   , subtract
   , uncurry

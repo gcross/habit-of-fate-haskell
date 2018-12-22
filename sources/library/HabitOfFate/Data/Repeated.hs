@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
@@ -24,6 +25,7 @@ module HabitOfFate.Data.Repeated where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq (NFData(..))
 import Data.List (iterate)
 import Data.Time.Calendar (Day(ModifiedJulianDay,toModifiedJulianDay), addDays)
 import Data.Time.Calendar.WeekDate (toWeekDate)
@@ -69,16 +71,18 @@ previousDailies period = subtractPeriod >>> iterate (subtractPeriod)
   subtractPeriod = addDaysToLocalTime (-period)
 
 data DaysToRepeat = DaysToRepeat
-  { _monday_ ∷ Bool
-  , _tuesday_ ∷ Bool
-  , _wednesday_ ∷ Bool
-  , _thursday_ ∷ Bool
-  , _friday_ ∷ Bool
-  , _saturday_ ∷ Bool
-  , _sunday_ ∷ Bool
+  { _monday_ ∷ !Bool
+  , _tuesday_ ∷ !Bool
+  , _wednesday_ ∷ !Bool
+  , _thursday_ ∷ !Bool
+  , _friday_ ∷ !Bool
+  , _saturday_ ∷ !Bool
+  , _sunday_ ∷ !Bool
   } deriving (Eq, Ord, Read, Show)
 deriveJSON ''DaysToRepeat
 makeLenses ''DaysToRepeat
+
+instance NFData DaysToRepeat where rnf !_ = ()
 
 days_to_repeat_lenses ∷ Vector (ALens' DaysToRepeat Bool)
 days_to_repeat_lenses = V.fromList $
@@ -168,11 +172,15 @@ previousWeeklies period days_to_repeat next_deadline =
     -- start of the week, and then concantenate all of the resulting lists.
     |> concatMap ((+) >>> flip map (V.toList days_to_repeat_as_offsets))
 
-data DaysToKeep = KeepDaysInPast Int | KeepNumberOfDays Int deriving (Eq, Ord, Read, Show)
+data DaysToKeep = KeepDaysInPast !Int | KeepNumberOfDays !Int deriving (Eq, Ord, Read, Show)
 deriveJSON ''DaysToKeep
 
-data Repeated = Daily Int | Weekly Int DaysToRepeat deriving (Eq, Ord, Read, Show)
+instance NFData DaysToKeep where rnf !_ = ()
+
+data Repeated = Daily !Int | Weekly !Int !DaysToRepeat deriving (Eq, Ord, Read, Show)
 deriveJSON ''Repeated
+
+instance NFData Repeated where rnf !_ = ()
 
 nextDeadline ∷ Repeated → LocalTime → LocalTime → LocalTime
 nextDeadline (Daily period) = nextDaily period

@@ -14,6 +14,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -29,11 +31,14 @@ module HabitOfFate.Data.Habit where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq (NFData)
 import Control.Monad.Catch
 
 import Data.Aeson
 import Data.Time.LocalTime (LocalTime)
 import Data.UUID
+
+import GHC.Generics (Generic)
 
 import Text.Blaze (ToMarkup(..))
 import Web.Scotty (Parsable(..))
@@ -43,7 +48,7 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.TH
 
 newtype Difficulty = Difficulty { unwrapDifficulty ∷ Scale }
-  deriving (Bounded,Enum,Eq,FromJSON,Ord,ToJSON)
+  deriving (Bounded,Enum,Eq,FromJSON,Generic,NFData,Ord,ToJSON)
 
 instance Wrapped Difficulty where
   type Unwrapped Difficulty = Scale
@@ -62,7 +67,7 @@ instance Parsable Difficulty where
   parseParam = parseParamScale "Difficulty"
 
 newtype Importance = Importance { unwrapImportance ∷ Scale }
-  deriving (Bounded,Enum,Eq,FromJSON,Ord,ToJSON)
+  deriving (Bounded,Enum,Eq,FromJSON,Generic,NFData,Ord,ToJSON)
 
 instance Wrapped Importance where
   type Unwrapped Importance = Scale
@@ -83,7 +88,8 @@ instance Parsable Importance where
 data Frequency =
     Indefinite
   | Once (Maybe LocalTime)
-  | Repeated DaysToKeep LocalTime Repeated deriving (Eq, Read, Show, Ord)
+  | Repeated DaysToKeep LocalTime Repeated
+  deriving (Eq, Generic, NFData, Read, Show, Ord)
 deriveJSON ''Frequency
 
 instance Default Frequency where
@@ -96,7 +102,7 @@ data Habit = Habit
   , _frequency_ ∷ Frequency
   , _group_membership_ ∷ Set UUID
   , _maybe_last_marked_ ∷ Maybe LocalTime
-  } deriving (Eq,Ord,Read,Show)
+  } deriving (Eq,Generic,NFData,Ord,Read,Show)
 deriveJSON ''Habit
 
 name_ ∷ Lens' Habit Text

@@ -24,6 +24,7 @@ module HabitOfFate.Data.Tagged where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq (NFData(..))
 import Data.Aeson (FromJSON(), ToJSON())
 
 import HabitOfFate.TH
@@ -47,6 +48,9 @@ data Tagged α = Tagged
   , _failure_ ∷ Failure α
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Tagged
+
+instance NFData α ⇒ NFData (Tagged α) where
+  rnf (Tagged (Success s) (Failure f)) = rnf s `seq` rnf f `seq` ()
 
 success_ ∷ Lens' (Tagged α) α
 success_ =
