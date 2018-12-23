@@ -87,7 +87,7 @@ There were times when <strong>|Susie</strong>, the village healer, cursed
 himself/herself| for deciding to become a healer, and this was one of them.
 Little <strong>|Tommy</strong> had brain fever, and the only way he would
 survive the night is if she could make a potion with an
-<strong>|Illbane</strong> plant. Unfortunately, she was out of this herb, and
+<strong>|Illsbane</strong> plant. Unfortunately, she was out of this herb, and
 the only way to get more of it was to search the Wicket Forest. He/she|
 considered telling the family that they would have to be the ones to do this,
 but his/her| conscious told her that it was his/her| duty, besides which they
