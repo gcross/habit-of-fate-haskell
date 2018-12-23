@@ -14,7 +14,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
@@ -33,14 +35,14 @@ import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.TH
 
 newtype Success α = Success { unwrapSuccess ∷ α }
-  deriving (Eq,FromJSON,Functor,Ord,Read,Show,ToJSON)
+  deriving (Eq,Foldable,FromJSON,Functor,Ord,Read,Show,ToJSON,Traversable)
 
 instance Wrapped (Success α) where
   type Unwrapped (Success α) = α
   _Wrapped' = iso unwrapSuccess Success
 
 newtype Failure α = Failure { unwrapFailure ∷ α }
-  deriving (Eq,FromJSON,Functor,Ord,Read,Show,ToJSON)
+  deriving (Eq,Foldable,FromJSON,Functor,Ord,Read,Show,ToJSON,Traversable)
 
 instance Wrapped (Failure α) where
   type Unwrapped (Failure α) = α
@@ -49,7 +51,7 @@ instance Wrapped (Failure α) where
 data Tagged α = Tagged
   { _success_ ∷ Success α
   , _failure_ ∷ Failure α
-  } deriving (Eq,Functor,Ord,Read,Show)
+  } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 deriveJSON ''Tagged
 
 instance NFData α ⇒ NFData (Tagged α) where
