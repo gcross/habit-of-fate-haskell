@@ -57,7 +57,7 @@ import qualified Data.Vector as V
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
-import Network.HTTP.Types.Status (found302, ok200)
+import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
 import Text.Printf
