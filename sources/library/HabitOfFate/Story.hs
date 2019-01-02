@@ -32,6 +32,7 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch (Exception, MonadThrow(throwM))
 import Data.List (dropWhileEnd, tail)
 import Data.List.Split
+import qualified Data.Text.Lazy as Lazy
 import Data.Typeable (Typeable)
 import Language.Haskell.TH (Exp, Q)
 import Language.Haskell.TH.Lift (Lift)
@@ -250,3 +251,18 @@ storyForAverted StoryOutcomes{..} = _story_common_ ⊕ _story_success_or_averted
 
 storyForFailure ∷ StoryOutcomes → Story
 storyForFailure StoryOutcomes{..} = _story_common_ ⊕ _story_averted_or_failure_ ⊕ _story_failure_
+
+data PageChoices = DeadEnd | NoChoice Text | Choices Text [(Text,Text)] deriving (Eq,Ord,Read,Show)
+
+linked_page_ids_ ∷ Traversal' PageChoices Text
+linked_page_ids_ _ DeadEnd = pure DeadEnd
+linked_page_ids_ f (NoChoice c) = NoChoice <$> f c
+linked_page_ids_ f (Choices query choices) =
+  Choices query <$> traverse (traverseOf _2 f) choices
+
+data Page = Page
+  { _page_title_ ∷ Text
+  , _page_content_ ∷ Lazy.Text
+  , _page_choices_ ∷ PageChoices
+  } deriving (Eq,Ord,Read,Show)
+makeLenses ''Page

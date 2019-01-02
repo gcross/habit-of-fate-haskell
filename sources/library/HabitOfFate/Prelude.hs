@@ -43,6 +43,7 @@ module HabitOfFate.Prelude
   , module Data.Function
   , module Data.Functor
   , module Data.HashMap.Strict
+  , module Data.HashSet
   , module Data.List
   , module Data.Map.Strict
   , module Data.Maybe
@@ -185,6 +186,8 @@ import Data.Functor
 
 import Data.HashMap.Strict (HashMap)
 
+import Data.HashSet (HashSet)
+
 import Data.List
   ( findIndex
   , findIndices
@@ -197,7 +200,7 @@ import Data.List
 
 import Data.Map.Strict (Map)
 
-import Data.Maybe hiding (catMaybes)
+import Data.Maybe
 
 import Data.Monoid
 
@@ -217,11 +220,13 @@ import Data.Sequences
   , filter
   , fromList
   , fromStrict
+  , isSuffixOf
   , lines
   , pack
   , repack
   , replicate
   , singleton
+  , sort
   , stripPrefix
   , stripSuffix
   , take

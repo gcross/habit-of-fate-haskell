@@ -480,3 +480,63 @@ proofread_stories =
   map (second (map (substitute test_substitutions)))
   [ ("Wandering", wander_stories)
   ]
+
+pages ∷ [(Text, Page)]
+pages =
+  [("", Page
+    "Searching For An Essential Ingredient In The Wicked Forest"
+    (sub intro_healer_story)
+    (NoChoice "gingerbread/")
+   )
+  ,("gingerbread/", Page
+    "The Gingerbread House"
+    (sub $ gingerbread_house_event ^. story_common_)
+    (Choices "Where do you guide Andrea?"
+      [("Towards the gingerbread house.", "gingerbread/towards")
+      ,("Away from the gingerbread house.", "gingerbread/away")
+      ]
+    )
+   )
+  ,("gingerbread/away", Page
+    "Even Gingerbread Cannot Slow Her Search"
+    (sub $ gingerbread_house_event ^. story_success_)
+    (NoChoice "found/")
+   )
+  ,("gingerbread/towards", Page
+    "The Gingerbread Compulsion is Too Great"
+    (sub $ gingerbread_house_event ^. story_averted_or_failure_)
+    (Choices "How do you have Andrea react?"
+      [("She enters the house.", "gingerbread/enter")
+      ,("She runs away!", "gingerbread/run")
+      ]
+    )
+   )
+  ,("gingerbread/enter", Page
+    "Entering The Gingerbread House"
+    (sub $ gingerbread_house_event ^. story_failure_)
+    DeadEnd
+   )
+  ,("gingerbread/run", Page
+    "Escaping The Gingerbread House"
+    (sub $ gingerbread_house_event ^. story_averted_)
+    (NoChoice "found/")
+   )
+  ,("found/", Page
+    "The Ingredient Is Finally Found... Or Is It?"
+    "Test found page."
+    DeadEnd
+   )
+  ]
+ where
+  sub ∷ Story → Lazy.Text
+  sub story
+    | onull story = error "Blank Forest story."
+    | otherwise = substitute substitutions story
+   where
+    substitutions =
+      mapFromList
+        [ ( "", Gendered "Andrea" Female )
+        , ( "Susie", Gendered "Andrea" Female )
+        , ( "Tommy", Gendered "Elly" Female )
+        , ( "Illsbane", Gendered "Tigerlamp" Neuter )
+        ] ∷ Substitutions

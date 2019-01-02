@@ -23,7 +23,6 @@ module HabitOfFate.Server.Requests.Web.GetFile (handler) where
 
 import HabitOfFate.Prelude
 
-import Data.List (isSuffixOf)
 import qualified Data.Text.Lazy as Lazy
 import System.FilePath ((</>))
 import Web.Scotty (ActionM, ScottyM)
