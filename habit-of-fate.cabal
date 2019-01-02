@@ -9,6 +9,7 @@ copyright:           2016 Gregory Crosswhite
 build-type:          Simple
 cabal-version:       >=1.10
 data-files:          web/css/common.css
+                     web/css/deadlines.css
                      web/css/edit.css
                      web/css/enter.css
                      web/css/list.css
@@ -109,8 +110,10 @@ library
                      , HabitOfFate.Server.Requests.Shared.Deadlines
                      , HabitOfFate.Server.Requests.Shared.LoginOrCreate
                      , HabitOfFate.Server.Requests.Shared.Logout
-                     , HabitOfFate.Server.Requests.Shared.MarkHabitAndRun
+                     , HabitOfFate.Server.Requests.Shared.MarkHabit
+                     , HabitOfFate.Server.Requests.Shared.Run
                      , HabitOfFate.Server.Requests.Web.ChangeTimeZone
+                     , HabitOfFate.Server.Requests.Web.Deadlines
                      , HabitOfFate.Server.Requests.Web.EditAndDeleteGroup
                      , HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
                      , HabitOfFate.Server.Requests.Web.GetAllHabits

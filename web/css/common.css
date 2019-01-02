@@ -68,3 +68,7 @@ body {
 #error_message {
     color: red;
 }
+
+.row {
+    display: flex;
+}

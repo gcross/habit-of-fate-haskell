@@ -30,6 +30,8 @@ import Control.Concurrent.STM.TMVar (TMVar)
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime)
+import Data.Time.Format (defaultTimeLocale, formatTime)
+import Data.Time.LocalTime (LocalTime)
 import Data.UUID (UUID, fromText)
 import Network.HTTP.Types.Status (badRequest400)
 import Network.Wai (rawPathInfo, rawQueryString, requestMethod)
@@ -58,6 +60,18 @@ data Environment = Environment
 
 readTVarMonadIO ∷ MonadIO m ⇒ TVar α → m α
 readTVarMonadIO = readTVarIO >>> liftIO
+
+renderLocalTime ∷ LocalTime → H.Html
+renderLocalTime time =
+  foldMap
+    (
+      (\fmt → formatTime defaultTimeLocale fmt time)
+      >>>
+      H.toHtml
+      >>>
+      H.div
+    )
+    ["%b %e, %Y", "%I:%M%P"]
 
 paramGuardingAgainstMissing ∷ Parsable α ⇒ Lazy.Text → ActionM α
 paramGuardingAgainstMissing name =

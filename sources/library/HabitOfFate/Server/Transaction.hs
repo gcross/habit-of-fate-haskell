@@ -155,6 +155,9 @@ lookupHabit habit_id =
   >>=
   maybe (raiseStatus 404 $ printf "No such habit %s" (show habit_id)) pure
 
+marksArePresent ∷ TransactionProgram Bool
+marksArePresent = use marks_ <&> any (null >>> not)
+
 data TransactionResult = RedirectsTo Status Lazy.Text | TransactionResult Status Content
 
 noContentResult ∷ Status → TransactionResult

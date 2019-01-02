@@ -28,9 +28,9 @@ import HabitOfFate.Prelude
 
 import Data.Time.Calendar (diffDays)
 import Data.Time.Format (defaultTimeLocale, formatTime)
-import Data.Time.LocalTime (LocalTime, localDay, utcToLocalTime)
+import Data.Time.LocalTime (localDay)
 import qualified Data.UUID as UUID
-import Network.HTTP.Types.Status (ok200)
+import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -44,9 +44,25 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
+redirectToDeadlinesIfNeeded ∷ TransactionProgram TransactionResult → TransactionProgram TransactionResult
+redirectToDeadlinesIfNeeded action =
+  any <$> (getCurrentTimeAsLocalTime <&> \current_time → (maybe False (<= current_time)))
+      <*> (use $ habits_ . items_values_ . to (map getHabitDeadline))
+  >>=
+  bool action (pure $ redirectsToResult temporaryRedirect307 "/deadlines")
+
+redirectToRunIfNeeded ∷ TransactionProgram TransactionResult → TransactionProgram TransactionResult
+redirectToRunIfNeeded action =
+  (use marks_ <&> (/= def))
+  >>=
+  bool action (pure $ redirectsToResult temporaryRedirect307 "/run")
+
+redirectIfNeeded ∷ TransactionProgram TransactionResult → TransactionProgram TransactionResult
+redirectIfNeeded = redirectToDeadlinesIfNeeded <<< redirectToRunIfNeeded
+
 handler ∷ Environment → ScottyM ()
 handler environment = do
-  Scotty.get "/habits" <<< webTransaction environment $ do
+  Scotty.get "/habits" <<< webTransaction environment $ redirectIfNeeded $ do
     groups ← use groups_
     maybe_group_id ← getParamMaybe "group"
     habit_list ←
@@ -61,17 +77,6 @@ handler environment = do
     quest_status ← get <&> getAccountStatus
     current_time_as_local_time ← getCurrentTimeAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
-    let renderLocalTime ∷ LocalTime → H.Html
-        renderLocalTime time =
-          foldMap
-            (
-              (\fmt → formatTime defaultTimeLocale fmt time)
-              >>>
-              H.toHtml
-              >>>
-              H.div
-            )
-            ["%b %e, %Y", "%I:%M%P"]
     renderPageResult "Habit of Fate - List of Habits" ["list"] [] Nothing ok200 >>> pure $ do
       generateTopHTML $ H.div ! A.class_ "story" $ H.preEscapedLazyText quest_status
       H.div ! A.class_ "groups" $ mconcat $

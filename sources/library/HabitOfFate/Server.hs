@@ -71,9 +71,11 @@ import qualified HabitOfFate.Server.Requests.Api.PutHabit as Api.PutHabit
 
 import qualified HabitOfFate.Server.Requests.Shared.LoginOrCreate as Shared.LoginOrCreate
 import qualified HabitOfFate.Server.Requests.Shared.Logout as Shared.Logout
-import qualified HabitOfFate.Server.Requests.Shared.MarkHabitAndRun as Shared.MarkHabitAndRun
+import qualified HabitOfFate.Server.Requests.Shared.MarkHabit as Shared.MarkHabit
+import qualified HabitOfFate.Server.Requests.Shared.Run as Shared.Run
 
 import qualified HabitOfFate.Server.Requests.Web.ChangeTimeZone as Web.ChangeTimeZone
+import qualified HabitOfFate.Server.Requests.Web.Deadlines as Web.Deadlines
 import qualified HabitOfFate.Server.Requests.Web.EditAndDeleteGroup as Web.EditAndDeleteGroup
 import qualified HabitOfFate.Server.Requests.Web.EditAndDeleteHabit as Web.EditAndDeleteHabit
 import qualified HabitOfFate.Server.Requests.Web.GetAllHabits as Web.GetAllHabits
@@ -152,11 +154,13 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
 
       , Shared.LoginOrCreate.handler
       , Shared.Logout.handler
-      , Shared.MarkHabitAndRun.handler
+      , Shared.MarkHabit.handler
+      , Shared.Run.handler
 
       , Web.ChangeTimeZone.handler
       , Web.NewGroup.handler
       , Web.NewHabit.handler -- MUST be before EditAndDeleteHabit or creating a new habit breaks
+      , Web.Deadlines.handler
       , Web.EditAndDeleteGroup.handler
       , Web.EditAndDeleteHabit.handler
       , Web.GetAllHabits.handler
