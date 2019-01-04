@@ -16,13 +16,17 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Main where
 
 import HabitOfFate.Prelude
 
-import System.IO (putStrLn)
+import Data.Text.Lazy.IO (writeFile)
+import Options.Applicative
+import System.Directory (createDirectoryIfMissing)
+import System.FilePath ((</>), takeDirectory)
 
 import HabitOfFate.Pages
 import qualified HabitOfFate.Quests.Forest as Forest
@@ -39,8 +43,27 @@ processPageIds prefix = modifyAllPageIds (\x → prefix_with_slash ⊕ addSuffix
  where
   prefix_with_slash = prefix ⊕ "/"
 
+data Configuration = Configuration
+  { output_path ∷ FilePath
+  }
+
 main ∷ IO ()
 main = do
+  let configuration_parser ∷ Parser Configuration
+      configuration_parser = Configuration
+        <$> (strOption $ mconcat
+              [ metavar "DIRECTORY"
+              , help "Path to the output directory."
+              , short 'o'
+              , long "output"
+              , action "directory"
+              ]
+            )
+  Configuration{..} ←
+    execParser $ info
+      (configuration_parser <**> helper)
+      (fullDesc <> header "generate-html -- generate story html files"
+      )
   pagemap ←
     [ singleton
       ("index.html", Page
@@ -56,4 +79,8 @@ main = do
     ]
     |> concat
     |> constructAndValidatePageMap
-  forM_ (walkPages "index.html" pagemap) $ show >>> putStrLn
+  createDirectoryIfMissing True output_path
+  forM_ (walkPages "index.html" pagemap) $ \(page_path_packed, page) → do
+    let page_path = unpack page_path_packed
+    createDirectoryIfMissing True (output_path </> takeDirectory page_path)
+    writeFile (output_path </> page_path) (page ^. page_content_)
