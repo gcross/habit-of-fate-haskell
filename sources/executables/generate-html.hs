@@ -16,6 +16,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -25,12 +26,20 @@ import HabitOfFate.Prelude
 
 import Data.Text.Lazy.IO (writeFile)
 import Options.Applicative
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (copyFile, createDirectoryIfMissing)
 import System.FilePath ((</>), takeDirectory)
+import System.IO (putStrLn)
 
 import HabitOfFate.Pages
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Story
+
+import Paths_habit_of_fate
+
+auxiliary_files ∷ [FilePath]
+auxiliary_files =
+  [ "images/logo.svgz"
+  ]
 
 addSuffix ∷ Text → Text
 addSuffix x = x ⊕ case unsnoc x of
@@ -84,3 +93,9 @@ main = do
     let page_path = unpack page_path_packed
     createDirectoryIfMissing True (output_path </> takeDirectory page_path)
     writeFile (output_path </> page_path) (page ^. page_content_)
+  forM_ auxiliary_files $ \auxiliary_filename → do
+    putStrLn [i|Writing auxiliary file #{auxiliary_filename}|]
+    let destination_path = output_path </> auxiliary_filename
+    createDirectoryIfMissing True $ takeDirectory destination_path
+    source_path ← getDataFileName $ "data" </> "static" </> auxiliary_filename
+    copyFile source_path destination_path
