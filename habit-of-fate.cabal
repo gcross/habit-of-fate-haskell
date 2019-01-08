@@ -22,6 +22,7 @@ data-files:          data/app/css/common.css
                      data/app/images/logo.svgz
                      data/app/images/treasure-chest.svgz
                      data/app/js/edit.js
+                     data/static/css/style.css
                      data/static/images/logo.svgz
 
 library

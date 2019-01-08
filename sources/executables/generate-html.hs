@@ -27,19 +27,18 @@ import HabitOfFate.Prelude
 import Data.Text.Lazy.IO (writeFile)
 import Options.Applicative
 import System.Directory (copyFile, createDirectoryIfMissing)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ((</>), joinPath, splitPath, takeDirectory)
 import System.IO (putStrLn)
+import Text.Blaze.Html.Renderer.Text (renderHtml)
+import Text.Blaze.Html5 ((!), toHtml)
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 
 import HabitOfFate.Pages
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Story
 
 import Paths_habit_of_fate
-
-auxiliary_files ∷ [FilePath]
-auxiliary_files =
-  [ "images/logo.svgz"
-  ]
 
 addSuffix ∷ Text → Text
 addSuffix x = x ⊕ case unsnoc x of
@@ -91,9 +90,30 @@ main = do
   createDirectoryIfMissing True output_path
   forM_ (walkPages "index.html" pagemap) $ \(page_path_packed, page) → do
     let page_path = unpack page_path_packed
+        resource_directory = page_path |> splitPath |> length |> subtract 1 |> flip replicate ".." |> joinPath
     createDirectoryIfMissing True (output_path </> takeDirectory page_path)
-    writeFile (output_path </> page_path) (page ^. page_content_)
-  forM_ auxiliary_files $ \auxiliary_filename → do
+    putStrLn [i|Writing page #{page_path_packed}|]
+    writeFile (output_path </> page_path) $ renderHtml $ H.docTypeHtml $ do
+      H.head $ do
+        H.title $ toHtml (page ^. page_title_)
+        H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
+        H.link
+          ! A.rel "stylesheet"
+          ! A.type_ "text/css"
+          ! A.href (H.toValue $ resource_directory </> "css/style.css")
+      H.body $ do
+        H.span ! A.class_ "title" $ toHtml (page ^. page_title_)
+        H.div $ H.preEscapedLazyText $ page ^. page_content_
+        case page ^. page_choices_ of
+          DeadEnd → H.b $ H.toHtml ("You have reached the end." ∷ Text)
+          NoChoice c_ref → H.a ! A.href (H.toValue c_ref) $ H.toHtml ("Continue." ∷ Text)
+          Choices question choices → do
+            H.span ! A.class_ "question" $ H.toHtml question
+            H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (H.toValue c_ref) $ H.toHtml c
+  forM_
+    [ "css/style.css"
+    , "images/logo.svgz"
+    ] $ \auxiliary_filename → do
     putStrLn [i|Writing auxiliary file #{auxiliary_filename}|]
     let destination_path = output_path </> auxiliary_filename
     createDirectoryIfMissing True $ takeDirectory destination_path
