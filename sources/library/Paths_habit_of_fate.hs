@@ -17,4 +17,4 @@
 module Paths_habit_of_fate where
 
 getDataFileName :: FilePath -> IO FilePath
-getDataFileName filename = return $ "web/" ++ filename
+getDataFileName filename = return $ "data/app/" ++ filename

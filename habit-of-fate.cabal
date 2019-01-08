@@ -8,20 +8,20 @@ maintainer:          gcrosswhite@gmail.com
 copyright:           2016 Gregory Crosswhite
 build-type:          Simple
 cabal-version:       >=1.10
-data-files:          web/css/common.css
-                     web/css/deadlines.css
-                     web/css/edit.css
-                     web/css/enter.css
-                     web/css/list.css
-                     web/css/normalize.css
-                     web/css/story.css
-                     web/fonts/GloriaHallelujah.woff2
-                     web/images/bad.svgz
-                     web/images/grave.svgz
-                     web/images/good.svgz
-                     web/images/logo.svgz
-                     web/images/treasure-chest.svgz
-                     web/js/edit.js
+data-files:          data/app/css/common.css
+                     data/app/css/deadlines.css
+                     data/app/css/edit.css
+                     data/app/css/enter.css
+                     data/app/css/list.css
+                     data/app/css/normalize.css
+                     data/app/css/story.css
+                     data/app/fonts/GloriaHallelujah.woff2
+                     data/app/images/bad.svgz
+                     data/app/images/grave.svgz
+                     data/app/images/good.svgz
+                     data/app/images/logo.svgz
+                     data/app/images/treasure-chest.svgz
+                     data/app/js/edit.js
 
 library
   hs-source-dirs:      sources/library
