@@ -86,28 +86,21 @@ paramGuardingAgainstMissing name =
 renderPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Lazy.Text
 renderPage title stylesheets scripts maybe_onload content =
   renderHtml $
-    H.docTypeHtml $
-      (H.head <<< mconcat $
-        [ H.title $ toHtml title
-        , H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
-        , mconcat
-          [ H.link
-              ! A.rel "stylesheet"
-              ! A.type_ "text/css"
-              ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
-          | stylesheet ← "normalize":"common":stylesheets
-          ]
-        , mconcat
-          [ H.script
-              ! A.rel "script"
-              ! A.type_ "text/javascript"
-              ! A.src (H.toValue $ mconcat ["/js/", script, ".js"])
-              $ mempty
-          | script ← scripts
-          ]
-        ]
-      )
-      ⊕
+    H.docTypeHtml $ do
+      H.head $ do
+        H.title $ toHtml title
+        H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
+        forM_ ("normalize":"common":stylesheets) $ \stylesheet →
+          H.link
+            ! A.rel "stylesheet"
+            ! A.type_ "text/css"
+            ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
+        forM_ scripts $ \script →
+          H.script
+            ! A.rel "script"
+            ! A.type_ "text/javascript"
+            ! A.src (H.toValue $ mconcat ["/js/", script, ".js"])
+            $ mempty
       ((H.body & maybe identity (\onload → (!A.onload (H.toValue onload))) maybe_onload) $ content)
 
 generateTopHTML ∷ Html → Html
