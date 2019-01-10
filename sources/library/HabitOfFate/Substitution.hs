@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE LambdaCase #-}
@@ -28,13 +29,14 @@ module HabitOfFate.Substitution where
 
 import HabitOfFate.Prelude
 
-import Control.Exception (Exception)
+import Control.Exception (Exception, SomeException)
 import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
 import Language.Haskell.TH.Lift (Lift)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
+import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.TH
@@ -210,15 +212,27 @@ lookupAndApplySubstitution table s = do
   pure $
     (article ⊕ word) & first_uppercase_ .~ (s ^. is_uppercase_)
 
-substitute ∷ HashMap Text Gendered → [Chunk Text] → Lazy.Text
-substitute table =
-  map (
-    \case
-      Literal l → l
-      Substitution s → lookupAndApplySubstitution table s |> either (show >>> error) identity
-  )
-  >>>
+
+data KeyError = KeyError Text deriving (Show, Typeable)
+instance Exception KeyError
+
+substituteM ∷ MonadThrow m ⇒ HashMap Text Gendered → [Chunk Text] → m Lazy.Text
+substituteM table text =
+  mapM
+    (\case
+      Literal l → pure l
+      Substitution s → lookupAndApplySubstitution table s
+    )
+    text
+  <&>
   Lazy.fromChunks
+
+substitute ∷ HashMap Text Gendered → [Chunk Text] → Lazy.Text
+substitute table text =
+  either
+    (show >>> pack)
+    identity
+    (substituteM table text ∷ Either SomeException Lazy.Text)
 
 applyKind ∷ Kind → Gendered → Text
 applyKind Name (Gendered name _) = name
