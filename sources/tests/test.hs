@@ -137,23 +137,6 @@ testCase name = HUnit.testCase name
 type LazyByteString = LazyBS.ByteString
 type Tags = [Tag LazyByteString]
 
-instance Arbitrary SubstitutionData where
-  arbitrary =
-    SubstitutionData
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> (pack <$> (listOf $ choose ('a', 'z')))
-
-instance Arbitrary Kind where
-  arbitrary = oneof
-    [ pure Name
-    , Referrent <$> arbitrary
-    ]
-
-instance Arbitrary Referrent where
-  arbitrary = elements [minBound..maxBound]
-
 instance Arbitrary Day where
   arbitrary = ModifiedJulianDay <$> arbitrary `suchThat` (> 0)
 
@@ -894,40 +877,75 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Substitution"
   ------------------------------------------------------------------------------
-    [ testGroup "parseChunk"
-    ----------------------------------------------------------------------------
-      [ testCase "literal, one char" $
-          runParser parseChunk () "<story>" "literal" @?= Right (Literal 'l')
-      , testCase "literal, whole string" $
-          runParser (many parseChunk) () "<story>" "xyz" @?= Right [Literal 'x', Literal 'y', Literal 'z']
-      , testCase "substitution, name" $
-          runParser parseChunk () "<story>" "|" @?=
-            Right (Substitution $ SubstitutionData False True Name "")
-      , testCase "substitution, subject" $
-          runParser parseChunk () "<story>" "he/she|x" @?=
-            Right (Substitution $ SubstitutionData False False (Referrent Subject) "x")
-      , testCase "substitution, subject, multiparse" $
-          runParser (many parseChunk) () "<story>" "he/she|x" @?=
-            Right [Substitution $ SubstitutionData False False (Referrent Subject) "x"]
-      , testCase "substitution, proper possessive" $
-          runParser parseChunk () "<story>" "his/hers|Sue" @?=
-            Right (Substitution $ SubstitutionData False False (Referrent ProperPossessive) "Sue")
-      , testCase "substitution, with article" $
-          runParser parseChunk () "<story>" "an |illsbane" @?=
-            Right (Substitution $ SubstitutionData True False Name "illsbane")
-      , testCase "substitution, with capitalized article" $
-          runParser parseChunk () "<story>" "An |illsbane" @?=
-            Right (Substitution $ SubstitutionData True True Name "illsbane")
-      , testCase "substitution, with article and a newline" $
-          runParser parseChunk () "<story>" "an\n|illsbane" @?=
-            Right (Substitution $ SubstitutionData True False Name "illsbane")
-      , testCase "substitution, uppercase referrant" $
-          runParser parseChunk () "<story>" "His/hers|Katie" @?=
-            Right (Substitution $ SubstitutionData False True (Referrent ProperPossessive) "Katie")
-      , testCase "substitution, uppercase name" $
-          runParser parseChunk () "<story>" "|Katie" @?=
-            Right (Substitution $ SubstitutionData False True Name "Katie")
-      ]
-    ----------------------------------------------------------------------------
+    [ testCase "literal, one char" $
+        parseSubstitutions "l"
+        >>=
+        substituteM mempty
+        >>= (@?= "l")
+    , testCase "literal, whole string" $
+        parseSubstitutions "xyz"
+        >>=
+        substituteM mempty
+        >>=
+        (@?= "xyz")
+    , testCase "substitution, name" $
+        parseSubstitutions "|name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "value" Male))
+        >>=
+        (@?= "value")
+    , testCase "substitution, subject" $
+        parseSubstitutions "he/she|name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "value" Female))
+        >>=
+        (@?= "she")
+    , testCase "substitution, possessive" $
+        parseSubstitutions "his/her|name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "value" Male))
+        >>=
+        (@?= "his")
+    , testCase "substitution, proper possessive" $
+        parseSubstitutions "his/hers|name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "value" Female))
+        >>=
+        (@?= "hers")
+    , testCase "substitution, with a article" $
+        parseSubstitutions "an |name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "cat" Female))
+        >>=
+        (@?= "a cat")
+    , testCase "substitution, with an article" $
+        parseSubstitutions "a |name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "apple" Female))
+        >>=
+        (@?= "an apple")
+    , testCase "substitution, with capitalized article" $
+        parseSubstitutions "An |name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "value" Female))
+        >>=
+        (@?= "A value")
+    , testCase "substitution, with article and a newline" $
+        parseSubstitutions "an\n|name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "value" Female))
+        >>=
+        (@?= "a value")
+    , testCase "substitution, uppercase referrant" $
+        parseSubstitutions "His/hers|name"
+        >>=
+        substituteM (singletonMap "name" (Gendered "value" Male))
+        >>= (@?= "His")
+    , testCase "unrecognized key" $
+        parseSubstitutions "His/hers|Bob"
+        >>=
+        (substituteM mempty >>> try)
+        >>= (@?= Left (NoSuchKeyException "Bob"))
     ]
+    ----------------------------------------------------------------------------
   ]

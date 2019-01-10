@@ -25,7 +25,25 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Substitution where
+module HabitOfFate.Substitution
+  (
+  -- Exceptions
+    SubstitutionException(..)
+  , ParseError
+
+  -- Regular types + lenses
+  , Gender(..)
+  , Gendered(..)
+      , gendered_name_
+      , gendered_gender_
+  , Story
+  , Substitutions
+
+  -- Functions
+  , parseSubstitutions
+  , substitute
+  , substituteM
+  ) where
 
 import HabitOfFate.Prelude
 
@@ -43,7 +61,6 @@ import HabitOfFate.TH
 
 uppercase_ ∷ Lens' Char Bool
 uppercase_ = lens isUpper (\c → bool (toLower c) (toUpper c))
-
 first_uppercase_ ∷ Traversal' Text Bool
 first_uppercase_ = _head . uppercase_
 
@@ -212,6 +229,7 @@ lookupAndApplySubstitution table s = do
   pure $
     (article ⊕ word) & first_uppercase_ .~ (s ^. is_uppercase_)
 
+type Story = [Chunk Text]
 
 data KeyError = KeyError Text deriving (Show, Typeable)
 instance Exception KeyError

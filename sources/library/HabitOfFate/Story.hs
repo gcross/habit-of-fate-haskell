@@ -45,8 +45,6 @@ import HabitOfFate.Substitution
 
 import Paths_habit_of_fate (getDataFileName)
 
-type Story = [Chunk Text]
-
 addParagraphTags ∷ String → String
 addParagraphTags text = "<p>" ⊕ go text
  where
