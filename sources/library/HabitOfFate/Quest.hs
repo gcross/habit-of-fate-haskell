@@ -18,6 +18,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -50,9 +51,9 @@ data TryQuestResult = TryQuestResult
   , tryQuestEvent ∷ Lazy.Text
   }
 
-type InitializeQuestRunner s = Rand StdGen (InitializeQuestResult s)
+type InitializeQuestRunner s = ∀ m. MonadRandom m ⇒ m (InitializeQuestResult s)
 type GetStatusQuestRunner s = s → Lazy.Text
-type TrialQuestRunner s = SuccessOrFailureResult → Scale → StateT s (Rand StdGen) TryQuestResult
+type TrialQuestRunner s = ∀ m. (MonadState s m, MonadRandom m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join
