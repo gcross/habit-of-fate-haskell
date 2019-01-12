@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE AutoDeriveTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -24,6 +25,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Transaction where
@@ -34,6 +36,7 @@ import Control.Concurrent (tryPutMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import Control.DeepSeq (NFData)
+import Control.Monad.Catch (Exception(..), MonadCatch(..), MonadThrow(..), SomeException)
 import qualified Control.Monad.Operational as Operational
 import Control.Monad.Random (RandT, StdGen, evalRandT, newStdGen)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
@@ -45,9 +48,8 @@ import Data.Time.LocalTime (LocalTime)
 import Data.Time.Zones (utcToLocalTimeTZ)
 import Data.Time.Zones.All (tzByLabel)
 import Data.UUID (UUID)
-import Network.HTTP.Types.Status (Status(..), temporaryRedirect307)
+import Network.HTTP.Types.Status (Status(..), internalServerError500, temporaryRedirect307)
 import Text.Blaze.Html5 (Html)
-import Text.Printf (printf)
 import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
 
@@ -59,14 +61,52 @@ import HabitOfFate.Server.Actions.Queries (authorizeWith)
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
 
+data BadJSONError = BadJSONError String deriving (Eq, Show)
+instance Exception BadJSONError where
+_BadJSONError ∷ Prism' SomeException BadJSONError
+_BadJSONError = prism' toException fromException
+
+data BadParameterError = BadParameterError Lazy.Text String deriving (Eq, Show)
+instance Exception BadParameterError where
+_BadParameterError ∷ Prism' SomeException BadParameterError
+_BadParameterError = prism' toException fromException
+
+data RequestNotFoundError = RequestNotFoundError String deriving (Eq, Show)
+instance Exception RequestNotFoundError where
+_RequestNotFoundError ∷ Prism' SomeException RequestNotFoundError
+_RequestNotFoundError = prism' toException fromException
+
+data StatusError = StatusError Status deriving (Eq, Show)
+data StatusExtractor = ∀ e. E (Prism' SomeException e) (e → Status)
+instance Exception StatusError where
+  fromException exc =
+    foldr
+      (\(E extractor_prism extract) rest →
+        maybe
+          rest
+          (extract >>> StatusError >>> Just)
+          (exc ^? extractor_prism)
+      )
+      Nothing
+      status_extractors
+   where
+    status_extractors =
+      [ E _RequestNotFoundError $ \(RequestNotFoundError message) →
+            Status 404 $ encodeUtf8 $ pack $ "NOT FOUND: " ⊕ message
+      , E _BadJSONError $ \(BadJSONError message) →
+            Status 400 $ encodeUtf8 $ pack $ "BAD JSON: " ⊕ message
+      , E _BadParameterError $ \(BadParameterError param_name message) →
+            Status 400 $ encodeUtf8 $ pack $ "BAD PARAMETER " ⊕ unpack param_name ⊕ ": " ⊕ unpack message
+      ]
+
 data TransactionInstruction α where
   GetAccountInstruction ∷ TransactionInstruction Account
   PutAccountInstruction ∷ Account → TransactionInstruction ()
   GetBodyInstruction ∷ TransactionInstruction LazyBS.ByteString
   GetParamsInstruction ∷ TransactionInstruction [Param]
-  RaiseStatusInstruction ∷ Status → TransactionInstruction α
   LogInstruction ∷ String → TransactionInstruction ()
   GetCurrentTimeInstruction ∷ TransactionInstruction UTCTime
+  ThrowInstruction ∷ Exception e ⇒ e → TransactionInstruction α
 
 newtype TransactionProgram α = TransactionProgram
   { unwrapTransactionProgram ∷ Operational.Program TransactionInstruction α }
@@ -75,6 +115,9 @@ newtype TransactionProgram α = TransactionProgram
   , Functor
   , Monad
   )
+
+instance MonadThrow TransactionProgram where
+  throwM = ThrowInstruction >>> wrapTransactionInstruction
 
 wrapTransactionInstruction ∷ TransactionInstruction α → TransactionProgram α
 wrapTransactionInstruction = Operational.singleton >>> TransactionProgram
@@ -92,7 +135,7 @@ getBodyJSON = do
   case eitherDecode' $ body of
     Left message → do
       log [i|Error parsing JSON for reason "#{message}#:\n#{decodeUtf8 body}|]
-      raiseStatus 400 "Bad request: Invalid JSON"
+      throwM $ BadJSONError "Badly formatted JSON"
     Right json → pure json
 
 getParams ∷ TransactionProgram [Param]
@@ -114,12 +157,9 @@ getParam ∷ Parsable α ⇒ Lazy.Text → TransactionProgram α
 getParam param_name = do
   params_ ← getParams
   case lookup param_name params_ of
-    Nothing → raiseStatus 400 [i|Bad request: Missing parameter %{param_name}|]
+    Nothing → throwM $ BadParameterError param_name [i|Missing parameter %{param_name}|]
     Just value → case parseParam value of
-      Left _ →
-        raiseStatus
-          400
-          [i|Bad request: Parameter #{param_name} has invalid format #{value}|]
+      Left _ → throwM $ BadParameterError param_name [i|Parameter #{param_name} has invalid format #{value}|]
       Right x → return x
 
 getParamMaybe ∷ Parsable α ⇒ Lazy.Text → TransactionProgram (Maybe α)
@@ -131,18 +171,6 @@ getParamMaybe param_name =
 getParamDefault ∷ Parsable α ⇒ Lazy.Text → α → TransactionProgram α
 getParamDefault param_name d = getParamMaybe param_name <&> fromMaybe d
 
-raiseStatus ∷ Int → String → TransactionProgram α
-raiseStatus code =
-  pack
-  >>>
-  encodeUtf8
-  >>>
-  Status code
-  >>>
-  RaiseStatusInstruction
-  >>>
-  wrapTransactionInstruction
-
 log ∷ String → TransactionProgram ()
 log = LogInstruction >>> wrapTransactionInstruction
 
@@ -153,7 +181,7 @@ lookupHabit ∷ UUID → TransactionProgram Habit
 lookupHabit habit_id =
   use (habits_ . at habit_id)
   >>=
-  maybe (raiseStatus 404 $ printf "No such habit %s" (show habit_id)) pure
+  maybe (throwM $ RequestNotFoundError [i|"No such habit #{habit_id}|]) pure
 
 marksArePresent ∷ TransactionProgram Bool
 marksArePresent = use marks_ <&> any (null >>> not)
@@ -202,15 +230,15 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
   current_time ← liftIO Clock.getCurrentTime
   let interpret ∷
         TransactionInstruction α →
-        StateT (Account, Bool) (ExceptT Status (RandT StdGen (Writer (Seq String)))) α
+        StateT (Account, Bool) (ExceptT SomeException (RandT StdGen (Writer (Seq String)))) α
       interpret (GetBodyInstruction) = pure body_
       interpret (GetParamsInstruction) = pure params_
       interpret (GetCurrentTimeInstruction) = pure current_time
-      interpret (RaiseStatusInstruction s) = throwError s
       interpret (LogInstruction message) =
         void ([i|[#{unwrapUsername username}]: #{message}|] |> singleton |> tell)
       interpret GetAccountInstruction = get <&> fst
       interpret (PutAccountInstruction new_account) = put (new_account, True)
+      interpret (ThrowInstruction exc) = throwError $ toException exc
   initial_generator ← liftIO newStdGen
   TransactionResults{..} ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
@@ -221,10 +249,14 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
             |> flip evalRandT initial_generator
             |> runWriter
     case error_or_result of
-      Left status → do
+      Left exc → do
         let redirect_or_content = Right Nothing
-            logs = logs_without_last `snoc` [i|RAISED: #{status}|]
             account_changed = False
+            logs = logs_without_last `snoc` [i|EXCEPTION: #{displayException exc}|]
+            status =
+              case fromException exc of
+                Just (StatusError status) → status
+                _ → internalServerError500
         pure $ TransactionResults{..}
       Right (result, (new_account, account_changed)) → do
         let logs = logs_without_last
