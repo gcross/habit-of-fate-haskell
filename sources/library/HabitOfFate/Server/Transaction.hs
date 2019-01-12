@@ -187,6 +187,13 @@ renderTopOnlyPageResult title stylesheets scripts maybe_onload status =
   >>>
   lazyTextAsHTMLResult status
 
+data TransactionResults = TransactionResults
+  { redirect_or_content ∷ Either Lazy.Text (Maybe Content)
+  , status ∷ Status
+  , logs ∷ Seq String
+  , account_changed ∷ Bool
+  }
+
 transactionWith ∷ (∀ α. String → ActionM α) → Environment → TransactionProgram TransactionResult → ActionM ()
 transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionProgram program) = do
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
@@ -205,7 +212,7 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
       interpret GetAccountInstruction = get <&> fst
       interpret (PutAccountInstruction new_account) = put (new_account, True)
   initial_generator ← liftIO newStdGen
-  (redirect_or_content, status, logs, account_changed) ← atomically >>> liftIO $ do
+  TransactionResults{..} ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs) =
           Operational.interpretWithMonad interpret program
@@ -214,12 +221,12 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
             |> flip evalRandT initial_generator
             |> runWriter
     case error_or_result of
-      Left status → pure (Right Nothing, status, logs, False)
+      Left status → pure $ TransactionResults (Right Nothing) status logs False
       Right (result, (new_account, account_changed)) → do
         writeTVar account_tvar $ new_account { _last_seen_ = current_time }
         pure $ case result of
-          RedirectsTo status href → (Left href, status, logs, account_changed)
-          TransactionResult status content → (Right (Just content), status, logs, account_changed)
+          RedirectsTo status href → TransactionResults (Left href) status logs account_changed
+          TransactionResult status content → TransactionResults (Right (Just content)) status logs account_changed
   when account_changed $ liftIO $ void $ tryPutMVar accounts_changed_signal ()
   traverse_ logIO logs
   case redirect_or_content of
