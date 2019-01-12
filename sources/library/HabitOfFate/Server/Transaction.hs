@@ -214,19 +214,27 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
   initial_generator ← liftIO newStdGen
   TransactionResults{..} ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
-    let (error_or_result, logs) =
+    let (error_or_result, logs_without_last) =
           Operational.interpretWithMonad interpret program
             |> flip runStateT (old_account, False)
             |> runExceptT
             |> flip evalRandT initial_generator
             |> runWriter
     case error_or_result of
-      Left status → pure $ TransactionResults (Right Nothing) status logs False
+      Left status → do
+        let redirect_or_content = Right Nothing
+            logs = logs_without_last `snoc` [i|RAISED: #{status}|]
+            account_changed = False
+        pure $ TransactionResults{..}
       Right (result, (new_account, account_changed)) → do
-        writeTVar account_tvar $ new_account { _last_seen_ = current_time }
+        let logs = logs_without_last
+        when account_changed $
+          writeTVar account_tvar $ new_account { _last_seen_ = current_time }
         pure $ case result of
-          RedirectsTo status href → TransactionResults (Left href) status logs account_changed
-          TransactionResult status content → TransactionResults (Right (Just content)) status logs account_changed
+          RedirectsTo status href →
+            let redirect_or_content = Left href in TransactionResults{..}
+          TransactionResult status content →
+            let redirect_or_content = Right (Just content) in TransactionResults{..}
   when account_changed $ liftIO $ void $ tryPutMVar accounts_changed_signal ()
   traverse_ logIO logs
   case redirect_or_content of
