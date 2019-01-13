@@ -15,14 +15,17 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Requests.Shared.Run (handler) where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Random (MonadSplit(..), evalRand, uniform)
 import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
@@ -32,13 +35,64 @@ import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.SuccessOrFailureResult
+import HabitOfFate.Data.Tagged
+import HabitOfFate.Quest
+import HabitOfFate.Quests
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
+
+runGame ∷ TransactionProgram Lazy.Text
+runGame = do
+  rng ← getSplit
+  maybe_current_quest_state ← use maybe_current_quest_state_
+  case maybe_current_quest_state of
+    Nothing → do
+      let (new_current_quest_state, event) = flip evalRand rng $ do
+            WrappedQuest quest ← uniform quests
+            InitializeQuestResult quest_state intro_event ← questInitialize quest
+            pure
+              ( questPrism quest # quest_state
+              , intro_event
+              )
+      maybe_current_quest_state_ .= Just new_current_quest_state
+      pure event
+    Just current_quest_state → do
+      let run ∷ ∀ s. Quest s → s → (∀ m. MonadState Account m ⇒ m Lazy.Text)
+          run quest quest_state = do
+            marks ← use marks_
+            maybe_runQuestTrial ←
+              case uncons (marks ^. success_) of
+                Just (scale, rest) → do
+                  marks_ . success_ .= rest
+                  pure $ Just $ questTrial >>> ($ SuccessResult) >>> ($ scale)
+                Nothing →
+                  case uncons (marks ^. failure_) of
+                    Just (scale, rest) → do
+                      marks_ . failure_ .= rest
+                      pure $ Just $ questTrial >>> ($ FailureResult) >>> ($ scale)
+                    Nothing →
+                      pure Nothing
+            case maybe_runQuestTrial of
+              Just runQuestTrial → do
+                let (TryQuestResult quest_status event, new_quest_state) =
+                      quest
+                        |> runQuestTrial
+                        |> flip runStateT quest_state
+                        |> flip evalRand rng
+                maybe_current_quest_state_ .=
+                  case quest_status of
+                    QuestHasEnded → Nothing
+                    QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
+                pure event
+              Nothing →
+                pure $ questGetStatus quest quest_state
+      runCurrentQuest run current_quest_state
 
 handleApi ∷ Environment → ScottyM ()
 handleApi environment =
   Scotty.post "/api/run" <<< apiTransaction environment $
-    runAccount <&> lazyTextResult ok200
+    runGame <&> lazyTextResult ok200
 
 handleWeb ∷ Environment → ScottyM ()
 handleWeb environment = do
@@ -46,7 +100,7 @@ handleWeb environment = do
   Scotty.post "/run" <<< webTransaction environment $ action
  where
   action =
-    runAccount
+    runGame
     >>=
     \event → do
       marks_are_present ← marksArePresent
