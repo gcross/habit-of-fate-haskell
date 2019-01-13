@@ -164,15 +164,6 @@ executable habit-test-server
                      , warp-tls
   default-language:    Haskell2010
 
-executable proofread
-  hs-source-dirs:      sources/executables
-  main-is:             proofread.hs
-  build-depends:       habit-of-fate
-                     , base
-                     , blaze-html
-                     , text
-  default-language:    Haskell2010
-
 executable generate-html
   hs-source-dirs:      sources/executables
   main-is:             generate-html.hs

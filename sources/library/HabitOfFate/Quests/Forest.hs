@@ -475,12 +475,6 @@ trial result =
 --------------------------------- Proofreading ---------------------------------
 --------------------------------------------------------------------------------
 
-proofread_stories ∷ [(Text, [Lazy.Text])]
-proofread_stories =
-  map (second (map (substitute test_substitutions)))
-  [ ("Wandering", wander_stories)
-  ]
-
 pages ∷ [(Text, Page)]
 pages =
   [("", Page
