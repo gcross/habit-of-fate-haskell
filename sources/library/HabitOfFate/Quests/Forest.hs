@@ -422,7 +422,7 @@ pickStoryUsingState ∷ (MonadRandom m, MonadState State m, MonadThrow m) ⇒ [S
 pickStoryUsingState stories = join $ substituteM <$> (use substitutions_) <*> (uniform stories)
 
 getStatus ∷ GetStatusQuestRunner State
-getStatus s = substitute (s ^. substitutions_) story
+getStatus s = substituteM (s ^. substitutions_) story 
  where
   story
    | s ^. next_event_ <= FoundEvent = looking_for_herb_story
