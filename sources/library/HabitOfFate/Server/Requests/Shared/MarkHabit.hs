@@ -88,7 +88,6 @@ handleWeb environment = do
     log [i|Marking #{habit_id} as #{result}.|]
     markHabit habit_id (def & taggedLensForResult result .~ 1)
     marks ← use marks_
-    log [i|MARKS = #{marks}|]
     pure $ redirectsToResult temporaryRedirect307 "/run"
 
 handler ∷ Environment → ScottyM ()

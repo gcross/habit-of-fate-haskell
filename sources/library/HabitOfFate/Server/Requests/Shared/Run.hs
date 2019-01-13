@@ -38,7 +38,6 @@ import HabitOfFate.Server.Transaction
 runEvent ∷ TransactionProgram (Maybe Lazy.Text)
 runEvent = do
   marks ← use marks_
-  log [i|OLD MARKS = #{marks}|]
   account ← get
   let (maybe_event, new_account) = runState runAccount account
   put new_account
@@ -62,7 +61,6 @@ handleWeb environment = do
       (\event → do
         marks ← use marks_
         marks_are_present ← marksArePresent
-        log [i|NEW MARKS = #{marks}|]
         renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
           H.div ! A.class_ "story" $ H.preEscapedLazyText event
           if marks_are_present
