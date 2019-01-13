@@ -26,6 +26,7 @@ module HabitOfFate.Quest where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random
 import qualified Data.Text.Lazy as Lazy
 
@@ -51,9 +52,9 @@ data TryQuestResult = TryQuestResult
   , tryQuestEvent ∷ Lazy.Text
   }
 
-type InitializeQuestRunner s = ∀ m. MonadRandom m ⇒ m (InitializeQuestResult s)
+type InitializeQuestRunner s = ∀ m. (MonadRandom m, MonadThrow m) ⇒ m (InitializeQuestResult s)
 type GetStatusQuestRunner s = s → Lazy.Text
-type TrialQuestRunner s = ∀ m. (MonadState s m, MonadRandom m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
+type TrialQuestRunner s = ∀ m. (MonadState s m, MonadRandom m, MonadThrow m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join

@@ -15,7 +15,6 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -25,7 +24,7 @@ module HabitOfFate.Server.Requests.Shared.Run (handler) where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Random (MonadSplit(..), evalRand, uniform)
+import Control.Monad.Random (uniform)
 import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
@@ -44,21 +43,15 @@ import HabitOfFate.Server.Transaction
 
 runGame ∷ Transaction Lazy.Text
 runGame = do
-  rng ← getSplit
   maybe_current_quest_state ← use maybe_current_quest_state_
   case maybe_current_quest_state of
     Nothing → do
-      let (new_current_quest_state, event) = flip evalRand rng $ do
-            WrappedQuest quest ← uniform quests
-            InitializeQuestResult quest_state intro_event ← questInitialize quest
-            pure
-              ( questPrism quest # quest_state
-              , intro_event
-              )
-      maybe_current_quest_state_ .= Just new_current_quest_state
-      pure event
+      WrappedQuest quest ← uniform quests
+      InitializeQuestResult quest_state intro_event ← questInitialize quest
+      maybe_current_quest_state_ .= Just (questPrism quest # quest_state)
+      pure intro_event
     Just current_quest_state → do
-      let run ∷ ∀ s. Quest s → s → (∀ m. MonadState Account m ⇒ m Lazy.Text)
+      let run ∷ ∀ s. Quest s → s → Transaction Lazy.Text
           run quest quest_state = do
             marks ← use marks_
             maybe_runQuestTrial ←
@@ -75,11 +68,10 @@ runGame = do
                       pure Nothing
             case maybe_runQuestTrial of
               Just runQuestTrial → do
-                let (TryQuestResult quest_status event, new_quest_state) =
-                      quest
-                        |> runQuestTrial
-                        |> flip runStateT quest_state
-                        |> flip evalRand rng
+                (TryQuestResult quest_status event, new_quest_state) ←
+                  quest
+                    |> runQuestTrial
+                    |> flip runStateT quest_state
                 maybe_current_quest_state_ .=
                   case quest_status of
                     QuestHasEnded → Nothing
