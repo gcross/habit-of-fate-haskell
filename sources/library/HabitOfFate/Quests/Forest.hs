@@ -35,6 +35,7 @@ module HabitOfFate.Quests.Forest where
 
 import HabitOfFate.Prelude hiding (State)
 
+import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random
 import qualified Data.Text.Lazy as Lazy
 
@@ -413,15 +414,12 @@ test_substitutions =
 initialize ∷ InitializeQuestRunner State
 initialize = do
   (searcher, intro_story) ← uniform [(Parent, intro_parent_story), (Healer, intro_healer_story)]
-  pure $ InitializeQuestResult
+  InitializeQuestResult
     (State test_substitutions searcher GingerbreadHouseEvent)
-    (substitute test_substitutions intro_story)
+    <$> substituteM test_substitutions intro_story
 
-pickStoryUsingState ∷ (MonadRandom m, MonadState State m) ⇒ [Story] → m Lazy.Text
-pickStoryUsingState stories = substitute <$> use substitutions_ <*> uniform stories
-
-pickStory ∷ MonadRandom m ⇒ State → [Story] → m Lazy.Text
-pickStory s stories = substitute (s ^. substitutions_) <$> uniform stories
+pickStoryUsingState ∷ (MonadRandom m, MonadState State m, MonadThrow m) ⇒ [Story] → m Lazy.Text
+pickStoryUsingState stories = join $ substituteM <$> (use substitutions_) <*> (uniform stories)
 
 getStatus ∷ GetStatusQuestRunner State
 getStatus s = substitute (s ^. substitutions_) story
@@ -447,28 +445,29 @@ trial result =
             bool
               (QuestInProgress, storyForAverted, "green")
               (QuestHasEnded, storyForFailure, "green")
-      let sub = storyFor >>> substitute substitutions
+      let sub = storyFor >>> substituteM substitutions
       use next_event_ >>= \case
         GingerbreadHouseEvent → do
           next_event_ .= FoundEvent
-          pure $ TryQuestResult new_quest_status (sub gingerbread_house_event)
+          TryQuestResult new_quest_status <$> sub gingerbread_house_event
         FoundEvent → do
           next_event_ .= FairyCircleEvent
           TryQuestResult new_quest_status
-            <$> uniform
+            <$> uniformAction
                   [ sub found_by_fairy_event
-                  , substitute (insertMap "color" (Gendered cat_color Neuter) substitutions) $ storyFor found_by_cat_event
+                  , substituteM
+                      (insertMap "color" (Gendered cat_color Neuter) substitutions)
+                      (storyFor found_by_cat_event)
                   ]
         FairyCircleEvent → do
           next_event_ .= VictoryEvent
-          pure $ TryQuestResult new_quest_status (sub fairy_circle_event)
+          TryQuestResult new_quest_status <$> sub fairy_circle_event
         VictoryEvent →
           TryQuestResult QuestHasEnded
-            <$> (sub <$> (
-                  use searcher_ <&> \case
+            <$> ((use searcher_ <&> \case
                     Parent → conclusion_parent_event
                     Healer → conclusion_healer_event
-                ))
+                  ) >>= sub)
     )
 
 --------------------------------------------------------------------------------
