@@ -33,7 +33,7 @@ module HabitOfFate.Data.Account where
 import HabitOfFate.Prelude
 
 import Control.Exception
-import Control.Monad.Random (StdGen, newStdGen, runRand, uniform)
+import Control.Monad.Random (MonadSplit(..), RandomGen, StdGen, evalRand, newStdGen, uniform)
 import Crypto.PasswordStore
 import Data.Aeson (FromJSON(..), FromJSONKey(..), ToJSON(..), ToJSONKey(..), Value(..))
 import qualified Data.Text.Lazy as Lazy
@@ -71,7 +71,27 @@ data Account = Account
   ,   _groups_ ∷ Groups
   } deriving (Read,Show)
 deriveJSON ''Account
-makeLenses ''Account
+
+password_ ∷ Lens' Account Text
+password_ f a = (\nx → a {_password_ = nx}) <$> f (_password_ a)
+
+habits_ ∷ Lens' Account (ItemsSequence Habit)
+habits_ f a = (\nx → a {_habits_ = nx}) <$> f (_habits_ a)
+
+marks_ ∷ Lens' Account (Tagged (Seq Scale))
+marks_ f a = (\nx → a {_marks_ = nx}) <$> f (_marks_ a)
+
+maybe_current_quest_state_ ∷ Lens' Account (Maybe CurrentQuestState)
+maybe_current_quest_state_ f a = (\nx → a {_maybe_current_quest_state_ = nx}) <$> f (_maybe_current_quest_state_ a)
+
+configuration_ ∷ Lens' Account Configuration
+configuration_ f a = (\nx → a {_configuration_ = nx}) <$> f (_configuration_ a)
+
+last_seen_ ∷ Getter Account UTCTime
+last_seen_ = to _last_seen_
+
+groups_ ∷ Lens' Account Groups
+groups_ f a = (\nx → a {_groups_ = nx}) <$> f (_groups_ a)
 
 newAccount ∷ Text → IO Account
 newAccount password =
@@ -103,13 +123,13 @@ getAccountStatus account =
    run ∷ ∀ s. Quest s → s → Lazy.Text
    run quest quest_state = questGetStatus quest quest_state
 
-runAccount ∷ MonadState Account m ⇒ m Lazy.Text
+runAccount ∷ (RandomGen g, MonadSplit g m, MonadState Account m) ⇒ m Lazy.Text
 runAccount = do
+  rng ← getSplit
   maybe_current_quest_state ← use maybe_current_quest_state_
-  rng ← use rng_
   case maybe_current_quest_state of
     Nothing → do
-      let ((new_current_quest_state, event), new_rng) = flip runRand rng $ do
+      let (new_current_quest_state, event) = flip evalRand rng $ do
             WrappedQuest quest ← uniform quests
             InitializeQuestResult quest_state intro_event ← questInitialize quest
             pure
@@ -117,7 +137,6 @@ runAccount = do
               , intro_event
               )
       maybe_current_quest_state_ .= Just new_current_quest_state
-      rng_ .= new_rng
       pure event
     Just current_quest_state → do
       let run ∷ ∀ s. Quest s → s → (∀ m. MonadState Account m ⇒ m Lazy.Text)
@@ -137,12 +156,11 @@ runAccount = do
                       pure Nothing
             case maybe_runQuestTrial of
               Just runQuestTrial → do
-                let ((TryQuestResult quest_status event, new_quest_state), new_rng) =
+                let (TryQuestResult quest_status event, new_quest_state) =
                       quest
                         |> runQuestTrial
                         |> flip runStateT quest_state
-                        |> flip runRand rng ∷ ((TryQuestResult, s), StdGen)
-                rng_ .= new_rng
+                        |> flip evalRand rng
                 maybe_current_quest_state_ .=
                   case quest_status of
                     QuestHasEnded → Nothing

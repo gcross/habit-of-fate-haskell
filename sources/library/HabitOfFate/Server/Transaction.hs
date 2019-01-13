@@ -38,7 +38,7 @@ import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import Control.DeepSeq (NFData)
 import Control.Monad.Catch (Exception(..), MonadCatch(..), MonadThrow(..), SomeException)
 import qualified Control.Monad.Operational as Operational
-import Control.Monad.Random (RandT, StdGen, newStdGen, runRandT)
+import Control.Monad.Random (MonadRandom(..), MonadSplit(..), RandT, StdGen, runRandT)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
 import qualified Data.ByteString.Lazy as LazyBS
 import qualified Data.Text.Lazy as Lazy
@@ -49,6 +49,7 @@ import Data.Time.Zones (utcToLocalTimeTZ)
 import Data.Time.Zones.All (tzByLabel)
 import Data.UUID (UUID)
 import Network.HTTP.Types.Status (Status(..), internalServerError500, temporaryRedirect307)
+import System.Random (Random)
 import Text.Blaze.Html5 (Html)
 import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
@@ -107,6 +108,11 @@ data TransactionInstruction α where
   LogInstruction ∷ String → TransactionInstruction ()
   GetCurrentTimeInstruction ∷ TransactionInstruction UTCTime
   ThrowInstruction ∷ Exception e ⇒ e → TransactionInstruction α
+  GetRandomInstruction ∷ Random α ⇒ TransactionInstruction α
+  GetRandomsInstruction ∷ Random α ⇒ TransactionInstruction [α]
+  GetRandomRInstruction ∷ Random α ⇒ (α, α) → TransactionInstruction α
+  GetRandomRsInstruction ∷ Random α ⇒ (α, α) → TransactionInstruction [α]
+  GetSplitInstruction ∷ TransactionInstruction StdGen
 
 newtype TransactionProgram α = TransactionProgram
   { unwrapTransactionProgram ∷ Operational.Program TransactionInstruction α }
@@ -125,6 +131,15 @@ wrapTransactionInstruction = Operational.singleton >>> TransactionProgram
 instance MonadState Account TransactionProgram where
   get = wrapTransactionInstruction GetAccountInstruction
   put = PutAccountInstruction >>> wrapTransactionInstruction
+
+instance MonadRandom TransactionProgram where
+  getRandom = wrapTransactionInstruction GetRandomInstruction
+  getRandoms = wrapTransactionInstruction GetRandomsInstruction
+  getRandomR = GetRandomRInstruction >>> wrapTransactionInstruction
+  getRandomRs = GetRandomRsInstruction >>> wrapTransactionInstruction
+
+instance MonadSplit StdGen TransactionProgram where
+  getSplit = wrapTransactionInstruction GetSplitInstruction
 
 getBody ∷ TransactionProgram LazyBS.ByteString
 getBody = wrapTransactionInstruction GetBodyInstruction
@@ -239,12 +254,17 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
       interpret GetAccountInstruction = get <&> fst
       interpret (PutAccountInstruction new_account) = put (new_account, True)
       interpret (ThrowInstruction exc) = throwError $ toException exc
+      interpret GetRandomInstruction = getRandom
+      interpret GetRandomsInstruction = getRandoms
+      interpret (GetRandomRInstruction range) = getRandomR range
+      interpret (GetRandomRsInstruction range) = getRandomRs range
+      interpret GetSplitInstruction = getSplit
   TransactionResults{..} ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs_without_last) =
           Operational.interpretWithMonad interpret program
             |> flip runStateT (old_account, False)
-            |> flip runRandT (old_account ^. rng_)
+            |> flip runRandT (_rng_ old_account)
             |> runExceptT
             |> runWriter
     case error_or_result of
