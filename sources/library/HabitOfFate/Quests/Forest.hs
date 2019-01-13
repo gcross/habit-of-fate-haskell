@@ -43,6 +43,7 @@ import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Quest
 import HabitOfFate.Substitution
 import HabitOfFate.Story
+import HabitOfFate.Pages
 import HabitOfFate.TH
 import HabitOfFate.Trial
 
@@ -474,16 +475,23 @@ trial result =
 --------------------------------- Proofreading ---------------------------------
 --------------------------------------------------------------------------------
 
-pages ∷ [(Text, Page)]
-pages =
+pages ∷ Pages
+pages = buildPages
+  (mapFromList
+    [ ( "", Gendered "Andrea" Female )
+    , ( "Susie", Gendered "Andrea" Female )
+    , ( "Tommy", Gendered "Elly" Female )
+    , ( "Illsbane", Gendered "Tigerlamp" Neuter )
+    ]
+  )
   [("", Page
     "Searching For An Essential Ingredient In The Wicked Forest"
-    (sub intro_healer_story)
+    intro_healer_story
     (NoChoice "gingerbread/")
    )
   ,("gingerbread/", Page
     "The Gingerbread House"
-    (sub $ gingerbread_house_event ^. story_common_)
+    (gingerbread_house_event ^. story_common_)
     (Choices "Where do you guide Andrea?"
       [("Towards the gingerbread house.", "gingerbread/towards")
       ,("Away from the gingerbread house.", "gingerbread/away")
@@ -492,12 +500,12 @@ pages =
    )
   ,("gingerbread/away", Page
     "Even Gingerbread Cannot Slow Her Search"
-    (sub $ gingerbread_house_event ^. story_success_)
+    (gingerbread_house_event ^. story_success_)
     (NoChoice "found/")
    )
   ,("gingerbread/towards", Page
     "The Gingerbread Compulsion is Too Great"
-    (sub $ gingerbread_house_event ^. story_averted_or_failure_)
+    (gingerbread_house_event ^. story_averted_or_failure_)
     (Choices "How do you have Andrea react?"
       [("She enters the house.", "gingerbread/enter")
       ,("She runs away!", "gingerbread/run")
@@ -506,12 +514,12 @@ pages =
    )
   ,("gingerbread/enter", Page
     "Entering The Gingerbread House"
-    (sub $ gingerbread_house_event ^. story_failure_)
+    (gingerbread_house_event ^. story_failure_)
     DeadEnd
    )
   ,("gingerbread/run", Page
     "Escaping The Gingerbread House"
-    (sub $ gingerbread_house_event ^. story_averted_)
+    (gingerbread_house_event ^. story_averted_)
     (NoChoice "found/")
    )
   ,("found/", Page
@@ -520,16 +528,3 @@ pages =
     DeadEnd
    )
   ]
- where
-  sub ∷ Story → Lazy.Text
-  sub story
-    | onull story = error "Blank Forest story."
-    | otherwise = substitute substitutions story
-   where
-    substitutions =
-      mapFromList
-        [ ( "", Gendered "Andrea" Female )
-        , ( "Susie", Gendered "Andrea" Female )
-        , ( "Tommy", Gendered "Elly" Female )
-        , ( "Illsbane", Gendered "Tigerlamp" Neuter )
-        ] ∷ Substitutions

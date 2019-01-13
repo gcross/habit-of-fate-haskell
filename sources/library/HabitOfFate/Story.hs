@@ -32,7 +32,6 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch (Exception, MonadThrow(throwM))
 import Data.List (dropWhileEnd, tail)
 import Data.List.Split
-import qualified Data.Text.Lazy as Lazy
 import Data.Typeable (Typeable)
 import Language.Haskell.TH (Exp, Q)
 import Language.Haskell.TH.Lift (Lift)
@@ -257,10 +256,3 @@ linked_page_ids_ _ DeadEnd = pure DeadEnd
 linked_page_ids_ f (NoChoice c) = NoChoice <$> f c
 linked_page_ids_ f (Choices query choices) =
   Choices query <$> traverse (traverseOf _2 f) choices
-
-data Page = Page
-  { _page_title_ ∷ Text
-  , _page_content_ ∷ Lazy.Text
-  , _page_choices_ ∷ PageChoices
-  } deriving (Eq,Ord,Read,Show)
-makeLenses ''Page

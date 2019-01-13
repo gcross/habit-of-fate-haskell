@@ -14,9 +14,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Pages where
@@ -24,16 +28,39 @@ module HabitOfFate.Pages where
 import HabitOfFate.Prelude
 
 import Control.Monad.Catch (Exception, MonadThrow(throwM))
+import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Story
+import HabitOfFate.Substitution
+import HabitOfFate.TH
 
-modifyAllPageIds ∷ (Text → Text) → [(Text, Page)] → [(Text, Page)]
+data GenPage α = Page
+  { _page_title_ ∷ Text
+  , _page_content_ ∷ α
+  , _page_choices_ ∷ PageChoices
+  } deriving (Foldable,Functor,Eq,Ord,Read,Show,Traversable)
+makeLenses ''GenPage
+
+type StoryPage = GenPage Story
+type StoryPages = [(Text, StoryPage)]
+type StoryPageMap = HashMap Text StoryPage
+type Page = GenPage Lazy.Text
+type Pages = [(Text, Page)]
+type PageMap = HashMap Text Page
+
+substitutePage ∷ Substitutions → StoryPage → Page
+substitutePage subs = page_content_  %~ substitute subs
+
+buildPages ∷ Substitutions → StoryPages → Pages
+buildPages = substitutePage >>> second >>> map
+
+modifyAllPageIds ∷ (Text → Text) → Pages → Pages
 modifyAllPageIds modify = map (modify *** (page_choices_ . linked_page_ids_ %~ modify))
 
 data OverlappingPageIds = OverlappingPageIds [(Text,Int)] deriving (Eq,Show)
 instance Exception OverlappingPageIds
 
-constructPageMap ∷ MonadThrow m ⇒ [(Text,Page)] → m (HashMap Text Page)
+constructPageMap ∷ MonadThrow m ⇒ Pages → m PageMap
 constructPageMap pages = do
   let number_of_pages = length pages
       pagecounts ∷ HashMap Text Int
@@ -49,7 +76,7 @@ constructPageMap pages = do
 data MissingPageIds = MissingPageIds [Text] deriving (Eq,Show)
 instance Exception MissingPageIds
 
-validatePageIds ∷ MonadThrow m ⇒ HashMap Text Page → m ()
+validatePageIds ∷ MonadThrow m ⇒ PageMap → m ()
 validatePageIds pagemap = do
   let missing_page_ids ∷ [Text]
       missing_page_ids =
@@ -65,7 +92,7 @@ validatePageIds pagemap = do
 data CircularReferences = CircularReferences [Text] deriving (Eq,Show)
 instance Exception CircularReferences
 
-checkForCircularReferences ∷ MonadThrow m ⇒ [(Text,Page)] → m ()
+checkForCircularReferences ∷ MonadThrow m ⇒ Pages → m ()
 checkForCircularReferences pages = do
   let circular_references ∷ [Text]
       circular_references =
@@ -80,17 +107,17 @@ checkForCircularReferences pages = do
   unless (onull circular_references) $
     throwM $ CircularReferences circular_references
 
-constructAndValidatePageMap ∷ MonadThrow m ⇒ [(Text,Page)] → m (HashMap Text Page)
+constructAndValidatePageMap ∷ MonadThrow m ⇒ Pages → m PageMap
 constructAndValidatePageMap pages = do
   checkForCircularReferences pages
   pagemap ← constructPageMap pages
   validatePageIds pagemap
   pure $ pagemap
 
-walkPages ∷ Text → HashMap Text Page → [(Text,Page)]
+walkPages ∷ Text → PageMap → Pages
 walkPages root pagemap = go [root] mempty
  where
-  go ∷ Seq Text → HashSet Text → [(Text,Page)]
+  go ∷ Seq Text → HashSet Text → Pages
   go queue visited = case uncons queue of
     Nothing → []
     Just (page_id, rest)
