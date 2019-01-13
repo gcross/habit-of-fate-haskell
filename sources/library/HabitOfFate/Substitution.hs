@@ -114,6 +114,7 @@ makeLenses ''SubstitutionData
 
 data Chunk α = Literal α | Substitution SubstitutionData
   deriving (Eq, Functor, Lift, Ord, Read, Show)
+type Story = [Chunk Text]
 
 type Parser = Parsec String ()
 
@@ -160,7 +161,7 @@ parseChunk = do
 
 instance Exception ParseError
 
-parseSubstitutions ∷ MonadThrow m ⇒ String → m [Chunk Text]
+parseSubstitutions ∷ MonadThrow m ⇒ String → m Story
 parseSubstitutions story =
   (
     runParser (many parseChunk ∷ Parser [Chunk Char]) () "<story>" story
@@ -229,12 +230,10 @@ lookupAndApplySubstitution table s = do
   pure $
     (article ⊕ word) & first_uppercase_ .~ (s ^. is_uppercase_)
 
-type Story = [Chunk Text]
-
 data KeyError = KeyError Text deriving (Show, Typeable)
 instance Exception KeyError
 
-substituteM ∷ MonadThrow m ⇒ HashMap Text Gendered → [Chunk Text] → m Lazy.Text
+substituteM ∷ MonadThrow m ⇒ Substitutions → Story → m Lazy.Text
 substituteM table text =
   mapM
     (\case
@@ -245,7 +244,7 @@ substituteM table text =
   <&>
   Lazy.fromChunks
 
-substitute ∷ HashMap Text Gendered → [Chunk Text] → Lazy.Text
+substitute ∷ Substitutions → Story → Lazy.Text
 substitute table text =
   either
     (show >>> pack)
