@@ -38,7 +38,7 @@ import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import Control.DeepSeq (NFData)
 import Control.Monad.Catch (Exception(..), MonadCatch(..), MonadThrow(..), SomeException)
 import qualified Control.Monad.Operational as Operational
-import Control.Monad.Random (RandT, StdGen, evalRandT, newStdGen)
+import Control.Monad.Random (RandT, StdGen, newStdGen, runRandT)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
 import qualified Data.ByteString.Lazy as LazyBS
 import qualified Data.Text.Lazy as Lazy
@@ -230,7 +230,7 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
   current_time ← liftIO Clock.getCurrentTime
   let interpret ∷
         TransactionInstruction α →
-        StateT (Account, Bool) (ExceptT SomeException (RandT StdGen (Writer (Seq String)))) α
+        StateT (Account, Bool) (RandT StdGen (ExceptT SomeException (Writer (Seq String)))) α
       interpret (GetBodyInstruction) = pure body_
       interpret (GetParamsInstruction) = pure params_
       interpret (GetCurrentTimeInstruction) = pure current_time
@@ -239,14 +239,13 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
       interpret GetAccountInstruction = get <&> fst
       interpret (PutAccountInstruction new_account) = put (new_account, True)
       interpret (ThrowInstruction exc) = throwError $ toException exc
-  initial_generator ← liftIO newStdGen
   TransactionResults{..} ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs_without_last) =
           Operational.interpretWithMonad interpret program
             |> flip runStateT (old_account, False)
+            |> flip runRandT (old_account ^. rng_)
             |> runExceptT
-            |> flip evalRandT initial_generator
             |> runWriter
     case error_or_result of
       Left exc → do
@@ -258,10 +257,10 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
                 Just (StatusError status) → status
                 _ → internalServerError500
         pure $ TransactionResults{..}
-      Right (result, (new_account, account_changed)) → do
+      Right ((result, (new_account, account_changed)), new_rng) → do
         let logs = logs_without_last
         when account_changed $
-          writeTVar account_tvar $ new_account { _last_seen_ = current_time }
+          writeTVar account_tvar $ new_account { _last_seen_ = current_time, _rng_ = new_rng }
         pure $ case result of
           RedirectsTo status href →
             let redirect_or_content = Left href in TransactionResults{..}
