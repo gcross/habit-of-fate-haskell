@@ -78,7 +78,7 @@ runGame = do
                     QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
                 pure event
               Nothing →
-                pure $ questGetStatus quest quest_state
+                questGetStatus quest quest_state
       runCurrentQuest run current_quest_state
 
 handleApi ∷ Environment → ScottyM ()

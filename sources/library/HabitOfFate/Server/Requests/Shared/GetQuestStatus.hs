@@ -16,21 +16,26 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Api.GetQuestStatus (handler) where
+module HabitOfFate.Server.Requests.Shared.GetQuestStatus where
 
 import HabitOfFate.Prelude
 
-import Network.HTTP.Types.Status (ok200)
-import Web.Scotty (ScottyM)
-import qualified Web.Scotty as Scotty
+import qualified Data.Text.Lazy as Lazy
 
-import HabitOfFate.Server.Common
-import HabitOfFate.Server.Requests.Shared.GetQuestStatus
+import HabitOfFate.Data.Account
+import HabitOfFate.Quests
 import HabitOfFate.Server.Transaction
 
-handler ∷ Environment → ScottyM ()
-handler environment =
-  Scotty.get "/api/status" <<< apiTransaction environment $
-    getQuestStatus <&> lazyTextResult ok200
+getQuestStatus ∷ Transaction Lazy.Text
+getQuestStatus =
+  use maybe_current_quest_state_
+  >>=
+  maybe
+    (pure "You are between quests.")
+    (runCurrentQuest run)
+  where
+   run ∷ ∀ s. Quest s → s → Transaction Lazy.Text
+   run quest quest_state = questGetStatus quest quest_state

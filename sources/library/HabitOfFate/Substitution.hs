@@ -17,12 +17,15 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Substitution
@@ -51,6 +54,7 @@ import Control.Exception (Exception, SomeException)
 import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
+import Data.MonoTraversable (Element)
 import Language.Haskell.TH.Lift (Lift)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
@@ -114,7 +118,19 @@ makeLenses ''SubstitutionData
 
 data Chunk α = Literal α | Substitution SubstitutionData
   deriving (Eq, Functor, Lift, Ord, Read, Show)
-type Story = [Chunk Text]
+type instance Element Story = Chunk Text
+newtype Story = Story { unwrapStory ∷ [Chunk Text] }
+ deriving
+  ( Default
+  , Eq
+  , Lift
+  , MonoFoldable
+  , Monoid
+  , Ord
+  , Read
+  , Semigroup
+  , Show
+  )
 
 type Parser = Parsec String ()
 
@@ -168,7 +184,7 @@ parseSubstitutions story =
     |> either throwM pure
   )
   <&>
-  (mergeChunks >>> map ((pack >>> Text.reverse) <$>))
+  (mergeChunks >>> map ((pack >>> Text.reverse) <$>) >>> Story)
  where
   mergeChunks ∷ [Chunk Char] → [Chunk [Char]]
   mergeChunks [] = []
@@ -234,7 +250,7 @@ data KeyError = KeyError Text deriving (Show, Typeable)
 instance Exception KeyError
 
 substituteM ∷ MonadThrow m ⇒ Substitutions → Story → m Lazy.Text
-substituteM table text =
+substituteM table (Story text) =
   mapM
     (\case
       Literal l → pure l

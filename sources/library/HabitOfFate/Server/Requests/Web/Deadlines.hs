@@ -43,6 +43,7 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.Deadlines
 import HabitOfFate.Server.Requests.Shared.MarkHabit hiding (handler)
+import HabitOfFate.Server.Requests.Shared.GetQuestStatus
 import HabitOfFate.Server.Transaction
 
 deadlinesPage ∷ Transaction TransactionResult
@@ -53,7 +54,7 @@ deadlinesPage = do
     concatMap (
       \(habit_id, habit, deadlines) → map (habit_id, habit ^. name_,) deadlines
     )
-  quest_status ← get <&> getAccountStatus
+  quest_status ← getQuestStatus
   renderPageResult "Passed Deadlines" ["deadlines"] [] Nothing ok200 >>> pure $ do
     H.form ! A.method "post" $ do
       generateTopHTML $ H.div ! A.class_ "story" $ H.preEscapedLazyText quest_status

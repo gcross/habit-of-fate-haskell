@@ -108,16 +108,6 @@ passwordIsValid ∷ Text → Account → Bool
 passwordIsValid password account =
   verifyPassword (encodeUtf8 password) (encodeUtf8 $ account ^. password_)
 
-getAccountStatus ∷ Account → Lazy.Text
-getAccountStatus account =
-  maybe
-    "You are between quests."
-    (runCurrentQuest run)
-    (account ^. maybe_current_quest_state_)
-  where
-   run ∷ ∀ s. Quest s → s → Lazy.Text
-   run quest quest_state = questGetStatus quest quest_state
-
 newtype Username = Username { unwrapUsername ∷ Text } deriving
   ( Eq
   , FromJSONKey

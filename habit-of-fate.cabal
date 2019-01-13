@@ -111,6 +111,7 @@ library
                      , HabitOfFate.Server.Requests.Api.PutConfiguration
                      , HabitOfFate.Server.Requests.Api.PutHabit
                      , HabitOfFate.Server.Requests.Shared.Deadlines
+                     , HabitOfFate.Server.Requests.Shared.GetQuestStatus
                      , HabitOfFate.Server.Requests.Shared.LoginOrCreate
                      , HabitOfFate.Server.Requests.Shared.Logout
                      , HabitOfFate.Server.Requests.Shared.MarkHabit

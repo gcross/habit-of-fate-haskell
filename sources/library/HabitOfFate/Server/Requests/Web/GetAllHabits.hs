@@ -42,6 +42,7 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
 import HabitOfFate.Server.Common
+import HabitOfFate.Server.Requests.Shared.GetQuestStatus
 import HabitOfFate.Server.Transaction
 
 redirectToDeadlinesIfNeeded ∷ Transaction TransactionResult → Transaction TransactionResult
@@ -74,7 +75,7 @@ handler environment = do
           Just group_id → do
             log [i|Filtering habits with group #{group_id}...|]
             pure $ filter (\(_, habit) → group_id `member` (habit ^. group_membership_)) habits
-    quest_status ← get <&> getAccountStatus
+    quest_status ← getQuestStatus
     current_time_as_local_time ← getCurrentTimeAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
     renderPageResult "Habit of Fate - List of Habits" ["list"] [] Nothing ok200 >>> pure $ do

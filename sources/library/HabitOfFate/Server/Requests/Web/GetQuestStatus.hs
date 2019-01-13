@@ -27,18 +27,16 @@ import qualified Text.Blaze.Html5 as H
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
+import HabitOfFate.Server.Requests.Shared.GetQuestStatus
 import HabitOfFate.Server.Transaction
 
 handler ∷ Environment → ScottyM ()
 handler environment =
   Scotty.get "/status" <<< webTransaction environment $
-    get
+    getQuestStatus
     <&>
     (
-      getAccountStatus
-      >>>
       H.preEscapedLazyText
       >>>
       renderTopOnlyPageResult "Habit of Fate - Quest Status" [] [] Nothing ok200
