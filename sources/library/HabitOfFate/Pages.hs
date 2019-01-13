@@ -33,7 +33,6 @@ import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Story
 import HabitOfFate.Substitution
-import HabitOfFate.TH
 
 data GenPage α = Page
   { _page_title_ ∷ Text
