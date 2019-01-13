@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -102,7 +103,7 @@ getAccountStatus account =
    run ∷ ∀ s. Quest s → s → Lazy.Text
    run quest quest_state = questGetStatus quest quest_state
 
-runAccount ∷ State Account Lazy.Text
+runAccount ∷ MonadState Account m ⇒ m Lazy.Text
 runAccount = do
   maybe_current_quest_state ← use maybe_current_quest_state_
   rng ← use rng_
@@ -119,7 +120,7 @@ runAccount = do
       rng_ .= new_rng
       pure event
     Just current_quest_state → do
-      let run ∷ ∀ s. Quest s → s → State Account Lazy.Text
+      let run ∷ ∀ s. Quest s → s → (∀ m. MonadState Account m ⇒ m Lazy.Text)
           run quest quest_state = do
             marks ← use marks_
             maybe_runQuestTrial ←

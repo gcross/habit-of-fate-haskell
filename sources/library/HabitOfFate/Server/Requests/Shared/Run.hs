@@ -35,17 +35,10 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
-runEvent ∷ TransactionProgram Lazy.Text
-runEvent = do
-  account ← get
-  let (event, new_account) = runState runAccount account
-  put new_account
-  pure event
-
 handleApi ∷ Environment → ScottyM ()
 handleApi environment =
   Scotty.post "/api/run" <<< apiTransaction environment $
-    runEvent <&> lazyTextResult ok200
+    runAccount <&> lazyTextResult ok200
 
 handleWeb ∷ Environment → ScottyM ()
 handleWeb environment = do
@@ -53,7 +46,7 @@ handleWeb environment = do
   Scotty.post "/run" <<< webTransaction environment $ action
  where
   action =
-    runEvent
+    runAccount
     >>=
     \event → do
       marks_are_present ← marksArePresent
