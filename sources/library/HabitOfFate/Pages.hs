@@ -20,6 +20,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -115,7 +116,9 @@ constructAndValidatePageMap pages = do
   pure $ pagemap
 
 walkPages ∷ Text → PageMap → Pages
-walkPages root pagemap = go [root] mempty
+walkPages root pagemap
+  | root `notMember` pagemap = error $ unpack $ [i|internal error: root page "#{root}"|]
+  | otherwise = go [root] mempty
  where
   go ∷ Seq Text → HashSet Text → Pages
   go queue visited = case uncons queue of
@@ -124,7 +127,7 @@ walkPages root pagemap = go [root] mempty
       | page_id `member` visited → go rest visited
       | otherwise →
           maybe
-            (error $ unpack $ "internal error: " ⊕ page_id ⊕ " is missing, violating a contract")
+            (error $ unpack [i|internal error: "#{page_id}" is missing, violating a contract|])
             (\page → (page_id, page):go
               (foldlOf' (page_choices_ . linked_page_ids_) snoc rest page)
               (insertSet page_id visited)
