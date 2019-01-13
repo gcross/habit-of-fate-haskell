@@ -30,7 +30,7 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Server.Transaction
 
-getDeadlines ∷ TransactionProgram [(UUID, Habit, [LocalTime])]
+getDeadlines ∷ Transaction [(UUID, Habit, [LocalTime])]
 getDeadlines = do
   current_time ← getCurrentTimeAsLocalTime
   use (habits_ . items_list_) <&>

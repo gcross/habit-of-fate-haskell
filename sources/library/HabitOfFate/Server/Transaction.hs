@@ -114,37 +114,37 @@ data TransactionInstruction α where
   GetRandomRsInstruction ∷ Random α ⇒ (α, α) → TransactionInstruction [α]
   GetSplitInstruction ∷ TransactionInstruction StdGen
 
-newtype TransactionProgram α = TransactionProgram
-  { unwrapTransactionProgram ∷ Operational.Program TransactionInstruction α }
+newtype Transaction α = Transaction
+  { unwrapTransaction ∷ Operational.Program TransactionInstruction α }
   deriving
   ( Applicative
   , Functor
   , Monad
   )
 
-instance MonadThrow TransactionProgram where
+instance MonadThrow Transaction where
   throwM = ThrowInstruction >>> wrapTransactionInstruction
 
-wrapTransactionInstruction ∷ TransactionInstruction α → TransactionProgram α
-wrapTransactionInstruction = Operational.singleton >>> TransactionProgram
+wrapTransactionInstruction ∷ TransactionInstruction α → Transaction α
+wrapTransactionInstruction = Operational.singleton >>> Transaction
 
-instance MonadState Account TransactionProgram where
+instance MonadState Account Transaction where
   get = wrapTransactionInstruction GetAccountInstruction
   put = PutAccountInstruction >>> wrapTransactionInstruction
 
-instance MonadRandom TransactionProgram where
+instance MonadRandom Transaction where
   getRandom = wrapTransactionInstruction GetRandomInstruction
   getRandoms = wrapTransactionInstruction GetRandomsInstruction
   getRandomR = GetRandomRInstruction >>> wrapTransactionInstruction
   getRandomRs = GetRandomRsInstruction >>> wrapTransactionInstruction
 
-instance MonadSplit StdGen TransactionProgram where
+instance MonadSplit StdGen Transaction where
   getSplit = wrapTransactionInstruction GetSplitInstruction
 
-getBody ∷ TransactionProgram LazyBS.ByteString
+getBody ∷ Transaction LazyBS.ByteString
 getBody = wrapTransactionInstruction GetBodyInstruction
 
-getBodyJSON ∷ FromJSON α ⇒ TransactionProgram α
+getBodyJSON ∷ FromJSON α ⇒ Transaction α
 getBodyJSON = do
   body ← getBody
   case eitherDecode' $ body of
@@ -153,22 +153,22 @@ getBodyJSON = do
       throwM $ BadJSONError "Badly formatted JSON"
     Right json → pure json
 
-getParams ∷ TransactionProgram [Param]
+getParams ∷ Transaction [Param]
 getParams = wrapTransactionInstruction GetParamsInstruction
 
-convertUTCToLocalTime ∷ UTCTime → TransactionProgram LocalTime
+convertUTCToLocalTime ∷ UTCTime → Transaction LocalTime
 convertUTCToLocalTime utc_time =
   utcToLocalTimeTZ
     <$> (tzByLabel <$> use (configuration_ . timezone_))
     <*> pure utc_time
 
-getCurrentTime ∷ TransactionProgram UTCTime
+getCurrentTime ∷ Transaction UTCTime
 getCurrentTime = wrapTransactionInstruction GetCurrentTimeInstruction
 
-getCurrentTimeAsLocalTime ∷ TransactionProgram LocalTime
+getCurrentTimeAsLocalTime ∷ Transaction LocalTime
 getCurrentTimeAsLocalTime = getCurrentTime >>= convertUTCToLocalTime
 
-getParam ∷ Parsable α ⇒ Lazy.Text → TransactionProgram α
+getParam ∷ Parsable α ⇒ Lazy.Text → Transaction α
 getParam param_name = do
   params_ ← getParams
   case lookup param_name params_ of
@@ -177,28 +177,28 @@ getParam param_name = do
       Left _ → throwM $ BadParameterError param_name [i|Parameter #{param_name} has invalid format #{value}|]
       Right x → return x
 
-getParamMaybe ∷ Parsable α ⇒ Lazy.Text → TransactionProgram (Maybe α)
+getParamMaybe ∷ Parsable α ⇒ Lazy.Text → Transaction (Maybe α)
 getParamMaybe param_name =
   getParams
   <&>
   (lookup param_name >=> (parseParam >>> either (const Nothing) return))
 
-getParamDefault ∷ Parsable α ⇒ Lazy.Text → α → TransactionProgram α
+getParamDefault ∷ Parsable α ⇒ Lazy.Text → α → Transaction α
 getParamDefault param_name d = getParamMaybe param_name <&> fromMaybe d
 
-log ∷ String → TransactionProgram ()
+log ∷ String → Transaction ()
 log = LogInstruction >>> wrapTransactionInstruction
 
-getLastSeenAsLocalTime ∷ TransactionProgram LocalTime
+getLastSeenAsLocalTime ∷ Transaction LocalTime
 getLastSeenAsLocalTime = use last_seen_ >>= convertUTCToLocalTime
 
-lookupHabit ∷ UUID → TransactionProgram Habit
+lookupHabit ∷ UUID → Transaction Habit
 lookupHabit habit_id =
   use (habits_ . at habit_id)
   >>=
   maybe (throwM $ RequestNotFoundError [i|"No such habit #{habit_id}|]) pure
 
-marksArePresent ∷ TransactionProgram Bool
+marksArePresent ∷ Transaction Bool
 marksArePresent = use marks_ <&> any (null >>> not)
 
 data TransactionResult = RedirectsTo Status Lazy.Text | TransactionResult Status Content
@@ -237,8 +237,8 @@ data TransactionResults = TransactionResults
   , account_changed ∷ Bool
   }
 
-transactionWith ∷ (∀ α. String → ActionM α) → Environment → TransactionProgram TransactionResult → ActionM ()
-transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionProgram program) = do
+transactionWith ∷ (∀ α. String → ActionM α) → Environment → Transaction TransactionResult → ActionM ()
+transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction program) = do
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
   params_ ← Scotty.params
   body_ ← Scotty.body
@@ -297,8 +297,8 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (TransactionPr
         Nothing → pure ()
         Just content → setContent content
 
-apiTransaction ∷ Environment → TransactionProgram TransactionResult → ActionM ()
+apiTransaction ∷ Environment → Transaction TransactionResult → ActionM ()
 apiTransaction = transactionWith (finishWithStatusMessage 403)
 
-webTransaction ∷ Environment → TransactionProgram TransactionResult → ActionM ()
+webTransaction ∷ Environment → Transaction TransactionResult → ActionM ()
 webTransaction = transactionWith (const $ setStatusAndRedirect temporaryRedirect307 "/login")

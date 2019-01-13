@@ -106,7 +106,7 @@ handleEditGroupGet environment = do
       Nothing → (NoDeletion, "")
       Just group → (DeletionAvailable, group)
 
-extractGroup ∷ TransactionProgram (Group, Lazy.Text)
+extractGroup ∷ Transaction (Group, Lazy.Text)
 extractGroup = do
   group_id ← getParam "group_id"
   default_group ← use (groups_ . at group_id) <&> fromMaybe ""

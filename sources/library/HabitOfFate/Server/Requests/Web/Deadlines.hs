@@ -45,7 +45,7 @@ import HabitOfFate.Server.Requests.Shared.Deadlines
 import HabitOfFate.Server.Requests.Shared.MarkHabit hiding (handler)
 import HabitOfFate.Server.Transaction
 
-deadlinesPage ∷ TransactionProgram TransactionResult
+deadlinesPage ∷ Transaction TransactionResult
 deadlinesPage = do
   deadlines ←
     getDeadlines

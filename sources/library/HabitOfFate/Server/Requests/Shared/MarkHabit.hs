@@ -58,7 +58,7 @@ resetDeadline current_time habit =
            )
         |> Just
 
-markHabit ∷ UUID → Tagged Int → TransactionProgram ()
+markHabit ∷ UUID → Tagged Int → Transaction ()
 markHabit habit_id result_counts = do
   habit ← lookupHabit habit_id
   current_time ← getCurrentTimeAsLocalTime
@@ -66,7 +66,7 @@ markHabit habit_id result_counts = do
   forEachTaggedLens_ $ \lens_ →
     marks_ . lens_ ⊕= replicate (result_counts ^. lens_) (habit ^. scales_ . lens_)
 
-markHabits ∷ [(UUID, Tagged Int)] → TransactionProgram ()
+markHabits ∷ [(UUID, Tagged Int)] → Transaction ()
 markHabits = mapM_ $ uncurry markHabit
 
 handleApi ∷ Environment → ScottyM ()

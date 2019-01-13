@@ -355,10 +355,10 @@ handleEditHabitGet environment = do
           Just habit → (DeletionAvailable, habit)
       )
 
-type HabitExtractor = WriterT (First Lazy.Text) (StateT Habit TransactionProgram)
+type HabitExtractor = WriterT (First Lazy.Text) (StateT Habit Transaction)
 type HabitExtractorWithExceptT = ExceptT Lazy.Text HabitExtractor
 
-extractHabit ∷ TransactionProgram (Habit, Maybe Lazy.Text)
+extractHabit ∷ Transaction (Habit, Maybe Lazy.Text)
 extractHabit = do
   group_ids ∷ Set UUID ← use groups_ <&> ((^. items_seq_) >>> toList >>> setFromList)
   habit_id ← getParam "habit_id"

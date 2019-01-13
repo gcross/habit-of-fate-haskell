@@ -44,20 +44,20 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
-redirectToDeadlinesIfNeeded ∷ TransactionProgram TransactionResult → TransactionProgram TransactionResult
+redirectToDeadlinesIfNeeded ∷ Transaction TransactionResult → Transaction TransactionResult
 redirectToDeadlinesIfNeeded action =
   any <$> (getCurrentTimeAsLocalTime <&> \current_time → (maybe False (<= current_time)))
       <*> (use $ habits_ . items_values_ . to (map getHabitDeadline))
   >>=
   bool action (pure $ redirectsToResult temporaryRedirect307 "/deadlines")
 
-redirectToRunIfNeeded ∷ TransactionProgram TransactionResult → TransactionProgram TransactionResult
+redirectToRunIfNeeded ∷ Transaction TransactionResult → Transaction TransactionResult
 redirectToRunIfNeeded action =
   (use marks_ <&> (/= def))
   >>=
   bool action (pure $ redirectsToResult temporaryRedirect307 "/run")
 
-redirectIfNeeded ∷ TransactionProgram TransactionResult → TransactionProgram TransactionResult
+redirectIfNeeded ∷ Transaction TransactionResult → Transaction TransactionResult
 redirectIfNeeded = redirectToDeadlinesIfNeeded <<< redirectToRunIfNeeded
 
 handler ∷ Environment → ScottyM ()

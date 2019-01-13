@@ -42,7 +42,7 @@ import HabitOfFate.Quests
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
-runGame ∷ TransactionProgram Lazy.Text
+runGame ∷ Transaction Lazy.Text
 runGame = do
   rng ← getSplit
   maybe_current_quest_state ← use maybe_current_quest_state_
