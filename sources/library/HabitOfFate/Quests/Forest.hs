@@ -475,7 +475,7 @@ trial result =
 --------------------------------- Proofreading ---------------------------------
 --------------------------------------------------------------------------------
 
-pages ∷ Pages
+pages ∷ MonadThrow m ⇒ m Pages
 pages = buildPages
   (mapFromList
     [ ( "", Gendered "Andrea" Female )
@@ -484,45 +484,45 @@ pages = buildPages
     , ( "Illsbane", Gendered "Tigerlamp" Neuter )
     ]
   )
-  [("", Page
+  [("forest", Page
     "Searching For An Essential Ingredient In The Wicked Forest"
     intro_healer_story
-    (NoChoice "gingerbread/")
+    (NoChoice "forest-gingerbread")
    )
-  ,("gingerbread/", Page
+  ,("forest-gingerbread", Page
     "The Gingerbread House"
     (gingerbread_house_event ^. story_common_)
     (Choices "Where do you guide Andrea?"
-      [("Towards the gingerbread house.", "gingerbread/towards")
-      ,("Away from the gingerbread house.", "gingerbread/away")
+      [("Towards the gingerbread house.", "forest-gingerbread-towards")
+      ,("Away from the gingerbread house.", "forest-gingerbread-away")
       ]
     )
    )
-  ,("gingerbread/away", Page
+  ,("forest-gingerbread-away", Page
     "Even Gingerbread Cannot Slow Her Search"
     (gingerbread_house_event ^. story_success_)
-    (NoChoice "found/")
+    (NoChoice "forest-found")
    )
-  ,("gingerbread/towards", Page
+  ,("forest-gingerbread-towards", Page
     "The Gingerbread Compulsion is Too Great"
     (gingerbread_house_event ^. story_averted_or_failure_)
     (Choices "How do you have Andrea react?"
-      [("She enters the house.", "gingerbread/enter")
-      ,("She runs away!", "gingerbread/run")
+      [("She enters the house.", "forest-gingerbread-enter")
+      ,("She runs away!", "forest-gingerbread-run")
       ]
     )
    )
-  ,("gingerbread/enter", Page
+  ,("forest-gingerbread-enter", Page
     "Entering The Gingerbread House"
     (gingerbread_house_event ^. story_failure_)
     DeadEnd
    )
-  ,("gingerbread/run", Page
+  ,("forest-gingerbread-run", Page
     "Escaping The Gingerbread House"
     (gingerbread_house_event ^. story_averted_)
-    (NoChoice "found/")
+    (NoChoice "forest-found")
    )
-  ,("found/", Page
+  ,("forest-found", Page
     "The Ingredient Is Finally Found... Or Is It?"
     "Test found page."
     DeadEnd

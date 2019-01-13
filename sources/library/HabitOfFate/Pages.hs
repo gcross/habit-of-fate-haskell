@@ -22,6 +22,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Pages where
@@ -40,22 +41,26 @@ data GenPage α = Page
   , _page_choices_ ∷ PageChoices
   } deriving (Foldable,Functor,Eq,Ord,Read,Show,Traversable)
 makeLenses ''GenPage
+type GenPages α = [(Text, GenPage α)]
+
+page_choice_linked_ids_∷ Traversal' (GenPage α) Text
+page_choice_linked_ids_ = page_choices_ . linked_page_ids_
 
 type StoryPage = GenPage Story
-type StoryPages = [(Text, StoryPage)]
+type StoryPages = GenPages Story
 type StoryPageMap = HashMap Text StoryPage
 type Page = GenPage Lazy.Text
-type Pages = [(Text, Page)]
+type Pages = GenPages Lazy.Text
 type PageMap = HashMap Text Page
 
-substitutePage ∷ Substitutions → StoryPage → Page
-substitutePage subs = page_content_  %~ substitute subs
+all_page_contents_ ∷ Traversal (GenPages α) (GenPages β) α β
+all_page_contents_ f = traverse $ \(page_id, page) → (page_id,) <$> traverse f page
 
-buildPages ∷ Substitutions → StoryPages → Pages
-buildPages = substitutePage >>> second >>> map
+all_page_ids_ ∷ Traversal' (GenPages α) Text
+all_page_ids_ f = traverse $ \(page_id, page) → liftA2 (,) (f page_id) (page_choice_linked_ids_ f page)
 
-modifyAllPageIds ∷ (Text → Text) → Pages → Pages
-modifyAllPageIds modify = map (modify *** (page_choices_ . linked_page_ids_ %~ modify))
+buildPages ∷ MonadThrow m ⇒ Substitutions → StoryPages → m Pages
+buildPages subs = mapM $ \(page_id, page) → (page_id,) <$> traverse (substituteM subs) page
 
 data OverlappingPageIds = OverlappingPageIds [(Text,Int)] deriving (Eq,Show)
 instance Exception OverlappingPageIds
