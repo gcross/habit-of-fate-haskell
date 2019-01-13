@@ -55,6 +55,7 @@ import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
 import Data.MonoTraversable (Element)
+import Data.String (IsString(..))
 import Language.Haskell.TH.Lift (Lift)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
@@ -125,12 +126,16 @@ newtype Story = Story { unwrapStory ∷ [Chunk Text] }
   , Eq
   , Lift
   , MonoFoldable
+  , MonoPointed
   , Monoid
   , Ord
   , Read
   , Semigroup
   , Show
   )
+
+instance IsString Story where
+  fromString = fromString >>> Literal >>> singleton
 
 type Parser = Parsec String ()
 
