@@ -24,7 +24,7 @@ module HabitOfFate.Server.Requests.Shared.Run (handler) where
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
-import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
+import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -35,18 +35,17 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
-runEvent ∷ TransactionProgram (Maybe Lazy.Text)
+runEvent ∷ TransactionProgram Lazy.Text
 runEvent = do
-  marks ← use marks_
   account ← get
-  let (maybe_event, new_account) = runState runAccount account
+  let (event, new_account) = runState runAccount account
   put new_account
-  pure maybe_event
+  pure event
 
 handleApi ∷ Environment → ScottyM ()
 handleApi environment =
   Scotty.post "/api/run" <<< apiTransaction environment $
-    runEvent <&> (fromMaybe "" >>> lazyTextResult ok200)
+    runEvent <&> lazyTextResult ok200
 
 handleWeb ∷ Environment → ScottyM ()
 handleWeb environment = do
@@ -56,26 +55,22 @@ handleWeb environment = do
   action =
     runEvent
     >>=
-    maybe
-      (log "No marks.  Redirecting to /" >> (pure $ redirectsToResult temporaryRedirect307 "/"))
-      (\event → do
-        marks ← use marks_
-        marks_are_present ← marksArePresent
-        renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
-          H.div ! A.class_ "story" $ H.preEscapedLazyText event
-          if marks_are_present
-            then
-              H.form
-                ! A.action "/run"
-                ! A.method "post"
-                $ H.input
-                    ! A.type_ "submit"
-                    ! A.value "Next"
-             else
-              H.a
-                ! A.href "/"
-                $ H.toHtml ("Done" ∷ Text)
-      )
+    \event → do
+      marks_are_present ← marksArePresent
+      renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
+        H.div ! A.class_ "story" $ H.preEscapedLazyText event
+        if marks_are_present
+          then
+            H.form
+              ! A.action "/run"
+              ! A.method "post"
+              $ H.input
+                  ! A.type_ "submit"
+                  ! A.value "Next"
+            else
+            H.a
+              ! A.href "/"
+              $ H.toHtml ("Done" ∷ Text)
 
 handler ∷ Environment → ScottyM ()
 handler environment = do

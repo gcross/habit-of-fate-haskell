@@ -102,7 +102,7 @@ getAccountStatus account =
    run ∷ ∀ s. Quest s → s → Lazy.Text
    run quest quest_state = questGetStatus quest quest_state
 
-runAccount ∷ State Account (Maybe Lazy.Text)
+runAccount ∷ State Account Lazy.Text
 runAccount = do
   maybe_current_quest_state ← use maybe_current_quest_state_
   rng ← use rng_
@@ -117,9 +117,9 @@ runAccount = do
               )
       maybe_current_quest_state_ .= Just new_current_quest_state
       rng_ .= new_rng
-      pure $ Just event
+      pure event
     Just current_quest_state → do
-      let run ∷ ∀ s. Quest s → s → State Account (Maybe Lazy.Text)
+      let run ∷ ∀ s. Quest s → s → State Account Lazy.Text
           run quest quest_state = do
             marks ← use marks_
             maybe_runQuestTrial ←
@@ -146,9 +146,9 @@ runAccount = do
                   case quest_status of
                     QuestHasEnded → Nothing
                     QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
-                pure $ Just event
+                pure event
               Nothing →
-                pure Nothing
+                pure $ questGetStatus quest quest_state
       runCurrentQuest run current_quest_state
 
 newtype Username = Username { unwrapUsername ∷ Text } deriving
