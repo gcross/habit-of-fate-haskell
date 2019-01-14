@@ -45,7 +45,6 @@ module HabitOfFate.Substitution
   -- Functions
   , parseSubstitutions
   , substitute
-  , substituteM
   ) where
 
 import HabitOfFate.Prelude
@@ -254,8 +253,8 @@ lookupAndApplySubstitution table s = do
 data KeyError = KeyError Text deriving (Show, Typeable)
 instance Exception KeyError
 
-substituteM ∷ MonadThrow m ⇒ Substitutions → Story → m Lazy.Text
-substituteM table (Story text) =
+substitute ∷ MonadThrow m ⇒ Substitutions → Story → m Lazy.Text
+substitute table (Story text) =
   mapM
     (\case
       Literal l → pure l
@@ -264,13 +263,6 @@ substituteM table (Story text) =
     text
   <&>
   Lazy.fromChunks
-
-substitute ∷ Substitutions → Story → Lazy.Text
-substitute table text =
-  either
-    (show >>> pack)
-    identity
-    (substituteM table text ∷ Either SomeException Lazy.Text)
 
 applyKind ∷ Kind → Gendered → Text
 applyKind Name (Gendered name _) = name

@@ -417,13 +417,13 @@ initialize = do
   (searcher, intro_story) ← uniform [(Parent, intro_parent_story), (Healer, intro_healer_story)]
   InitializeQuestResult
     (State test_substitutions searcher GingerbreadHouseEvent)
-    <$> substituteM test_substitutions intro_story
+    <$> substitute test_substitutions intro_story
 
 pickStoryUsingState ∷ (MonadRandom m, MonadState State m, MonadThrow m) ⇒ [Story] → m Lazy.Text
-pickStoryUsingState stories = join $ substituteM <$> (use substitutions_) <*> (uniform stories)
+pickStoryUsingState stories = join $ substitute <$> (use substitutions_) <*> (uniform stories)
 
 getStatus ∷ GetStatusQuestRunner State
-getStatus s = substituteM (s ^. substitutions_) story 
+getStatus s = substitute (s ^. substitutions_) story 
  where
   story
    | s ^. next_event_ <= FoundEvent = looking_for_herb_story
@@ -446,7 +446,7 @@ trial result =
             bool
               (QuestInProgress, storyForAverted, "green")
               (QuestHasEnded, storyForFailure, "green")
-      let sub = storyFor >>> substituteM substitutions
+      let sub = storyFor >>> substitute substitutions
       use next_event_ >>= \case
         GingerbreadHouseEvent → do
           next_event_ .= FoundEvent
@@ -456,7 +456,7 @@ trial result =
           TryQuestResult new_quest_status
             <$> uniformAction
                   [ sub found_by_fairy_event
-                  , substituteM
+                  , substitute
                       (insertMap "color" (Gendered cat_color Neuter) substitutions)
                       (storyFor found_by_cat_event)
                   ]

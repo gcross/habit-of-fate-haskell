@@ -60,7 +60,7 @@ all_page_ids_ ∷ Traversal' (GenPages α) Text
 all_page_ids_ f = traverse $ \(page_id, page) → liftA2 (,) (f page_id) (page_choice_linked_ids_ f page)
 
 buildPages ∷ MonadThrow m ⇒ Substitutions → StoryPages → m Pages
-buildPages subs = mapM $ \(page_id, page) → (page_id,) <$> traverse (substituteM subs) page
+buildPages subs = mapM $ \(page_id, page) → (page_id,) <$> traverse (substitute subs) page
 
 data OverlappingPageIds = OverlappingPageIds [(Text,Int)] deriving (Eq,Show)
 instance Exception OverlappingPageIds
