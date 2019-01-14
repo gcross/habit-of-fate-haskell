@@ -484,47 +484,51 @@ pages = buildPages
     , ( "Illsbane", Gendered "Tigerlamp" Neuter )
     ]
   )
-  [("forest", Page
-    "Searching For An Essential Ingredient In The Wicked Forest"
-    intro_healer_story
-    (NoChoice "forest-gingerbread")
-   )
-  ,("forest-gingerbread", Page
-    "The Gingerbread House"
-    (gingerbread_house_event ^. story_common_)
-    (Choices "Where do you guide Andrea?"
-      [("Towards the gingerbread house.", "forest-gingerbread-towards")
-      ,("Away from the gingerbread house.", "forest-gingerbread-away")
+  ( PageGroup "forest"
+    [ PageItem
+        ""
+        "Searching For An Essential Ingredient In The Wicked Forest"
+        intro_healer_story
+        (NoChoice "gingerbread")
+    , PageGroup "gingerbread"
+      [ PageItem
+          ""
+          "The Gingerbread House"
+          (gingerbread_house_event ^. story_common_)
+          (Choices "Where do you guide Andrea?"
+            [("Towards the gingerbread house.",  "towards")
+            ,("Away from the gingerbread house.", "away")
+            ]
+          )
+      , PageItem
+          "away"
+          "Even Gingerbread Cannot Slow Her Search"
+          (gingerbread_house_event ^. story_success_)
+          (NoChoice "-forest-found")
+      , PageItem
+          "towards"
+          "The Gingerbread Compulsion is Too Great"
+          (gingerbread_house_event ^. story_averted_or_failure_)
+          (Choices "How do you have Andrea react?"
+            [("She enters the house.", "enter")
+            ,("She runs away!", "run")
+            ]
+          )
+      , PageItem
+          "enter"
+          "Entering The Gingerbread House"
+          (gingerbread_house_event ^. story_failure_)
+          DeadEnd
+      , PageItem
+          "run"
+          "Escaping The Gingerbread House"
+          (gingerbread_house_event ^. story_averted_)
+          (NoChoice "-forest-found")
       ]
-    )
-   )
-  ,("forest-gingerbread-away", Page
-    "Even Gingerbread Cannot Slow Her Search"
-    (gingerbread_house_event ^. story_success_)
-    (NoChoice "forest-found")
-   )
-  ,("forest-gingerbread-towards", Page
-    "The Gingerbread Compulsion is Too Great"
-    (gingerbread_house_event ^. story_averted_or_failure_)
-    (Choices "How do you have Andrea react?"
-      [("She enters the house.", "forest-gingerbread-enter")
-      ,("She runs away!", "forest-gingerbread-run")
-      ]
-    )
-   )
-  ,("forest-gingerbread-enter", Page
-    "Entering The Gingerbread House"
-    (gingerbread_house_event ^. story_failure_)
-    DeadEnd
-   )
-  ,("forest-gingerbread-run", Page
-    "Escaping The Gingerbread House"
-    (gingerbread_house_event ^. story_averted_)
-    (NoChoice "forest-found")
-   )
-  ,("forest-found", Page
-    "The Ingredient Is Finally Found... Or Is It?"
-    "Test found page."
-    DeadEnd
-   )
-  ]
+    , PageItem
+        "found"
+        "The Ingredient Is Finally Found... Or Is It?"
+        "Test found page."
+        DeadEnd
+    ]
+  )

@@ -17,6 +17,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -35,32 +36,43 @@ import qualified Data.Text.Lazy as Lazy
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
-data GenPage α = Page
-  { _page_title_ ∷ Text
-  , _page_content_ ∷ α
-  , _page_choices_ ∷ PageChoices
-  } deriving (Foldable,Functor,Eq,Ord,Read,Show,Traversable)
-makeLenses ''GenPage
-type GenPages α = [(Text, GenPage α)]
+data Page = Page
+  { _title_ ∷ Text
+  , _content_ ∷ Lazy.Text
+  , _choices_ ∷ PageChoices
+  } deriving (Show)
+makeLenses ''Page
 
-page_choice_linked_ids_∷ Traversal' (GenPage α) Text
-page_choice_linked_ids_ = page_choices_ . linked_page_ids_
+choices_page_ids_ ∷ Traversal' Page Text
+choices_page_ids_ = choices_ . linked_page_ids_
 
-type StoryPage = GenPage Story
-type StoryPages = GenPages Story
-type StoryPageMap = HashMap Text StoryPage
-type Page = GenPage Lazy.Text
-type Pages = GenPages Lazy.Text
+type Pages = [(Text, Page)]
 type PageMap = HashMap Text Page
 
-all_page_contents_ ∷ Traversal (GenPages α) (GenPages β) α β
-all_page_contents_ f = traverse $ \(page_id, page) → (page_id,) <$> traverse f page
+data PageTree = PageGroup Text [PageTree] | PageItem Text Text Story PageChoices
 
-all_page_ids_ ∷ Traversal' (GenPages α) Text
-all_page_ids_ f = traverse $ \(page_id, page) → liftA2 (,) (f page_id) (page_choice_linked_ids_ f page)
-
-buildPages ∷ MonadThrow m ⇒ Substitutions → StoryPages → m Pages
-buildPages subs = mapM $ \(page_id, page) → (page_id,) <$> traverse (substitute subs) page
+buildPages ∷ MonadThrow m ⇒ Substitutions → PageTree → m Pages
+buildPages subs = go ""
+ where
+  go ∷ MonadThrow m ⇒ Text → PageTree → m Pages
+  go prefix (PageItem id title content choices) = do
+    substituted_content ← substitute subs content
+    pure [(prependPrefix id,
+           Page title substituted_content (choices & linked_page_ids_ %~ prependPrefix)
+          )]
+   where
+    prependPrefix ∷ Text → Text
+    prependPrefix "" = prefix
+    prependPrefix x = case uncons x of
+      Just ('-', rest) → rest
+      _ → prefix ⊕ "-" ⊕ x
+  go prefix (PageGroup name children) =
+    mapM (go new_prefix) children <&> concat
+   where
+    new_prefix
+      | onull prefix = name
+      | onull name   = prefix
+      | otherwise    = prefix ⊕ "-" ⊕ name
 
 data OverlappingPageIds = OverlappingPageIds [(Text,Int)] deriving (Eq,Show)
 instance Exception OverlappingPageIds
@@ -87,7 +99,7 @@ validatePageIds pagemap = do
       missing_page_ids =
         pagemap
           |> mapToList
-          |> concatMap (^.. _2 . page_choices_ . linked_page_ids_)
+          |> concatMap (^.. _2 . choices_ . linked_page_ids_)
           |> filter (flip notMember pagemap)
           |> nub
           |> sort
@@ -104,7 +116,7 @@ checkForCircularReferences pages = do
         pages
           |> mapMaybe (
               \(page_id, page) →
-                if elemOf (page_choices_ . linked_page_ids_) page_id page
+                if elemOf choices_page_ids_ page_id page
                   then Just page_id
                   else Nothing
              )
@@ -133,7 +145,7 @@ walkPages root pagemap
           maybe
             (error $ unpack [i|internal error: "#{page_id}" is missing, violating a contract|])
             (\page → (page_id, page):go
-              (foldlOf' (page_choices_ . linked_page_ids_) snoc rest page)
+              (foldlOf' choices_page_ids_ snoc rest page)
               (insertSet page_id visited)
             )
             (lookup page_id pagemap)

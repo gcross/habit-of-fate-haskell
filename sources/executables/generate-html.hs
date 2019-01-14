@@ -89,27 +89,27 @@ main = do
       (configuration_parser <**> helper)
       (fullDesc <> header "generate-html -- generate story html files"
       )
-  pages ← sequence all_pages <&> (concat >>> (all_page_ids_ %~ (⊕ ".html")))
+  pages ← sequence all_pages <&> concat
   pagemap ← constructAndValidatePageMap pages
   createDirectoryIfMissing True output_path
-  forM_ (walkPages "index.html" pagemap) $ \(page_id, page) → do
-    writeFile (output_path </> unpack page_id) $ renderHtml $ H.docTypeHtml $ do
+  forM_ (walkPages "index" pagemap) $ \(page_id, page) → do
+    writeFile (output_path </> unpack page_id <.> "html") $ renderHtml $ H.docTypeHtml $ do
       H.head $ do
-        H.title $ toHtml (page ^. page_title_)
+        H.title $ toHtml (page ^. title_)
         H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
         H.link
           ! A.rel "stylesheet"
           ! A.type_ "text/css"
           ! A.href (H.toValue $ ("style.css" ∷ Text))
       H.body $ do
-        H.span ! A.class_ "title" $ toHtml (page ^. page_title_)
-        H.div $ H.preEscapedLazyText $ page ^. page_content_
-        case page ^. page_choices_ of
+        H.span ! A.class_ "title" $ toHtml (page ^. title_)
+        H.div $ H.preEscapedLazyText $ page ^. content_
+        case page ^. choices_ of
           DeadEnd → H.b $ H.toHtml ("You have reached the end." ∷ Text)
-          NoChoice c_ref → H.a ! A.href (H.toValue c_ref) $ H.toHtml ("Continue." ∷ Text)
+          NoChoice c_ref → H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml ("Continue." ∷ Text)
           Choices question choices → do
             H.span ! A.class_ "question" $ H.toHtml question
-            H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (H.toValue c_ref) $ H.toHtml c
+            H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml c
   forM_
     [ ("css", "style.css")
     , ("images", "logo.svgz")
