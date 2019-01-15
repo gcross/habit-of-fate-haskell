@@ -877,23 +877,20 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Substitution"
   ------------------------------------------------------------------------------
-    [ testCase "literal, one char" $
-        parseSubstitutions "l"
-        >>=
-        substitute mempty
-        >>= (@?= "l")
+    [ testCase "literal, one char" $ do
+        story ← parseSubstitutions "l"
+        extractPlaceholders story @?= []
+        substitute mempty story >>= (@?= "l")
     , testCase "literal, whole string" $
         parseSubstitutions "xyz"
         >>=
         substitute mempty
         >>=
         (@?= "xyz")
-    , testCase "substitution, name" $
-        parseSubstitutions "|name"
-        >>=
-        substitute (singletonMap "name" (Gendered "value" Male))
-        >>=
-        (@?= "value")
+    , testCase "substitution, name" $ do
+        story ← parseSubstitutions "|name"
+        extractPlaceholders story @?= ["name"]
+        substitute (singletonMap "name" (Gendered "value" Male)) story >>= (@?= "value")
     , testCase "substitution, subject" $
         parseSubstitutions "he/she|name"
         >>=

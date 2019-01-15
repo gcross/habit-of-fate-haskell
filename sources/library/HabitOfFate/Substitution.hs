@@ -43,6 +43,7 @@ module HabitOfFate.Substitution
   , Substitutions
 
   -- Functions
+  , extractPlaceholders
   , parseSubstitutions
   , substitute
   ) where
@@ -135,6 +136,14 @@ newtype Story = Story { unwrapStory ∷ [Chunk Text] }
 
 instance IsString Story where
   fromString = fromString >>> Literal >>> singleton
+
+extractPlaceholders ∷ Story → HashSet Text
+extractPlaceholders =
+  unwrapStory
+  >>>
+  mapMaybe (\case { Literal _ → Nothing; Substitution s → Just (s ^. key_) })
+  >>>
+  setFromList
 
 type Parser = Parsec String ()
 
