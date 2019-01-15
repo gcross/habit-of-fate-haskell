@@ -329,7 +329,7 @@ extractHabit tags =
     <*> pure Nothing
 
 checkStory ∷ Substitutions → Story → IO ()
-checkStory substitutions story = keysSet substitutions @?= extractPlaceholders story
+checkStory substitutions story = (extractPlaceholders story `difference` keysSet substitutions) @?= []
 
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []
@@ -340,10 +340,16 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
     [ testGroup "HabitOfFate.Quests.Forest"
     ----------------------------------------------------------------------------
-      [ testGroup "Stories"
+      [ testGroup "Stories" $
       ----------------------------------------------------------------------------
-        [ testCase "intro_parent_story" $ checkStory Forest.static_substitutions Forest.intro_parent_story
-        ]
+        map (\(name, story) → testCase name $ checkStory Forest.static_substitutions story) $
+          [ ("intro_parent_story", Forest.intro_parent_story)
+          , ("intro_healer_story", Forest.intro_healer_story)
+          , ("looking_for_herb_story", Forest.looking_for_herb_story)
+          , ("returning_home_story", Forest.returning_home_story)
+          ]
+          ⊕
+          [ ("wander#" ⊕ show i, story) | (i,story) ← zip [1∷Int ..] Forest.wander_stories ]
       ]
     ]
   ------------------------------------------------------------------------------
