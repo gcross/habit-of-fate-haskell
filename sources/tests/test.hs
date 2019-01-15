@@ -82,6 +82,7 @@ import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
+import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Server
 import HabitOfFate.Substitution
 
@@ -327,12 +328,26 @@ extractHabit tags =
     <*> pure []
     <*> pure Nothing
 
+checkStory ∷ Substitutions → Story → IO ()
+checkStory substitutions story = keysSet substitutions @?= extractPlaceholders story
+
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []
 
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
-  [ testGroup "HabitOfFate.Repeated"
+  [ testGroup "HabitOfFate.Quests..."
+  ------------------------------------------------------------------------------
+    [ testGroup "HabitOfFate.Quests.Forest"
+    ----------------------------------------------------------------------------
+      [ testGroup "Stories"
+      ----------------------------------------------------------------------------
+        [ testCase "intro_parent_story" $ checkStory Forest.static_substitutions Forest.intro_parent_story
+        ]
+      ]
+    ]
+  ------------------------------------------------------------------------------
+  , testGroup "HabitOfFate.Repeated"
   ------------------------------------------------------------------------------
     [ testGroup "nextDaily" $
     ----------------------------------------------------------------------------

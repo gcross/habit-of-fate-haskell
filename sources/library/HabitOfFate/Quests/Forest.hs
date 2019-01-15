@@ -67,6 +67,15 @@ data State = State
 deriveJSON ''State
 makeLenses ''State
 
+static_substitutions ∷ Substitutions
+static_substitutions =
+  mapFromList
+    [ ( "", Gendered "Bobby" Male )
+    , ( "Susie", Gendered "Bobby" Male )
+    , ( "Tommy", Gendered "Mary" Female )
+    , ( "Illsbane", Gendered "Tigerlamp" Neuter )
+    ]
+
 --------------------------------------------------------------------------------
 --------------------------------- Intro Stories --------------------------------
 --------------------------------------------------------------------------------
@@ -403,21 +412,12 @@ The thing frowned. “Who is Tommy?”
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
-test_substitutions ∷ Substitutions
-test_substitutions =
-  mapFromList
-    [ ( "", Gendered "Bobby" Male )
-    , ( "Susie", Gendered "Bobby" Male )
-    , ( "Tommy", Gendered "Mary" Female )
-    , ( "Illsbane", Gendered "Tigerlamp" Neuter )
-    ]
-
 initialize ∷ InitializeQuestRunner State
 initialize = do
   (searcher, intro_story) ← uniform [(Parent, intro_parent_story), (Healer, intro_healer_story)]
   InitializeQuestResult
-    (State test_substitutions searcher GingerbreadHouseEvent)
-    <$> substitute test_substitutions intro_story
+    (State static_substitutions searcher GingerbreadHouseEvent)
+    <$> substitute static_substitutions intro_story
 
 pickStoryUsingState ∷ (MonadRandom m, MonadState State m, MonadThrow m) ⇒ [Story] → m Lazy.Text
 pickStoryUsingState stories = join $ substitute <$> (use substitutions_) <*> (uniform stories)
