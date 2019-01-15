@@ -84,6 +84,7 @@ import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Server
+import HabitOfFate.Story
 import HabitOfFate.Substitution
 
 dayHour d h = LocalTime (ModifiedJulianDay d) (TimeOfDay h 0 0)
@@ -339,6 +340,18 @@ testStories name substitutions stories =
     | story ← stories
     ]
 
+testStoryOutcomes ∷ String → Substitutions → StoryOutcomes → TestTree
+testStoryOutcomes name substitutions outcomes =
+  testGroup name $
+    mapMaybe
+      (\(outcome_name, outcome_lens_) →
+        let outcome_story = outcomes ^# outcome_lens_
+        in if onull outcome_story
+          then Nothing
+          else Just $ testStory (name ⊕ "." ⊕ outcome_name) substitutions outcome_story
+      )
+      story_outcome_labels
+
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []
 
@@ -355,6 +368,12 @@ main = defaultMain $ testGroup "All Tests"
         , testStory "looking_for_herb_story" subs Forest.looking_for_herb_story
         , testStory "returning_home_story" subs Forest.returning_home_story
         , testStories "wander" subs Forest.wander_stories
+        , testStoryOutcomes "gingerbread_house_event" subs Forest.gingerbread_house_event
+        , testStoryOutcomes "found_by_fairy_event" subs Forest.found_by_fairy_event
+        , testStoryOutcomes "found_by_cat_event" subs Forest.found_by_cat_event
+        , testStoryOutcomes "fairy_circle_event" subs Forest.fairy_circle_event
+        , testStoryOutcomes "conclusion_parent_event" subs Forest.conclusion_parent_event
+        , testStoryOutcomes "conclusion_healer_event" subs Forest.conclusion_healer_event
         ]
       ]
     ]

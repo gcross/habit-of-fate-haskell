@@ -71,6 +71,7 @@ static_substitutions ∷ Substitutions
 static_substitutions =
   mapFromList
     [ ( "", Gendered "Bobby" Male )
+    , ( "color", Gendered "blue" Neuter )
     , ( "Susie", Gendered "Bobby" Male )
     , ( "Tommy", Gendered "Mary" Female )
     , ( "Illsbane", Gendered "Tigerlamp" Neuter )
