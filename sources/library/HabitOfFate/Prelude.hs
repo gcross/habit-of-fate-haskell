@@ -202,8 +202,6 @@ import Data.Map.Strict (Map)
 
 import Data.Maybe
 
-import Data.Monoid
-
 import Data.MonoTraversable hiding (Element)
 
 import Data.Semigroup
