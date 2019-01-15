@@ -328,8 +328,16 @@ extractHabit tags =
     <*> pure []
     <*> pure Nothing
 
-checkStory ∷ Substitutions → Story → IO ()
-checkStory substitutions story = (extractPlaceholders story `difference` keysSet substitutions) @?= []
+testStory ∷ String → Substitutions → Story → TestTree
+testStory name substitutions story = testCase name $ (extractPlaceholders story `difference` keysSet substitutions) @?= []
+
+testStories ∷ String → Substitutions → [Story] → TestTree
+testStories name substitutions stories =
+  testGroup name
+    [ testStory (show i) substitutions story
+    | i ← [1 ∷ Int ..]
+    | story ← stories
+    ]
 
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []
@@ -340,16 +348,14 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
     [ testGroup "HabitOfFate.Quests.Forest"
     ----------------------------------------------------------------------------
-      [ testGroup "Stories" $
+      [ testGroup "Stories" $ let subs = Forest.static_substitutions in
       ----------------------------------------------------------------------------
-        map (\(name, story) → testCase name $ checkStory Forest.static_substitutions story) $
-          [ ("intro_parent_story", Forest.intro_parent_story)
-          , ("intro_healer_story", Forest.intro_healer_story)
-          , ("looking_for_herb_story", Forest.looking_for_herb_story)
-          , ("returning_home_story", Forest.returning_home_story)
-          ]
-          ⊕
-          [ ("wander#" ⊕ show i, story) | (i,story) ← zip [1∷Int ..] Forest.wander_stories ]
+        [ testStory "intro_parent_story" subs Forest.intro_parent_story
+        , testStory "intro_healer_story" subs Forest.intro_healer_story
+        , testStory "looking_for_herb_story" subs Forest.looking_for_herb_story
+        , testStory "returning_home_story" subs Forest.returning_home_story
+        , testStories "wander" subs Forest.wander_stories
+        ]
       ]
     ]
   ------------------------------------------------------------------------------
