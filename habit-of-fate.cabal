@@ -17,6 +17,7 @@ data-files:          data/app/css/common.css
                      data/app/css/story.css
                      data/app/fonts/GloriaHallelujah.woff2
                      data/app/images/bad.svgz
+                     data/app/images/edit.svgz
                      data/app/images/grave.svgz
                      data/app/images/good.svgz
                      data/app/images/logo.svgz
