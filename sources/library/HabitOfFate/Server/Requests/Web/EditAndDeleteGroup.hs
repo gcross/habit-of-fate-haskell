@@ -65,7 +65,7 @@ groupPage group_id error_message deletion_mode group =
       H.div ! A.id "error_message" $ H.toHtml error_message
 
       H.div ! A.class_ "submit" $ do
-        H.a ! A.class_ "sub" ! A.href "/groups" $ toHtml ("Cancel" ∷ Text)
+        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
         H.input
           ! A.class_ "sub"
           ! A.formaction (H.toValue [i|/groups/#{UUID.toText group_id}|])
@@ -137,7 +137,7 @@ handleEditGroupPost environment = do
       then do
         log [i|Updating group #{group_id} to #{extracted_group}|]
         groups_ . at group_id .= Just extracted_group
-        pure $ redirectsToResult temporaryRedirect307 "/groups"
+        pure $ redirectsToResult temporaryRedirect307 "/habits"
       else do
         log [i|Failed to update group #{group_id}:|]
         log [i|    Error message: #{error_message}|]
@@ -154,7 +154,7 @@ handleDeleteGroupGet environment = do
     log [i|Web GET request to delete group with id #{group_id}.|]
     maybe_group ← use (groups_ . at group_id)
     case maybe_group of
-      Nothing → pure $ redirectsToResult temporaryRedirect307 "/groups"
+      Nothing → pure $ redirectsToResult temporaryRedirect307 "/habits"
       Just group → groupPage group_id "" DeletionAvailable group
 
 handleDeleteGroupPost ∷ Environment → ScottyM ()
@@ -167,7 +167,7 @@ handleDeleteGroupPost environment = do
       then do
         log [i|Deleting group #{group_id}|]
         groups_ . at group_id .= Nothing
-        pure $ redirectsToResult temporaryRedirect307 "/groups"
+        pure $ redirectsToResult temporaryRedirect307 "/habits"
       else do
         log [i|Confirming delete for group #{group_id}|]
         (extracted_group, error_message) ← extractGroup
