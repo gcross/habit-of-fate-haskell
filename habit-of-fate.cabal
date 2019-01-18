@@ -84,6 +84,7 @@ library
                      , HabitOfFate.Data.Account
                      , HabitOfFate.Data.Configuration
                      , HabitOfFate.Data.Habit
+                     , HabitOfFate.Data.InputHabit
                      , HabitOfFate.Data.ItemsSequence
                      , HabitOfFate.Data.Repeated
                      , HabitOfFate.Data.Scale

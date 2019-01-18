@@ -77,6 +77,7 @@ import Web.Scotty (parseParam)
 import HabitOfFate.API
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
@@ -84,6 +85,7 @@ import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Server
+import HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
@@ -259,14 +261,12 @@ loginTestAccount username password =
 
 createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar IO) ()
 createHabitViaWeb habit_id habit = void $
-  requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
-  $
-  setRequestBodyURLEncoded
-    [ ("name", habit ^. name_ . re utf8)
-    , ("importance", habit ^. importance_ . to (show >>> BS8.pack))
-    , ("difficulty", habit ^. difficulty_ . to (show >>> BS8.pack))
-    , ("frequency", habit ^. frequency_ . to (show >>> BS8.pack))
-    ]
+  ( requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
+    $
+    setRequestBodyURLEncoded (spy "HEADERS ARE:" (habit |> habitToInputHabit |> inputHabitToRequest))
+  )
+  >>=
+  \(_, tags) → liftIO $ (scrape (innerHTMLs $ "ul" @: ["class" @= "error_message"]) tags) @?= Just []
 
 convertLazyBStoString ∷ LazyByteString → String
 convertLazyBStoString = decodeUtf8 >>> Lazy.toStrict >>> unpack

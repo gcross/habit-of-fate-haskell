@@ -14,15 +14,19 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -32,7 +36,7 @@ import HabitOfFate.Prelude
 
 import Data.Maybe (catMaybes)
 import qualified Data.Text.Lazy as Lazy
-import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
+import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import Data.Time.LocalTime (LocalTime)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
@@ -46,30 +50,40 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.Tagged
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 
 data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 
-weekdays ∷ [(Text, Lazy.Text, ALens' DaysToRepeat Bool)]
-weekdays =
-  [ ("S", "sunday", sunday_)
-  , ("M", "monday", monday_)
-  , ("T", "tuesday", tuesday_)
-  , ("W", "wednesday", wednesday_)
-  , ("T", "thursday", thursday_)
-  , ("F", "friday", friday_)
-  , ("S", "saturday", saturday_)
-  ]
-
-habitPage ∷ Monad m ⇒ UUID → Maybe Lazy.Text → DeletionMode → Habit → Groups → m TransactionResult
-habitPage habit_id maybe_error_message deletion_mode habit groups = do
+renderHabitPage ∷ UUID → Seq Text → DeletionMode → InputHabit → Transaction TransactionResult
+renderHabitPage habit_id error_messages deletion_mode input_habit = do
+  groups ← use groups_
   renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ["edit"] (Just "updateEnabled();") ok200 >>> pure $ do
     let clickRadio, clickCheckbox ∷ Text → H.AttributeValue
         clickRadio name = H.toValue $ "document.getElementById(\"" ⊕ name ⊕ "_radio\").click()"
         clickCheckbox name = H.toValue $ "document.getElementById(\"" ⊕ name ⊕ "_checkbox\").click()"
+
+        checkedIf ∷ Bool → H.Html → H.Html
+        checkedIf = bool identity (! A.checked "checked")
+
+        extractValue ∷ Getter InputHabit (Maybe α) → α → α
+        extractValue input_getter_ default_value =
+          input_habit
+            |> (^. input_getter_)
+            |> fromMaybe default_value
+
+        inputValue ∷ H.ToValue α ⇒ Getter InputHabit (Maybe α) → α → H.Attribute
+        inputValue input_getter_ default_value =
+          extractValue input_getter_ default_value
+            |> H.toValue
+            |> A.value
+
+        format_time_ = to (fmap formatLocalTime)
+
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
         -- Name
@@ -78,30 +92,34 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
           H.input
             ! A.type_ "text"
             ! A.name "name"
-            ! A.value (H.toValue $ habit ^. name_)
             ! A.required "true"
             ! A.size "60"
             ! A.id "name_input"
+            ! inputValue input_name_ ""
 
         -- Template for Difficulty and Importance
-        let generateScaleEntry ∷ H.AttributeValue → Text → Lens' Habit Scale → H.Html
-            generateScaleEntry name label value_lens = do
+        let generateScaleEntry ∷ H.AttributeValue → Text → Lens' InputHabit (Maybe Scale) → H.Html
+            generateScaleEntry name label value_lens_ = do
               H.div
                 ! A.class_ "label"
                 $ H.toHtml label
               H.select
                 ! A.name name
                 ! A.required "true"
-                $ flip foldMap scales $ \scale →
-                    (H.option
-                      ! A.value (scale |> show |> H.toValue)
-                      & if habit ^. value_lens == scale then (! A.selected "selected") else identity
-                     )$ H.toHtml (displayScale scale)
+                $ (flip foldMap scales $ \scale →
+                    let opt = H.option ! A.value (scale |> show |> H.toValue)
+                    in (if scale == (input_habit |> (^. value_lens_) |> fromMaybe def)
+                        then opt ! A.selected "selected"
+                        else opt
+                       ) $ H.toHtml (displayScale scale)
+                  )
 
-        generateScaleEntry "difficulty" "Difficulty:" difficulty_
-        generateScaleEntry "importance" "Importance:" importance_
+        generateScaleEntry "difficulty" "Difficulty:" input_difficulty_
+        generateScaleEntry "importance" "Importance:" input_importance_
 
         H.div ! A.class_ "top_aligned_label" $ H.toHtml ("Frequency:" ∷ Text)
+
+        let input_frequency = input_habit |> (^. input_frequency_) |> fromMaybe InputIndefinite
 
         H.div ! A.id "frequency_input" $ do
           H.div ! A.class_ "row" $ do
@@ -112,7 +130,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.value "Indefinite"
               ! A.id "indefinite_radio"
               ! A.onclick "updateEnabled()"
-              & if habit ^. frequency_ == Indefinite then (! A.checked "checked") else identity
+              & checkedIf (input_frequency == InputIndefinite)
             H.div
               ! A.onclick (clickRadio "indefinite")
               $ H.toHtml ("Indefinite" ∷ Text)
@@ -125,7 +143,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.value "Once"
               ! A.id "once_radio"
               ! A.onclick "updateEnabled()"
-              & case habit ^. frequency_ of {Once _ → (! A.checked "checked"); _ → identity}
+              & checkedIf (input_frequency == InputOnce)
             H.div ! A.class_ "row vertically_centered" $ do
               H.div
                 ! A.class_ "label"
@@ -138,9 +156,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                   ! A.type_ "checkbox"
                   ! A.name "once_has_deadline"
                   ! A.onclick "updateNextDeadlineControlBasedOnOnceHasDeadline()"
-                  & case habit ^. frequency_ of
-                      Once (Just _) → (! A.checked "checked")
-                      _ → identity
+                  & checkedIf (input_habit ^. input_once_with_deadline_)
                 H.div
                   ! A.class_ "once_control"
                   $ H.toHtml ("With Deadline" ∷ Text)
@@ -153,17 +169,14 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.value "Repeated"
               ! A.id "repeated_radio"
               ! A.onclick "updateEnabled()"
-              & (case habit ^. frequency_ of
-                  Repeated _ _ _ → (! A.checked "checked")
-                  _ → identity
-                )
+              & checkedIf (input_frequency == InputRepeated)
             H.div
               ! A.onclick (clickRadio "repeated")
               $ H.toHtml ("Repeated" ∷ Text)
 
           H.div ! A.class_ "indent" $ do
-            let createBasicRepeatedControl ∷ Text → Text → Text → (Bool, Int) → H.Html
-                createBasicRepeatedControl label lowercase_label plural (checked, period) =
+            let createBasicRepeatedControl ∷ Text → Text → Text → InputRepeated → Lens' InputHabit (Maybe Int) → H.Html
+                createBasicRepeatedControl label lowercase_label plural repeated_value period_lens_ =
                   H.div ! A.class_ "row_spacer" $ do
                     H.div ! A.class_ "row" $ do
                       H.input
@@ -173,7 +186,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                         ! A.name "repeated"
                         ! A.value (H.toValue label)
                         ! A.onclick "updateRepeated()"
-                        & if checked then (! A.checked "checked") else identity
+                        & checkedIf (fromMaybe InputDaily (input_habit ^. input_repeated_) == repeated_value)
                       H.div
                         ! A.class_ "label repeated_control"
                         ! A.onclick (clickRadio lowercase_label)
@@ -187,26 +200,14 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                           ! A.class_ (H.toValue $ "period right5px " ⊕ lowercase_label ⊕ "_control repeated_control")
                           ! A.type_ "number"
                           ! A.name (H.toValue $ lowercase_label ⊕ "_period")
-                          ! A.value (H.toValue period)
                           ! A.size "2"
+                          ! inputValue period_lens_ 1
                         H.div
                           ! A.class_ (H.toValue $ lowercase_label ⊕ "_control repeated_control")
                           $ H.toHtml (plural ⊕ "." ∷ Text)
 
-            createBasicRepeatedControl
-              "Daily" "daily" "days"
-              (case habit ^. frequency_ of
-                Repeated _ _ (Daily period) → (True, period)
-                Repeated _ _ _ → (False, 1)
-                _ → (True, 1)
-              )
-            createBasicRepeatedControl
-              "Weekly" "weekly" "weeks"
-              (case habit ^. frequency_ of
-                Repeated _ _ (Weekly period _) → (True, period)
-                Repeated _ _ _ → (False, 1)
-                _ → (False, 1)
-              )
+            createBasicRepeatedControl "Daily" "daily" "days" InputDaily input_daily_period_
+            createBasicRepeatedControl "Weekly" "weekly" "weeks" InputWeekly input_weekly_period_
 
             H.div ! A.class_ "indent row row_spacer" $ do
               mconcat
@@ -216,10 +217,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                       ! A.id (H.toValue $ weekday_name ⊕ "_checkbox")
                       ! A.type_ "checkbox"
                       ! A.name (H.toValue weekday_name)
-                      & case habit ^. frequency_ of
-                          Repeated _ _ (Weekly _ days_to_repeat)
-                            | days_to_repeat ^# weekday_lens_ → (! A.checked "checked")
-                          _ → identity
+                      & checkedIf (input_habit ^# input_days_to_repeat_ . weekday_lens_)
                     H.div
                       ! A.class_ "weekly_control repeated_control"
                       ! A.onclick (clickCheckbox (Lazy.toStrict weekday_name))
@@ -236,14 +234,8 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
               ! A.class_ "period right5px repeated_control"
               ! A.type_ "number"
               ! A.name (H.toValue ("days_to_keep" ∷ Text))
-              ! A.value (
-                  H.toValue $
-                  case habit ^. frequency_ of
-                    Repeated (KeepNumberOfDays n) _ _ → n
-                    Repeated (KeepDaysInPast n) _ _ → n
-                    _ → 3
-                )
               ! A.size "2"
+              ! inputValue input_days_to_keep_ 3
 
             H.div $ mconcat
               [ H.div ! A.class_ "row" $ do
@@ -253,24 +245,14 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                     ! A.type_ "radio"
                     ! A.name "days_to_keep_mode"
                     ! A.value (H.toValue value)
-                    & bool identity (! A.checked "checked") is_checked
+                    & checkedIf (extractValue input_days_to_keep_mode_ InputKeepNumberOfDays == input_value)
                   H.div
                     ! A.class_ "label repeated_control"
                     ! A.onclick (clickRadio value)
                     $ H.toHtml label
-              | (value ∷ Text, label ∷ Text, is_checked) ←
-                  [ ("KeepNumberOfDays", "in total",
-                     case habit ^. frequency_ of
-                       Repeated (KeepNumberOfDays _) _ _ → True
-                       Repeated _ _ _ → False
-                       _ → True
-                    )
-                  , ("KeepDaysInPast", "into the past",
-                     case habit ^. frequency_ of
-                       Repeated (KeepDaysInPast _) _ _ → True
-                       Repeated _ _ _ → False
-                       _ → False
-                    )
+              | (input_value, value ∷ Text, label ∷ Text) ←
+                  [ ( InputKeepNumberOfDays, "KeepNumberOfDays", "in total" )
+                  , ( InputKeepDaysInPast, "KeepDaysInPast", "into the past" )
                   ]
               ]
 
@@ -280,9 +262,8 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
           H.input
             ! A.class_ "next_deadline_control"
             ! A.type_ "datetime-local"
-            ! A.name "deadline"
-            ! A.value
-                (H.toValue $ maybe "" (formatTime defaultTimeLocale "%FT%R") (getHabitDeadline habit))
+            ! A.name "next_deadline"
+            ! inputValue (input_next_deadline_ . format_time_) ""
 
         H.div ! A.class_ "label" $ H.toHtml ("Groups:" ∷ Text)
 
@@ -293,7 +274,7 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
                   ! A.type_ "checkbox"
                   ! A.name (H.toValue ("group" ∷ Text))
                   ! A.value (H.toValue $ UUID.toText group_id)
-                  & if member group_id (habit ^. group_membership_) then (! A.checked "checked") else identity
+                  & checkedIf (member group_id (input_habit ^. input_group_membership_))
                  H.div
                    ! A.class_ "label"
                    ! A.onclick (clickCheckbox $ pack $ "group_" ⊕ show group_number)
@@ -302,11 +283,14 @@ habitPage habit_id maybe_error_message deletion_mode habit groups = do
             | group_number ← [0 ∷ Int ..]
             ]
 
+        H.input
+          ! A.type_ "hidden"
+          ! A.name (H.toValue ("maybe_last_marked" ∷ Text))
+          ! inputValue (input_maybe_last_marked_ . format_time_) ""
+
       H.hr
 
-      case maybe_error_message of
-        Just error_message → H.div ! A.id "error_message" $ H.toHtml error_message
-        Nothing → pure ()
+      H.ul ! A.class_ "error_message" $ foldMap (H.toHtml >>> H.li) error_messages
 
       H.hr
 
@@ -348,225 +332,201 @@ handleEditHabitGet environment = do
     habit_id ← getParam "habit_id"
     log [i|Web GET request for habit with id #{habit_id}.|]
     maybe_habit ← use (habits_ . at habit_id)
-    use groups_ >>=
-      (uncurry (habitPage habit_id Nothing) $
-        case maybe_habit of
-          Nothing → (NoDeletion, def)
-          Just habit → (DeletionAvailable, habit)
+    renderHabitPage
+      habit_id
+      mempty
+      (case maybe_habit of
+        Nothing → NoDeletion
+        Just _ → DeletionAvailable
       )
+      (maybe def habitToInputHabit maybe_habit)
 
-type HabitExtractor = WriterT (First Lazy.Text) (StateT Habit Transaction)
-type HabitExtractorWithExceptT = ExceptT Lazy.Text HabitExtractor
+instance Parsable InputFrequency where
+  parseParam "Indefinite" = Right InputIndefinite
+  parseParam "Once" = Right InputOnce
+  parseParam "Repeated" = Right InputRepeated
+  parseParam x = Left $ "Unrecognized frequency type: " ⊕ x
 
-extractHabit ∷ Transaction (Habit, Maybe Lazy.Text)
-extractHabit = do
-  group_ids ∷ Set UUID ← use groups_ <&> ((^. items_seq_) >>> toList >>> setFromList)
-  habit_id ← getParam "habit_id"
-  default_habit ← use (habits_ . at habit_id) <&> fromMaybe def
-  current_time_as_local_time ← getCurrentTimeAsLocalTime
+instance Parsable InputRepeated where
+  parseParam "Daily" = Right InputDaily
+  parseParam "Weekly" = Right InputWeekly
+  parseParam x = Left $ "Unrecognized repeated type: " ⊕ x
 
-  all_params ← getParams
-  log [i|PARAMS = #{show all_params}|]
+instance Parsable InputDaysToKeepMode where
+  parseParam "KeepDaysInPast" = Right InputKeepDaysInPast
+  parseParam "KeepNumberOfDays" = Right InputKeepNumberOfDays
+  parseParam x = Left $ "Unrecognized number of days kind: " ⊕ x
 
-  (First maybe_first_error, new_habit) ← execWriterT >>> flip runStateT default_habit $ do
-    let getParamMaybeLifted ∷ Parsable α ⇒ Lazy.Text → HabitExtractor (Maybe α)
-        getParamMaybeLifted = getParamMaybe >>> lift >>> lift
+instance Parsable LocalTime where
+  parseParam =
+    unpack
+    >>>
+    parseTimeM False defaultTimeLocale "%FT%R"
+    >>>
+    maybe
+      (Left "Unable to parse local time.")
+      Right
 
-        getParamMaybeLiftedReportingError ∷ Parsable α ⇒ Lazy.Text → Lazy.Text → (α → HabitExtractor ()) → HabitExtractor ()
-        getParamMaybeLiftedReportingError param_name error_message f =
-          getParamMaybeLifted param_name >>= maybe (reportError error_message) f
-
-        reportError ∷ Lazy.Text → HabitExtractor ()
-        reportError = Just >>> First >>> tell
-
-    getParamMaybeLiftedReportingError
-      "name"
-      "No value for the name was present."
-      (\value →
-        if null value
-          then reportError "Name for the habit may not be empty."
-          else name_ .= pack value
-      )
-
-    let getScale ∷ Lazy.Text → Lens' Habit Scale → HabitExtractor ()
-        getScale param_name param_lens_ =
-          getParamMaybeLiftedReportingError
-            param_name
-            ("No value for the " ⊕ param_name ⊕ " was present.")
-            (
-              readMaybe
-              >>>
-              maybe
-                (reportError $ "Invalid value for the " ⊕ param_name ⊕ ".")
-                (param_lens_ .=)
-            )
-    getScale "difficulty" difficulty_; new_difficulty ← use difficulty_
-    getScale "importance" importance_; new_importance ← use importance_
-
-    when (new_difficulty == None && new_importance == None) $
-      reportError "Either the difficulty or the importance must not be None."
-
-    let getDeadline ∷ HabitExtractor (Either Lazy.Text LocalTime)
-        getDeadline =
-          getParamMaybeLifted "deadline"
-          >>=
-          (
-            maybe
-              (Left "Must specify the deadline.")
-              (\case
-                "" → Left "Must specify the deadline."
-                deadline_string →
-                  deadline_string
-                    |> parseTimeM False defaultTimeLocale "%FT%R"
-                    |> maybe
-                        (Left $ pack $ "Error parsing deadline: " ⊕ deadline_string)
-                        (\deadline →
-                          if deadline < current_time_as_local_time
-                            then Left "Deadline must not be in the past."
-                            else Right deadline
-                        )
-              )
-            >>>
-            pure
+getInputHabit ∷ Transaction (InputHabit, Seq Text)
+getInputHabit = (getParams >>= (show >>> log)) >> (flip runStateT mempty $ do
+  input_frequency ← getInputHabitField "frequency"
+  input_once_with_deadline ← lift (getParamMaybe "once_with_deadline") <&> (== Just ("on" ∷ Text))
+  input_repeated ← lift (getParamMaybe "repeated")
+  InputHabit
+    <$> getInputHabitField "name"
+    <*> getInputHabitField "difficulty"
+    <*> getInputHabitField "importance"
+    <*> pure input_frequency
+    <*> pure input_once_with_deadline
+    <*> (case input_frequency of
+          Just InputRepeated → getInputHabitField "repeated"
+          Just InputOnce | input_once_with_deadline → getInputHabitField "repeated"
+          _ → pure Nothing
+        )
+    <*> (case input_repeated of
+          Just InputDaily → getInputHabitField "daily_period"
+          _ → pure Nothing
+        )
+    <*> (case input_repeated of
+          Just InputWeekly → getInputHabitField "weekly_period"
+          _ → pure Nothing
+        )
+    <*> (foldlM
+          (\previous (_, weekday_name, weekday_lens_) → do
+            lift (getParamMaybe weekday_name)
+            <&>
+            \case
+              Just ("on" ∷ Text) → previous & weekday_lens_ #~ True
+              _ → previous
           )
+          def
+          weekdays
+        )
+    <*> (case input_frequency of
+          Just InputRepeated → getInputHabitField "days_to_keep"
+          _ → pure Nothing
+        )
+    <*> (case input_frequency of
+          Just InputRepeated → getInputHabitField "days_to_keep_mode"
+          _ → pure Nothing
+        )
+    <*> (do maybe_next_deadline ← lift $ getParamMaybe "next_deadline"
+            unless (isJust maybe_next_deadline) $ case input_frequency of
+              Just InputRepeated →
+                addMessage "next deadline was not given but is required for repeated habits"
+              Just InputOnce | input_once_with_deadline →
+                addMessage "next deadline was not given but is required for once with deadline"
+              _ → pure ()
+            pure maybe_next_deadline
+        )
+    <*> (
+          lift getParams
+          >>=
+          mapM (
+            \(key, value) →
+              case key of
+                "group" →
+                  value
+                  |> Lazy.toStrict
+                  |> UUID.fromText
+                  |> maybe
+                      (addMessage (pack [i|"Group UUID has invalid format: #{value}|]) >> pure Nothing)
+                      (Just >>> pure)
+                _ → pure Nothing
+          )
+          <&>
+          (catMaybes >>> setFromList)
+        )
+    <*> (lift (getParamMaybe "maybe_last_marked")))
+ where
+  addMessage = flip snoc >>> modify
 
-    getParamMaybeLiftedReportingError
-      "frequency"
-      "No value for the frequency was present."
-      (\case
-          ("Indefinite" ∷ Lazy.Text) → frequency_ .= Indefinite
-          "Once" → do
-            once_has_deadline ← getParamMaybeLifted "once_has_deadline" <&> maybe False (== ("on" ∷ Text))
-            if once_has_deadline
-              then getDeadline >>= either reportError (\deadline → frequency_ .= Once (Just deadline))
-              else frequency_ .= Once Nothing
-          "Repeated" → do
-            let getParamMaybeExtraLifted ∷ Parsable α ⇒ Lazy.Text → HabitExtractorWithExceptT (Maybe α)
-                getParamMaybeExtraLifted = getParamMaybe >>> lift >>> lift >>> lift
-            runExceptT (
-              getParamMaybeExtraLifted "repeated"
-              >>=
-              maybe
-                (throwError "The frequency was set to Repeated, but neither of the options were chosen.")
-                (\repeated_mode →
-                  Repeated
-                    <$> (getParamMaybeExtraLifted "days_to_keep"
-                          >>=
-                          maybe
-                            (throwError "Frequency set to Repeated but Days to Keep not given.")
-                            (
-                              readMaybe
-                              >>>
-                              maybe
-                                (throwError "Days to Keep was not a number.")
-                                (\n →
-                                  if n <= 0
-                                    then throwError "Days to Keep must be a positive number."
-                                    else
-                                      getParamMaybeExtraLifted "days_to_keep_mode"
-                                      >>=
-                                      maybe
-                                        (throwError "Neither mode for Days to Keep was chosen")
-                                        (\case
-                                          "KeepNumberOfDays" → pure $ KeepNumberOfDays n
-                                          "KeepDaysInPast" → pure $ KeepDaysInPast n
-                                          other → throwError $ "Invalid mode for Days to Keep: " ⊕ other
-                                        )
-                                )
-                            )
-                        )
-                    <*> (lift getDeadline >>= either throwError pure)
-                    <*> let getPeriod ∷ Lazy.Text → HabitExtractorWithExceptT Int
-                            getPeriod name =
-                              getParamMaybeExtraLifted name
-                              >>=
-                              maybe
-                                (throwError "No value for the period was present.")
-                                (\value →
-                                  if null value
-                                    then throwError "The period must not be empty."
-                                    else
-                                      maybe
-                                        (throwError "The period must be a number.")
-                                        pure
-                                        (readMaybe value)
-                                )
-                        in case (repeated_mode ∷ Lazy.Text) of
-                            "Daily" → Daily <$> getPeriod "daily_period"
-                            "Weekly" → do
-                              period ← getPeriod "weekly_period"
-                              days_to_repeat ←
-                                mapM (\(_, key, _) → getParamMaybeExtraLifted key) weekdays
-                                <&>
-                                (
-                                  zip weekdays
-                                  >>>
-                                  foldl'
-                                    (\days_to_repeat ((_, _, lens_), maybe_value) →
-                                      maybe
-                                        days_to_repeat
-                                        (\value →
-                                          if value == ("on" ∷ Text)
-                                            then days_to_repeat & lens_ #~ True
-                                            else days_to_repeat
-                                        )
-                                        maybe_value
-                                    )
-                                    def
-                                )
-                              when (days_to_repeat == def) $
-                                throwError "No days of the week were marked to be repeated."
-                              pure $ Weekly period days_to_repeat
-                            other → throwError $ "Repeated must be Daily or Weekly, not " ⊕ other ⊕ "."
+  getInputHabitField ∷ Parsable α ⇒ Lazy.Text → StateT (Seq Text) Transaction (Maybe α)
+  getInputHabitField name =
+    lift (getParamMaybe name)
+    >>=
+    maybe
+      (errorResult [i|#{name} was not given.|])
+      (\value → value
+         |> Scotty.parseParam
+         |> either
+              (\_ → errorResult [i|Could not parse #{name} from "#{value}".|])
+              (Just >>> pure)
+      )
+   where
+    errorResult message = addMessage (pack message) >> pure Nothing
+
+parseInputHabit ∷ InputHabit → Either Text Habit
+parseInputHabit input_habit = Habit
+  <$> (tryGetField "name" input_name_ >>= \case
+        "" → throwError "name"
+        other → pure other
+      )
+  <*> (Tagged
+        <$> (Success <$> tryGetField "difficulty" input_difficulty_)
+        <*> (Failure <$> tryGetField "importance" input_importance_)
+      )
+  <*> (tryGetField "frequency" input_frequency_ >>= \case
+        InputIndefinite → pure Indefinite
+        InputOnce
+          | input_habit ^. input_once_with_deadline_ →
+              tryGetField "next deadline" input_next_deadline_ <&> (Just >>> Once)
+          | otherwise → pure $ Once Nothing
+        InputRepeated →
+          Repeated
+            <$> (($) <$> (tryGetField "days to keep mode" input_days_to_keep_mode_ <&> \case
+                            InputKeepDaysInPast → KeepDaysInPast
+                            InputKeepNumberOfDays → KeepNumberOfDays)
+                     <*>  tryGetField "days to keep" input_days_to_keep_)
+            <*>  tryGetField "next deadline" input_next_deadline_
+            <*> (tryGetField "repeated mode" input_repeated_ >>= \case
+                  InputDaily →
+                    Daily  <$> tryGetField "daily period" input_daily_period_
+                  InputWeekly →
+                    Weekly <$> tryGetField "weekly period" input_weekly_period_
+                           <*> pure (input_habit ^. input_days_to_repeat_)
                 )
-              ∷ HabitExtractorWithExceptT Frequency) >>= either reportError (frequency_ .=)
-          other → reportError $ "Frequency must be Indefinite, Once, or Repeated, not " ⊕ other ⊕ "."
       )
-
-    -- group membership
-    (getParams |> lift |> lift)
-      >>=
-      mapM (
-        \(key, value) →
-          case key of
-            "group" →
-              value
-              |> Lazy.toStrict
-              |> UUID.fromText
-              |> maybe
-                  (reportError ("Group UUID has invalid format: " ⊕ value) >> pure Nothing)
-                  (\group_id →
-                     if member group_id group_ids
-                       then pure $ Just group_id
-                       else reportError ("Group with UUID " ⊕ value ⊕ " does not exist.") >> pure Nothing
-                  )
-            _ → pure Nothing
-      )
-      >>=
-      (catMaybes >>> setFromList >>> pure)
-      >>=
-      (group_membership_ .=)
-  pure (new_habit, maybe_first_error)
+  <*> (pure $ input_habit ^. input_group_membership_)
+  <*> (pure $ input_habit ^. input_maybe_last_marked_)
+ where
+  tryGetField ∷ Text → Lens' InputHabit (Maybe α) → Either Text α
+  tryGetField field_name input_lens_ =
+    maybe
+      (throwError field_name)
+      pure
+      (input_habit ^. input_lens_)
 
 handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do
   Scotty.post "/habits/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request for habit with id #{habit_id}.|]
-    (extracted_habit, maybe_error_message) ← extractHabit
-    case maybe_error_message of
-      Nothing → do
-        log [i|Updating habit #{habit_id} to #{extracted_habit}|]
-        habits_ . at habit_id .= Just extracted_habit
-        pure $ redirectsToResult temporaryRedirect307 "/habits"
-      Just error_message → do
-        log [i|Failed to update habit #{habit_id}:|]
-        log [i|    Error message: #{error_message}|]
-        deletion_mode ←
-          use (habits_ . items_map_)
-          <&>
-          (member habit_id >>> bool NoDeletion DeletionAvailable)
-        use groups_ >>= habitPage habit_id (Just error_message) deletion_mode extracted_habit
+    (input_habit, input_error_messages) ← getInputHabit
+    let displayHabitPage ∷ Seq Text → Transaction TransactionResult
+        displayHabitPage error_messages = do
+          deletion_mode ←
+            use (habits_ . items_map_)
+            <&>
+            (member habit_id >>> bool NoDeletion DeletionAvailable)
+          renderHabitPage habit_id error_messages deletion_mode input_habit
+        error_or_habit = parseInputHabit input_habit
+    if onull input_error_messages
+      then case error_or_habit of
+        Right habit → do
+          log [i|Updating habit #{habit_id} to #{habit}|]
+          habits_ . at habit_id .= Just habit
+          pure $ redirectsToResult temporaryRedirect307 "/habits"
+        Left msg → do
+          log [i|Failed to update habit #{habit_id} due to parse error: #{msg}|]
+          displayHabitPage [msg]
+      else do
+        log [i|Failed to update habit #{habit_id} due to errors:|]
+        let all_error_messages = input_error_messages & case error_or_habit of
+              Left msg → (`snoc` msg)
+              Right _ → identity
+        forM_ all_error_messages $ \msg → log [i|    * #{msg}|]
+        displayHabitPage $ all_error_messages
 
 handleDeleteHabitGet ∷ Environment → ScottyM ()
 handleDeleteHabitGet environment = do
@@ -576,7 +536,7 @@ handleDeleteHabitGet environment = do
     maybe_habit ← use (habits_ . at habit_id)
     case maybe_habit of
       Nothing → pure $ redirectsToResult temporaryRedirect307 "/habits"
-      Just habit → use groups_ >>= habitPage habit_id Nothing DeletionAvailable habit
+      Just habit → renderHabitPage habit_id mempty DeletionAvailable (habitToInputHabit habit)
 
 handleDeleteHabitPost ∷ Environment → ScottyM ()
 handleDeleteHabitPost environment = do
@@ -590,9 +550,14 @@ handleDeleteHabitPost environment = do
         habits_ . at habit_id .= Nothing
         pure $ redirectsToResult temporaryRedirect307 "/habits"
       else do
-        log [i|Confirming delete for habit #{habit_id}|]
-        (extracted_habit, maybe_error_message) ← extractHabit
-        use groups_ >>= habitPage habit_id maybe_error_message ConfirmDeletion extracted_habit
+        maybe_habit ← use (habits_ . at habit_id)
+        case maybe_habit of
+          Nothing → do
+            log [i|Habit doesn't exist so there is nothing to do.|]
+            pure $ redirectsToResult temporaryRedirect307 "/habits"
+          Just habit → do
+            log [i|Confirming delete for habit #{habit_id}|]
+            renderHabitPage habit_id mempty ConfirmDeletion (habitToInputHabit habit)
 
 handler ∷ Environment → ScottyM ()
 handler environment = do

@@ -261,8 +261,8 @@ instance MonadFail (Either String) where
   fail = Left
 
 infixr 6 ⊕
-(⊕) ∷ Monoid m ⇒ m → m → m
-(⊕) = mappend
+(⊕) ∷ Semigroup m ⇒ m → m → m
+(⊕) = (<>)
 {-# INLINE (⊕) #-}
 
 infixr 4 ⊕~

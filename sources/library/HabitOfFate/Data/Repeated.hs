@@ -17,6 +17,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -27,6 +28,7 @@ import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData(..))
 import Data.List (iterate)
+import qualified Data.Text.Lazy as Lazy
 import Data.Time.Calendar (Day(ModifiedJulianDay,toModifiedJulianDay), addDays)
 import Data.Time.Calendar.WeekDate (toWeekDate)
 import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDayFraction)
@@ -82,8 +84,14 @@ data DaysToRepeat = DaysToRepeat
 deriveJSON ''DaysToRepeat
 makeLenses ''DaysToRepeat
 
+instance Semigroup DaysToRepeat where
+  (DaysToRepeat xm xt xw xth xf xs xsu) <> (DaysToRepeat ym yt yw yth yf ys ysu) =
+    DaysToRepeat (xm || ym) (xt || yt) (xw || yw) (xth || yth) (xf || yf) (xs || ys) (xsu || ysu)
+
 instance NFData DaysToRepeat where rnf !_ = ()
 
+-- Note: This list is a little different from weekdays in that it starts on
+--       Monday because the time library does.
 days_to_repeat_lenses ∷ Vector (ALens' DaysToRepeat Bool)
 days_to_repeat_lenses = V.fromList $
   [ monday_
@@ -93,6 +101,17 @@ days_to_repeat_lenses = V.fromList $
   , friday_
   , saturday_
   , sunday_
+  ]
+
+weekdays ∷ [(Text, Lazy.Text, ALens' DaysToRepeat Bool)]
+weekdays =
+  [ ("S", "sunday", sunday_)
+  , ("M", "monday", monday_)
+  , ("T", "tuesday", tuesday_)
+  , ("W", "wednesday", wednesday_)
+  , ("T", "thursday", thursday_)
+  , ("F", "friday", friday_)
+  , ("S", "saturday", saturday_)
   ]
 
 instance Default DaysToRepeat where

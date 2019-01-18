@@ -35,6 +35,7 @@ import Control.DeepSeq (NFData)
 import Control.Monad.Catch
 
 import Data.Aeson
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Time.LocalTime (LocalTime)
 import Data.UUID
 
@@ -108,3 +109,6 @@ previousHabitDeadlines habit today =
         |> previousDeadlines repeated
         |> takePreviousDeadlines days_to_keep today deadline
     _ → []
+
+formatLocalTime ∷ LocalTime → String
+formatLocalTime = formatTime defaultTimeLocale "%FT%R"
