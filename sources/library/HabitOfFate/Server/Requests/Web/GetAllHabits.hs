@@ -92,7 +92,7 @@ handler environment = do
         , H.div ! A.class_ "name_area" $
             (if maybe_group_id == Nothing
               then
-                identity
+                H.span ! A.class_ "selected_name"
               else
                 H.a ! A.class_ "name" ! (A.href $ "/habits")
             ) $ H.toHtml ("All" ∷ Text)
@@ -109,7 +109,7 @@ handler environment = do
                     >>>
                     if maybe_group_id == Just group_id
                       then
-                        H.div ! A.class_ "name"
+                        H.div ! A.class_ "name selected_name"
                       else
                         H.a ! A.class_ "name" ! (A.href $ "/habits?group=" ⊕ H.toValue (UUID.toText group_id))
                   ) $ H.toHtml group_name
