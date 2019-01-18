@@ -8,7 +8,7 @@
 .list {
     display: grid;
     font-size: 24;
-    grid-template-columns: 100px 100px 3em auto 50px 100px 100px 100px 100px 9em;
+    grid-template-columns: 8em 5em 3em auto 50px 100px 100px 100px 100px 9em;
     padding: 10px;
 }
 
