@@ -186,6 +186,7 @@ test-suite test
   build-depends:       habit-of-fate
                      , base
                      , bytestring
+                     , call-stack
                      , containers
                      , exceptions
                      , html-conduit

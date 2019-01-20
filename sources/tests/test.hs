@@ -39,6 +39,7 @@ import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
 import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
+import Data.CallStack
 import Data.Data.Lens (uniplate)
 import Data.IORef
 import Data.List (cycle, isPrefixOf, sort, zip3)
@@ -123,11 +124,30 @@ instance Arbitrary DaysToRepeat where
     `suchThat`
     (/= def)
 
+stackString ∷ HasCallStack ⇒ String
+stackString = case reverse callStack of
+  [] → "No stack."
+  (function_name, _):rest →
+    intercalate "\n" $
+    "Stack:"
+    :
+    (
+      mapAccumL
+        (\function_name (next_function_name, SrcLoc{..}) →
+          (next_function_name, [i|    #{srcLocFile}:#{srcLocEndLine}:#{function_name}|])
+        )
+        function_name
+        rest
+      &
+      (snd >>> reverse)
+    )
+
 assertBool ∷ MonadIO m ⇒ String → Bool → m ()
 assertBool message = HUnit.assertBool message >>> liftIO
 
-assertFailure ∷ MonadIO m ⇒ String → m α
-assertFailure = HUnit.assertFailure >>> liftIO
+assertFailure ∷ (HasCallStack, MonadIO m) ⇒ String → m α
+assertFailure message = liftIO $
+  HUnit.assertFailure (message ⊕ "\n\n" ⊕ stackString)
 
 (@?=) ∷ (MonadIO m, Eq α, Show α) ⇒ α → α → m ()
 (@?=) x y = liftIO $ (HUnit.@?=) x y
@@ -355,6 +375,7 @@ testStoryOutcomes name substitutions outcomes =
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []
 
+main ∷ HasCallStack ⇒ IO ()
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   [ testGroup "HabitOfFate.Quests..."
