@@ -156,7 +156,7 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
                   ! A.type_ "checkbox"
                   ! A.name "once_has_deadline"
                   ! A.onclick "updateNextDeadlineControlBasedOnOnceHasDeadline()"
-                  & checkedIf (input_habit ^. input_once_with_deadline_)
+                  & checkedIf (input_habit ^. input_once_has_deadline_)
                 H.div
                   ! A.class_ "once_control"
                   $ H.toHtml ("With Deadline" ∷ Text)
@@ -358,19 +358,18 @@ instance Parsable InputDaysToKeepMode where
   parseParam x = Left $ "Unrecognized number of days kind: " ⊕ x
 
 getInputHabit ∷ Transaction (InputHabit, Seq Text)
-getInputHabit = (getParams >>= (show >>> log)) >> (flip runStateT mempty $ do
+getInputHabit = flip runStateT mempty $ do
   input_frequency ← getInputHabitField "frequency"
-  input_once_with_deadline ← lift (getParamMaybe "once_with_deadline") <&> (== Just ("on" ∷ Text))
+  input_once_has_deadline ← lift (getParamMaybe "once_has_deadline") <&> (== Just ("on" ∷ Text))
   input_repeated ← lift (getParamMaybe "repeated")
   InputHabit
     <$> getInputHabitField "name"
     <*> getInputHabitField "difficulty"
     <*> getInputHabitField "importance"
     <*> pure input_frequency
-    <*> pure input_once_with_deadline
+    <*> pure input_once_has_deadline
     <*> (case input_frequency of
-          Just InputRepeated → getInputHabitField "repeated"
-          Just InputOnce | input_once_with_deadline → getInputHabitField "repeated"
+          Just InputRepeated → pure input_repeated
           _ → pure Nothing
         )
     <*> (case input_repeated of
@@ -404,7 +403,7 @@ getInputHabit = (getParams >>= (show >>> log)) >> (flip runStateT mempty $ do
             unless (isJust maybe_next_deadline) $ case input_frequency of
               Just InputRepeated →
                 addMessage "next deadline was not given but is required for repeated habits"
-              Just InputOnce | input_once_with_deadline →
+              Just InputOnce | input_once_has_deadline →
                 addMessage "next deadline was not given but is required for once with deadline"
               _ → pure ()
             pure maybe_next_deadline
@@ -427,7 +426,7 @@ getInputHabit = (getParams >>= (show >>> log)) >> (flip runStateT mempty $ do
           <&>
           (catMaybes >>> setFromList)
         )
-    <*> (lift (getParamMaybe "maybe_last_marked")))
+    <*> lift (getParamMaybe "maybe_last_marked")
  where
   addMessage = flip snoc >>> modify
 
@@ -459,7 +458,7 @@ parseInputHabit input_habit = Habit
   <*> (tryGetField "frequency" input_frequency_ >>= \case
         InputIndefinite → pure Indefinite
         InputOnce
-          | input_habit ^. input_once_with_deadline_ →
+          | input_habit ^. input_once_has_deadline_ →
               tryGetField "next deadline" input_next_deadline_ <&> (Just >>> Once)
           | otherwise → pure $ Once Nothing
         InputRepeated →

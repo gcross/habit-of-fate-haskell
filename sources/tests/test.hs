@@ -73,7 +73,7 @@ import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
 import Text.Parsec (many, runParser)
 import Text.XML (documentRoot, parseText)
-import Web.Scotty (parseParam)
+import Web.Scotty (Parsable(..))
 
 import HabitOfFate.API
 import HabitOfFate.Data.Configuration
@@ -159,7 +159,7 @@ testCase ∷ String → IO () → TestTree
 testCase name = HUnit.testCase name
 
 type LazyByteString = LazyBS.ByteString
-type Tags = [Tag LazyByteString]
+type Tags = [Tag Lazy.Text]
 
 instance Arbitrary Day where
   arbitrary = ModifiedJulianDay <$> arbitrary `suchThat` (> 0)
@@ -199,13 +199,15 @@ apiTestCase test_name action =
   )
   |> serverTestCase test_name
 
-test_habit, test_habit_2 ∷ Habit
+test_habit, test_habit_2, test_habit_once ∷ Habit
 test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
 test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
+test_habit_once = Habit "once" (Tagged (Success Medium) (Failure Medium)) (Once $ Just $ day 0) [] Nothing
 
 test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
+test_habit_id_once = read "7dbafaf9-560a-4ac4-b6bb-b64c647e387d"
 
 createHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitCreated)
 replaceHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitReplaced)
@@ -242,17 +244,17 @@ requestDocument path customizeRequest = do
   let (updated_cookie_jar, response_without_cookie) =
         updateCookieJar response request current_time new_cookie_jar
   put updated_cookie_jar
-  pure (response_without_cookie, parseTags $ responseBody response)
+  pure (response_without_cookie, response |> responseBody |> decodeUtf8 |> parseTags)
 
 assertRedirectsTo ∷ MonadIO m ⇒ Response α → ByteString → m ()
 assertRedirectsTo response expected_location = liftIO $
   getResponseHeader "Location" response @?= [expected_location]
 
-assertPageTitleEquals ∷ MonadIO m ⇒ Tags → LazyByteString → m ()
+assertPageTitleEquals ∷ MonadIO m ⇒ Tags → Lazy.Text → m ()
 assertPageTitleEquals tags expected_page_title =
   (flip scrape tags $ text $ ("head" ∷ Selector) // "title") @?= Just expected_page_title
 
-assertTextIs :: MonadIO m ⇒ Tags → String → LazyByteString → m ()
+assertTextIs :: MonadIO m ⇒ Tags → String → Lazy.Text → m ()
 assertTextIs tags element_id expected_text =
   (flip scrape tags $ text $ AnyTag @: ["id" @= element_id]) @?= Just expected_text
 
@@ -283,69 +285,72 @@ createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar 
 createHabitViaWeb habit_id habit = void $
   ( requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
     $
-    setRequestBodyURLEncoded (spy "HEADERS ARE:" (habit |> habitToInputHabit |> inputHabitToRequest))
+    setRequestBodyURLEncoded (habit |> habitToInputHabit |> inputHabitToRequest)
   )
   >>=
   \(_, tags) → liftIO $ (scrape (innerHTMLs $ "ul" @: ["class" @= "error_message"]) tags) @?= Just []
 
-convertLazyBStoString ∷ LazyByteString → String
-convertLazyBStoString = decodeUtf8 >>> Lazy.toStrict >>> unpack
-
-assertFailureLazyBS ∷ MonadIO m ⇒ LazyByteString → m α
-assertFailureLazyBS = convertLazyBStoString >>> assertFailure
-
-extractTextInput ∷ MonadIO m ⇒ String → Tags → m Text
-extractTextInput name tags =
+extractInputText ∷ (HasCallStack, MonadIO m) ⇒ String → Tags → m Lazy.Text
+extractInputText name tags =
   maybe
     (assertFailure $ name ⊕ " not found")
-    (decodeUtf8 >>> Lazy.toStrict >>> pure)
-    (flip scrape tags $ attr "value" $ "input" @: ["name" @= "name"])
+    pure
+    (flip scrape tags $ attr "value" $ "input" @: ["name" @= name])
 
-extractSelect ∷ (MonadIO m, Read α) ⇒ String → Tags → m α
-extractSelect name tags =
+parseValueOrFail ∷ (HasCallStack, MonadIO m, Parsable α) ⇒ String → Lazy.Text → m α
+parseValueOrFail name value =
+  value
+    |> parseParam
+    |> either
+        (\message → assertFailure [i|Error parsing #{name} (value = "#{value}"): #{message}|])
+        pure
+
+extractInputTextParam ∷ (HasCallStack, MonadIO m, Parsable α) ⇒ String → Tags → m α
+extractInputTextParam name =
+  extractInputText name
+  >=>
+  parseValueOrFail name
+
+extractChoiceParam ∷ (HasCallStack, MonadIO m, Parsable α) ⇒ String → Scraper Lazy.Text Lazy.Text → Tags → m α
+extractChoiceParam name scraper =
+  scrape scraper
+  >>>
   maybe
-    (assertFailure $ name ⊕ " not found")
-    (
-      convertLazyBStoString
-      >>>
-      (\text_value →
-        either
-          (printf "Error parsing %s (value = \"%s\"): %s" name text_value >>> assertFailure)
-          pure
-          (readEither text_value)
-      )
-    )
-    (flip scrape tags $
-      attr "value" $ "select" @: ["name" @= name] // "option" @: ["selected" @= "selected"]
-    )
+    (assertFailure [i|Value for "#{name}" was not found|])
+    (parseValueOrFail name)
 
-extractRadio ∷ (MonadIO m, Read α) ⇒ String → Tags → m α
-extractRadio name tags =
-  maybe
-    (assertFailure $ name ⊕ " not found")
-    (
-      convertLazyBStoString
-      >>>
-      (\text_value →
-        either
-          (printf "Error parsing %s (value = \"%s\"): %s" name text_value >>> assertFailure)
-          pure
-          (readEither text_value)
-      )
-    )
-    (flip scrape tags $
-      attr "value" $ "input" @: ["type" @= "radio", "name" @= name, "checked" @= "checked"]
-    )
+extractInputSelectParam ∷ (HasCallStack, MonadIO m, Parsable α) ⇒ String → Tags → m α
+extractInputSelectParam name = extractChoiceParam name $
+  attr "value" $ "select" @: ["name" @= name] // "option" @: ["selected" @= "selected"]
 
-extractHabit ∷ MonadIO m ⇒ Tags → m Habit
+extractInputRadioParam ∷ (HasCallStack, MonadIO m, Parsable α) ⇒ String → Tags → m α
+extractInputRadioParam name = extractChoiceParam name $
+  attr "value" $ "input" @: ["type" @= "radio", "name" @= name, "checked" @= "checked"]
+
+extractInputCheckbox ∷ HasCallStack ⇒ String → Tags → Bool
+extractInputCheckbox name =
+  scrape (attr "value" $ "input" @: ["type" @= "checkbox", "name" @= name, "checked" @= "checked"])
+  >>>
+  isJust
+
+extractHabit ∷ (HasCallStack, MonadIO m) ⇒ Tags → m Habit
 extractHabit tags =
   Habit
-    <$> extractTextInput "name" tags
+    <$> (extractInputText "name" tags <&> Lazy.toStrict)
     <*> (Tagged
-          <$> (Success <$> extractSelect "difficulty" tags)
-          <*> (Failure <$> extractSelect "importance" tags)
+          <$> (Success <$> extractInputSelectParam "difficulty" tags)
+          <*> (Failure <$> extractInputSelectParam "importance" tags)
         )
-    <*> extractRadio "frequency" tags
+    <*> (extractInputRadioParam "frequency" tags
+         >>=
+         \case
+           InputIndefinite → pure Indefinite
+           InputOnce → Once <$>
+             if extractInputCheckbox "once_has_deadline" tags
+               then extractInputTextParam "next_deadline" tags <&> Just
+               else pure Nothing
+           other → assertFailure $ "Unrecognized value for frequency: " ⊕ show other
+        )
     <*> pure []
     <*> pure Nothing
 
@@ -937,6 +942,14 @@ main = defaultMain $ testGroup "All Tests"
                     setRequestMethod "GET"
                 responseStatus response @?= ok200
                 extractHabit tags >>= (@?= test_habit_2)
+            , webTestCase "Open the habit edit page for a once habit with deadline." $ do
+                _ ← createTestAccount "username" "password"
+                createHabitViaWeb test_habit_id_once test_habit_once
+                (response, tags) ←
+                  requestDocument ([i|/habits/#{UUID.toText test_habit_id_once}|] |> pack |> encodeUtf8) $
+                    setRequestMethod "GET"
+                responseStatus response @?= ok200
+                extractHabit tags >>= (@?= test_habit_once)
             ]
         ]
         ------------------------------------------------------------------------

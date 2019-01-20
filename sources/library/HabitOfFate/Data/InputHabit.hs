@@ -64,7 +64,7 @@ data InputHabit = InputHabit
  , _input_difficulty_ ∷ Maybe Scale
  , _input_importance_ ∷ Maybe Scale
  , _input_frequency_ ∷ Maybe InputFrequency
- , _input_once_with_deadline_ ∷ Bool
+ , _input_once_has_deadline_ ∷ Bool
  , _input_repeated_ ∷ Maybe InputRepeated
  , _input_daily_period_ ∷ Maybe Int
  , _input_weekly_period_ ∷ Maybe Int
@@ -84,7 +84,7 @@ instance Default InputHabit where
     _input_difficulty_ = Just def
     _input_importance_ = Just def
     _input_frequency_ = Just def
-    _input_once_with_deadline_ = False
+    _input_once_has_deadline_ = False
     _input_repeated_ = Just InputDaily
     _input_daily_period_ = Just 1
     _input_weekly_period_ = Just 1
@@ -104,7 +104,7 @@ instance Semigroup InputHabit where
     _input_difficulty_ = lastMaybeUsing input_difficulty_
     _input_importance_ = lastMaybeUsing input_importance_
     _input_frequency_ = lastMaybeUsing input_frequency_
-    _input_once_with_deadline_ = ((||) `on` (^. input_once_with_deadline_)) x y
+    _input_once_has_deadline_ = ((||) `on` (^. input_once_has_deadline_)) x y
     _input_repeated_ = lastMaybeUsing input_repeated_
     _input_daily_period_ = lastMaybeUsing input_daily_period_
     _input_weekly_period_ = lastMaybeUsing input_weekly_period_
@@ -122,7 +122,7 @@ instance Monoid InputHabit where
     _input_difficulty_ = Nothing
     _input_importance_ = Nothing
     _input_frequency_ = Nothing
-    _input_once_with_deadline_ = False
+    _input_once_has_deadline_ = False
     _input_repeated_ = Nothing
     _input_daily_period_ = Nothing
     _input_weekly_period_ = Nothing
@@ -142,7 +142,11 @@ habitToInputHabit habit@Habit{..} = flip execState mempty $ do
     Indefinite → input_frequency_ .= Just InputIndefinite
     Once maybe_next_deadline → do
       input_frequency_ .= Just InputOnce
-      maybe (pure ()) (Just >>> (input_next_deadline_ .=)) maybe_next_deadline
+      case maybe_next_deadline of
+        Nothing → pure ()
+        Just next_deadline → do
+          input_once_has_deadline_ .= True
+          input_next_deadline_ .= Just next_deadline
     Repeated days_to_keep next_deadline repeated → do
       input_frequency_ .= Just InputRepeated
       case days_to_keep of
@@ -186,7 +190,7 @@ inputHabitToRequest input_habit =
           InputIndefinite → "Indefinite"
           InputOnce → "Once"
           InputRepeated → "Repeated"
-    , bF "once_with_deadline" input_once_with_deadline_
+    , bF "once_has_deadline" input_once_has_deadline_
     , F "repeated" input_repeated_ $ \case
           InputDaily → "Daily"
           InputWeekly → "Weekly"
