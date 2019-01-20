@@ -74,7 +74,7 @@ data InputHabit = InputHabit
  , _input_next_deadline_ ∷ Maybe LocalTime
  , _input_group_membership_ ∷ Set UUID
  , _input_maybe_last_marked_ ∷ Maybe LocalTime
- }
+ } deriving (Eq,Ord,Read,Show)
 makeLenses ''InputHabit
 
 instance Default InputHabit where
