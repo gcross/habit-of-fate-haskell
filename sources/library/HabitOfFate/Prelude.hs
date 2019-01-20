@@ -293,10 +293,10 @@ infix  4 ≥
 (≥) ∷ Ord α ⇒ α → α → Bool
 (≥) = (>=)
 
-infixr  5 ⊢
+infixr 5 ⊢
 (⊢) = Control.Lens.snoc
 
-infixr  5 ⊣
+infixr 5 ⊣
 (⊣) = Control.Lens.cons
 
 allSpaces ∷ Text → Bool
