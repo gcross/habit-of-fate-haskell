@@ -11,3 +11,4 @@ elm-stuff
 dist
 gamedata
 *.prof
+.*.marks
