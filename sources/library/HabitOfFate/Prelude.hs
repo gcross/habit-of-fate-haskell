@@ -271,7 +271,7 @@ infixr 4 ⊕~
 {-# INLINE (⊕~) #-}
 
 infixr 4 ⊕=
-(⊕=) ∷ (MonadState s m, Monoid α) => ASetter' s α -> α -> m ()
+(⊕=) ∷ (MonadState s m, Monoid α) ⇒ ASetter' s α → α → m ()
 (⊕=) = (<>=)
 {-# INLINE (⊕=) #-}
 
