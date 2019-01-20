@@ -357,16 +357,6 @@ instance Parsable InputDaysToKeepMode where
   parseParam "KeepNumberOfDays" = Right InputKeepNumberOfDays
   parseParam x = Left $ "Unrecognized number of days kind: " ⊕ x
 
-instance Parsable LocalTime where
-  parseParam =
-    unpack
-    >>>
-    parseTimeM False defaultTimeLocale "%FT%R"
-    >>>
-    maybe
-      (Left "Unable to parse local time.")
-      Right
-
 getInputHabit ∷ Transaction (InputHabit, Seq Text)
 getInputHabit = (getParams >>= (show >>> log)) >> (flip runStateT mempty $ do
   input_frequency ← getInputHabitField "frequency"

@@ -18,6 +18,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -31,8 +32,10 @@ import HabitOfFate.Prelude
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
 import Data.Time (LocalTime)
+import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import qualified Data.UUID as UUID
 import Data.UUID (UUID)
+import Web.Scotty (Parsable(..))
 
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.Repeated
@@ -46,6 +49,15 @@ instance Default InputRepeated where def = InputDaily
 
 data InputDaysToKeepMode = InputKeepDaysInPast | InputKeepNumberOfDays deriving (Eq,Ord,Read,Show)
 instance Default InputDaysToKeepMode where def = InputKeepDaysInPast
+
+instance Parsable LocalTime where
+  parseParam time =
+    time
+      |> unpack
+      |> parseTimeM False defaultTimeLocale "%FT%R"
+      |> maybe
+          (Left $ pack [i|"Unable to parse local time: #{time}"|])
+          Right
 
 data InputHabit = InputHabit
  { _input_name_ ∷ Maybe Text
