@@ -176,7 +176,7 @@ inputHabitToRequest input_habit =
     (\(F name getter_ f) → (input_habit ^. getter_) <&> (f >>> BS8.pack >>> (BS8.pack name,)))
     input_habit_request_fields
   ⊕
-  map (UUID.toByteString >>> LazyBS.toStrict >>> ("group",)) (toList $ input_habit ^. input_group_membership_)
+  map (UUID.toText >>> encodeUtf8 >>> ("group",)) (toList $ input_habit ^. input_group_membership_)
  where
   bF ∷ String → ALens' InputHabit Bool → InputHabitRequestField
   bF name lens_= F name (cloneLens lens_ . to (bool Nothing (Just "on"))) identity

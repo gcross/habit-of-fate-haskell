@@ -977,6 +977,14 @@ main = defaultMain $ testGroup "All Tests"
                     setRequestMethod "GET"
                 responseStatus response @?= ok200
                 extractHabit tags >>= (@?= test_habit_with_last_marked)
+            , webTestCase "Create a habit with a missing group via. web then open." $ do
+                _ ← createTestAccount "username" "password"
+                createHabitViaWeb test_habit_id_group test_habit_group
+                (response, tags) ←
+                  requestDocument ([i|/habits/#{UUID.toText test_habit_id_group}|] |> pack |> encodeUtf8) $
+                    setRequestMethod "GET"
+                responseStatus response @?= ok200
+                extractHabit tags >>= (@?= (test_habit_group & (group_membership_ .~ [])))
             ]
         ]
         ------------------------------------------------------------------------

@@ -491,6 +491,7 @@ handleEditHabitPost environment = do
   Scotty.post "/habits/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request for habit with id #{habit_id}.|]
+    params ← getParams
     (input_habit, input_error_messages) ← getInputHabit
     let displayHabitPage ∷ Seq Text → Transaction TransactionResult
         displayHabitPage error_messages = do
@@ -502,7 +503,8 @@ handleEditHabitPost environment = do
         error_or_habit = parseInputHabit input_habit
     if onull input_error_messages
       then case error_or_habit of
-        Right habit → do
+        Right habit_unfiltered → do
+          habit ← stripMissingGroupsFromHabit habit_unfiltered
           log [i|Updating habit #{habit_id} to #{habit}|]
           habits_ . at habit_id .= Just habit
           pure $ redirectsToResult temporaryRedirect307 "/habits"
