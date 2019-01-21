@@ -1,6 +1,6 @@
 {-
     Habit of Fate, a game to incentivize habit formation.
-    Copyright (C) 2018 Gregory Crosswhite
+    Copyright (C) 2019 Gregory Crosswhite
 
     This program is free software: you can redistribute it and/or modify
     it under version 3 of the terms of the GNU Affero General Public License.
