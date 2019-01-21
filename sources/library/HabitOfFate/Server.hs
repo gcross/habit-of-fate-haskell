@@ -60,6 +60,7 @@ import HabitOfFate.Server.Common
 
 import qualified HabitOfFate.Server.Requests.Api.Deadlines as Api.Deadlines
 import qualified HabitOfFate.Server.Requests.Api.DeleteConfiguration as Api.DeleteConfiguration
+import qualified HabitOfFate.Server.Requests.Api.DeleteGroup as Api.DeleteGroup
 import qualified HabitOfFate.Server.Requests.Api.DeleteHabit as Api.DeleteHabit
 import qualified HabitOfFate.Server.Requests.Api.GetAllGroups as Api.GetAllGroups
 import qualified HabitOfFate.Server.Requests.Api.GetAllHabits as Api.GetAllHabits
@@ -146,6 +147,7 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
     mapM_ ($ environment)
       [ Api.Deadlines.handler
       , Api.DeleteConfiguration.handler
+      , Api.DeleteGroup.handler
       , Api.DeleteHabit.handler
       , Api.GetAllGroups.handler
       , Api.GetAllHabits.handler

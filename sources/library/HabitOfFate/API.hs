@@ -241,15 +241,21 @@ putHabit = putResource pathToHabit
 putGroup ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Group → SessionT m PutResult
 putGroup = putResource pathToGroup
 
-data DeleteResult = HabitDeleted | NoHabitToDelete deriving (Eq, Ord, Read, Show)
+data DeleteResult = ResourceDeleted | NoResourceToDelete deriving (Eq, Ord, Read, Show)
+
+deleteResource ∷ (MonadIO m, MonadThrow m) ⇒ (UUID → Text) → UUID → SessionT m DeleteResult
+deleteResource pathToResource resource_id = do
+  response ← request DELETE $ pathToResource resource_id
+  case responseStatusCode response of
+    204 → pure ResourceDeleted
+    404 → pure NoResourceToDelete
+    code → throwM $ UnexpectedStatus [204,404] code
+
+deleteGroup ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m DeleteResult
+deleteGroup = deleteResource pathToGroup
 
 deleteHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m DeleteResult
-deleteHabit habit_id = do
-  response ← request DELETE $ pathToHabit habit_id
-  case responseStatusCode response of
-    204 → pure HabitDeleted
-    404 → pure NoHabitToDelete
-    code → throwM $ UnexpectedStatus [204,404] code
+deleteHabit = deleteResource pathToHabit
 
 getResource ∷ (MonadIO m, MonadThrow m, FromJSON α) ⇒ (UUID → Text) → UUID → SessionT m (Maybe α)
 getResource pathToResource resource_id = do

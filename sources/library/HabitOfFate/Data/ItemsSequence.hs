@@ -16,6 +16,7 @@
 
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -40,7 +41,7 @@ import HabitOfFate.TH
 data ItemsSequence α = ItemsSequence
   { _items_map_ ∷ !(HashMap UUID α)
   , _items_seq_ ∷ !(Seq UUID)
-  } deriving (Eq,Foldable,Functor,Ord,Read,Show)
+  } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 deriveJSON ''ItemsSequence
 makeLenses ''ItemsSequence
 

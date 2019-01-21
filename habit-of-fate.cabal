@@ -105,6 +105,7 @@ library
                      , HabitOfFate.Server.Transaction
                      , HabitOfFate.Server.Requests.Api.Deadlines
                      , HabitOfFate.Server.Requests.Api.DeleteConfiguration
+                     , HabitOfFate.Server.Requests.Api.DeleteGroup
                      , HabitOfFate.Server.Requests.Api.DeleteHabit
                      , HabitOfFate.Server.Requests.Api.GetAllGroups
                      , HabitOfFate.Server.Requests.Api.GetAllHabits

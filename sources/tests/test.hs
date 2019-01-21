@@ -754,16 +754,37 @@ main = defaultMain $ testGroup "All Tests"
                 getHabit test_habit_id_group >>= (@?= Just test_habit_group)
             ]
         ------------------------------------------------------------------------
+        , testGroup "deleteGroup"
+        ------------------------------------------------------------------------
+            [ apiTestCase "Deleting a non-existing group returns NoResourceToDelete" $ do
+            --------------------------------------------------------------------
+                deleteGroup test_group_id >>= (@?= NoResourceToDelete)
+            --------------------------------------------------------------------
+            , apiTestCase "Putting a group then deleting it returns ResourceDeleted and causes fetching all groups to return an empty map" $ do
+            --------------------------------------------------------------------
+                createGroup test_group_id test_group
+                deleteGroup test_group_id >>= (@?= ResourceDeleted)
+                getGroups >>= (view items_count_ >>> (@?= 0))
+            --------------------------------------------------------------------
+            , apiTestCase "Deleting a group removes it from all habits" $ do
+            --------------------------------------------------------------------
+                createGroup test_group_id test_group
+                createHabit test_habit_id_group test_habit_group
+                getHabit test_habit_id_group >>= (@?= Just test_habit_group)
+                deleteGroup test_group_id >>= (@?= ResourceDeleted)
+                getHabit test_habit_id_group >>= (@?= Just (test_habit_group & group_membership_ .~ []))
+            ]
+        ------------------------------------------------------------------------
         , testGroup "deleteHabit"
         ------------------------------------------------------------------------
-            [ apiTestCase "Deleting a non-existing habit returns NoHabitToDelete" $ do
+            [ apiTestCase "Deleting a non-existing habit returns NoResourceToDelete" $ do
             --------------------------------------------------------------------
-                deleteHabit test_habit_id >>= (@?= NoHabitToDelete)
+                deleteHabit test_habit_id >>= (@?= NoResourceToDelete)
             --------------------------------------------------------------------
-            , apiTestCase "Putting a habit then deleting it returns HabitDeleted and causes fetching all habits to return an empty map" $ do
+            , apiTestCase "Putting a habit then deleting it returns ResourceDeleted and causes fetching all habits to return an empty map" $ do
             --------------------------------------------------------------------
                 createHabit test_habit_id test_habit
-                deleteHabit test_habit_id >>= (@?= HabitDeleted)
+                deleteHabit test_habit_id >>= (@?= ResourceDeleted)
                 getHabits >>= (view items_count_ >>> (@?= 0))
             ]
         ----------------------------------------------------------------------------
