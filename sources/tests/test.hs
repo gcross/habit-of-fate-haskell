@@ -68,6 +68,7 @@ import qualified Test.Tasty.HUnit as HUnit
 import Test.Tasty.QuickCheck hiding (Failure, Success)
 import Data.Time.Zones
 import Data.Time.Zones.All
+import qualified Data.UUID as UUID
 import Text.HTML.DOM (sinkDoc)
 import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
@@ -203,11 +204,13 @@ test_habit, test_habit_2, test_habit_once ∷ Habit
 test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
 test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
 test_habit_once = Habit "once" (Tagged (Success Medium) (Failure Medium)) (Once $ Just $ day 0) [] Nothing
+test_habit_with_last_marked = def & name_ .~ "test" & maybe_last_marked_ .~ (Just $ dayHour 1 2)
 
 test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 test_habit_id_once = read "7dbafaf9-560a-4ac4-b6bb-b64c647e387d"
+test_habit_id_with_last_marked = read "7ada06ff-ccf5-4c68-83df-e54999cc42b3"
 
 createHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitCreated)
 replaceHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitReplaced)
@@ -352,7 +355,15 @@ extractHabit tags =
            other → assertFailure $ "Unrecognized value for frequency: " ⊕ show other
         )
     <*> pure []
-    <*> pure Nothing
+    <*> (tags
+          |> scrape (attr "value" $ "input" @: ["name" @= "maybe_last_marked"])
+          |> maybe
+              (assertFailure "Expected presence of maybe_last_marked control")
+              (\case
+                "" → pure Nothing
+                other → parseValueOrFail "maybe_last_marked" other <&> Just
+              )
+        )
 
 testStory ∷ String → Substitutions → Story → TestTree
 testStory name substitutions story = testCase name $ (extractPlaceholders story `difference` keysSet substitutions) @?= []
@@ -950,6 +961,14 @@ main = defaultMain $ testGroup "All Tests"
                     setRequestMethod "GET"
                 responseStatus response @?= ok200
                 extractHabit tags >>= (@?= test_habit_once)
+            , webTestCase "Open the habit edit page for a habit with a nontrivial last marked field." $ do
+                _ ← createTestAccount "username" "password"
+                createHabitViaWeb test_habit_id_with_last_marked test_habit_with_last_marked
+                (response, tags) ←
+                  requestDocument ([i|/habits/#{UUID.toText test_habit_id_with_last_marked}|] |> pack |> encodeUtf8) $
+                    setRequestMethod "GET"
+                responseStatus response @?= ok200
+                extractHabit tags >>= (@?= test_habit_with_last_marked)
             ]
         ]
         ------------------------------------------------------------------------
