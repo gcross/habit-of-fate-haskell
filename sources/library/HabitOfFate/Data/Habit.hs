@@ -63,7 +63,7 @@ data Habit = Habit
   { _name_ ∷ Text
   , _scales_ ∷ Tagged Scale
   , _frequency_ ∷ Frequency
-  , _group_membership_ ∷ Set UUID
+  , _group_membership_ ∷ HashSet UUID
   , _maybe_last_marked_ ∷ Maybe LocalTime
   } deriving (Eq,Generic,NFData,Ord,Read,Show)
 makeLenses ''Habit

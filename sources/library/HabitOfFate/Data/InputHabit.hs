@@ -72,7 +72,7 @@ data InputHabit = InputHabit
  , _input_days_to_keep_ ∷ Maybe Int
  , _input_days_to_keep_mode_ ∷ Maybe InputDaysToKeepMode
  , _input_next_deadline_ ∷ Maybe LocalTime
- , _input_group_membership_ ∷ Set UUID
+ , _input_group_membership_ ∷ HashSet UUID
  , _input_maybe_last_marked_ ∷ Maybe LocalTime
  } deriving (Eq,Ord,Read,Show)
 makeLenses ''InputHabit
@@ -92,7 +92,7 @@ instance Default InputHabit where
     _input_days_to_keep_ = Just 3
     _input_days_to_keep_mode_ = Just InputKeepDaysInPast
     _input_next_deadline_ = def
-    _input_group_membership_ = def
+    _input_group_membership_ = mempty
     _input_maybe_last_marked_ = Nothing
 
 instance Semigroup InputHabit where
