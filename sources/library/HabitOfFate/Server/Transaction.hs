@@ -56,6 +56,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
+import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Logging
@@ -193,11 +194,17 @@ log = LogInstruction >>> wrapTransactionInstruction
 getLastSeenAsLocalTime ∷ Transaction LocalTime
 getLastSeenAsLocalTime = use last_seen_ >>= convertUTCToLocalTime
 
-lookupHabit ∷ UUID → Transaction Habit
-lookupHabit habit_id =
-  use (habits_ . at habit_id)
+lookupResource ∷ String → Lens' Account (ItemsSequence α) → UUID → Transaction α
+lookupResource resource_name resource_lens_ resource_id =
+  use (resource_lens_ . at resource_id)
   >>=
-  maybe (throwM $ RequestNotFoundError [i|"No such habit #{habit_id}|]) pure
+  maybe (throwM $ RequestNotFoundError [i|No such #{resource_name} #{resource_id}|]) pure
+
+lookupHabit ∷ UUID → Transaction Habit
+lookupHabit = lookupResource "habit" habits_
+
+lookupGroup ∷ UUID → Transaction Group
+lookupGroup = lookupResource "group" groups_
 
 stripMissingGroupsFromHabit ∷ Habit → Transaction Habit
 stripMissingGroupsFromHabit habit = do

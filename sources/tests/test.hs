@@ -78,6 +78,7 @@ import Web.Scotty (Parsable(..))
 
 import HabitOfFate.API
 import HabitOfFate.Data.Configuration
+import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
@@ -203,6 +204,10 @@ apiTestCase test_name action =
 test_group_id ∷ UUID
 test_group_id = read "f5ccdfde-1776-483c-9140-385e9e75e31d"
 
+test_group, test_group_2 ∷ Group
+test_group = "group"
+test_group_2 = "grouper"
+
 test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
 test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
 test_habit_once = Habit "once" (Tagged (Success Medium) (Failure Medium)) (Once $ Just $ day 0) [] Nothing
@@ -215,8 +220,11 @@ test_habit_id_once = read "7dbafaf9-560a-4ac4-b6bb-b64c647e387d"
 test_habit_id_with_last_marked = read "7ada06ff-ccf5-4c68-83df-e54999cc42b3"
 test_habit_id_group = read "74d6b013-df62-4989-8ce8-b0e0af3e29d3"
 
-createHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitCreated)
-replaceHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitReplaced)
+createGroup group_id group = putGroup group_id group >>= (@?= ResourceCreated)
+replaceGroup group_id group = putGroup group_id group >>= (@?= ResourceReplaced)
+
+createHabit habit_id habit = putHabit habit_id habit >>= (@?= ResourceCreated)
+replaceHabit habit_id habit = putHabit habit_id habit >>= (@?= ResourceReplaced)
 
 webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
 webTestCase test_name runTest =
@@ -697,6 +705,25 @@ main = defaultMain $ testGroup "All Tests"
             >>=
             (@?= Nothing)
         ------------------------------------------------------------------------
+        , testGroup "putGroup"
+        ------------------------------------------------------------------------
+            [ apiTestCase "Putting a group and then fetching it returns the group" $ do
+            --------------------------------------------------------------------
+                createGroup test_group_id test_group
+                getGroup test_group_id >>= (@?= Just test_group)
+            --------------------------------------------------------------------
+            , apiTestCase "Putting a group causes fetching all groups to return a singleton map" $ do
+            --------------------------------------------------------------------
+                createGroup test_group_id test_group
+                getGroups >>= (@?= [(test_group_id, test_group)])
+            --------------------------------------------------------------------
+            , apiTestCase "Putting a group, replacing it, and then fetching all groups returns the replaced group" $ do
+            --------------------------------------------------------------------
+                createGroup test_group_id test_group
+                replaceGroup test_group_id test_group_2
+                getGroups >>= (@?= [(test_group_id, test_group_2)])
+            ]
+        ------------------------------------------------------------------------
         , testGroup "putHabit"
         ------------------------------------------------------------------------
             [ apiTestCase "Putting a habit and then fetching it returns the habit" $ do
@@ -719,6 +746,12 @@ main = defaultMain $ testGroup "All Tests"
             --------------------------------------------------------------------
                 createHabit test_habit_id_group test_habit_group
                 getHabit test_habit_id_group >>= (@?= Just (test_habit_group & group_membership_ .~ []))
+            --------------------------------------------------------------------
+            , apiTestCase "Putting a habit with existing group returns expected habit" $ do
+            --------------------------------------------------------------------
+                createGroup test_group_id test_group
+                createHabit test_habit_id_group test_habit_group
+                getHabit test_habit_id_group >>= (@?= Just test_habit_group)
             ]
         ------------------------------------------------------------------------
         , testGroup "deleteHabit"

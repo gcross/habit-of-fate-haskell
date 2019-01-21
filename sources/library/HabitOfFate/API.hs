@@ -50,6 +50,7 @@ import Web.Cookie
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
+import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
@@ -156,6 +157,9 @@ getRequestTemplate = ask |> SessionT
 decodeUtf8InResponse ∷ Response LBS.ByteString → Text
 decodeUtf8InResponse = responseBody >>> LBS.toStrict >>> decodeUtf8
 
+pathToGroup ∷ UUID → Text
+pathToGroup = UUID.toText >>> ("groups/" ⊕)
+
 pathToHabit ∷ UUID → Text
 pathToHabit = UUID.toText >>> ("habits/" ⊕)
 
@@ -218,18 +222,24 @@ requestWithJSONForJSON method path value =
   >>=
   sendRequestForJSON
 
-data PutResult = HabitCreated | HabitReplaced deriving (Eq, Ord, Read, Show)
+data PutResult = ResourceCreated | ResourceReplaced deriving (Eq, Ord, Read, Show)
+
+putResource ∷ (MonadIO m, MonadThrow m, ToJSON α) ⇒ (UUID → Text) → UUID → α → SessionT m PutResult
+putResource pathToResource resource_id resource = do
+  response ←
+    makeRequest PUT (pathToResource resource_id)
+    >>=
+    (setRequestBodyJSON resource >>> sendRequest)
+  case responseStatusCode response of
+    201 → pure ResourceCreated
+    204 → pure ResourceReplaced
+    code → throwM $ UnexpectedStatus [201,204] code
 
 putHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Habit → SessionT m PutResult
-putHabit habit_id habit = do
-  response ←
-    makeRequest PUT (pathToHabit habit_id)
-    >>=
-    (setRequestBodyJSON habit >>> sendRequest)
-  case responseStatusCode response of
-    201 → pure HabitCreated
-    204 → pure HabitReplaced
-    code → throwM $ UnexpectedStatus [201,204] code
+putHabit = putResource pathToHabit
+
+putGroup ∷ (MonadIO m, MonadThrow m) ⇒ UUID → Group → SessionT m PutResult
+putGroup = putResource pathToGroup
 
 data DeleteResult = HabitDeleted | NoHabitToDelete deriving (Eq, Ord, Read, Show)
 
@@ -241,20 +251,32 @@ deleteHabit habit_id = do
     404 → pure NoHabitToDelete
     code → throwM $ UnexpectedStatus [204,404] code
 
-getHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m (Maybe Habit)
-getHabit habit_id = do
-  response ← requestForJSON GET $ pathToHabit habit_id
+getResource ∷ (MonadIO m, MonadThrow m, FromJSON α) ⇒ (UUID → Text) → UUID → SessionT m (Maybe α)
+getResource pathToResource resource_id = do
+  response ← requestForJSON GET $ pathToResource resource_id
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response
     404 → pure Nothing
     code → throwM $ UnexpectedStatus [200,404] code
 
-getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (ItemsSequence Habit)
-getHabits = do
-  response ← requestForJSON GET "habits"
+getHabit ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m (Maybe Habit)
+getHabit = getResource pathToHabit
+
+getGroup ∷ (MonadIO m, MonadThrow m) ⇒ UUID → SessionT m (Maybe Group)
+getGroup = getResource pathToGroup
+
+getResources ∷ (MonadIO m, MonadThrow m, FromJSON α) ⇒ Text → SessionT m (ItemsSequence α)
+getResources path = do
+  response ← requestForJSON GET path
   case responseStatusCode response of
     200 → either throwM pure $ responseBody response
     code → throwM $ UnexpectedStatus [200] code
+
+getHabits ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (ItemsSequence Habit)
+getHabits = getResources "habits"
+
+getGroups ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (ItemsSequence Group)
+getGroups = getResources "groups"
 
 getMarks ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Tagged [Scale])
 getMarks = do

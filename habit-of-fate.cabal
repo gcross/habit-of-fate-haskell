@@ -83,6 +83,7 @@ library
   exposed-modules:     HabitOfFate.API
                      , HabitOfFate.Data.Account
                      , HabitOfFate.Data.Configuration
+                     , HabitOfFate.Data.Group
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Data.InputHabit
                      , HabitOfFate.Data.ItemsSequence
@@ -105,12 +106,15 @@ library
                      , HabitOfFate.Server.Requests.Api.Deadlines
                      , HabitOfFate.Server.Requests.Api.DeleteConfiguration
                      , HabitOfFate.Server.Requests.Api.DeleteHabit
+                     , HabitOfFate.Server.Requests.Api.GetAllGroups
                      , HabitOfFate.Server.Requests.Api.GetAllHabits
                      , HabitOfFate.Server.Requests.Api.GetConfiguration
+                     , HabitOfFate.Server.Requests.Api.GetGroup
                      , HabitOfFate.Server.Requests.Api.GetHabit
                      , HabitOfFate.Server.Requests.Api.GetMarks
                      , HabitOfFate.Server.Requests.Api.GetQuestStatus
                      , HabitOfFate.Server.Requests.Api.PutConfiguration
+                     , HabitOfFate.Server.Requests.Api.PutGroup
                      , HabitOfFate.Server.Requests.Api.PutHabit
                      , HabitOfFate.Server.Requests.Shared.Deadlines
                      , HabitOfFate.Server.Requests.Shared.GetQuestStatus

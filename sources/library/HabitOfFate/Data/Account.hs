@@ -39,6 +39,7 @@ import Data.Time.Clock (UTCTime, getCurrentTime)
 import Web.Scotty (Parsable)
 
 import HabitOfFate.Data.Configuration
+import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
@@ -52,7 +53,6 @@ instance ToJSON StdGen where
 instance FromJSON StdGen where
   parseJSON = parseJSON >>> fmap read
 
-type Group = Text
 type Groups = ItemsSequence Group
 
 data Account = Account

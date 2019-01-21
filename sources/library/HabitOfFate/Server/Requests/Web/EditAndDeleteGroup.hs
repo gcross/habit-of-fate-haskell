@@ -38,6 +38,7 @@ import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Group
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
