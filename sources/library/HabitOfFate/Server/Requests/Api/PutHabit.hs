@@ -39,7 +39,7 @@ handler environment = do
   action = do
     habit_id ← getParam "habit_id"
     log [i|Requested to put habit with id #{habit_id}.|]
-    habit ← getBodyJSON
+    habit ← getBodyJSON >>= stripMissingGroupsFromHabit
     habit_was_there ← isJust <$> (habits_ . at habit_id <<.= Just habit)
     noContentResult >>> pure $
       if habit_was_there

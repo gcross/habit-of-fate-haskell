@@ -57,6 +57,7 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Logging
 import HabitOfFate.Server.Actions.Queries (authorizeWith)
 import HabitOfFate.Server.Actions.Results
@@ -197,6 +198,11 @@ lookupHabit habit_id =
   use (habits_ . at habit_id)
   >>=
   maybe (throwM $ RequestNotFoundError [i|"No such habit #{habit_id}|]) pure
+
+stripMissingGroupsFromHabit ∷ Habit → Transaction Habit
+stripMissingGroupsFromHabit habit = do
+  isGroup ← use groups_ <&> flip itemsContainKey
+  pure $ (habit & (group_membership_ %~ (setToList >>> filter isGroup >>> setFromList)))
 
 marksArePresent ∷ Transaction Bool
 marksArePresent = use marks_ <&> any (null >>> not)

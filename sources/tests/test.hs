@@ -200,17 +200,20 @@ apiTestCase test_name action =
   )
   |> serverTestCase test_name
 
-test_habit, test_habit_2, test_habit_once ∷ Habit
+test_group_id ∷ UUID
+test_group_id = read "f5ccdfde-1776-483c-9140-385e9e75e31d"
+
 test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
 test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
 test_habit_once = Habit "once" (Tagged (Success Medium) (Failure Medium)) (Once $ Just $ day 0) [] Nothing
 test_habit_with_last_marked = def & name_ .~ "test" & maybe_last_marked_ .~ (Just $ dayHour 1 2)
+test_habit_group = Habit "group" (Tagged (Success High) (Failure Low)) Indefinite [test_group_id] Nothing
 
-test_habit_id, test_habit_id_2 ∷ UUID
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 test_habit_id_once = read "7dbafaf9-560a-4ac4-b6bb-b64c647e387d"
 test_habit_id_with_last_marked = read "7ada06ff-ccf5-4c68-83df-e54999cc42b3"
+test_habit_id_group = read "74d6b013-df62-4989-8ce8-b0e0af3e29d3"
 
 createHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitCreated)
 replaceHabit habit_id habit = putHabit habit_id habit >>= (@?= HabitReplaced)
@@ -711,6 +714,11 @@ main = defaultMain $ testGroup "All Tests"
                 createHabit test_habit_id test_habit
                 replaceHabit test_habit_id test_habit_2
                 getHabits >>= (@?= [(test_habit_id, test_habit_2)])
+            --------------------------------------------------------------------
+            , apiTestCase "Putting a habit with missing groups creates habit with no groups" $ do
+            --------------------------------------------------------------------
+                createHabit test_habit_id_group test_habit_group
+                getHabit test_habit_id_group >>= (@?= Just (test_habit_group & group_membership_ .~ []))
             ]
         ------------------------------------------------------------------------
         , testGroup "deleteHabit"

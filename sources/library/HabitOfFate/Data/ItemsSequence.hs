@@ -47,6 +47,9 @@ makeLenses ''ItemsSequence
 instance NFData α ⇒ NFData (ItemsSequence α) where
   rnf (ItemsSequence m s) = rnf m `seq` rnf s `seq` ()
 
+itemsContainKey ∷ UUID → ItemsSequence α → Bool
+itemsContainKey k (ItemsSequence m _) = member k m
+
 items_count_ ∷ Getter (ItemsSequence α) Int
 items_count_ = items_seq_ . to length
 
