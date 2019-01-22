@@ -491,7 +491,6 @@ handleEditHabitPost environment = do
   Scotty.post "/habits/:habit_id" <<< webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Web POST request for habit with id #{habit_id}.|]
-    params ← getParams
     (input_habit, input_error_messages) ← getInputHabit
     let displayHabitPage ∷ Seq Text → Transaction TransactionResult
         displayHabitPage error_messages = do
