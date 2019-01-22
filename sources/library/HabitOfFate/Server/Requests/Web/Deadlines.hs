@@ -27,8 +27,9 @@ module HabitOfFate.Server.Requests.Web.Deadlines (handler) where
 
 import HabitOfFate.Prelude
 
+import qualified Data.Text.Lazy as Lazy
 import Data.Time.Format (defaultTimeLocale, formatTime)
-import Data.UUID (UUID)
+import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
@@ -38,7 +39,6 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
-import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.Deadlines
@@ -68,18 +68,18 @@ deadlinesPage = do
           concat
             [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
                   status_buttons = H.div ! A.class_ "row" $ do
-                    let button ∷ Text → Maybe SuccessOrFailureResult → Bool → H.Html
+                    let button ∷ Text → Text → Bool → H.Html
                         button label value checked = H.div ! A.class_ "row" $ do
                           H.div ! A.class_ "row" $ do
                             H.input
                               ! A.type_ "radio"
-                              ! A.name "status"
-                              ! A.value (H.toValue $ show (habit_id, value))
+                              ! A.name (H.toValue $ [i|status-#{habit_id}-#{n}|])
+                              ! A.value (H.toValue value)
                               & if checked then (! A.checked "checked") else identity
                             H.div $ H.toHtml $ label
-                    button "Success" (Just SuccessResult) False
-                    button "Failure" (Just FailureResult) False
-                    button "Skip"     Nothing  True
+                    button "Success" "+1" False
+                    button "Failure" "-1" False
+                    button "Skip"    " 0" True
                   habit_label = H.div $ H.toHtml habit_name
                   deadline_label = H.div $ H.toHtml (formatTime defaultTimeLocale "%R %p" deadline_time)
               in map (H.div >>> (! A.class_ evenodd))
@@ -100,21 +100,20 @@ handlePostDeadlines ∷ Environment → ScottyM ()
 handlePostDeadlines environment =
   Scotty.post "/deadlines" $ webTransaction environment $ do
     current_time ← getCurrentTimeAsLocalTime
-    getParams
-      >>=
-      (mapM_ $ \(name, value) →
-        when (name == "status") $
-          maybe
-            (log [i|Invalid status option value: #{value}|])
-            (\(habit_id ∷ UUID, maybe_status ∷ Maybe SuccessOrFailureResult) →
-              markHabit habit_id $
-                case maybe_status of
-                  Nothing → def
-                  Just SuccessResult → def & success_ .~ 1
-                  Just FailureResult → def & failure_ .~ 1
-            )
-            (unpack >>> readMaybe $ value)
-      )
+    getParams >>= (mapM_ $ \(name, value) → when ("status-" `Lazy.isPrefixOf` name) (
+      let possible_habit_id =
+             name
+               |> drop 7 -- length "status-"
+               |> take 36 -- length of UUID
+               |> Lazy.toStrict
+      in case UUID.fromText possible_habit_id of
+           Nothing → log [i|Unable to parse habit id: #{possible_habit_id}|]
+           Just habit_id → case value of
+             " 0" → markHabit habit_id $ Tagged (Success 0) (Failure 0)
+             "+1" → markHabit habit_id $ Tagged (Success 1) (Failure 0)
+             "-1" → markHabit habit_id $ Tagged (Success 0) (Failure 1)
+             other → log [i|Invalid habit deadline status value: #{other}|]
+     ))
     habits_ %= fmap (flip updateHabitDeadline current_time)
     use marks_
       <&>
