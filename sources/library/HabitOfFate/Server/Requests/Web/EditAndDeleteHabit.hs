@@ -306,9 +306,12 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
           ! A.name (H.toValue ("maybe_last_marked" ∷ Text))
           ! inputValue (input_maybe_last_marked_ . format_time_) ""
 
-      H.hr
-
-      H.ul ! A.class_ "error_message" $ foldMap (H.toHtml >>> H.li) error_messages
+      H.div ! A.class_ "submit" $ do
+        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
+        H.input
+          ! A.class_ "sub"
+          ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}|])
+          ! A.type_ "submit"
 
       H.hr
 
