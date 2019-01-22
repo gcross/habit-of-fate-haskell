@@ -4,3 +4,41 @@
     grid-template-columns: auto auto auto;
     padding: 10px;
 }
+
+.status_radio {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.button {
+    background-size: 100%;
+    cursor: pointer;
+    height: 50px;
+    width: 50px;
+}
+
+.good {
+  background-image: url("/images/button-good-off.svgz");
+}
+
+[type=radio]:checked + .good {
+  background-image: url("/images/button-good-on.svgz");
+}
+
+.bad {
+    background-image: url("/images/button-bad-off.svgz");
+}
+
+[type=radio]:checked + .bad {
+    background-image: url("/images/button-bad-on.svgz");
+}
+
+.skip {
+    background-image: url("/images/button-skip-off.svgz");
+}
+
+[type=radio]:checked + .skip {
+    background-image: url("/images/button-skip-on.svgz");
+}

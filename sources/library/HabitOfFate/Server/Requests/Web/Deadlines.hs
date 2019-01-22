@@ -69,17 +69,17 @@ deadlinesPage = do
             [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
                   status_buttons = H.div ! A.class_ "row" $ do
                     let button ∷ Text → Text → Bool → H.Html
-                        button label value checked = H.div ! A.class_ "row" $ do
-                          H.div ! A.class_ "row" $ do
-                            H.input
-                              ! A.type_ "radio"
-                              ! A.name (H.toValue $ [i|status-#{habit_id}-#{n}|])
-                              ! A.value (H.toValue value)
-                              & if checked then (! A.checked "checked") else identity
-                            H.div $ H.toHtml $ label
-                    button "Success" "+1" False
-                    button "Failure" "-1" False
-                    button "Skip"    " 0" True
+                        button label value checked = H.label $ do
+                          H.input
+                            ! A.class_ "status_radio"
+                            ! A.type_ "radio"
+                            ! A.name (H.toValue [i|status-#{habit_id}-#{n}|])
+                            ! A.value (H.toValue value)
+                            & if checked then (! A.checked "checked") else identity
+                          H.div ! A.class_ (H.toValue [i|button #{label}|]) $ mempty
+                    button "good" "+1" False
+                    button "bad"  "-1" False
+                    button "skip" " 0" True
                   habit_label = H.div $ H.toHtml habit_name
                   deadline_label = H.div $ H.toHtml (formatTime defaultTimeLocale "%R %p" deadline_time)
               in map (H.div >>> (! A.class_ evenodd))

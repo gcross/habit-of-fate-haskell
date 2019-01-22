@@ -17,6 +17,12 @@ data-files:          data/app/css/common.css
                      data/app/css/story.css
                      data/app/fonts/GloriaHallelujah.woff2
                      data/app/images/bad.svgz
+                     data/app/images/button-bad-off.svgz
+                     data/app/images/button-bad-on.svgz
+                     data/app/images/button-good-off.svgz
+                     data/app/images/button-good-on.svgz
+                     data/app/images/button-skip-off.svgz
+                     data/app/images/button-skip-on.svgz
                      data/app/images/edit.svgz
                      data/app/images/grave.svgz
                      data/app/images/good.svgz
