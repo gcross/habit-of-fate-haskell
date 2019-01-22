@@ -295,6 +295,15 @@ loginTestAccount username password =
       , ("password",password)
       ]
 
+createGroupViaWeb ∷ Show α => α → Group → ReaderT Int (StateT CookieJar IO) ()
+createGroupViaWeb group_id group = void $
+  ( requestDocument ("/groups/" ⊕ BS8.pack (show group_id))
+    $
+    setRequestBodyURLEncoded [("name",encodeUtf8 group)]
+  )
+  >>=
+  \(_, tags) → liftIO $ (scrape (innerHTMLs $ "ul" @: ["class" @= "error_message"]) tags) @?= Just []
+
 createHabitViaWeb ∷ Show α => α → Habit → ReaderT Int (StateT CookieJar IO) ()
 createHabitViaWeb habit_id habit = void $
   ( requestDocument ("/habits/" ⊕ BS8.pack (show habit_id))
@@ -346,6 +355,9 @@ extractInputCheckbox name =
   scrape (attr "value" $ "input" @: ["type" @= "checkbox", "name" @= name, "checked" @= "checked"])
   >>>
   isJust
+
+extractGroup ∷ (HasCallStack, MonadIO m) ⇒ Tags → m Group
+extractGroup tags = extractInputText "name" tags <&> Lazy.toStrict
 
 extractHabit ∷ (HasCallStack, MonadIO m) ⇒ Tags → m Habit
 extractHabit tags =
@@ -1003,6 +1015,18 @@ main = defaultMain $ testGroup "All Tests"
                 (response, tags) ← createTestAccount "username" "password"
                 getResponseStatusCode response @?= 409
                 assertTextIs tags "error-message" "This account already exists."
+            ]
+        ------------------------------------------------------------------------
+        , testGroup "Habits" $
+        ------------------------------------------------------------------------
+            [ webTestCase "Open the group edit page for an existing group." $ do
+                _ ← createTestAccount "username" "password"
+                createGroupViaWeb test_group_id test_group
+                (response, tags) ←
+                  requestDocument ([i|/groups/#{UUID.toText test_group_id}|] |> pack |> encodeUtf8) $
+                    setRequestMethod "GET"
+                responseStatus response @?= ok200
+                extractGroup tags >>= (@?= test_group)
             ]
         ------------------------------------------------------------------------
         , testGroup "Habits" $
