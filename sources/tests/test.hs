@@ -211,6 +211,8 @@ test_group_2 = "grouper"
 test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
 test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
 test_habit_once = Habit "once" (Tagged (Success Medium) (Failure Medium)) (Once $ Just $ day 0) [] Nothing
+test_habit_daily = def & name_ .~ "daily" & frequency_ .~ (Repeated (KeepNumberOfDays 2) (dayHour 2 3) (Daily 2))
+test_habit_weekly = def & name_ .~ "daily" & frequency_ .~ (Repeated (KeepDaysInPast 4) (dayHour 3 2) (Weekly 1 (def & tuesday_ .~ True & thursday_ .~ True)))
 test_habit_with_last_marked = def & name_ .~ "test" & maybe_last_marked_ .~ (Just $ dayHour 1 2)
 test_habit_group = Habit "group" (Tagged (Success High) (Failure Low)) Indefinite [test_group_id] Nothing
 
@@ -375,7 +377,36 @@ extractHabit tags =
              if extractInputCheckbox "once_has_deadline" tags
                then extractInputTextParam "next_deadline" tags <&> Just
                else pure Nothing
-           other → assertFailure $ "Unrecognized value for frequency: " ⊕ show other
+           InputRepeated →
+             Repeated
+               <$> liftA2 ($)
+                     (
+                       extractInputRadioParam "days_to_keep_mode" tags
+                       <&>
+                       \case
+                         InputKeepDaysInPast → KeepDaysInPast
+                         InputKeepNumberOfDays → KeepNumberOfDays
+                     )
+                     (extractInputTextParam "days_to_keep" tags)
+                <*> extractInputTextParam "next_deadline" tags
+                <*> (
+                      extractInputRadioParam "repeated" tags
+                      >>=
+                      \case
+                        InputDaily → Daily <$> extractInputTextParam "daily_period" tags
+                        InputWeekly →
+                          Weekly
+                            <$> extractInputTextParam "daily_period" tags
+                            <*> (pure $ foldl'
+                                  (\days_to_repeat (_, weekday_name, weekday_lens_) →
+                                    if extractInputCheckbox (unpack weekday_name) tags
+                                      then days_to_repeat & weekday_lens_ #~ True
+                                      else days_to_repeat
+                                  )
+                                  def
+                                  weekdays
+                                )
+                    )
         )
     <*> pure []
     <*> (tags
@@ -1047,6 +1078,22 @@ main = defaultMain $ testGroup "All Tests"
                     setRequestMethod "GET"
                 responseStatus response @?= ok200
                 extractHabit tags >>= (@?= test_habit_once)
+            , webTestCase "Open the habit edit page for a daily repeated habit." $ do
+                _ ← createTestAccount "username" "password"
+                createHabitViaWeb test_habit_id test_habit_daily
+                (response, tags) ←
+                  requestDocument ([i|/habits/#{UUID.toText test_habit_id}|] |> pack |> encodeUtf8) $
+                    setRequestMethod "GET"
+                responseStatus response @?= ok200
+                extractHabit tags >>= (@?= test_habit_daily)
+            , webTestCase "Open the habit edit page for a weekly repeated habit." $ do
+                _ ← createTestAccount "username" "password"
+                createHabitViaWeb test_habit_id test_habit_weekly
+                (response, tags) ←
+                  requestDocument ([i|/habits/#{UUID.toText test_habit_id}|] |> pack |> encodeUtf8) $
+                    setRequestMethod "GET"
+                responseStatus response @?= ok200
+                extractHabit tags >>= (@?= test_habit_weekly)
             , webTestCase "Open the habit edit page for a habit with a nontrivial last marked field." $ do
                 _ ← createTestAccount "username" "password"
                 createHabitViaWeb test_habit_id_with_last_marked test_habit_with_last_marked
