@@ -340,12 +340,9 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
             ! A.value "Confirm Delete?"
           H.hr
 
-      H.div ! A.class_ "submit" $ do
-        H.a ! A.class_ "sub" ! A.href "/habits" $ toHtml ("Cancel" ∷ Text)
-        H.input
-          ! A.class_ "sub"
-          ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}|])
-          ! A.type_ "submit"
+      unless (onull error_messages) $ do
+        H.hr
+        H.ul ! A.class_ "error_message" $ foldMap (H.toHtml >>> H.li) error_messages
 
 handleEditHabitGet ∷ Environment → ScottyM ()
 handleEditHabitGet environment = do
@@ -467,38 +464,53 @@ getInputHabit = flip runStateT mempty $ do
     errorResult message = addMessage (pack message) >> pure Nothing
 
 parseInputHabit ∷ InputHabit → Either Text Habit
-parseInputHabit input_habit = Habit
-  <$> (tryGetField "name" input_name_ >>= \case
-        "" → throwError "name"
-        other → pure other
-      )
-  <*> (Tagged
-        <$> (Success <$> tryGetField "difficulty" input_difficulty_)
-        <*> (Failure <$> tryGetField "importance" input_importance_)
-      )
-  <*> (tryGetField "frequency" input_frequency_ >>= \case
-        InputIndefinite → pure Indefinite
-        InputOnce
-          | input_habit ^. input_once_has_deadline_ →
-              tryGetField "next deadline" input_next_deadline_ <&> (Just >>> Once)
-          | otherwise → pure $ Once Nothing
-        InputRepeated →
-          Repeated
-            <$> (($) <$> (tryGetField "days to keep mode" input_days_to_keep_mode_ <&> \case
-                            InputKeepDaysInPast → KeepDaysInPast
-                            InputKeepNumberOfDays → KeepNumberOfDays)
-                     <*>  tryGetField "days to keep" input_days_to_keep_)
-            <*>  tryGetField "next deadline" input_next_deadline_
-            <*> (tryGetField "repeated mode" input_repeated_ >>= \case
-                  InputDaily →
-                    Daily  <$> tryGetField "daily period" input_daily_period_
-                  InputWeekly →
-                    Weekly <$> tryGetField "weekly period" input_weekly_period_
-                           <*> pure (input_habit ^. input_days_to_repeat_)
-                )
-      )
-  <*> (pure $ input_habit ^. input_group_membership_)
-  <*> (pure $ input_habit ^. input_maybe_last_marked_)
+parseInputHabit input_habit = do
+  habit ← Habit
+    <$> (tryGetField "name" input_name_ >>= \case
+          "" → throwError "name"
+          other → pure other
+        )
+    <*> (Tagged
+          <$> (Success <$> tryGetField "difficulty" input_difficulty_)
+          <*> (Failure <$> tryGetField "importance" input_importance_)
+        )
+    <*> (tryGetField "frequency" input_frequency_ >>= \case
+          InputIndefinite → pure Indefinite
+          InputOnce
+            | input_habit ^. input_once_has_deadline_ →
+                tryGetField "next deadline" input_next_deadline_ <&> (Just >>> Once)
+            | otherwise → pure $ Once Nothing
+          InputRepeated →
+            Repeated
+              <$> (($) <$> (tryGetField "days to keep mode" input_days_to_keep_mode_ <&> \case
+                              InputKeepDaysInPast → KeepDaysInPast
+                              InputKeepNumberOfDays → KeepNumberOfDays)
+                      <*>  tryGetField "days to keep" input_days_to_keep_)
+              <*>  tryGetField "next deadline" input_next_deadline_
+              <*> (tryGetField "repeated mode" input_repeated_ >>= \case
+                    InputDaily →
+                      Daily  <$> tryGetField "daily period" input_daily_period_
+                    InputWeekly →
+                      Weekly <$> tryGetField "weekly period" input_weekly_period_
+                            <*> pure (input_habit ^. input_days_to_repeat_)
+                  )
+        )
+    <*> (pure $ input_habit ^. input_group_membership_)
+    <*> (pure $ input_habit ^. input_maybe_last_marked_)
+  when (onull $ habit ^. name_) $ throwError "Name must not be blank."
+  case habit ^. frequency_ of
+    Repeated days_to_keep _ repeated → do
+      case days_to_keep of
+        KeepNumberOfDays n | n < 1 → throwError $ pack [i|"Must keep at least one day, not #{n}."|]
+        KeepDaysInPast n | n < 1 → throwError $ pack [i|"Must keep at least one day, not #{n}."|]
+        _ → pure ()
+      case repeated of
+        Daily period | period < 1 → throwError $ pack [i|"Daily period must be at least 1 or more, not #{period}."|]
+        Weekly period _ | period < 1 → throwError $ pack [i|"Weekly period must be 1 or more, not #{period}."|]
+        Weekly _ weekdays_to_keep | weekdays_to_keep == def → throwError "Must be repeated at least one day a week."
+        _ → pure ()
+    _ → pure ()
+  pure habit
  where
   tryGetField ∷ Text → Lens' InputHabit (Maybe α) → Either Text α
   tryGetField field_name input_lens_ =
