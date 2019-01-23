@@ -233,7 +233,8 @@ handler environment = do
             case localDay current_time_as_local_time `diffDays` localDay last_seen_as_local_time of
               0 → "Last seen Today at %R %p.  "
               1 → "Last seen Yesterday at %R %p.  "
-              _ → "Last seen Yesterday at %R %p.  "
+              n | n < 365 → "Last seen on %b %e at %I:%M%P.  "
+                | otherwise → "Last seen on %b %e, %Y, at %I:%M%P.  "
       H.toHtml $ formatTime defaultTimeLocale format_string last_seen_as_local_time
 
       H.a ! A.href "/timezone" $ H.toHtml ("(Change Time Zone)" ∷ Text)
