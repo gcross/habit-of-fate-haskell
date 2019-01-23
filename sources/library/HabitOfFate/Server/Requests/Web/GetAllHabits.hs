@@ -86,6 +86,7 @@ handler environment = do
           , ("name", "Group Name")
           , ("", ""∷Text)
           , ("", ""∷Text)
+          , ("", ""∷Text)
           ]
         ⊕
         [ H.div ! A.class_ "position" $ H.toHtml ("0." ∷ Text)
@@ -96,6 +97,7 @@ handler environment = do
               else
                 H.a ! A.class_ "name" ! (A.href $ "/habits")
             ) $ H.toHtml ("All" ∷ Text)
+        , H.div $ H.toHtml ("" ∷ Text)
         , H.div $ H.toHtml ("" ∷ Text)
         , H.div $ H.toHtml ("" ∷ Text)
         ]
@@ -118,25 +120,31 @@ handler environment = do
                     ! A.class_ "edit"
                     ! A.href (H.toValue [i|/groups/#{UUID.toText group_id}|])
                     $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
-                move_form =
+                move_form_id = H.toValue $ "move-group-" ⊕ show group_id
+                move_button =
+                  H.input
+                    ! A.class_ "move_button"
+                    ! A.type_ "submit"
+                    ! A.value "Move"
+                    ! A.form move_form_id
+                move_input =
                   H.form
-                    ! A.class_ "move"
+                    ! A.class_ "move_form"
+                    ! A.id move_form_id
                     ! A.method "post"
                     ! A.action (H.toValue $ "/groups/" ⊕ show group_id ⊕ "/move")
                     $ do
                       H.input
-                        ! A.type_ "submit"
-                        ! A.value "Move"
-                      H.input
                         ! A.type_ "text"
                         ! A.value (H.toValue n)
                         ! A.name "new_index"
-                        ! A.class_ "new-index"
+                        ! A.class_ "move_input"
             in map (\contents → H.div ! A.class_ evenodd $ contents)
             [ position
             , name_link
             , edit_button
-            , move_form
+            , move_button
+            , move_input
             ]
           | n ← [1∷Int ..]
           | (group_id, group_name) ← groups ^. items_list_
@@ -158,6 +166,7 @@ handler environment = do
           , ("centered", "Deadline")
           , ("centered", "Difficulty")
           , ("centered", "Importance")
+          , ("", ""∷Text)
           , ("", ""∷Text)
           ]
         ⊕
@@ -188,20 +197,25 @@ handler environment = do
                         ! A.method "post"
                         ! A.action (H.toValue [i|/habits/#{UUID.toText uuid}/mark/#{habit_name}|])
                         $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
-                move_form =
+                move_form_id = H.toValue $ "move-habit-" ⊕ show uuid
+                move_button =
+                  H.input
+                    ! A.class_ "move_button"
+                    ! A.type_ "submit"
+                    ! A.value "Move"
+                    ! A.form move_form_id
+                move_input =
                   H.form
-                    ! A.class_ "move"
+                    ! A.class_ "move_form"
+                    ! A.id move_form_id
                     ! A.method "post"
                     ! A.action (H.toValue $ "/habits/" ⊕ show uuid ⊕ "/move")
                     $ do
                       H.input
-                        ! A.type_ "submit"
-                        ! A.value "Move"
-                      H.input
                         ! A.type_ "text"
                         ! A.value (H.toValue n)
                         ! A.name "new_index"
-                        ! A.class_ "new-index"
+                        ! A.class_ "move_input"
             in map (\contents → H.div ! A.class_ evenodd $ contents)
             [ markButtonFor "success" "good" difficulty_
             , markButtonFor "failure" "bad"  importance_
@@ -212,7 +226,8 @@ handler environment = do
             , timeFor "None" getHabitDeadline
             , scaleFor difficulty_
             , scaleFor importance_
-            , move_form
+            , move_button
+            , move_input
             ]
           | n ← [1∷Int ..]
           | (uuid, habit) ← habit_list

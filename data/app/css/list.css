@@ -1,14 +1,14 @@
 .groups {
     display: grid;
     font-size: 24;
-    grid-template-columns: 3em auto 25px 9em;
+    grid-template-columns: 3em auto 25px 6em 3.5em;
     padding: 10px;
 }
 
 .list {
     display: grid;
     font-size: 24;
-    grid-template-columns: 8em 5em 3em auto 50px 100px 100px 100px 100px 9em;
+    grid-template-columns: 8em 5em 3em auto 50px 100px 100px 100px 100px 6em 3.5em;
     padding: 10px;
 }
 
@@ -28,18 +28,24 @@
     font-weight: bold;
 }
 
-.move {
-    margin: auto;
-}
-
 .header {
     font-weight: bold;
 }
 
-.new-index {
-    padding-right: 2px;
+.move_button {
+    margin: auto 0 auto auto;
+}
+
+.move_form {
+    margin: auto auto auto 0;
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+}
+
+.move_input {
     text-align: right;
-    width: 40px;
+    width: 2em;
 }
 
 .new_link {
