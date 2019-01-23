@@ -21,11 +21,11 @@
 }
 
 .good {
-  background-image: url("/images/button-good-off.svgz");
+    background-image: url("/images/button-good-off.svgz");
 }
 
 [type=radio]:checked + .good {
-  background-image: url("/images/button-good-on.svgz");
+    background-image: url("/images/button-good-on.svgz");
 }
 
 .bad {
