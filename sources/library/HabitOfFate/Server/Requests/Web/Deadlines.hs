@@ -60,30 +60,30 @@ deadlinesPage = do
       generateTopHTML $ H.div ! A.class_ "story" $ H.preEscapedLazyText quest_status
       H.div ! A.class_ "deadlines" $ mconcat $
         map (\(class_ ∷ Text, column ∷ Text) → H.div ! A.class_ (H.toValue $ "header " ⊕ class_) $ H.toHtml column)
-          [ ("", "Status")
+          [ ("", "Success")
+          , ("", "Failure")
+          , ("", "Skip")
           , ("", "Habit")
           , ("", "Deadline")
           ]
           ⊕
           concat
             [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
-                  status_buttons = H.div ! A.class_ "row" $ do
-                    let button ∷ Text → Text → Bool → H.Html
-                        button label value checked = H.label $ do
-                          H.input
-                            ! A.class_ "status_radio"
-                            ! A.type_ "radio"
-                            ! A.name (H.toValue [i|status-#{habit_id}-#{n}|])
-                            ! A.value (H.toValue value)
-                            & if checked then (! A.checked "checked") else identity
-                          H.div ! A.class_ (H.toValue [i|button #{label}|]) $ mempty
-                    button "good" "+1" False
-                    button "bad"  "-1" False
-                    button "skip" " 0" True
+                  button ∷ Text → Text → Bool → H.Html
+                  button label value checked = H.label $ do
+                    H.input
+                      ! A.class_ "status_radio"
+                      ! A.type_ "radio"
+                      ! A.name (H.toValue [i|status-#{habit_id}-#{n}|])
+                      ! A.value (H.toValue value)
+                      & if checked then (! A.checked "checked") else identity
+                    H.div ! A.class_ (H.toValue [i|button #{label}|]) $ mempty
                   habit_label = H.div $ H.toHtml habit_name
                   deadline_label = H.div $ H.toHtml (formatTime defaultTimeLocale "%R %p" deadline_time)
               in map (H.div >>> (! A.class_ evenodd))
-              [ status_buttons
+              [ button "good" "+1" False
+              , button "bad"  "-1" False
+              , button "skip" " 0" True
               , habit_label
               , deadline_label
               ]
