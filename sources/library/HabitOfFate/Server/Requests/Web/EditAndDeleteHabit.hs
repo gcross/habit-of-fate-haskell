@@ -93,7 +93,6 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
             ! A.type_ "text"
             ! A.name "name"
             ! A.required "true"
-            ! A.size "60"
             ! A.id "name_input"
             ! inputValue input_name_ ""
 

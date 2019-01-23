@@ -58,7 +58,6 @@ groupPage group_id error_message deletion_mode group =
             ! A.name "name"
             ! A.value (H.toValue group)
             ! A.required "true"
-            ! A.size "60"
             ! A.id "name_input"
 
       H.hr

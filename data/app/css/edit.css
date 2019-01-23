@@ -118,3 +118,8 @@ select {
     margin-bottom: auto;
     margin-top: auto;
 }
+
+#name_input {
+    margin: auto auto auto 0;
+    width: 25em;
+}
