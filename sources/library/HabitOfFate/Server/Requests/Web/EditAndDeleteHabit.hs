@@ -214,25 +214,26 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
                           ! A.for period_id
                           $ H.toHtml (plural ⊕ "." ∷ Text)
 
-            createBasicRepeatedControl "Daily" "daily" "days" InputDaily input_daily_period_
-            createBasicRepeatedControl "Weekly" "weekly" "weeks" InputWeekly input_weekly_period_
+            H.div ! A.class_ "repeated" $ do
+              createBasicRepeatedControl "Daily" "daily" "days" InputDaily input_daily_period_
+              createBasicRepeatedControl "Weekly" "weekly" "weeks" InputWeekly input_weekly_period_
 
-            H.div ! A.class_ "indent row row_spacer" $ do
-              mconcat
-                [ H.div ! A.class_ "column right10px" $ do
-                    let checkbox_id = H.toValue $ weekday_name ⊕ "_checkbox"
-                    H.input
-                      ! A.class_ (H.toValue ("weekly_control repeated_control" ∷ Text))
-                      ! A.id checkbox_id
-                      ! A.type_ "checkbox"
-                      ! A.name (H.toValue weekday_name)
-                      & checkedIf (input_habit ^# input_days_to_repeat_ . weekday_lens_)
-                    H.label
-                      ! A.class_ "weekly_control repeated_control"
-                      ! A.for checkbox_id
-                      $ H.toHtml weekday_abbrev
-                | (weekday_abbrev, weekday_name, weekday_lens_) ← weekdays
-                ]
+              H.div ! A.class_ "indent row double_row_spacer" $ do
+                mconcat
+                  [ H.div ! A.class_ "column right10px" $ do
+                      let checkbox_id = H.toValue $ weekday_name ⊕ "_checkbox"
+                      H.input
+                        ! A.class_ (H.toValue ("weekly_control repeated_control" ∷ Text))
+                        ! A.id checkbox_id
+                        ! A.type_ "checkbox"
+                        ! A.name (H.toValue weekday_name)
+                        & checkedIf (input_habit ^# input_days_to_repeat_ . weekday_lens_)
+                      H.label
+                        ! A.class_ "weekly_control repeated_control"
+                        ! A.for checkbox_id
+                        $ H.toHtml weekday_abbrev
+                  | (weekday_abbrev, weekday_name, weekday_lens_) ← weekdays
+                  ]
 
           H.div ! A.class_ "indent row double_row_spacer" $ do
             H.label
@@ -286,17 +287,18 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
 
         H.div ! A.id "group_input" $
           mconcat
-            [ do let checkbox_id = H.toValue $ "group_" ⊕ show group_number ⊕ "_checkbox"
-                 H.input
+            [ let checkbox_id = H.toValue $ "group_" ⊕ show group_number ⊕ "_checkbox"
+              in H.div ! A.class_ "group_checkbox" $ do
+                H.input
                   ! A.id checkbox_id
                   ! A.type_ "checkbox"
                   ! A.name (H.toValue ("group" ∷ Text))
                   ! A.value (H.toValue $ UUID.toText group_id)
                   & checkedIf (member group_id (input_habit ^. input_group_membership_))
-                 H.label
-                   ! A.class_ "label"
-                   ! A.for checkbox_id
-                   $ H.toHtml group_name
+                H.label
+                  ! A.class_ "group_label"
+                  ! A.for checkbox_id
+                  $ H.toHtml group_name
             | (group_id, group_name) ← groups ^. items_list_
             | group_number ← [0 ∷ Int ..]
             ]
@@ -312,6 +314,7 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
           ! A.class_ "sub"
           ! A.formaction (H.toValue [i|/habits/#{UUID.toText habit_id}|])
           ! A.type_ "submit"
+          ! A.value "Update"
 
       H.hr
 

@@ -64,6 +64,7 @@
 
 .period {
     width: 40px;
+    margin-bottom: 15px;
 }
 
 .radio {
@@ -72,10 +73,9 @@
     margin-top: auto;
 }
 
-.checkbock {
-    margin-bottom: auto;
-    margin-right: 1px;
-    margin-top: auto;
+.repeated {
+    display: flex;
+    flex-direction: column;
 }
 
 .weekday {
@@ -84,11 +84,15 @@
     margin-left: 10px;
 }
 
-#group_input {
-    display: grid;
-    grid-template-columns: auto auto;
-    grid-template-rows: auto auto;
-    margin-right: auto;
+.group_checkbox {
+    margin-top: 5px;
+}
+
+.group_label {
+    text-align: left;
+    margin-bottom: auto;
+    margin-left: 3px;
+    margin-top: auto;
 }
 
 select {
@@ -98,6 +102,8 @@ select {
 .submit {
     margin: auto;
     width: 200px;
+    display: flex;
+    flex-direction: row;
 }
 
 .submit * {
