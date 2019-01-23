@@ -26,7 +26,6 @@ import HabitOfFate.Prelude
 
 import Control.Concurrent.MVar (MVar)
 import Control.Concurrent.STM.TVar (TVar, readTVarIO)
-import Control.Concurrent.STM.TMVar (TMVar)
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime)
@@ -34,7 +33,6 @@ import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Time.LocalTime (LocalTime)
 import Data.UUID (UUID, fromText)
 import Network.HTTP.Types.Status (badRequest400)
-import Network.Wai (rawPathInfo, rawQueryString, requestMethod)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Blaze.Html5 (Html, (!), toHtml)
 import qualified Text.Blaze.Html5 as H
@@ -43,7 +41,6 @@ import Web.Scotty (ActionM, Parsable(..))
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
-import HabitOfFate.Logging
 
 instance Parsable UUID where
   parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right

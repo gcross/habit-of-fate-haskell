@@ -32,17 +32,12 @@ module HabitOfFate.Data.Habit where
 import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData)
-import Control.Monad.Catch
 
-import Data.Aeson
-import Data.Time.Format (defaultTimeLocale, formatTime, parseTime, parseTimeM)
+import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Data.Time.LocalTime (LocalTime)
 import Data.UUID
 
 import GHC.Generics (Generic)
-
-import Text.Blaze (ToMarkup(..))
-import Web.Scotty (Parsable(..))
 
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale

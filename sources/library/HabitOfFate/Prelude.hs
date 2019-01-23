@@ -251,8 +251,6 @@ import Flow hiding ((.>), (<.))
 
 import System.FilePath (FilePath)
 
-import Text.Parsec
-
 import Text.Printf
 
 import Text.Read (readEither, readMaybe)

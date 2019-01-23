@@ -50,7 +50,7 @@ module HabitOfFate.Substitution
 
 import HabitOfFate.Prelude
 
-import Control.Exception (Exception, SomeException)
+import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char

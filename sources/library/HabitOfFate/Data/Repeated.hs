@@ -34,7 +34,6 @@ import Data.Time.Calendar.WeekDate (toWeekDate)
 import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDayFraction)
 import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as UV
 
 import HabitOfFate.TH
 

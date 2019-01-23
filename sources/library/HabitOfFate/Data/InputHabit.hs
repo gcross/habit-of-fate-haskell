@@ -30,7 +30,6 @@ module HabitOfFate.Data.InputHabit where
 import HabitOfFate.Prelude
 
 import qualified Data.ByteString.Char8 as BS8
-import qualified Data.ByteString.Lazy as LazyBS
 import Data.Time (LocalTime)
 import qualified Data.UUID as UUID
 import Data.UUID (UUID)

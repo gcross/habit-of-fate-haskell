@@ -29,7 +29,6 @@ import HabitOfFate.Prelude
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (TVar, modifyTVar, readTVar)
 import Data.Time.Clock (addUTCTime, getCurrentTime)
-import Data.UUID (UUID)
 import qualified Data.Text.Lazy as Lazy
 import Network.HTTP.Types.Status (badRequest400)
 import Web.Cookie (parseCookiesText)

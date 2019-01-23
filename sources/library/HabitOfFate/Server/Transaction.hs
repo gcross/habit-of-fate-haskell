@@ -36,7 +36,7 @@ import Control.Concurrent (tryPutMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import Control.DeepSeq (NFData)
-import Control.Monad.Catch (Exception(..), MonadCatch(..), MonadThrow(..), SomeException)
+import Control.Monad.Catch (Exception(..), MonadThrow(..), SomeException)
 import qualified Control.Monad.Operational as Operational
 import Control.Monad.Random (MonadRandom(..), MonadSplit(..), RandT, StdGen, runRandT)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')

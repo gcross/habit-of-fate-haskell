@@ -24,7 +24,6 @@ module HabitOfFate.Quests where
 
 import HabitOfFate.Prelude
 
-import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest
 import HabitOfFate.TH
