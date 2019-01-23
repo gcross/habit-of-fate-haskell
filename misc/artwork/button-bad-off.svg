@@ -9,12 +9,12 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    version="1.1"
-   viewBox="0 0 699.99999 699.99999"
+   viewBox="0 0 819.99999 819.99999"
    id="svg71"
    sodipodi:docname="button-bad-off.svg"
    inkscape:version="0.92.4 (unknown)"
-   width="700"
-   height="700">
+   width="820"
+   height="820">
   <sodipodi:namedview
      pagecolor="#ffffff"
      bordercolor="#666666"
@@ -28,21 +28,27 @@
      inkscape:window-height="1012"
      id="namedview73"
      showgrid="true"
-     inkscape:zoom="1.1710827"
-     inkscape:cx="350"
-     inkscape:cy="349.82322"
+     inkscape:zoom="0.68009347"
+     inkscape:cx="154.15282"
+     inkscape:cy="420.22042"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg71"
-     units="px">
+     units="px"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0">
     <inkscape:grid
        type="xygrid"
        id="grid3817"
        color="#3f3fff"
        opacity="0.03137255"
        empcolor="#3f3fff"
-       empopacity="0.0627451" />
+       empopacity="0.0627451"
+       originx="59.999999"
+       originy="59.999999" />
   </sodipodi:namedview>
   <defs
      id="defs23">
@@ -171,8 +177,8 @@
        xlink:href="#linearGradient4658"
        id="linearGradient4652"
        gradientUnits="userSpaceOnUse"
-       x1="-0.70709997"
-       y1="2.12132"
+       x1="-60.176769"
+       y1="-58.409012"
        x2="639.29291"
        y2="642.12134"
        spreadMethod="pad"
@@ -333,7 +339,7 @@
             <dc:title>Openclipart</dc:title>
           </cc:Agent>
         </dc:publisher>
-        <dc:title />
+        <dc:title></dc:title>
         <dc:date>2013-09-24T12:44:11</dc:date>
         <dc:description>Yellow, neutral face representing an action in progress. Optimized for use on a web page.</dc:description>
         <dc:source>https://openclipart.org/detail/183860/indifferent-face-by-morkaitehred-183860</dc:source>
@@ -368,16 +374,16 @@
   </metadata>
   <g
      id="g5056"
-     transform="rotate(-90,350,350.17678)">
+     transform="rotate(-90,410,350.17678)">
     <path
        sodipodi:nodetypes="ccccccc"
        inkscape:connector-curvature="0"
        id="path4650"
-       d="M 700.70711,700.70711 640,640 H 60 l 0.70711,-579.29289 -60,-60 -1.41422,700 z"
+       d="M 760.17678,760.17678 640,640 H 60 L 60.70711,60.70711 -59.82322,-59.82322 v 820 z"
        style="fill:url(#linearGradient4652);fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        style="fill:url(#linearGradient4648);fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m -0.353555,0.353555 60,60 L 638.93934,59.646445 640,640 699.64645,700.35355 698.93934,-0.353555 Z"
+       d="M -59.82322,-59.82322 59.646445,60.353555 638.93934,59.646445 640,640 760.17678,760.17678 v -820 z"
        id="path3823"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
@@ -387,12 +393,12 @@
      id="rect3825"
      width="580"
      height="580"
-     x="60"
-     y="-640"
+     x="120"
+     y="-700"
      transform="rotate(90)" />
   <g
      id="g2286"
-     transform="matrix(0.77004315,0,0,0.77004315,-418.51574,82.210814)">
+     transform="matrix(0.77004315,0,0,0.77004315,-358.51574,142.21081)">
     <path
        id="path2024"
        d="m 1320.5162,334.614 c 0,176.50993 -144.1414,319.5963 -321.94609,319.5963 -177.80702,0 -321.9461,-143.08872 -321.9461,-319.5963 0,-176.50993 144.14143,-319.596298 321.9461,-319.596298 177.80699,0 321.94609,143.088718 321.94609,319.596298 z"
