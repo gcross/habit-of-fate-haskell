@@ -126,7 +126,7 @@ handler environment = do
                     $ do
                       H.input
                         ! A.type_ "submit"
-                        ! A.value "Move To"
+                        ! A.value "Move"
                       H.input
                         ! A.type_ "text"
                         ! A.value (H.toValue n)
@@ -196,7 +196,7 @@ handler environment = do
                     $ do
                       H.input
                         ! A.type_ "submit"
-                        ! A.value "Move To"
+                        ! A.value "Move"
                       H.input
                         ! A.type_ "text"
                         ! A.value (H.toValue n)
