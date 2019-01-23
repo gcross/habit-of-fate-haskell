@@ -45,4 +45,4 @@ handler environment = do
     case moveWithIdToIndex group_id new_index old_groups of
       Left exc → log [i|Exception moving habit: #{exc}|]
       Right new_groups → groups_ .= new_groups
-    pure $ redirectsToResult temporaryRedirect307 "/groups"
+    pure $ redirectsToResult temporaryRedirect307 "/"
