@@ -23,24 +23,9 @@
     margin-top: auto;
 }
 
-.name_area {
-    display: flex;
-    flex-direction: down;
-}
-
-.name {
-    margin-bottom: auto;
-    margin-top: auto;
-}
-
 .selected_name {
     font-family: serif;
     font-weight: bold;
-}
-
-.centered {
-    margin: auto;
-    text-align: center;
 }
 
 .move {

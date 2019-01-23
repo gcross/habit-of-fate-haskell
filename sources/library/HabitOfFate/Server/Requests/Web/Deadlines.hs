@@ -64,7 +64,7 @@ deadlinesPage = do
           , ("", "Failure")
           , ("", "Skip")
           , ("", "Habit")
-          , ("", "Deadline")
+          , ("centered", "Deadline")
           ]
           ⊕
           concat
@@ -78,13 +78,13 @@ deadlinesPage = do
                       ! A.value (H.toValue value)
                       & if checked then (! A.checked "checked") else identity
                     H.div ! A.class_ (H.toValue [i|button #{label}|]) $ mempty
-                  habit_label = H.div $ H.toHtml habit_name
-                  deadline_label = H.div $ H.toHtml (formatTime defaultTimeLocale "%R %p" deadline_time)
+                  name_label = H.div ! A.class_ "name_area" $ H.div ! A.class_ "name" $ H.toHtml $ habit_name
+                  deadline_label = H.div ! A.class_ "centered" $ renderLocalTime deadline_time
               in map (H.div >>> (! A.class_ evenodd))
               [ button "good" "+1" False
               , button "bad"  "-1" False
               , button "skip" " 0" True
-              , habit_label
+              , name_label
               , deadline_label
               ]
             | (habit_id, habit_name, deadline_time) ← deadlines
