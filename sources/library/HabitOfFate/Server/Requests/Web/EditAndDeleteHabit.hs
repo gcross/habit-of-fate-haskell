@@ -62,7 +62,7 @@ data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 renderHabitPage ∷ UUID → Seq Text → DeletionMode → InputHabit → Transaction TransactionResult
 renderHabitPage habit_id error_messages deletion_mode input_habit = do
   groups ← use groups_
-  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit"] ["edit"] (Just "updateEnabled();") ok200 >>> pure $ do
+  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit", "flatpickr"] ["edit", "flatpickr"] (Just "onload();") ok200 >>> pure $ do
     let checkedIf ∷ Bool → H.Html → H.Html
         checkedIf = bool identity (! A.checked "checked")
 
@@ -78,7 +78,7 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
             |> H.toValue
             |> A.value
 
-        format_time_ = to (fmap formatLocalTime)
+        format_time_ = to (fmap formatLocalTimeForExchange)
 
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
@@ -280,7 +280,7 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
             ! A.type_ "datetime-local"
             ! A.id "next_deadline"
             ! A.name "next_deadline"
-            ! inputValue (input_next_deadline_ . format_time_) ""
+            ! inputValue input_next_deadline_ ""
 
         H.div ! A.class_ "label" $ H.toHtml ("Groups:" ∷ Text)
 
@@ -477,8 +477,7 @@ parseInputHabit input_habit = do
     <*> (tryGetField "frequency" input_frequency_ >>= \case
           InputIndefinite → pure Indefinite
           InputOnce
-            | input_habit ^. input_once_has_deadline_ →
-                tryGetField "next deadline" input_next_deadline_ <&> (Just >>> Once)
+            | input_habit ^. input_once_has_deadline_ → tryGetNextDeadlineField <&> (Just >>> Once)
             | otherwise → pure $ Once Nothing
           InputRepeated →
             Repeated
@@ -486,7 +485,7 @@ parseInputHabit input_habit = do
                               InputKeepDaysInPast → KeepDaysInPast
                               InputKeepNumberOfDays → KeepNumberOfDays)
                       <*>  tryGetField "days to keep" input_days_to_keep_)
-              <*>  tryGetField "next deadline" input_next_deadline_
+              <*>  tryGetNextDeadlineField
               <*> (tryGetField "repeated mode" input_repeated_ >>= \case
                     InputDaily →
                       Daily  <$> tryGetField "daily period" input_daily_period_
@@ -518,6 +517,14 @@ parseInputHabit input_habit = do
       (throwError field_name)
       pure
       (input_habit ^. input_lens_)
+
+  tryGetNextDeadlineField ∷ Either Text LocalTime
+  tryGetNextDeadlineField = do
+    deadline_as_string ← tryGetField "next_deadline" input_next_deadline_ ∷ Either Text String
+    maybe
+      (throwError $ pack [i|"Unable to parse next deadline: #{deadline_as_string}|])
+      pure
+      (parseLocalTimeFromExchange deadline_as_string)
 
 handleEditHabitPost ∷ Environment → ScottyM ()
 handleEditHabitPost environment = do

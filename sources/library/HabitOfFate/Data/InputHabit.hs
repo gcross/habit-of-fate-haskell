@@ -32,7 +32,6 @@ import HabitOfFate.Prelude
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
 import Data.Time (LocalTime)
-import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import qualified Data.UUID as UUID
 import Data.UUID (UUID)
 import Web.Scotty (Parsable(..))
@@ -54,9 +53,9 @@ instance Parsable LocalTime where
   parseParam time =
     time
       |> unpack
-      |> parseTimeM False defaultTimeLocale "%FT%R"
+      |> parseLocalTimeFromExchange
       |> maybe
-          (Left $ pack [i|"Unable to parse local time: #{time}"|])
+          (Left $ pack [i|Unable to parse local time: "#{time}"|])
           Right
 
 data InputHabit = InputHabit
@@ -71,7 +70,7 @@ data InputHabit = InputHabit
  , _input_days_to_repeat_ ∷ DaysToRepeat
  , _input_days_to_keep_ ∷ Maybe Int
  , _input_days_to_keep_mode_ ∷ Maybe InputDaysToKeepMode
- , _input_next_deadline_ ∷ Maybe LocalTime
+ , _input_next_deadline_ ∷ Maybe String
  , _input_group_membership_ ∷ HashSet UUID
  , _input_maybe_last_marked_ ∷ Maybe LocalTime
  } deriving (Eq,Ord,Read,Show)
@@ -146,7 +145,7 @@ habitToInputHabit habit@Habit{..} = flip execState mempty $ do
         Nothing → pure ()
         Just next_deadline → do
           input_once_has_deadline_ .= True
-          input_next_deadline_ .= Just next_deadline
+          input_next_deadline_ .= Just (formatLocalTimeForExchange next_deadline)
     Repeated days_to_keep next_deadline repeated → do
       input_frequency_ .= Just InputRepeated
       case days_to_keep of
@@ -156,7 +155,7 @@ habitToInputHabit habit@Habit{..} = flip execState mempty $ do
         KeepNumberOfDays n → do
           input_days_to_keep_ .= Just n
           input_days_to_keep_mode_ .= Just InputKeepNumberOfDays
-      input_next_deadline_ .= Just next_deadline
+      input_next_deadline_ .= Just (formatLocalTimeForExchange next_deadline)
       case repeated of
         Daily period → do
           input_repeated_ .= Just InputDaily
@@ -206,6 +205,6 @@ inputHabitToRequest input_habit =
     , F "days_to_keep_mode" input_days_to_keep_mode_ $ \case
           InputKeepDaysInPast → "KeepDaysInPast"
           InputKeepNumberOfDays → "KeepNumberOfDays"
-    , F "next_deadline" input_next_deadline_ formatLocalTime
-    , F "maybe_last_marked" input_maybe_last_marked_ formatLocalTime
+    , F "next_deadline" input_next_deadline_ identity
+    , F "maybe_last_marked" input_maybe_last_marked_ formatLocalTimeForExchange
     ]

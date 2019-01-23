@@ -51,3 +51,8 @@ function updateEnabled() {
     }
 
 }
+
+function onload() {
+    updateEnabled();
+    flatpickr("#next_deadline", {altInput: true, dateFormat: "Y-m-dTH:i", enableTime: true});
+}
