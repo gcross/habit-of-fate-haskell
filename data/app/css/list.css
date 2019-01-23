@@ -12,19 +12,6 @@
     padding: 10px;
 }
 
-.even {
-    background-color: #d6dfff;
-}
-
-.odd {
-    background-color: #c2cfff;
-}
-
-.even, .odd {
-    align-content: center;
-    display: flex;
-}
-
 .mark_button {
     margin: auto;
 }

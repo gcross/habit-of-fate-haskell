@@ -72,3 +72,16 @@ body {
 .row {
     display: flex;
 }
+
+.even {
+    background-color: #d6dfff;
+}
+
+.odd {
+    background-color: #c2cfff;
+}
+
+.even, .odd {
+    align-content: center;
+    display: flex;
+}

@@ -1,9 +1,12 @@
 .deadlines {
     display: grid;
     font-size: 24;
-    grid-gap: 1em;
     grid-template-columns: 5em 5em 5em auto 200px;
     padding: 10px;
+}
+
+.header {
+    text-decoration: underline;
 }
 
 .status_radio {
@@ -14,10 +17,12 @@
 }
 
 .button {
-    background-size: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 50px;
     cursor: pointer;
-    height: 50px;
-    width: 50px;
+    height: 60px;
+    width: 60px;
 }
 
 .good {
