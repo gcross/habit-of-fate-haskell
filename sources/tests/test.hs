@@ -398,7 +398,7 @@ extractHabit tags =
                           Weekly
                             <$> extractInputTextParam "daily_period" tags
                             <*> (pure $ foldl'
-                                  (\days_to_repeat (_, weekday_name, weekday_lens_) →
+                                  (\days_to_repeat Weekday{..} →
                                     if extractInputCheckbox (unpack weekday_name) tags
                                       then days_to_repeat & weekday_lens_ #~ True
                                       else days_to_repeat

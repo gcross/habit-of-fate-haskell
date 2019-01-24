@@ -230,8 +230,8 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
                       H.label
                         ! A.class_ "weekly_control repeated_control"
                         ! A.for checkbox_id
-                        $ H.toHtml weekday_abbrev
-                  | (weekday_abbrev, weekday_name, weekday_lens_) ← weekdays
+                        $ H.toHtml weekday_first_letter
+                  | Weekday{..} ← weekdays
                   ]
 
           H.div ! A.class_ "indent row double_row_spacer" $ do
@@ -401,7 +401,7 @@ getInputHabit = flip runStateT mempty $ do
           _ → pure Nothing
         )
     <*> (foldlM
-          (\previous (_, weekday_name, weekday_lens_) → do
+          (\previous Weekday{..} → do
             lift (getParamMaybe weekday_name)
             <&>
             \case

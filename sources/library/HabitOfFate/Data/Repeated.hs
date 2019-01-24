@@ -102,15 +102,22 @@ days_to_repeat_lenses = V.fromList $
   , sunday_
   ]
 
-weekdays ∷ [(Text, Lazy.Text, ALens' DaysToRepeat Bool)]
+data Weekday = Weekday
+  { weekday_first_letter ∷ !Text
+  , weekday_abbrev ∷ !Text
+  , weekday_name ∷ !Lazy.Text
+  , weekday_lens_ ∷ !(ALens' DaysToRepeat Bool)
+  }
+
+weekdays ∷ [Weekday]
 weekdays =
-  [ ("S", "sunday", sunday_)
-  , ("M", "monday", monday_)
-  , ("T", "tuesday", tuesday_)
-  , ("W", "wednesday", wednesday_)
-  , ("T", "thursday", thursday_)
-  , ("F", "friday", friday_)
-  , ("S", "saturday", saturday_)
+  [ Weekday "S" "Sun" "sunday" sunday_
+  , Weekday "M" "Mon" "monday"  monday_
+  , Weekday "T" "Tue" "tuesday"  tuesday_
+  , Weekday "W" "Wed" "wednesday" wednesday_
+  , Weekday "T" "Thu" "thursday" thursday_
+  , Weekday "F" "Fri" "friday" friday_
+  , Weekday "S" "Sat" "saturday" saturday_
   ]
 
 instance Default DaysToRepeat where

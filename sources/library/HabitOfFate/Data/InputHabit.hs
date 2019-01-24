@@ -197,7 +197,7 @@ inputHabitToRequest input_habit =
     ]
     ⊕
     [ bF (unpack weekday_name) (input_days_to_repeat_ . weekday_lens_)
-    | (_, weekday_name, weekday_lens_) ← weekdays
+    | Weekday{..} ← weekdays
     ]
     ⊕
     [ F "days_to_keep" input_days_to_keep_ show
