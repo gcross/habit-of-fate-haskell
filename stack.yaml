@@ -2,7 +2,8 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-resolver: lts-12.16
+resolver: lts-13.4
 extra-deps:
-- 'cookie-0.4.2.1'
 - 'pwstore-fast-2.4.4'
+- 'cookie-0.4.4@sha256:34a61659b3294a5650296c16ab31d779c46a3d4c691d5147ef10b0648ad6c914'
+- 'jwt-0.9.0@sha256:82df51e48d2c7a6773bac7cd0f99f221107e7124db5d118f828dc08af025edee'
