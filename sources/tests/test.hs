@@ -57,9 +57,11 @@ import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
 import Test.QuickCheck hiding (Failure, Success)
 import Test.QuickCheck.Gen (chooseAny)
+import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons3)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
-import Test.Tasty.QuickCheck hiding (Failure, Success)
+import qualified Test.Tasty.SmallCheck as SC
+import qualified Test.Tasty.QuickCheck as QC
 import Data.Time.Zones.All
 import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
@@ -141,6 +143,9 @@ instance Arbitrary Habit where
       <*> arbitrary
       <*> (arbitrary <&> setFromList)
       <*> arbitrary
+
+instance Monad m ⇒ Serial m Gender where
+  series = cons0 Male \/ cons0 Female \/ cons0 Neuter
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -470,10 +475,11 @@ main = defaultMain $ testGroup "All Tests"
     ----------------------------------------------------------------------------
       [ testGroup "JSON" $
       --------------------------------------------------------------------------
-        [ testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-        , testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-        , testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-        , testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        [ QC.testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        , QC.testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        , QC.testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
         ]
       ]
     ]
@@ -544,7 +550,7 @@ main = defaultMain $ testGroup "All Tests"
               )
               (nextWeeklyDay days_to_repeat period today @?= next_deadline)
       in
-      [ testProperty "next_deadline >= today" $ \days_to_repeat (Positive period) today →
+      [ QC.testProperty "next_deadline >= today" $ \days_to_repeat (Positive period) today →
           nextWeeklyDay days_to_repeat period today >= today
       , testNextWeeklyDayCase
           (def & monday_ .~ True & tuesday_ .~ True)

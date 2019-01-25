@@ -212,19 +212,16 @@ parseSubstitutions story =
 data Gender = Male | Female | Neuter deriving (Enum,Eq,Ord,Read,Show)
 
 instance ToJSON Gender where
-  toJSON gender = String $
-    case gender of
-      Male → "male"
-      Female → "female"
-      Neuter → "neuter"
+  toJSON Male = String "male"
+  toJSON Female = String "female"
+  toJSON Neuter = String "neuter"
 
 instance FromJSON Gender where
-  parseJSON = withText "expected text" parseGender
-    where
-      parseGender "male" = return Male
-      parseGender "female" = return Female
-      parseGender "neuter" = return Neuter
-      parseGender wrong = fail [i|gender must be "male", "female", or "neuter", not "#{wrong}"|]
+  parseJSON = withText "expected text for the gender" $ \case
+    "male" → pure Male
+    "female" → pure Female
+    "neuter" → pure Neuter
+    wrong → fail [i|gender must be "male", "female", or "neuter", not "#{wrong}"|]
 
 data Gendered = Gendered
   { _gendered_name_ ∷ Text

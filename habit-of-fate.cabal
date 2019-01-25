@@ -213,11 +213,13 @@ test-suite test
                      , quickcheck-text
                      , scalpel
                      , scotty
+                     , smallcheck
                      , stm
                      , tagsoup
                      , tasty
                      , tasty-hunit
                      , tasty-quickcheck
+                     , tasty-smallcheck
                      , temporary
                      , text
                      , time
