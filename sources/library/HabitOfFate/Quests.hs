@@ -15,8 +15,11 @@
 -}
 
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -24,15 +27,34 @@ module HabitOfFate.Quests where
 
 import HabitOfFate.Prelude
 
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(Object,String), (.:), withObject, withText)
+
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quest
-import HabitOfFate.TH
 
 data CurrentQuestState =
     Forest Forest.State
   deriving (Eq,Ord,Read,Show)
-deriveJSON ''CurrentQuestState
 makePrisms ''CurrentQuestState
+
+instance ToJSON CurrentQuestState where
+  toJSON (Forest state) = toJSONFor "forest" state
+   where
+    toJSONFor ∷ ToJSON α ⇒ Text → α → Value
+    toJSONFor module_name = toJSON >>> \case
+      Object without_module_name → Object (insertMap "module" (String module_name) without_module_name)
+      _ → error [i|quest state for #{module_name} must encode to an object|]
+
+instance FromJSON CurrentQuestState where
+  parseJSON = withObject "expected entity with object shape" $ \o →
+    o .: "module"
+    >>=
+    withText
+      "module name must be a string"
+      (\case
+        "forest" → Forest <$> parseJSON (Object o)
+        other → fail [i|no such module #{other}|]
+      )
 
 data Quest s = Quest
   { questPrism ∷ Prism' CurrentQuestState s

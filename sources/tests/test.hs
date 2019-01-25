@@ -57,7 +57,7 @@ import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
 import Test.QuickCheck hiding (Failure, Success)
 import Test.QuickCheck.Gen (chooseAny)
-import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons2, cons3)
+import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons1, cons2, cons3)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
 import qualified Test.Tasty.SmallCheck as SC
@@ -77,6 +77,7 @@ import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
+import HabitOfFate.Quests
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Substitution
@@ -168,6 +169,9 @@ instance Monad m ⇒ Serial m (HashMap Text Gendered) where
 
 instance Monad m ⇒ Serial m Forest.State where
   series = cons3 Forest.State
+
+instance Monad m ⇒ Serial m CurrentQuestState where
+  series = cons1 Forest
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -504,6 +508,7 @@ main = defaultMain $ testGroup "All Tests"
         , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
         , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
         , SC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
+        , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
         ]
       ]
     ]
