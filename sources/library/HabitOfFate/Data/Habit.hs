@@ -49,7 +49,6 @@ import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.JSON
-import HabitOfFate.TH
 
 local_time_exchange_format_string ∷ String
 local_time_exchange_format_string = "%FT%R"
