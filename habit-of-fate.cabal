@@ -227,19 +227,3 @@ test-suite test
                      , warp
                      , xml-conduit
   default-language:    Haskell2010
-
-test-suite test-story-roundtrip
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      sources/tests
-  main-is:             test-story-roundtrip.hs
-  build-depends:       habit-of-fate
-                     , base
-                     , filepath
-                     , lens
-                     , QuickCheck
-                     , random
-                     , smallcheck
-                     , tasty
-                     , tasty-quickcheck
-                     , tasty-smallcheck
-  default-language:    Haskell2010
