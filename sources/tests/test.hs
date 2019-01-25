@@ -130,6 +130,9 @@ instance Arbitrary α ⇒ Arbitrary (Tagged α) where
 
 instance Arbitrary UUID where arbitrary = chooseAny
 
+instance Arbitrary α ⇒ Arbitrary (ItemsSequence α) where
+  arbitrary = arbitrary <&> itemsFromList
+
 instance Arbitrary Habit where
   arbitrary =
     Habit
@@ -469,6 +472,7 @@ main = defaultMain $ testGroup "All Tests"
       --------------------------------------------------------------------------
         [ testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         , testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        , testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         ]
       ]
     ]

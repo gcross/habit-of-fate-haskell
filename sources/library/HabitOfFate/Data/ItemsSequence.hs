@@ -19,6 +19,9 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -30,20 +33,45 @@ import HabitOfFate.Prelude
 import Control.DeepSeq (NFData(..))
 import Control.Exception
 import Control.Monad.Catch
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(Array), (.:), object, withArray, withObject)
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
 import Data.Sequence (deleteAt, elemIndexL, insertAt)
 import Data.UUID (UUID)
+import qualified Data.Vector as V
 import qualified GHC.Exts as Exts
 
-import HabitOfFate.TH
+import HabitOfFate.JSON
 
 data ItemsSequence α = ItemsSequence
   { _items_map_ ∷ !(HashMap UUID α)
   , _items_seq_ ∷ !(Seq UUID)
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
-deriveJSON ''ItemsSequence
 makeLenses ''ItemsSequence
+
+instance ToJSON α ⇒ ToJSON (ItemsSequence α) where
+  toJSON ItemsSequence{..} = Array $ V.fromList $
+    [ object
+        [ "index" .== toJSON index
+        , "value" .==
+            maybe
+              (error [i|internal error when encoding item sequence: missing value for index #{index}|])
+              toJSON
+              (lookup index _items_map_)
+        ]
+    | index ← toList _items_seq_
+    ]
+
+itemsFromList ∷ [(UUID, α)] → ItemsSequence α
+itemsFromList items = ItemsSequence (mapFromList items) (fromList $ map fst items)
+
+instance FromJSON α ⇒ FromJSON (ItemsSequence α) where
+  parseJSON =
+    withArray "entity must have the shape of an array" $ \v →
+      (forM (toList v) $
+        withObject "array element must have the shape of an object" $ \o →
+          (,) <$> (o .: "index" >>= parseJSON) <*> (o .: "value" >>= parseJSON)
+      ) <&> itemsFromList
 
 instance NFData α ⇒ NFData (ItemsSequence α) where
   rnf (ItemsSequence m s) = rnf m `seq` rnf s `seq` ()
@@ -158,9 +186,6 @@ moveWithIndexToIndex old_index new_index items@(ItemsSequence _ items_seq) =
     (throwM MissingIndex)
     (\uuid → _moveWithIdFromToIndex uuid old_index new_index items)
     (items_seq ^? ix old_index)
-
-itemsFromList ∷ [(UUID, α)] → ItemsSequence α
-itemsFromList items = ItemsSequence (mapFromList items) (fromList $ map fst items)
 
 instance Show α ⇒ Exts.IsList (ItemsSequence α) where
   type Item (ItemsSequence α) = (UUID, α)
