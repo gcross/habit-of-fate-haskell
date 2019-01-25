@@ -35,26 +35,19 @@ module Main where
 import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Concurrent.MVar (newEmptyMVar, tryTakeMVar)
-import Control.Concurrent.STM.TVar (newTVarIO, readTVarIO)
+import Control.Concurrent.STM.TVar (newTVarIO)
 import Control.Monad.Catch
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
-import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
 import Data.CallStack
-import Data.Data.Lens (uniplate)
-import Data.IORef
-import Data.List (cycle, isPrefixOf, sort, zip3)
 import Data.Time.Calendar
 import Data.Time.Calendar.WeekDate
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
-import qualified Data.Text as Text
-import Data.Text (strip)
-import Data.Text.Strict.Lens (utf8)
 import qualified Data.Text.Lazy as Lazy
-import Data.UUID (UUID, fromText)
+import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import qualified Data.Vector as V
 import Network.HTTP.Client hiding (httpNoBody)
@@ -62,21 +55,14 @@ import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
-import System.IO hiding (utf8)
-import Text.Printf
 import Test.QuickCheck hiding (Failure, Success)
 import Test.QuickCheck.Gen (chooseAny)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
 import Test.Tasty.QuickCheck hiding (Failure, Success)
-import Data.Time.Zones
 import Data.Time.Zones.All
-import qualified Data.UUID as UUID
-import Text.HTML.DOM (sinkDoc)
 import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
-import Text.Parsec (many, runParser)
-import Text.XML (documentRoot, parseText)
 import Web.Scotty (Parsable(..))
 
 import HabitOfFate.API
@@ -87,11 +73,9 @@ import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
-import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Server
-import HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
