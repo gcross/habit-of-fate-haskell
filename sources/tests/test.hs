@@ -144,6 +144,16 @@ instance Arbitrary Habit where
       <*> (arbitrary <&> setFromList)
       <*> arbitrary
 
+instance Monad m ⇒ Serial m Forest.Searcher where
+  series = cons0 Forest.Parent \/ cons0 Forest.Healer
+
+instance Monad m ⇒ Serial m Forest.NextEvent where
+  series =
+      cons0 Forest.GingerbreadHouseEvent
+   \/ cons0 Forest.FoundEvent
+   \/ cons0 Forest.FairyCircleEvent
+   \/ cons0 Forest.VictoryEvent
+
 instance Monad m ⇒ Serial m Gender where
   series = cons0 Male \/ cons0 Female \/ cons0 Neuter
 
@@ -152,6 +162,12 @@ instance Monad m ⇒ Serial m Text where
 
 instance Monad m ⇒ Serial m Gendered where
   series = cons2 Gendered
+
+instance Monad m ⇒ Serial m (HashMap Text Gendered) where
+  series = series <&> mapFromList
+
+instance Monad m ⇒ Serial m Forest.State where
+  series = cons3 Forest.State
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -487,6 +503,7 @@ main = defaultMain $ testGroup "All Tests"
         , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
         , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
+        , SC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
         ]
       ]
     ]

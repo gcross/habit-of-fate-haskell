@@ -35,16 +35,17 @@ module HabitOfFate.Quests.Forest where
 
 import HabitOfFate.Prelude hiding (State)
 
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(String), (.:), withObject, withText, object)
 import Control.Monad.Catch (MonadThrow)
-import Control.Monad.Random
+import Control.Monad.Random (MonadRandom, getRandom, uniform)
 import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Data.SuccessOrFailureResult
+import HabitOfFate.JSON
 import HabitOfFate.Quest
 import HabitOfFate.Substitution
 import HabitOfFate.Story
 import HabitOfFate.Pages
-import HabitOfFate.TH
 import HabitOfFate.Trial
 
 --------------------------------------------------------------------------------
@@ -53,19 +54,54 @@ import HabitOfFate.Trial
 
 data Searcher = Parent | Healer
   deriving (Enum,Eq,Ord,Read,Show)
-deriveJSON ''Searcher
+
+instance ToJSON Searcher where
+  toJSON Parent = String "parent"
+  toJSON Healer = String "healer"
+
+instance FromJSON Searcher where
+  parseJSON = withText "searcher field must be a string" $ \case
+    "parent" → pure Parent
+    "healer" → pure Healer
+    other → fail [i|searcher must be parent or healer, not #{other}|]
 
 data NextEvent = GingerbreadHouseEvent | FoundEvent | FairyCircleEvent | VictoryEvent
   deriving (Enum,Eq,Ord,Read,Show)
-deriveJSON ''NextEvent
+
+instance ToJSON NextEvent where
+  toJSON GingerbreadHouseEvent = String "gingerbread house"
+  toJSON FoundEvent = String "found"
+  toJSON FairyCircleEvent = String "fairy circle"
+  toJSON VictoryEvent = String "victory"
+
+instance FromJSON NextEvent where
+  parseJSON = withText "next event field must be a string" $ \case
+    "gingerbread house" → pure GingerbreadHouseEvent
+    "found" → pure FoundEvent
+    "fairy circle" → pure FairyCircleEvent
+    "victory" → pure VictoryEvent
+    other → fail [i|searcher must be parent or healer, not #{other}|]
 
 data State = State
   { _substitutions_ ∷ HashMap Text Gendered
   , _searcher_ ∷ Searcher
   , _next_event_ ∷ NextEvent
   } deriving (Eq,Ord,Read,Show)
-deriveJSON ''State
 makeLenses ''State
+
+instance ToJSON State where
+  toJSON State{..} = object
+    [ "substitutions" .== toJSON _substitutions_
+    , "searcher" .== toJSON _searcher_
+    , "next event" .== _next_event_
+    ]
+
+instance FromJSON State where
+  parseJSON = withObject "forest state must have object shape" $ \o →
+    State
+      <$> (o .: "substitutions" >>= parseJSON)
+      <*> (o .: "searcher" >>= parseJSON)
+      <*> (o .: "next event" >>= parseJSON)
 
 static_substitutions ∷ Substitutions
 static_substitutions =
@@ -424,7 +460,7 @@ pickStoryUsingState ∷ (MonadRandom m, MonadState State m, MonadThrow m) ⇒ [S
 pickStoryUsingState stories = join $ substitute <$> (use substitutions_) <*> (uniform stories)
 
 getStatus ∷ GetStatusQuestRunner State
-getStatus s = substitute (s ^. substitutions_) story 
+getStatus s = substitute (s ^. substitutions_) story
  where
   story
    | s ^. next_event_ <= FoundEvent = looking_for_herb_story
