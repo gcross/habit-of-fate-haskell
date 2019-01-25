@@ -19,7 +19,9 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -29,10 +31,10 @@ module HabitOfFate.Data.Tagged where
 import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData(..))
-import Data.Aeson (FromJSON(), ToJSON())
+import Data.Aeson (FromJSON(..), ToJSON(..), (.:), object, withObject)
 
 import HabitOfFate.Data.SuccessOrFailureResult
-import HabitOfFate.TH
+import HabitOfFate.JSON
 
 newtype Success α = Success { unwrapSuccess ∷ α }
   deriving (Eq,Foldable,FromJSON,Functor,Ord,Read,Show,ToJSON,Traversable)
@@ -52,7 +54,13 @@ data Tagged α = Tagged
   { _success_ ∷ Success α
   , _failure_ ∷ Failure α
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
-deriveJSON ''Tagged
+
+instance ToJSON α ⇒ ToJSON (Tagged α) where
+  toJSON Tagged{..} = object [ "success" .== _success_, "failure" .== _failure_ ]
+
+instance FromJSON α ⇒ FromJSON (Tagged α) where
+  parseJSON = withObject "entity should be shaped like an object" $ \o →
+    Tagged <$> o .: "success" <*> o .: "failure"
 
 instance NFData α ⇒ NFData (Tagged α) where
   rnf (Tagged (Success s) (Failure f)) = rnf s `seq` rnf f `seq` ()
