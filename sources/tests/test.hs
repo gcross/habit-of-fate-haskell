@@ -65,6 +65,7 @@ import Network.Wai.Handler.Warp
 import System.IO hiding (utf8)
 import Text.Printf
 import Test.QuickCheck hiding (Failure, Success)
+import Test.QuickCheck.Gen (chooseAny)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
 import Test.Tasty.QuickCheck hiding (Failure, Success)
@@ -137,6 +138,22 @@ instance Arbitrary Frequency where
     , Once <$> arbitrary
     , Repeated <$> arbitrary <*> arbitrary <*> arbitrary
     ]
+
+instance Arbitrary Scale where arbitrary = elements [None, VeryLow .. VeryHigh]
+
+instance Arbitrary α ⇒ Arbitrary (Tagged α) where
+  arbitrary = Tagged <$> (Success <$> arbitrary) <*> (Failure <$> arbitrary)
+
+instance Arbitrary UUID where arbitrary = chooseAny
+
+instance Arbitrary Habit where
+  arbitrary =
+    Habit
+      <$> (arbitrary <&> pack)
+      <*> arbitrary
+      <*> arbitrary
+      <*> (arbitrary <&> setFromList)
+      <*> arbitrary
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -467,6 +484,7 @@ main = defaultMain $ testGroup "All Tests"
       [ testGroup "JSON" $ let subs = Forest.static_substitutions in
       --------------------------------------------------------------------------
         [ testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        , testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         ]
       ]
     ]

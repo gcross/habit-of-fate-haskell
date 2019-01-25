@@ -37,7 +37,7 @@ import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData)
 
-import Data.Aeson (FromJSON(..),Object,ToJSON(..),Value(..),(.:),(.:?),withObject)
+import Data.Aeson (FromJSON(..),Object,ToJSON(..),Value(..),(.:),(.:?),withArray,withObject)
 import Data.Aeson.Types (Parser)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Data.Time.LocalTime (LocalTime)
@@ -150,7 +150,24 @@ data Habit = Habit
   , _maybe_last_marked_ ∷ Maybe LocalTime
   } deriving (Eq,Generic,NFData,Ord,Read,Show)
 makeLenses ''Habit
-deriveJSON ''Habit
+
+instance ToJSON Habit where
+  toJSON Habit{..} = runJSONBuilder $ do
+    writeField "name" _name_
+    writeField "difficulty" (_scales_ ^. success_)
+    writeField "importance" (_scales_ ^. failure_)
+    writeField "frequency" _frequency_
+    writeField "groups" $ toList _group_membership_
+    writeMaybeField "last_marked" _maybe_last_marked_
+
+instance FromJSON Habit where
+  parseJSON = withObject "expected entity with shape object" $ \o →
+    Habit
+      <$> (o .: "name")
+      <*> (Tagged <$> (Success <$> (o .: "difficulty")) <*> (Failure <$> (o .: "importance")))
+      <*> (o .: "frequency")
+      <*> (o .: "groups" >>= withArray "groups must be an array" (toList >>> mapM parseJSON >>> fmap setFromList))
+      <*> (o .:? "last_marked")
 
 difficulty_, importance_ ∷ Lens' Habit Scale
 difficulty_ = scales_ . success_
