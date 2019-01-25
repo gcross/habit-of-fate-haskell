@@ -57,7 +57,7 @@ import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
 import Test.QuickCheck hiding (Failure, Success)
 import Test.QuickCheck.Gen (chooseAny)
-import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons3)
+import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons2, cons3)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit as HUnit
 import qualified Test.Tasty.SmallCheck as SC
@@ -146,6 +146,12 @@ instance Arbitrary Habit where
 
 instance Monad m ⇒ Serial m Gender where
   series = cons0 Male \/ cons0 Female \/ cons0 Neuter
+
+instance Monad m ⇒ Serial m Text where
+  series = series <&> pack
+
+instance Monad m ⇒ Serial m Gendered where
+  series = cons2 Gendered
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -480,6 +486,7 @@ main = defaultMain $ testGroup "All Tests"
         , QC.testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
+        , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
         ]
       ]
     ]

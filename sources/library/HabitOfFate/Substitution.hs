@@ -23,6 +23,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -62,6 +63,7 @@ import qualified Data.Text.Lazy as Lazy
 import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
 
+import HabitOfFate.JSON
 import HabitOfFate.TH
 
 uppercase_ ∷ Lens' Char Bool
@@ -227,8 +229,19 @@ data Gendered = Gendered
   { _gendered_name_ ∷ Text
   , _gendered_gender_ ∷ Gender
   } deriving (Eq,Ord,Read,Show)
-deriveJSONDropping 10 ''Gendered
 makeLenses ''Gendered
+
+instance ToJSON Gendered where
+  toJSON Gendered{..} = object
+    [ "name" .== toJSON _gendered_name_
+    , "gender" .== toJSON _gendered_gender_
+    ]
+
+instance FromJSON Gendered where
+  parseJSON = withObject "gendered entity must have object shape" $ \o →
+    Gendered
+      <$> (o .: "name" >>= parseJSON)
+      <*> (o .: "gender" >>= parseJSON)
 
 data SubstitutionException =
     NoSuchKeyException Text
