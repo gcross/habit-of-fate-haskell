@@ -44,6 +44,15 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.TH
 
+local_time_exchange_format_string ∷ String
+local_time_exchange_format_string = "%FT%R"
+
+formatLocalTimeForExchange ∷ LocalTime → String
+formatLocalTimeForExchange = formatTime defaultTimeLocale local_time_exchange_format_string
+
+parseLocalTimeFromExchange ∷ MonadFail m ⇒ String → m LocalTime
+parseLocalTimeFromExchange = parseTimeM False defaultTimeLocale local_time_exchange_format_string
+
 data Frequency =
     Indefinite
   | Once (Maybe LocalTime)
@@ -104,12 +113,3 @@ previousHabitDeadlines habit today =
         |> previousDeadlines repeated
         |> takePreviousDeadlines days_to_keep today deadline
     _ → []
-
-local_time_exchange_format_string ∷ String
-local_time_exchange_format_string = "%FT%R"
-
-formatLocalTimeForExchange ∷ LocalTime → String
-formatLocalTimeForExchange = formatTime defaultTimeLocale local_time_exchange_format_string
-
-parseLocalTimeFromExchange ∷ MonadFail m ⇒ String → m LocalTime
-parseLocalTimeFromExchange = parseTimeM False defaultTimeLocale local_time_exchange_format_string

@@ -97,6 +97,7 @@ library
                      , HabitOfFate.Data.Scale
                      , HabitOfFate.Data.SuccessOrFailureResult
                      , HabitOfFate.Data.Tagged
+                     , HabitOfFate.JSON
                      , HabitOfFate.Logging
                      , HabitOfFate.Pages
                      , HabitOfFate.Prelude
@@ -196,6 +197,7 @@ test-suite test
   main-is:             test.hs
   build-depends:       habit-of-fate
                      , base
+                     , aeson
                      , bytestring
                      , call-stack
                      , containers
