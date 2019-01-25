@@ -24,6 +24,7 @@
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -36,6 +37,7 @@ import HabitOfFate.Prelude hiding (elements, text)
 import Control.Concurrent.MVar (newEmptyMVar, tryTakeMVar)
 import Control.Concurrent.STM.TVar (newTVarIO, readTVarIO)
 import Control.Monad.Catch
+import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
 import Data.ByteString.Strict.Lens (packedChars, unpackedChars)
@@ -125,6 +127,16 @@ instance Arbitrary DaysToRepeat where
     )
     `suchThat`
     (/= def)
+
+instance Arbitrary Repeated where
+  arbitrary = oneof [Daily <$> arbitrary, Weekly <$> arbitrary <*> arbitrary]
+
+instance Arbitrary Frequency where
+  arbitrary = oneof
+    [ pure Indefinite
+    , Once <$> arbitrary
+    , Repeated <$> arbitrary <*> arbitrary <*> arbitrary
+    ]
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -448,7 +460,18 @@ dontTestGroup name _ = testGroup name []
 main ∷ HasCallStack ⇒ IO ()
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
-  [ testGroup "HabitOfFate.Quests..."
+  [ testGroup "HabitOfFate.Data..."
+  ------------------------------------------------------------------------------
+    [ testGroup "HabitOfFate.Data.Habit"
+    ----------------------------------------------------------------------------
+      [ testGroup "JSON" $ let subs = Forest.static_substitutions in
+      --------------------------------------------------------------------------
+        [ testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        ]
+      ]
+    ]
+  ------------------------------------------------------------------------------
+  , testGroup "HabitOfFate.Quests..."
   ------------------------------------------------------------------------------
     [ testGroup "HabitOfFate.Quests.Forest"
     ----------------------------------------------------------------------------

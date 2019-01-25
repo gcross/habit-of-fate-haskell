@@ -19,6 +19,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -119,6 +120,9 @@ weekdays =
   , Weekday "F" "Fri" "friday" friday_
   , Weekday "S" "Sat" "saturday" saturday_
   ]
+
+weekday_abbrevs ∷ HashSet Text
+weekday_abbrevs = setFromList [weekday_abbrev | Weekday{..} ← weekdays]
 
 instance Default DaysToRepeat where
   def = DaysToRepeat False False False False False False False

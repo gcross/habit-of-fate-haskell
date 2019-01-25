@@ -21,8 +21,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -33,6 +37,8 @@ import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData)
 
+import Data.Aeson (FromJSON(..),Object,ToJSON(..),Value(..),(.:),(.:?),withObject)
+import Data.Aeson.Types (Parser)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Data.Time.LocalTime (LocalTime)
 import Data.UUID
@@ -42,6 +48,7 @@ import GHC.Generics (Generic)
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
+import HabitOfFate.JSON
 import HabitOfFate.TH
 
 local_time_exchange_format_string ∷ String
@@ -58,7 +65,79 @@ data Frequency =
   | Once (Maybe LocalTime)
   | Repeated DaysToKeep LocalTime Repeated
   deriving (Eq, Generic, NFData, Read, Show, Ord)
-deriveJSON ''Frequency
+
+instance ToJSON Frequency where
+  toJSON Indefinite = runJSONBuilder $ do
+    writeTextField "mode" "indefinite"
+  toJSON (Once maybe_next_deadline) = runJSONBuilder $ do
+    writeTextField "mode" "once"
+    writeMaybeField "next_deadline" maybe_next_deadline
+  toJSON (Repeated days_to_keep next_deadline repeated) = runJSONBuilder $ do
+    writeTextField "mode" "repeated"
+    case repeated of
+      Daily period → do
+        writeTextField "repeated_mode" "daily"
+        writeField "period" period
+      Weekly period days_to_repeat → do
+        writeTextField "repeated_mode" "weekly"
+        writeField "period" period
+        writeField "days_to_repeat" $ unwords $
+          [ weekday_abbrev
+          | Weekday{..} ← weekdays
+          , days_to_repeat ^# weekday_lens_
+          ]
+    writeField "next_deadline" next_deadline
+    case days_to_keep of
+      KeepNumberOfDays n → do
+        writeTextField "days_to_keep_mode" "count"
+        writeField "days_to_keep" n
+      KeepDaysInPast n → do
+        writeTextField "days_to_keep_mode" "past"
+        writeField "days_to_keep" n
+
+instance FromJSON Frequency where
+  parseJSON = withObject "expecting object-shaped value" $ \o →
+    (o .: "mode" ∷ Parser Text)
+    >>=
+    \case
+      "indefinite" → pure Indefinite
+      "once" → Once <$> (o .:? "next_deadline")
+      "repeated" →
+        Repeated
+          <$> (liftA2 ($)
+                (
+                  (o .: "days_to_keep_mode" ∷ Parser Text)
+                  >>=
+                  \case
+                    "count" → pure KeepNumberOfDays
+                    "past" → pure KeepDaysInPast
+                    other → fail [i|unrecognized mode for keeping days in past: #{other}|]
+                )
+                (o .: "days_to_keep")
+              )
+          <*> (o .: "next_deadline")
+          <*> ((o .: "repeated_mode" ∷ Parser Text)
+               >>=
+               \case
+                "daily" →
+                    Daily
+                      <$> (o .: "period")
+                "weekly" → do
+                    Weekly
+                      <$> (o .: "period")
+                      <*> (do days_to_repeat_abbrevs ← (o .: "days_to_repeat") <&> (words >>> setFromList)
+                              let unexpected_values = days_to_repeat_abbrevs `difference` weekday_abbrevs
+                              unless (onull unexpected_values) $
+                                fail [i|Unexpected days_to_repeat values: #{unexpected_values}|]
+                              pure $ foldl'
+                                (\accum Weekday{..} →
+                                  accum & weekday_lens_ #~ member weekday_abbrev days_to_repeat_abbrevs)
+                                def
+                                weekdays
+                          )
+                other → fail [i|unexpected repeated mode: #{show other}|]
+              )
+      other → fail [i|unrecognized frequency mode: #{other}|]
 
 instance Default Frequency where
   def = Indefinite
