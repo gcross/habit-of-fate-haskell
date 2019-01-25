@@ -37,7 +37,7 @@ import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData)
 
-import Data.Aeson (FromJSON(..),Object,ToJSON(..),Value(..),(.:),(.:?),withArray,withObject)
+import Data.Aeson (FromJSON(..), ToJSON(..), (.:), (.:?), withArray, withObject)
 import Data.Aeson.Types (Parser)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Data.Time.LocalTime (LocalTime)
