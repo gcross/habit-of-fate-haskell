@@ -468,7 +468,7 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
     [ testGroup "HabitOfFate.Data.Habit"
     ----------------------------------------------------------------------------
-      [ testGroup "JSON" $ let subs = Forest.static_substitutions in
+      [ testGroup "JSON" $
       --------------------------------------------------------------------------
         [ testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         , testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
