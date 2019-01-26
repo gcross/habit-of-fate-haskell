@@ -15,6 +15,8 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -23,10 +25,10 @@ module HabitOfFate.Data.Configuration where
 import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData(..))
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), (.:), object, withObject)
 import Data.Time.Zones.All (TZLabel(America__New_York))
 
-import HabitOfFate.TH
+import HabitOfFate.JSON
 
 instance ToJSON TZLabel where
   toJSON = show >>> toJSON
@@ -41,8 +43,14 @@ instance FromJSON TZLabel where
 data Configuration = Configuration
   {  _timezone_ ∷ !TZLabel
   } deriving (Eq,Ord,Read,Show)
-deriveJSON ''Configuration
 makeLenses ''Configuration
+
+instance ToJSON Configuration where
+  toJSON Configuration{..} = object [ "timezone" .== toJSON _timezone_ ]
+
+instance FromJSON Configuration where
+  parseJSON = withObject "configuration must have object shape" $ \o →
+    Configuration <$> (o .: "timezone")
 
 instance NFData Configuration where rnf (Configuration tz) = rnf tz
 
