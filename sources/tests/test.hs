@@ -504,23 +504,17 @@ dontTestGroup name _ = testGroup name []
 main ∷ HasCallStack ⇒ IO ()
 main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
-  [ testGroup "HabitOfFate.Data..."
+  [ testGroup "JSON instances"
   ------------------------------------------------------------------------------
-    [ testGroup "HabitOfFate.Data.Habit"
-    ----------------------------------------------------------------------------
-      [ testGroup "JSON" $
-      --------------------------------------------------------------------------
-        [ QC.testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-        , SC.testProperty "Scale" $ \(x ∷ Scale) → (encode >>> eitherDecode) x == Right x
-        , QC.testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-        , QC.testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-        , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-        , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
-        , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
-        , SC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
-        , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
-        ]
-      ]
+    [ QC.testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+    , SC.testProperty "Scale" $ \(x ∷ Scale) → (encode >>> eitherDecode) x == Right x
+    , QC.testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+    , QC.testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+    , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+    , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
+    , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
+    , SC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
+    , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
     ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."
