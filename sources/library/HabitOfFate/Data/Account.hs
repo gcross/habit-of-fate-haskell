@@ -33,9 +33,20 @@ import HabitOfFate.Prelude
 import Control.Exception
 import Control.Monad.Random (StdGen, newStdGen)
 import Crypto.PasswordStore
-import Data.Aeson (FromJSON(..), FromJSONKey(..), ToJSON(..), ToJSONKey(..), Value(..))
+import Data.Aeson
+  ( FromJSON(..)
+  , FromJSONKey(..)
+  , ToJSON(..)
+  , ToJSONKey(..)
+  , Value(..)
+  , (.:)
+  , (.:?)
+  , withObject
+  , withText
+  )
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime, getCurrentTime)
+import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Web.Scotty (Parsable)
 
 import HabitOfFate.Data.Configuration
@@ -44,8 +55,8 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
+import HabitOfFate.JSON
 import HabitOfFate.Quests
-import HabitOfFate.TH
 
 instance ToJSON StdGen where
   toJSON = show >>> toJSON
@@ -65,7 +76,31 @@ data Account = Account
   ,   _last_seen_ ∷ UTCTime
   ,   _groups_ ∷ Groups
   } deriving (Read,Show)
-deriveJSON ''Account
+
+instance ToJSON Account where
+  toJSON Account{..} = runJSONBuilder $ do
+    writeField "password" _password_
+    writeField "habits" _habits_
+    writeField "marks" _marks_
+    writeMaybeField "quest" _maybe_current_quest_state_
+    writeField "rng" _rng_
+    writeField "configuration" _configuration_
+    writeTextField "last_seen" $ pack $ formatTime defaultTimeLocale "%FT%T" _last_seen_
+    writeField "groups" _groups_
+
+instance FromJSON Account where
+  parseJSON = withObject "account must be object-shaped" $ \o →
+    Account
+      <$> (o .: "password")
+      <*> (o .: "habits")
+      <*> (o .: "marks")
+      <*> (o .:? "quest")
+      <*> (o .: "rng")
+      <*> (o .: "configuration")
+      <*> (o .: "last_seen" >>= withText "UTCTime must be a string" (
+            unpack >>> parseTimeM False defaultTimeLocale "%FT%T"
+          ))
+      <*> (o .: "groups")
 
 password_ ∷ Lens' Account Text
 password_ f a = (\nx → a {_password_ = nx}) <$> f (_password_ a)

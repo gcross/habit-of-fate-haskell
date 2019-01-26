@@ -25,6 +25,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -55,6 +56,7 @@ import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
+import System.Random (StdGen)
 import Test.QuickCheck hiding (Failure, Success)
 import Test.QuickCheck.Gen (chooseAny)
 import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons1, cons2, cons3)
@@ -68,6 +70,7 @@ import Text.HTML.TagSoup (Tag, parseTags)
 import Web.Scotty (Parsable(..))
 
 import HabitOfFate.API
+import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
@@ -181,6 +184,68 @@ instance Monad m ⇒ Serial m Scale where
     \/ cons0 Medium
     \/ cons0 High
     \/ cons0 VeryHigh
+
+
+instance Arbitrary Text where
+  arbitrary = arbitrary <&> pack
+
+instance Arbitrary Gender where
+  arbitrary = elements [Male, Female, Neuter]
+
+instance Arbitrary Gendered where
+  arbitrary = Gendered <$> arbitrary <*> arbitrary
+
+instance Arbitrary (HashMap Text Gendered) where
+  arbitrary = arbitrary <&> mapFromList
+
+instance Arbitrary Forest.Searcher where
+  arbitrary = elements [Forest.Parent, Forest.Healer]
+
+instance Arbitrary Forest.NextEvent where
+  arbitrary = elements
+    [ Forest.GingerbreadHouseEvent
+    , Forest.FoundEvent
+    , Forest.FairyCircleEvent
+    , Forest.VictoryEvent
+    ]
+
+instance Arbitrary Forest.State where
+  arbitrary =
+    Forest.State
+      <$> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+
+instance Arbitrary CurrentQuestState where
+  arbitrary = oneof [Forest <$> arbitrary]
+
+instance Arbitrary Configuration where
+  arbitrary = Configuration <$> elements [minBound..]
+
+instance Arbitrary UTCTime where
+  arbitrary = UTCTime <$> arbitrary <*> (choose (0, 3600) <&> secondsToDiffTime)
+
+instance Arbitrary StdGen where
+  arbitrary = do
+    x ∷ Positive Int ← arbitrary
+    y ∷ Positive Int ← arbitrary
+    pure $ read [i|#{getPositive x} #{getPositive y}|]
+
+instance Eq StdGen where (==) x y = show x == show y
+
+deriving instance Eq Account
+
+instance Arbitrary Account where
+  arbitrary =
+    Account
+      <$> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
+      <*> arbitrary
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -515,6 +580,7 @@ main = defaultMain $ testGroup "All Tests"
     , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
     , SC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
     , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
+    , QC.testProperty "Account" $ \(x ∷ Account) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
     ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."

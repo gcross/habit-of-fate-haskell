@@ -211,6 +211,7 @@ test-suite test
                      , parsec
                      , QuickCheck
                      , quickcheck-text
+                     , random
                      , scalpel
                      , scotty
                      , smallcheck
