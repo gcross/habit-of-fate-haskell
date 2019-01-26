@@ -52,14 +52,14 @@ makeLenses ''ItemsSequence
 instance ToJSON α ⇒ ToJSON (ItemsSequence α) where
   toJSON ItemsSequence{..} = Array $ V.fromList $
     [ object
-        [ "index" .== toJSON index
+        [ "id" .== toJSON id
         , "value" .==
             maybe
-              (error [i|internal error when encoding item sequence: missing value for index #{index}|])
+              (error [i|internal error when encoding item sequence: missing value for index #{id}|])
               toJSON
-              (lookup index _items_map_)
+              (lookup id _items_map_)
         ]
-    | index ← toList _items_seq_
+    | id ← toList _items_seq_
     ]
 
 itemsFromList ∷ [(UUID, α)] → ItemsSequence α
@@ -70,7 +70,7 @@ instance FromJSON α ⇒ FromJSON (ItemsSequence α) where
     withArray "entity must have the shape of an array" $ \v →
       (forM (toList v) $
         withObject "array element must have the shape of an object" $ \o →
-          (,) <$> (o .: "index" >>= parseJSON) <*> (o .: "value" >>= parseJSON)
+          (,) <$> (o .: "id" >>= parseJSON) <*> (o .: "value" >>= parseJSON)
       ) <&> itemsFromList
 
 instance NFData α ⇒ NFData (ItemsSequence α) where
