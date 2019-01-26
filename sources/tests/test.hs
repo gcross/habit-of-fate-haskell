@@ -173,6 +173,15 @@ instance Monad m ⇒ Serial m Forest.State where
 instance Monad m ⇒ Serial m CurrentQuestState where
   series = cons1 Forest
 
+instance Monad m ⇒ Serial m Scale where
+  series =
+       cons0 None
+    \/ cons0 VeryLow
+    \/ cons0 Low
+    \/ cons0 Medium
+    \/ cons0 High
+    \/ cons0 VeryHigh
+
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
   [] → "No stack."
@@ -502,6 +511,7 @@ main = defaultMain $ testGroup "All Tests"
       [ testGroup "JSON" $
       --------------------------------------------------------------------------
         [ QC.testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+        , SC.testProperty "Scale" $ \(x ∷ Scale) → (encode >>> eitherDecode) x == Right x
         , QC.testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         , QC.testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
         , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x

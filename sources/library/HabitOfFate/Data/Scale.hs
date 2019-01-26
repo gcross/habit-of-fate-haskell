@@ -18,6 +18,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -27,15 +28,31 @@ module HabitOfFate.Data.Scale where
 import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData(..))
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(String), withText)
 import qualified Data.Text.Lazy as Lazy
 import Text.Blaze (Markup, ToMarkup(..))
 import Web.Scotty (Parsable(..))
 
-import HabitOfFate.TH
-
 data Scale = None | VeryLow | Low | Medium | High | VeryHigh
   deriving (Bounded,Enum,Eq,Ord,Read,Show)
-deriveJSON ''Scale
+
+instance ToJSON Scale where
+  toJSON None = String "none"
+  toJSON VeryLow = String "very low"
+  toJSON Low = String "low"
+  toJSON Medium = String "medium"
+  toJSON High = String "high"
+  toJSON VeryHigh = String "very high"
+
+instance FromJSON Scale where
+  parseJSON = withText "scale value must have string shape" $ \case
+    "none" → pure None
+    "very low" → pure VeryLow
+    "low" → pure Low
+    "medium" → pure Medium
+    "high" → pure High
+    "very high" → pure VeryHigh
+    other → fail [i|unsupported scale: #{other}|]
 
 instance NFData Scale where rnf !_ = ()
 
