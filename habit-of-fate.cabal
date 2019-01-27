@@ -91,6 +91,7 @@ library
                      , HabitOfFate.Data.Configuration
                      , HabitOfFate.Data.Group
                      , HabitOfFate.Data.Habit
+                     , HabitOfFate.Data.Habit.SQL
                      , HabitOfFate.Data.InputHabit
                      , HabitOfFate.Data.ItemsSequence
                      , HabitOfFate.Data.Repeated

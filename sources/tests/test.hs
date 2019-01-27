@@ -74,6 +74,7 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.Habit.SQL
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
@@ -582,6 +583,13 @@ main = defaultMain $ testGroup "All Tests"
     , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
     , QC.testProperty "Configuration" $ \(x ∷ Configuration) → (encode >>> eitherDecode) x == Right x
     , QC.testProperty "Account" $ \(x ∷ Account) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+    ]
+  ------------------------------------------------------------------------------
+  , testGroup "HabitOfFate.Data.Habit.SQL"
+  ------------------------------------------------------------------------------
+    [ QC.testProperty "encode/decode LocalTime" $ \d (Positive h) → ioProperty $ do
+        let x = dayHour d (h `mod` 24)
+        (encodeLocalTime >>> decodeLocalTime) x @?= x
     ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."
