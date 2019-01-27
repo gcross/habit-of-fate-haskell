@@ -646,6 +646,14 @@ main = defaultMain $ testGroup "All Tests"
           selectHabitFrequencyRepeated c
           >>=
           (@?= (days_to_keep, deadline, repeated))
+      , QC.testProperty "Random" $ \days_to_keep day hour repeated → databaseProperty $ \c →
+          let deadline = dayHour day (hour `mod` 24)
+          in
+          insertHabitFrequencyRepeated c days_to_keep deadline repeated
+          >>=
+          selectHabitFrequencyRepeated c
+          >>=
+          (@?= (days_to_keep, deadline, repeated))
       ]
     ]
   ------------------------------------------------------------------------------
