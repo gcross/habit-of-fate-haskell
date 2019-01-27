@@ -575,6 +575,9 @@ withDatabase action = SQLite.withConnection ":memory:" $ \c → do
   createTables c
   action c
 
+databaseProperty ∷ (SQLite.Connection → IO ()) → Property
+databaseProperty action = ioProperty $ withDatabase action
+
 testDatabaseCase ∷ String → (SQLite.Connection → IO ()) → TestTree
 testDatabaseCase name action = testCase name $ withDatabase action
 
@@ -613,23 +616,21 @@ main = defaultMain $ testGroup "All Tests"
           selectHabitFrequencyOnce c
           >>=
           (@?= Nothing)
-      , QC.testProperty "Random" $ \d (Positive h) → ioProperty $
+      , QC.testProperty "Random" $ \d (Positive h) → databaseProperty $ \c →
           let x = dayHour d (h `mod` 24) in
-          withDatabase $ \c →
-            insertHabitFrequencyOnce c (Just x)
-            >>=
-            selectHabitFrequencyOnce c
-            >>=
-            (@?= Just x)
-      , QC.testProperty "Invalid" $ \(i ∷ Int64) → ioProperty $
-          withDatabase $ \c →
-            (do void $ selectHabitFrequencyOnce c i
-                assertFailure "Should not have successfully retrieved a row."
-            ) `catch` (
-             \(NumberOfRowsShouldHaveBeenOne table count) → do
-              table @?= "once"
-              count @?= 0
-            )
+          insertHabitFrequencyOnce c (Just x)
+          >>=
+          selectHabitFrequencyOnce c
+          >>=
+          (@?= Just x)
+      , QC.testProperty "Invalid" $ \(i ∷ Int64) → databaseProperty $ \c →
+          (do void $ selectHabitFrequencyOnce c i
+              assertFailure "Should not have successfully retrieved a row."
+          ) `catch` (
+            \(NumberOfRowsShouldHaveBeenOne table count) → do
+            table @?= "once"
+            count @?= 0
+          )
       ]
     ]
   ------------------------------------------------------------------------------
