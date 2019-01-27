@@ -607,7 +607,10 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Repeated"
   ------------------------------------------------------------------------------
-    [ testGroup "nextDaily" $
+    [ QC.testProperty "encode/decode DaysToRepeat" $ \x →
+        (encodeDaysToRepeat >>> decodeDaysToRepeat) x == x
+    ----------------------------------------------------------------------------
+    , testGroup "nextDaily" $
     ----------------------------------------------------------------------------
       let testNextDailyCase period today deadline expected_result =
             testCase
