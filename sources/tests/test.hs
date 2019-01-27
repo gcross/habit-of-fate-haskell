@@ -42,6 +42,7 @@ import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
 import Data.CallStack
+import Data.Int
 import Data.Time.Calendar
 import Data.Time.Calendar.WeekDate
 import Data.Time.Clock
@@ -51,6 +52,7 @@ import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import qualified Data.Vector as V
+import qualified Database.SQLite.Simple as SQLite
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
@@ -564,6 +566,18 @@ testStoryOutcomes name substitutions outcomes =
       )
       story_outcome_labels
 
+createTables ∷ SQLite.Connection → IO ()
+createTables c = do
+  createHabitFrequencyOnceTable c
+
+withDatabase ∷ (SQLite.Connection → IO ()) → IO ()
+withDatabase action = SQLite.withConnection ":memory:" $ \c → do
+  createTables c
+  action c
+
+testDatabaseCase ∷ String → (SQLite.Connection → IO ()) → TestTree
+testDatabaseCase name action = testCase name $ withDatabase action
+
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []
 
@@ -590,6 +604,33 @@ main = defaultMain $ testGroup "All Tests"
     [ QC.testProperty "encode/decode LocalTime" $ \d (Positive h) → ioProperty $ do
         let x = dayHour d (h `mod` 24)
         (encodeLocalTime >>> decodeLocalTime) x @?= x
+    ----------------------------------------------------------------------------
+    , testGroup "insert/select once"
+    ----------------------------------------------------------------------------
+      [ testDatabaseCase "Nothing" $ \c →
+          insertHabitFrequencyOnce c Nothing
+          >>=
+          selectHabitFrequencyOnce c
+          >>=
+          (@?= Nothing)
+      , QC.testProperty "Random" $ \d (Positive h) → ioProperty $
+          let x = dayHour d (h `mod` 24) in
+          withDatabase $ \c →
+            insertHabitFrequencyOnce c (Just x)
+            >>=
+            selectHabitFrequencyOnce c
+            >>=
+            (@?= Just x)
+      , QC.testProperty "Invalid" $ \(i ∷ Int64) → ioProperty $
+          withDatabase $ \c →
+            (do void $ selectHabitFrequencyOnce c i
+                assertFailure "Should not have successfully retrieved a row."
+            ) `catch` (
+             \(NumberOfRowsShouldHaveBeenOne table count) → do
+              table @?= "once"
+              count @?= 0
+            )
+      ]
     ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."
