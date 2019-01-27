@@ -569,6 +569,7 @@ testStoryOutcomes name substitutions outcomes =
 createTables ∷ SQLite.Connection → IO ()
 createTables c = do
   createHabitFrequencyOnceTable c
+  createHabitFrequencyRepeatedTable c
 
 withDatabase ∷ (SQLite.Connection → IO ()) → IO ()
 withDatabase action = SQLite.withConnection ":memory:" $ \c → do
@@ -631,6 +632,20 @@ main = defaultMain $ testGroup "All Tests"
             table @?= "once"
             count @?= 0
           )
+      ]
+    ----------------------------------------------------------------------------
+    , testGroup "insert/select repeated"
+    ----------------------------------------------------------------------------
+      [ testDatabaseCase "Simple" $ \c →
+          let days_to_keep = KeepNumberOfDays 1
+              deadline = day 0
+              repeated = Daily 1
+          in
+          insertHabitFrequencyRepeated c days_to_keep deadline repeated
+          >>=
+          selectHabitFrequencyRepeated c
+          >>=
+          (@?= (days_to_keep, deadline, repeated))
       ]
     ]
   ------------------------------------------------------------------------------

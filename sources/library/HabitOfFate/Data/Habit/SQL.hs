@@ -32,6 +32,8 @@ import Data.Time.Calendar (Day(..))
 import Data.Time.LocalTime (LocalTime(..), timeToTimeOfDay, timeOfDayToTime)
 import Database.SQLite.Simple
 
+import HabitOfFate.Data.Repeated
+
 encodeLocalTime ∷ LocalTime → Int
 encodeLocalTime (LocalTime (ModifiedJulianDay days) time_of_day) =
   fromIntegral (days*86400) + (time_of_day |> timeOfDayToTime |> floor)
@@ -67,3 +69,54 @@ selectHabitFrequencyOnce c rowid =
   selectUniqueRow c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" rowid
   <&>
   (fromOnly >>> fmap decodeLocalTime)
+
+createHabitFrequencyRepeatedTable ∷ Connection → IO ()
+createHabitFrequencyRepeatedTable c = execute_ c "CREATE TABLE habit_frequency_repeated (days_to_keep_mode INT, days_to_keep_number INT, deadline INT, repeated_mode INT, period INT, days_to_repeat INT);"
+
+insertHabitFrequencyRepeated ∷ Connection → DaysToKeep → LocalTime → Repeated → IO Int64
+insertHabitFrequencyRepeated c days_to_keep deadline repeated = do
+  let (days_to_keep_mode∷Int, days_to_keep_number) = case days_to_keep of
+        KeepNumberOfDays n → (1, n)
+        KeepDaysInPast n → (2, n)
+      (repeated_mode∷Int, period, maybe_days_to_repeat) = case repeated of
+        Daily period → (1, period, Nothing)
+        Weekly period days_to_repeat → (2, period, Just (encodeDaysToRepeat days_to_repeat))
+  execute c "INSERT INTO HABIT_FREQUENCY_REPEATED (days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, days_to_repeat) VALUES (?,?,?,?,?,?)" $
+    ( days_to_keep_mode
+    , days_to_keep_number
+    , encodeLocalTime deadline
+    , repeated_mode
+    , period
+    , maybe_days_to_repeat
+    )
+  lastInsertRowId c
+
+data InvalidMode = InvalidMode String Int deriving (Show)
+instance Exception InvalidMode where
+  displayException (InvalidMode name mode) = [i|invalid mode #{mode} for #{name}|]
+
+data InternalInconsistency = InternalInconsistency String deriving (Show)
+instance Exception InternalInconsistency where
+  displayException (InternalInconsistency message) = [i|internal inconsistency: #{message}|]
+
+selectHabitFrequencyRepeated ∷ Connection → Int64 → IO (DaysToKeep, LocalTime, Repeated)
+selectHabitFrequencyRepeated c rowid =
+  selectUniqueRow c "SELECT days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, days_to_repeat FROM habit_frequency_repeated WHERE rowid = ?" rowid
+  >>=
+  \(days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, maybe_days_to_repeat) →
+    liftA3 (,,)
+      (case days_to_keep_mode of
+        1 → pure $ KeepNumberOfDays days_to_keep_number
+        2 → pure $ KeepDaysInPast days_to_keep_number
+        other → throwM $ InvalidMode "days_to_keep" other
+      )
+      (pure $ decodeLocalTime deadline)
+      (case repeated_mode of
+        1 → pure $ Daily period
+        2 → Weekly period <$>
+              maybe
+                (throwM $ InternalInconsistency "repeated mode was weekly but days to repeat was null")
+                (decodeDaysToRepeat >>> pure)
+                maybe_days_to_repeat
+        other → throwM $ InvalidMode "repeated_mode" other
+       )
