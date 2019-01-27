@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -53,9 +54,16 @@ data NumberOfRowsShouldHaveBeenOne = NumberOfRowsShouldHaveBeenOne String Int de
 instance Exception NumberOfRowsShouldHaveBeenOne where
   displayException (NumberOfRowsShouldHaveBeenOne table count) = [i|wrong number of rows for #{table}, not #{count}|]
 
-selectHabitFrequencyOnce ∷ Connection → Int64 → IO (Maybe LocalTime)
-selectHabitFrequencyOnce c rowid = do
-  results ∷ [Only (Maybe Int)] ← query c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" (Only rowid)
-  case results of
-    [(Only maybe_deadline_encoded)] → pure $ decodeLocalTime <$> maybe_deadline_encoded
+selectUniqueRow ∷ ∀ r. FromRow r ⇒ Connection → Query → Int64 → IO r
+selectUniqueRow c q rowid =
+  (query c q (Only rowid) ∷ IO [r])
+  >>=
+  \case
+    [row] → pure row
     rows → throwM $ NumberOfRowsShouldHaveBeenOne "once" (length rows)
+
+selectHabitFrequencyOnce ∷ Connection → Int64 → IO (Maybe LocalTime)
+selectHabitFrequencyOnce c rowid =
+  selectUniqueRow c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" rowid
+  <&>
+  (fromOnly >>> fmap decodeLocalTime)
