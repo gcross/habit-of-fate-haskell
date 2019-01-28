@@ -91,6 +91,15 @@ import HabitOfFate.Substitution
 dayHour d h = LocalTime (ModifiedJulianDay d) (TimeOfDay h 0 0)
 day = flip dayHour 0
 
+newtype LocalToSecond = LocalToSecond LocalTime deriving (Eq, Ord, Show)
+instance Arbitrary LocalToSecond where
+  arbitrary =
+    LocalToSecond
+      <$> (LocalTime
+            <$> (ModifiedJulianDay <$> choose (0, 999999))
+            <*> (TimeOfDay <$> choose (0, 23) <*> choose (0, 59) <*> (fromIntegral <$> choose (0 ∷ Int, 59)))
+          )
+
 day_of_week_names ∷ [String]
 day_of_week_names = ["M", "T", "W", "Th", "F", "Sat", "Sun"]
 
@@ -601,9 +610,8 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Data.Habit.SQL"
   ------------------------------------------------------------------------------
-    [ QC.testProperty "encode/decode LocalTime" $ \d (Positive h) → ioProperty $ do
-        let x = dayHour d (h `mod` 24)
-        (encodeLocalTime >>> decodeLocalTime) x @?= x
+    [ QC.testProperty "encode/decode LocalTime" $ \(LocalToSecond t) → ioProperty $ do
+        (encodeLocalTime >>> decodeLocalTime) t @?= t
     ----------------------------------------------------------------------------
     , testGroup "insert/select once"
     ----------------------------------------------------------------------------
@@ -613,13 +621,12 @@ main = defaultMain $ testGroup "All Tests"
           selectHabitFrequencyOnce c
           >>=
           (@?= Nothing)
-      , QC.testProperty "Random" $ \d (Positive h) → databaseProperty $ \c →
-          let x = dayHour d (h `mod` 24) in
-          insertHabitFrequencyOnce c (Just x)
+      , QC.testProperty "Random" $ \(LocalToSecond deadline) → databaseProperty $ \c →
+          insertHabitFrequencyOnce c (Just deadline)
           >>=
           selectHabitFrequencyOnce c
           >>=
-          (@?= Just x)
+          (@?= Just deadline)
       , QC.testProperty "Invalid" $ \(i ∷ Int64) → databaseProperty $ \c →
           (do void $ selectHabitFrequencyOnce c i
               assertFailure "Should not have successfully retrieved a row."
@@ -642,9 +649,7 @@ main = defaultMain $ testGroup "All Tests"
           selectHabitFrequencyRepeated c
           >>=
           (@?= (days_to_keep, deadline, repeated))
-      , QC.testProperty "Random" $ \days_to_keep day hour repeated → databaseProperty $ \c →
-          let deadline = dayHour day (hour `mod` 24)
-          in
+      , QC.testProperty "Random" $ \days_to_keep (LocalToSecond deadline) repeated → databaseProperty $ \c →
           insertHabitFrequencyRepeated c days_to_keep deadline repeated
           >>=
           selectHabitFrequencyRepeated c
@@ -687,14 +692,14 @@ main = defaultMain $ testGroup "All Tests"
           modifyAndCompare (scales_ .~ Tagged (Success difficulty) (Failure importance))
       , QC.testProperty "Random groups" $ \groups →
           modifyAndCompare (group_membership_ .~ setFromList groups)
-      , QC.testProperty "Random last marked" $ \d h →
-          modifyAndCompare (maybe_last_marked_ .~ Just (dayHour d (h `mod` 24)))
+      , QC.testProperty "Random last marked" $ \(LocalToSecond deadline) →
+          modifyAndCompare (maybe_last_marked_ .~ Just deadline)
       , QC.testProperty "Once with no deadline " $
           modifyAndCompare (frequency_ .~ Once Nothing)
-      , QC.testProperty "Once with random deadline" $ \d h →
-          modifyAndCompare (frequency_ .~ Once (Just (dayHour d (h `mod` 24))))
-      , QC.testProperty "Repeated" $ \days_to_keep d h repeated →
-          modifyAndCompare (frequency_ .~ Repeated days_to_keep (dayHour d (h `mod` 24)) repeated)
+      , QC.testProperty "Once with random deadline" $ \(LocalToSecond deadline) →
+          modifyAndCompare (frequency_ .~ Once (Just deadline))
+      , QC.testProperty "Repeated" $ \days_to_keep (LocalToSecond deadline) repeated →
+          modifyAndCompare (frequency_ .~ Repeated days_to_keep deadline repeated)
       ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."
