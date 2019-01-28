@@ -85,6 +85,25 @@ decodeDaysToRepeat x = DaysToRepeat{..}
   _friday_ = testBit x 5
   _saturday_ = testBit x 6
 
+instance ToField Scale where
+  toField None = SQLNull
+  toField VeryLow = SQLInteger -2
+  toField Low = SQLInteger -1
+  toField Medium = SQLInteger 0
+  toField High = SQLInteger 1
+  toField VeryHigh = SQLInteger 2
+
+instance FromField Scale where
+  fromField field = case fieldData field of
+    SQLNull → Ok None
+    SQLInteger -2 → Ok VeryLow
+    SQLInteger -1 → Ok Low
+    SQLInteger  0 → Ok Medium
+    SQLInteger  1 → Ok High
+    SQLInteger  2 → Ok VeryHigh
+    SQLInteger  _ → returnError ConversionFailed field "invalid numeric value for the scale"
+    _ → returnError ConversionFailed field "expected null or numeric value for the scale"
+
 instance FromField DaysToRepeat where
   fromField field = case fieldData field of
     SQLInteger x → decodeDaysToRepeat x |> Ok
@@ -168,21 +187,18 @@ selectHabitFrequencyRepeated c rowid =
 instance ToField UUID where
   toField = UUID.toByteString >>> (^. strict) >>> SQLBlob
 
-data InvalidFormatForUUID = InvalidFormatForUUID String deriving (Show)
-instance Exception InvalidFormatForUUID where
-  displayException (InvalidFormatForUUID message) =
-    [i|Invalid format for UUID: #{message}|]
-
-err ∷ String → Ok α
-err message = Errors [toException $ InvalidFormatForUUID message]
-
 instance FromField UUID where
   fromField field = case fieldData field of
-    SQLInteger _ → err "8-bit integer"
-    SQLFloat _ → err "floating-point"
-    SQLText t → maybe (err "empty text") Ok (UUID.fromText t)
-    SQLBlob b → maybe (err "empty blob") Ok (Lazy.fromStrict >>> UUID.fromByteString $ b)
     SQLNull → Ok UUID.nil
+    SQLText t → maybe
+                  (returnError ConversionFailed field "bad text for UUID")
+                  Ok
+                  (UUID.fromText t)
+    SQLBlob b → maybe
+                  (returnError ConversionFailed field "bad bytes for UUID")
+                  Ok
+                  (Lazy.fromStrict >>> UUID.fromByteString $ b)
+    _ → returnError Incompatible field "UUID must be null, text, or blob type"
 
 createHabitGroupsTable ∷ Connection → IO ()
 createHabitGroupsTable c = execute_ c "CREATE TABLE habit_groups (habit_id BLOB, group_id BLOB);"
