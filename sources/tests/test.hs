@@ -76,7 +76,6 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
-import HabitOfFate.Data.Habit.SQL
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
@@ -85,6 +84,7 @@ import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Quests
 import HabitOfFate.Server
+import HabitOfFate.SQLite
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 

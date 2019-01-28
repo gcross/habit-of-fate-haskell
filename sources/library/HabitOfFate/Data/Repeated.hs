@@ -91,28 +91,6 @@ instance Semigroup DaysToRepeat where
 
 instance NFData DaysToRepeat where rnf !_ = ()
 
-encodeDaysToRepeat ∷ DaysToRepeat → Int
-encodeDaysToRepeat DaysToRepeat{..} = foldl' (.|.) 0
-  [ if _sunday_ then bit 0 else 0
-  , if _monday_ then bit 1 else 0
-  , if _tuesday_ then bit 2 else 0
-  , if _wednesday_ then bit 3 else 0
-  , if _thursday_ then bit 4 else 0
-  , if _friday_ then bit 5 else 0
-  , if _saturday_ then bit 6 else 0
-  ]
-
-decodeDaysToRepeat ∷ Int → DaysToRepeat
-decodeDaysToRepeat x = DaysToRepeat{..}
- where
-  _sunday_ = testBit x 0
-  _monday_ = testBit x 1
-  _tuesday_ = testBit x 2
-  _wednesday_ = testBit x 3
-  _thursday_ = testBit x 4
-  _friday_ = testBit x 5
-  _saturday_ = testBit x 6
-
 -- Note: This list is a little different from weekdays in that it starts on
 --       Monday because the time library does.
 days_to_repeat_lenses ∷ Vector (ALens' DaysToRepeat Bool)

@@ -19,14 +19,16 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Data.Habit.SQL where
+module HabitOfFate.SQLite where
 
 import HabitOfFate.Prelude
 
 import Control.Monad.Catch (Exception(..), throwM)
+import Data.Bits
 import Data.Int (Int64)
 import Data.Time.Calendar (Day(..))
 import Data.Time.LocalTime (LocalTime(..), timeToTimeOfDay, timeOfDayToTime)
@@ -49,6 +51,29 @@ decodeLocalTime x =
   LocalTime
     (x |> (`div` 86400) |> fromIntegral |> ModifiedJulianDay)
     (x |> (`mod` 86400) |> fromIntegral |> timeToTimeOfDay)
+
+
+encodeDaysToRepeat ∷ DaysToRepeat → Int
+encodeDaysToRepeat DaysToRepeat{..} = foldl' (.|.) 0
+  [ if _sunday_ then bit 0 else 0
+  , if _monday_ then bit 1 else 0
+  , if _tuesday_ then bit 2 else 0
+  , if _wednesday_ then bit 3 else 0
+  , if _thursday_ then bit 4 else 0
+  , if _friday_ then bit 5 else 0
+  , if _saturday_ then bit 6 else 0
+  ]
+
+decodeDaysToRepeat ∷ Int → DaysToRepeat
+decodeDaysToRepeat x = DaysToRepeat{..}
+ where
+  _sunday_ = testBit x 0
+  _monday_ = testBit x 1
+  _tuesday_ = testBit x 2
+  _wednesday_ = testBit x 3
+  _thursday_ = testBit x 4
+  _friday_ = testBit x 5
+  _saturday_ = testBit x 6
 
 createHabitFrequencyOnceTable ∷ Connection → IO ()
 createHabitFrequencyOnceTable c = execute_ c "CREATE TABLE habit_frequency_once (deadline INT);"
