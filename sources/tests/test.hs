@@ -341,6 +341,7 @@ test_habit_with_last_marked = def & name_ .~ "test" & maybe_last_marked_ .~ (Jus
 test_habit_group = Habit "group" (Tagged (Success High) (Failure Low)) Indefinite [test_group_id] Nothing
 
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
+test_habit_id_1 = read "634955c4-9121-481f-988d-4292c10e54b7"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 test_habit_id_once = read "7dbafaf9-560a-4ac4-b6bb-b64c647e387d"
 test_habit_id_with_last_marked = read "7ada06ff-ccf5-4c68-83df-e54999cc42b3"
@@ -570,6 +571,7 @@ createTables ∷ SQLite.Connection → IO ()
 createTables c = do
   createHabitFrequencyOnceTable c
   createHabitFrequencyRepeatedTable c
+  createHabitGroupsTable c
 
 withDatabase ∷ (SQLite.Connection → IO ()) → IO ()
 withDatabase action = SQLite.withConnection ":memory:" $ \c → do
@@ -654,6 +656,24 @@ main = defaultMain $ testGroup "All Tests"
           selectHabitFrequencyRepeated c
           >>=
           (@?= (days_to_keep, deadline, repeated))
+      ]
+    ----------------------------------------------------------------------------
+    , testGroup "insert/select groups"
+    ----------------------------------------------------------------------------
+      [ testDatabaseCase "Nothing" $ \c →
+          selectHabitGroups c test_habit_id >>= (@?= [])
+      , testDatabaseCase "Single" $ \c → do
+          insertHabitGroup c test_habit_id test_group_id
+          selectHabitGroups c test_habit_id >>= (@?= [test_group_id])
+      , QC.testProperty "Multiple, Same Habit" $ \(test_group_ids ∷ [UUID]) → databaseProperty $ \c → do
+          forM_ test_group_ids $ insertHabitGroup c test_habit_id
+          selectHabitGroups c test_habit_id >>= (@?= test_group_ids)
+      , QC.testProperty "Multiple, Two Habits" $ \(test_group_ids_1 ∷ [UUID]) (test_group_ids_2 ∷ [UUID]) →
+          databaseProperty $ \c → do
+            forM_ test_group_ids_1 $ insertHabitGroup c test_habit_id_1
+            forM_ test_group_ids_2 $ insertHabitGroup c test_habit_id_2
+            selectHabitGroups c test_habit_id_1 >>= (@?= test_group_ids_1)
+            selectHabitGroups c test_habit_id_2 >>= (@?= test_group_ids_2)
       ]
     ]
   ------------------------------------------------------------------------------

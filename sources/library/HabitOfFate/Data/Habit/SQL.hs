@@ -30,7 +30,13 @@ import Control.Monad.Catch (Exception(..), throwM)
 import Data.Int (Int64)
 import Data.Time.Calendar (Day(..))
 import Data.Time.LocalTime (LocalTime(..), timeToTimeOfDay, timeOfDayToTime)
+import qualified Data.UUID as UUID
+import Data.UUID (UUID)
+import qualified Data.ByteString.Lazy as Lazy
 import Database.SQLite.Simple
+import Database.SQLite.Simple.FromField
+import Database.SQLite.Simple.Ok
+import Database.SQLite.Simple.ToField
 
 import HabitOfFate.Data.Repeated
 
@@ -56,9 +62,9 @@ data NumberOfRowsShouldHaveBeenOne = NumberOfRowsShouldHaveBeenOne String Int de
 instance Exception NumberOfRowsShouldHaveBeenOne where
   displayException (NumberOfRowsShouldHaveBeenOne table count) = [i|wrong number of rows for #{table}, not #{count}|]
 
-selectUniqueRow ∷ ∀ r. FromRow r ⇒ Connection → Query → Int64 → IO r
-selectUniqueRow c q rowid =
-  (query c q (Only rowid) ∷ IO [r])
+selectUniqueRow ∷ ∀ id r. (ToField id, FromRow r) ⇒ Connection → Query → id → IO r
+selectUniqueRow c q id =
+  (query c q (Only id) ∷ IO [r])
   >>=
   \case
     [row] → pure row
@@ -120,3 +126,35 @@ selectHabitFrequencyRepeated c rowid =
                 maybe_days_to_repeat
         other → throwM $ InvalidMode "repeated_mode" other
        )
+
+instance ToField UUID where
+  toField = UUID.toByteString >>> (^. strict) >>> SQLBlob
+
+data InvalidFormatForUUID = InvalidFormatForUUID String deriving (Show)
+instance Exception InvalidFormatForUUID where
+  displayException (InvalidFormatForUUID message) =
+    [i|Invalid format for UUID: #{message}|]
+
+err ∷ String → Ok α
+err message = Errors [toException $ InvalidFormatForUUID message]
+
+instance FromField UUID where
+  fromField field = case fieldData field of
+    SQLInteger _ → err "8-bit integer"
+    SQLFloat _ → err "floating-point"
+    SQLText t → maybe (err "empty text") Ok (UUID.fromText t)
+    SQLBlob b → maybe (err "empty blob") Ok (Lazy.fromStrict >>> UUID.fromByteString $ b)
+    SQLNull → Ok UUID.nil
+
+createHabitGroupsTable ∷ Connection → IO ()
+createHabitGroupsTable c = execute_ c "CREATE TABLE habit_groups (habit_id BLOB, group_id BLOB);"
+
+insertHabitGroup ∷ Connection → UUID → UUID → IO ()
+insertHabitGroup c habit_id group_id =
+  execute c "INSERT INTO habit_groups (habit_id, group_id) VALUES (?,?)" (habit_id, group_id)
+
+selectHabitGroups ∷ Connection → UUID → IO [UUID]
+selectHabitGroups c habit_id =
+  query c "SELECT group_id FROM habit_groups WHERE habit_id = ?;" (Only habit_id)
+  <&>
+  map fromOnly
