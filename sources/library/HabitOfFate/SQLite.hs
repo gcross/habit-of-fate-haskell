@@ -60,7 +60,7 @@ instance FromField LocalTime where
     SQLInteger x → decodeLocalTime x |> Ok
     _ → returnError Incompatible field "local time must be number of seconds"
 
-encodeDaysToRepeat ∷ DaysToRepeat → Int
+encodeDaysToRepeat ∷ DaysToRepeat → Int64
 encodeDaysToRepeat DaysToRepeat{..} = foldl' (.|.) 0
   [ if _sunday_ then bit 0 else 0
   , if _monday_ then bit 1 else 0
@@ -71,7 +71,10 @@ encodeDaysToRepeat DaysToRepeat{..} = foldl' (.|.) 0
   , if _saturday_ then bit 6 else 0
   ]
 
-decodeDaysToRepeat ∷ Int → DaysToRepeat
+instance ToField DaysToRepeat where
+  toField = encodeDaysToRepeat >>> SQLInteger
+
+decodeDaysToRepeat ∷ Int64 → DaysToRepeat
 decodeDaysToRepeat x = DaysToRepeat{..}
  where
   _sunday_ = testBit x 0
@@ -81,6 +84,11 @@ decodeDaysToRepeat x = DaysToRepeat{..}
   _thursday_ = testBit x 4
   _friday_ = testBit x 5
   _saturday_ = testBit x 6
+
+instance FromField DaysToRepeat where
+  fromField field = case fieldData field of
+    SQLInteger x → decodeDaysToRepeat x |> Ok
+    _ → returnError Incompatible field "days to repeat is encoded in a number"
 
 createHabitFrequencyOnceTable ∷ Connection → IO ()
 createHabitFrequencyOnceTable c = execute_ c "CREATE TABLE habit_frequency_once (deadline INT);"
@@ -116,7 +124,7 @@ insertHabitFrequencyRepeated c days_to_keep deadline repeated = do
         KeepDaysInPast n → (2, n)
       (repeated_mode∷Int, period, maybe_days_to_repeat) = case repeated of
         Daily period → (1, period, Nothing)
-        Weekly period days_to_repeat → (2, period, Just (encodeDaysToRepeat days_to_repeat))
+        Weekly period days_to_repeat → (2, period, Just days_to_repeat)
   execute c "INSERT INTO HABIT_FREQUENCY_REPEATED (days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, days_to_repeat) VALUES (?,?,?,?,?,?)" $
     ( days_to_keep_mode
     , days_to_keep_number
@@ -152,7 +160,7 @@ selectHabitFrequencyRepeated c rowid =
         2 → Weekly period <$>
               maybe
                 (throwM $ InternalInconsistency "repeated mode was weekly but days to repeat was null")
-                (decodeDaysToRepeat >>> pure)
+                pure
                 maybe_days_to_repeat
         other → throwM $ InvalidMode "repeated_mode" other
        )
