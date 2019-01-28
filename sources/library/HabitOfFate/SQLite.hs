@@ -40,7 +40,10 @@ import Database.SQLite.Simple.FromField
 import Database.SQLite.Simple.Ok
 import Database.SQLite.Simple.ToField
 
+import HabitOfFate.Data.Habit
 import HabitOfFate.Data.Repeated
+import HabitOfFate.Data.Scale
+import HabitOfFate.Data.Tagged
 
 encodeLocalTime ∷ LocalTime → Int64
 encodeLocalTime (LocalTime (ModifiedJulianDay days) time_of_day) =
@@ -87,8 +90,8 @@ decodeDaysToRepeat x = DaysToRepeat{..}
 
 instance ToField Scale where
   toField None = SQLNull
-  toField VeryLow = SQLInteger -2
-  toField Low = SQLInteger -1
+  toField VeryLow = SQLInteger (-2)
+  toField Low = SQLInteger (-1)
   toField Medium = SQLInteger 0
   toField High = SQLInteger 1
   toField VeryHigh = SQLInteger 2
@@ -96,12 +99,12 @@ instance ToField Scale where
 instance FromField Scale where
   fromField field = case fieldData field of
     SQLNull → Ok None
-    SQLInteger -2 → Ok VeryLow
-    SQLInteger -1 → Ok Low
-    SQLInteger  0 → Ok Medium
-    SQLInteger  1 → Ok High
-    SQLInteger  2 → Ok VeryHigh
-    SQLInteger  _ → returnError ConversionFailed field "invalid numeric value for the scale"
+    SQLInteger (-2) → Ok VeryLow
+    SQLInteger (-1) → Ok Low
+    SQLInteger ( 0) → Ok Medium
+    SQLInteger ( 1) → Ok High
+    SQLInteger ( 2) → Ok VeryHigh
+    SQLInteger ( _) → returnError ConversionFailed field "invalid numeric value for the scale"
     _ → returnError ConversionFailed field "expected null or numeric value for the scale"
 
 instance FromField DaysToRepeat where
@@ -212,3 +215,67 @@ selectHabitGroups c habit_id =
   query c "SELECT group_id FROM habit_groups WHERE habit_id = ?;" (Only habit_id)
   <&>
   map fromOnly
+
+createHabitsTable ∷ Connection → IO ()
+createHabitsTable c = execute_ c "CREATE TABLE habits (habit_id BLOB, name TEXT, difficulty INT, frequency_mode INT, frequency_id INT, importance INT, last_marked INT);"
+
+data FrequencyMode = IndefiniteMode | OnceMode | RepeatedMode
+instance ToField FrequencyMode where
+  toField IndefiniteMode = SQLNull
+  toField OnceMode = SQLInteger 1
+  toField RepeatedMode = SQLInteger 2
+instance FromField FrequencyMode where
+  fromField field = case fieldData field of
+    SQLNull → Ok IndefiniteMode
+    SQLInteger 1 → Ok OnceMode
+    SQLInteger 2 → Ok RepeatedMode
+    SQLInteger _ → returnError ConversionFailed field "invalid numeric value for the frequency mode"
+    _ → returnError ConversionFailed field "expected null or numeric value for the frequency mode"
+
+insertHabit ∷ Connection → UUID → Habit → IO ()
+insertHabit c habit_id Habit{..} = do
+  (frequency_mode, frequency_id) ← case _frequency_ of
+    Indefinite → pure (IndefiniteMode, Nothing)
+    Once maybe_deadline →
+      insertHabitFrequencyOnce c maybe_deadline
+      <&>
+      (\frequency_id → (OnceMode, Just frequency_id))
+    Repeated days_to_keep deadline days_to_repeat →
+      insertHabitFrequencyRepeated c days_to_keep deadline days_to_repeat
+      <&>
+      (\frequency_id → (RepeatedMode, Just frequency_id))
+  forM_ _group_membership_ $ insertHabitGroup c habit_id
+  execute c "INSERT INTO habits (habit_id, name, difficulty, importance, frequency_mode, frequency_id, last_marked) VALUES (?,?,?,?,?,?,?)"
+    ( habit_id
+    , _name_
+    , _scales_ ^. success_
+    , _scales_ ^. failure_
+    , frequency_mode
+    , frequency_id
+    , _maybe_last_marked_
+    )
+ 
+selectHabit ∷ Connection → UUID → IO Habit
+selectHabit c habit_id = do
+  (name, difficulty, importance, (frequency_mode), frequency_id, maybe_last_marked) ←
+    selectUniqueRow c "SELECT name, difficulty, importance, frequency_mode, frequency_id, last_marked FROM habits WHERE habit_id = ?" habit_id
+  Habit
+    <$> pure name
+    <*> pure (Tagged (Success difficulty) (Failure importance))
+    <*> case (frequency_mode, frequency_id) of
+          (IndefiniteMode, _) → pure Indefinite
+          (OnceMode, Just id) → Once <$> selectHabitFrequencyOnce c id
+          (RepeatedMode, Just id) → do
+            (days_to_keep, deadline, repeated) ← selectHabitFrequencyRepeated c id
+            pure $ Repeated days_to_keep deadline repeated
+          -- We know this isn't indefinite mode so if there is no id something is wrong.
+          (_, Nothing) → throwM $ InternalInconsistency [i|valid frequency mode, but no id given|]
+    <*> (selectHabitGroups c habit_id <&> setFromList)
+    <*> pure maybe_last_marked
+
+createTables ∷ Connection → IO ()
+createTables c = do
+  createHabitFrequencyOnceTable c
+  createHabitFrequencyRepeatedTable c
+  createHabitGroupsTable c
+  createHabitsTable c

@@ -567,12 +567,6 @@ testStoryOutcomes name substitutions outcomes =
       )
       story_outcome_labels
 
-createTables ∷ SQLite.Connection → IO ()
-createTables c = do
-  createHabitFrequencyOnceTable c
-  createHabitFrequencyRepeatedTable c
-  createHabitGroupsTable c
-
 withDatabase ∷ (SQLite.Connection → IO ()) → IO ()
 withDatabase action = SQLite.withConnection ":memory:" $ \c → do
   createTables c
@@ -676,6 +670,13 @@ main = defaultMain $ testGroup "All Tests"
             selectHabitGroups c test_habit_id_2 >>= (@?= test_group_ids_2)
       ]
     ]
+    ----------------------------------------------------------------------------
+    , testGroup "insert/select habits"
+    ----------------------------------------------------------------------------
+      [ testDatabaseCase "Default" $ \c → do
+          insertHabit c test_habit_id def
+          selectHabit c test_habit_id >>= (@?= def)
+      ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."
   ------------------------------------------------------------------------------
