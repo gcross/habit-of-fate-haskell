@@ -42,16 +42,23 @@ import Database.SQLite.Simple.ToField
 
 import HabitOfFate.Data.Repeated
 
-encodeLocalTime ∷ LocalTime → Int
+encodeLocalTime ∷ LocalTime → Int64
 encodeLocalTime (LocalTime (ModifiedJulianDay days) time_of_day) =
   fromIntegral (days*86400) + (time_of_day |> timeOfDayToTime |> floor)
 
-decodeLocalTime ∷ Int → LocalTime
+instance ToField LocalTime where
+  toField = encodeLocalTime >>> SQLInteger
+
+decodeLocalTime ∷ Int64 → LocalTime
 decodeLocalTime x =
   LocalTime
     (x |> (`div` 86400) |> fromIntegral |> ModifiedJulianDay)
     (x |> (`mod` 86400) |> fromIntegral |> timeToTimeOfDay)
 
+instance FromField LocalTime where
+  fromField field = case fieldData field of
+    SQLInteger x → decodeLocalTime x |> Ok
+    _ → returnError Incompatible field "local time must be number of seconds"
 
 encodeDaysToRepeat ∷ DaysToRepeat → Int
 encodeDaysToRepeat DaysToRepeat{..} = foldl' (.|.) 0
@@ -80,7 +87,7 @@ createHabitFrequencyOnceTable c = execute_ c "CREATE TABLE habit_frequency_once 
 
 insertHabitFrequencyOnce ∷ Connection → Maybe LocalTime → IO Int64
 insertHabitFrequencyOnce c maybe_deadline = do
-  execute c "INSERT INTO habit_frequency_once (deadline) VALUES (?);" $ Only (encodeLocalTime <$> maybe_deadline)
+  execute c "INSERT INTO habit_frequency_once (deadline) VALUES (?);" $ Only maybe_deadline
   lastInsertRowId c
 
 data NumberOfRowsShouldHaveBeenOne = NumberOfRowsShouldHaveBeenOne String Int deriving (Show)
@@ -97,9 +104,7 @@ selectUniqueRow c q id =
 
 selectHabitFrequencyOnce ∷ Connection → Int64 → IO (Maybe LocalTime)
 selectHabitFrequencyOnce c rowid =
-  selectUniqueRow c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" rowid
-  <&>
-  (fromOnly >>> fmap decodeLocalTime)
+  selectUniqueRow c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" rowid <&> fromOnly
 
 createHabitFrequencyRepeatedTable ∷ Connection → IO ()
 createHabitFrequencyRepeatedTable c = execute_ c "CREATE TABLE habit_frequency_repeated (days_to_keep_mode INT, days_to_keep_number INT, deadline INT, repeated_mode INT, period INT, days_to_repeat INT);"
@@ -115,7 +120,7 @@ insertHabitFrequencyRepeated c days_to_keep deadline repeated = do
   execute c "INSERT INTO HABIT_FREQUENCY_REPEATED (days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, days_to_repeat) VALUES (?,?,?,?,?,?)" $
     ( days_to_keep_mode
     , days_to_keep_number
-    , encodeLocalTime deadline
+    , deadline
     , repeated_mode
     , period
     , maybe_days_to_repeat
@@ -141,7 +146,7 @@ selectHabitFrequencyRepeated c rowid =
         2 → pure $ KeepDaysInPast days_to_keep_number
         other → throwM $ InvalidMode "days_to_keep" other
       )
-      (pure $ decodeLocalTime deadline)
+      (pure $ deadline)
       (case repeated_mode of
         1 → pure $ Daily period
         2 → Weekly period <$>
