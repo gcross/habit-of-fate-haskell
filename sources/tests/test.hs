@@ -671,11 +671,30 @@ main = defaultMain $ testGroup "All Tests"
       ]
     ]
     ----------------------------------------------------------------------------
-    , testGroup "insert/select habits"
+    , testGroup "insert/select habits" $
+      let modifyAndCompare f = databaseProperty $ \c → do
+            let habit = f def
+            insertHabit c test_habit_id habit
+            selectHabit c test_habit_id >>= (@?= habit)
+      in
     ----------------------------------------------------------------------------
       [ testDatabaseCase "Default" $ \c → do
           insertHabit c test_habit_id def
           selectHabit c test_habit_id >>= (@?= def)
+      , QC.testProperty "Random name" $ \name →
+          modifyAndCompare (name_ .~ name)
+      , QC.testProperty "Random scales" $ \difficulty importance →
+          modifyAndCompare (scales_ .~ Tagged (Success difficulty) (Failure importance))
+      , QC.testProperty "Random groups" $ \groups →
+          modifyAndCompare (group_membership_ .~ setFromList groups)
+      , QC.testProperty "Random last marked" $ \d h →
+          modifyAndCompare (maybe_last_marked_ .~ Just (dayHour d (h `mod` 24)))
+      , QC.testProperty "Once with no deadline " $
+          modifyAndCompare (frequency_ .~ Once Nothing)
+      , QC.testProperty "Once with random deadline" $ \d h →
+          modifyAndCompare (frequency_ .~ Once (Just (dayHour d (h `mod` 24))))
+      , QC.testProperty "Repeated" $ \days_to_keep d h repeated →
+          modifyAndCompare (frequency_ .~ Repeated days_to_keep (dayHour d (h `mod` 24)) repeated)
       ]
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."
