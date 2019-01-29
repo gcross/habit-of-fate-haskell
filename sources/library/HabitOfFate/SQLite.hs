@@ -134,7 +134,7 @@ selectUniqueRow c q id =
 
 selectHabitFrequencyOnce ∷ Connection → Int64 → IO (Maybe LocalTime)
 selectHabitFrequencyOnce c rowid =
-  selectUniqueRow c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" (Only rowid) <&> fromOnly
+  selectUniqueRow c "SELECT deadline FROM habit_frequency_once WHERE rowid = ?" (Only rowid) <&> fromOnly
 
 createHabitFrequencyRepeatedTable ∷ Connection → IO ()
 createHabitFrequencyRepeatedTable c = execute_ c "CREATE TABLE habit_frequency_repeated (days_to_keep_mode INT, days_to_keep_number INT, deadline INT, repeated_mode INT, period INT, days_to_repeat INT);"
