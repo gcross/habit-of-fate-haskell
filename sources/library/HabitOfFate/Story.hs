@@ -66,16 +66,16 @@ splitRegionsOn marker =
       _ → False
   )
 
-splitStories ∷ String → [String]
-splitStories =
+splitStoriesOn ∷ Char → String → [String]
+splitStoriesOn c =
   lines
   >>>
-  splitRegionsOn '='
+  splitRegionsOn c
   >>>
   map (unlines >>> addParagraphTags)
 
 splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
-splitAndParseSubstitutions = splitStories >>> mapM parseSubstitutions
+splitAndParseSubstitutions = splitStoriesOn '=' >>> mapM parseSubstitutions
 
 stories ∷ QuasiQuoter
 stories = QuasiQuoter
@@ -241,8 +241,8 @@ instance Exception NoSuchStoryOutcomeLabel where
 extractStoryOutcomes ∷ MonadThrow m ⇒ String → m StoryOutcomes
 extractStoryOutcomes regions =
   (regions
-    |> splitNamedRegionsOn '-'
-    |> map (second splitStories)
+    |> splitNamedRegionsOn '='
+    |> map (second (splitStoriesOn '-'))
     |> traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
   )
   >>=

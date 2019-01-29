@@ -119,18 +119,18 @@ behind.
 
 gingerbread_house_event ∷ StoryOutcomes
 gingerbread_house_event = [story_outcomes|
------------------------------------- Common ------------------------------------
+==================================== Common ====================================
 |Susie sees a house made out of... gingerbread? He/she| feels a strange
 compulsion to approach it.
------------------------------------- Success -----------------------------------
+==================================== Success ===================================
 He/she| fights the compulsion, and continues on his/her| search.
--------------------------------- Averted/Failure -------------------------------
+================================ Averted/Failure ===============================
 As he/she| gets closer, the door opens and an old woman beckons her in. “You've
 arrived just in time!” she says. “Dinner has just finished cooking. Come on in!”
------------------------------------- Averted -----------------------------------
+==================================== Averted ===================================
 The smell from the cottage is overwhelming, and shocks |Susie to his/her|
 senses. He/she| sprints away from the cottage as fast as he/she| can.
------------------------------------- Failure -----------------------------------
+==================================== Failure ===================================
 Not knowing why he/she| was doing this, |Susie enters the... cottage? The woman
 leads her to an oven. “Here, look inside.”
 
@@ -146,13 +146,13 @@ time now.
 
 found_by_fairy_event ∷ StoryOutcomes
 found_by_fairy_event = [story_outcomes|
------------------------------------- Common ------------------------------------
+==================================== Common ====================================
 |Susie starts to hear a sound and he/she| can't tell whether it is a buzzing or
 the most beautiful music he/she| has ever heard. As it gets louder he/she|
 notices the area around him/her| starting to get brighter. He/she| looks around
 and sees a fairy, glowing brightly in the dark. The fairy beckons to him/her|,
 and then flies away. |Susie hesitates briefly, and then runs after the fairy.
------------------------------------- Success -----------------------------------
+==================================== Success ===================================
 |Susie chases the fairy for about an hour, starting to doubt whether this is
 such a good idea, when the fairy stops. He/she| catches up to it and sees an
 |Illsbane plant under it. Carefully, he/she| reaches down and picks it. When
@@ -160,14 +160,13 @@ he/she| looks up, the fairy is gone.
 
 He/she| falls to his/her| knees and thanks you for guiding her to the plant.
 He/she| then gets up and starts heading back to his/her| home.
------------------------------------- Averted -----------------------------------
+==================================== Averted ===================================
 Unfortunately, the fairy flies so quickly that it quickly leaves |Susie’s sight.
 |Susie shrugs and continues her search.
------------------------------------- Failure -----------------------------------
+==================================== Failure ===================================
 |Susie runs faster and faster to catch up with the fairy. Everything starts to
 blur until there is only him/her| and the fairy. Eventually it all fades to
 black.
-
 
 |Susie wakes up to the sounds of birds singing.  After a moment of
 disorientation, he/she| realizes that he/she| is still in the forest, and it is
@@ -176,14 +175,14 @@ now morning.  She weeps, for surely by now |Tommy is dead.
 
 found_by_cat_event ∷ StoryOutcomes
 found_by_cat_event = [story_outcomes|
------------------------------------- Common ------------------------------------
+==================================== Common ====================================
 |Susie hears a meow. He/she| looks to the source, and sees a |color cat. The
 cat beckons to her, and starts walking. He/she| thinks to herself, “Shoot, I
 can never remember, is it the blue cats who are the good ones and the green
 cats who are the evil ones, or is it the opposite?” He/she| does need to get
 the herb as soon as he/she| can, though, so he/she| decides to roll the dice
 and follow the cat.
------------------------------------- Success -----------------------------------
+==================================== Success ===================================
 He/she| follows the cat for some time, and eventually it stops. It picks
 something up and brings it to her. Excitedly, she bends down to look at it.
 
@@ -198,12 +197,12 @@ He/she| walks over and picks the plant, and then scratches the cat. “Good
 kitty!” she says. It purrs.
 
 He/she| starts to journey home.
------------------------------------- Averted -----------------------------------
+==================================== Averted ===================================
 |Susie follows the cat for some time and just barely notices in time that she
 was about to step into a pit. The cat flashes her a cheshire grin and vanishes.
 
 |Susie grumbles at the existence of mischievous malevolent cats and keeps searching.
------------------------------------- Failure -----------------------------------
+==================================== Failure ===================================
 |Susie follows the cat for some time and realizes too late that she is stepping
 into a pit. Unable to catch herself in time, she falls into the put, breaking a
 leg. The cat looks down into the pit, flashes her a cheshire grin, and
@@ -213,17 +212,17 @@ getting the medicine that he desperately needs tonight...
 
 fairy_circle_event ∷ StoryOutcomes
 fairy_circle_event = [story_outcomes|
------------------------------------- Success -----------------------------------
+==================================== Success ===================================
 |Susie is paying so much attention to looking for |Illsbane that he/she| almost
 misses the ominous circle of mushrooms. He/she| says a prayer of thanks that
 he/she| noticed it before stepping inside.
--------------------------------- Averted/Failure -------------------------------
+================================ Averted/Failure ===============================
 |Susie is so focused on looking at the ground for the |Illsbane plant that she
 doesn’t notice that he/she| had walked into a circle of mushrooms. Desperately,
 he/she| turned around and starts to run out of it.
------------------------------------- Averted -----------------------------------
+==================================== Averted ===================================
 Miraculously, he/she| makes it out. He/she| continues the search.
------------------------------------- Failure -----------------------------------
+==================================== Failure ===================================
 Unfortunately, he/she| sees a leprechaun between her and the mushroom border.
 “Welcome, mortal!” it says to him/her| cheerfully. “I am sure you will have a
 wonderful time in our land.”
@@ -244,9 +243,9 @@ loved, was certainly dead.
 
 conclusion_parent_event ∷ StoryOutcomes
 conclusion_parent_event = [story_outcomes|
------------------------------------- Success -----------------------------------
+==================================== Success ===================================
 |Susie is starting to feel like he/she| will never make it back when he/she|
-notices that things are starting to get brighter -- he/she| must be getting
+notices that things are starting to get brighter == he/she| must be getting
 close to the village! he/she| gives you thanks for guiding her home.
 
 A little bit further, and he/she| is back to to the healer. He/she| pounds on
@@ -260,7 +259,7 @@ asleep now, fool, take this potion home and give it to |Tommy. Quickly!”
 throat; he/she|Tommy immediately falls back asleep. Exhausted himself/herself|,
 he/she| falls asleep on the floor; he/she| sleeps peacefully, with a smile on
 her face. The next day, he/she| builds an altar to you out of gratitude.
--------------------------------- Averted/Failure -------------------------------
+================================ Averted/Failure ===============================
 |Susie is starting to feel like he/she| will never make it back when he/she|
 notices that things are starting to get brighter -- he/she| must be getting
 close to the village! he/she| gives you thanks for guiding her home.
@@ -281,11 +280,11 @@ this potion home and give it to |Tommy. Quickly!”
 |Susie rushes home and wakes up |Tommy long enough to ladle the potion down this
 throat; he/she|Tommy immediately falls back asleep. Exhausted himself/herself|,
 he/she| falls asleep on the floor; he/she| sleeps fitfully.
------------------------------------- Averted -----------------------------------
+==================================== Averted ===================================
 The next day, he/she| wakes up and quickly looks over at |Tommy. To his/her|
 immense relief, |Tommy is snoring peacefully. Filled with immense gratitude,
 he/she| builds an altar to you.
------------------------------------- Failure -----------------------------------
+==================================== Failure ===================================
 The next day, he/she| wakes up and quickly looks over at |Tommy. At first
 he/she| thinks that |Tommy is sleeping peacefully and starts to breathe a sigh
 of relief, but then he/she| realizes that |Tommy is not breathing at all.
@@ -295,7 +294,7 @@ of relief, but then he/she| realizes that |Tommy is not breathing at all.
 
 conclusion_healer_event ∷ StoryOutcomes
 conclusion_healer_event = [story_outcomes|
------------------------------------- Success -----------------------------------
+==================================== Success ===================================
 |Susie is starting to feel like he/she| will never make it back in time when
 he/she| sees the shapes of the huts of her village not far in the distance. Not
 long after, he/she| makes it back to her hut and immediately starts brewing
@@ -307,7 +306,7 @@ they gave her extra gold.
 He/she| returned to her own hut and did not even have enough energy to make it
 to the bed; she fell asleep on the floor, though with a smile on her face. The
 next day, he/she| builds an altar to you out of gratitude.
--------------------------------- Averted/Failure -------------------------------
+================================ Averted/Failure ===============================
 |Susie is starting to feel like he/she| will never make it back in time when
 he/she| sees the shapes of the huts of her village not far in the distance. She
 starts to breathe a sigh of relief when she realizes that something is off that
@@ -315,7 +314,7 @@ she cannot quite place. As she got closer, she realized that the doors to the
 huts were all facing her, and that they seemed to always be facing her no
 matter how close she got to the village. Had they always been that way? Or was
 something strange going on.
------------------------------------- Averted -----------------------------------
+==================================== Averted ===================================
 When in or close to the Wicked Forest, it is best to trust one’s instincts.
 Thus, even though it was the last thing that |Susie wanted to do, she turned
 around and walked back into the forest.
@@ -331,7 +330,7 @@ he/she| considered it to be well worth it. Also they gave her extra gold.
 He/she| returned to her own hut and did not even have enough energy to make it
 to the bed; she fell asleep on the floor, though with a smile on her face. The
 next day, he/she| builds an altar to you out of gratitude.
------------------------------------- Failure -----------------------------------
+==================================== Failure ===================================
 He/she| dismissed the notion; it had been a long night and the most likely
 explanation was that his/her| mind was going after her long search in the Wicked
 Forest. Besides which, most importantly, he/she| needed to prepare the
