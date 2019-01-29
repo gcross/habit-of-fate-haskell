@@ -216,16 +216,20 @@ data NoSuchStoryOutcomeLabel = NoSuchStoryOutcomeLabel String deriving (Show, Ty
 instance Exception NoSuchStoryOutcomeLabel where
 
 extractStoryOutcomes ∷ MonadThrow m ⇒ String → m StoryOutcomes
-extractStoryOutcomes regions = do
-  outcome_list ←
-    regions
-      |> splitNamedRegionsOn '-'
-      |> traverse (\(label, region) → (label,) <$> parseSubstitutions region)
-  flip execStateT def $ forM_ outcome_list $ \(label, story) →
-    maybe
-      (throwM $ NoSuchStoryOutcomeLabel label)
-      (\f → get >>= f story >>= put >> pure ())
-      (lookup label story_outcome_modifiers)
+extractStoryOutcomes regions =
+  (regions
+    |> splitNamedRegionsOn '-'
+    |> traverse (\(label, region) → (label,) <$> parseSubstitutions region)
+  )
+  >>=
+  foldlM
+    (\outcomes (label, region) →
+      maybe
+        (throwM $ NoSuchStoryOutcomeLabel label)
+        (\f → f region outcomes)
+        (lookup label story_outcome_modifiers)
+    )
+    def
 
 story_outcomes ∷ QuasiQuoter
 story_outcomes = QuasiQuoter
