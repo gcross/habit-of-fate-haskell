@@ -190,11 +190,13 @@ data StoryOutcomes = StoryOutcomes
   , _story_averted_or_failure_ ∷ Story
   , _story_averted_ ∷ Story
   , _story_failure_ ∷ Story
+  , _story_fame_ ∷ [Story]
+  , _story_shame_ ∷ [Story]
   } deriving (Lift)
 makeLenses ''StoryOutcomes
 
 instance Default StoryOutcomes where
-  def = StoryOutcomes def def def def def def
+  def = StoryOutcomes def def def def def def def def
 
 story_outcome_singleton_labels ∷ [(String, ALens' StoryOutcomes Story)]
 story_outcome_singleton_labels =
@@ -206,10 +208,31 @@ story_outcome_singleton_labels =
   ,("Failure", story_failure_)
   ]
 
-story_outcome_modifiers ∷ MonadThrow m ⇒ [(String, Story → StoryOutcomes → m StoryOutcomes)]
+story_outcome_multiple_labels ∷ [(String, ALens' StoryOutcomes [Story])]
+story_outcome_multiple_labels =
+  [("Fame", story_fame_)
+  ,("Shame", story_shame_)
+  ]
+
+data WrongNumberOfStories = NoStoriesForLabel String | TooManyStoriesForLabel String Int
+  deriving (Show)
+instance Exception WrongNumberOfStories
+
+story_outcome_modifiers ∷ MonadThrow m ⇒ [(String, [Story] → StoryOutcomes → m StoryOutcomes)]
 story_outcome_modifiers =
-  [(label, \s o → pure (o & (lens_ #~ s)))
-  |(label, lens_) ← story_outcome_singleton_labels
+  [ ( label,
+      \stories outcomes → case stories of
+       [story] → pure (outcomes & (lens_ #~ story))
+       [] → throwM $ NoStoriesForLabel label
+       _ → throwM $ TooManyStoriesForLabel label (length stories)
+    )
+  | ( label, lens_ ) ← story_outcome_singleton_labels
+  ]
+  ⊕
+  [ ( label,
+      \stories outcomes → pure (outcomes & (lens_ #~ stories))
+    )
+  | ( label, lens_ ) ← story_outcome_multiple_labels
   ]
 
 data NoSuchStoryOutcomeLabel = NoSuchStoryOutcomeLabel String deriving (Show, Typeable)
@@ -219,7 +242,8 @@ extractStoryOutcomes ∷ MonadThrow m ⇒ String → m StoryOutcomes
 extractStoryOutcomes regions =
   (regions
     |> splitNamedRegionsOn '-'
-    |> traverse (\(label, region) → (label,) <$> parseSubstitutions region)
+    |> map (second splitStories)
+    |> traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
   )
   >>=
   foldlM

@@ -586,6 +586,22 @@ testStoryOutcomes name substitutions outcomes =
           else Just $ testStory (name ⊕ "." ⊕ outcome_name) substitutions outcome_story
       )
       story_outcome_singleton_labels
+    ⊕
+    (concat
+     $
+     mapMaybe
+      (\(outcome_name, outcome_lens_) →
+        let outcome_stories = outcomes ^# outcome_lens_
+        in if onull outcome_stories
+          then Nothing
+          else Just
+            [ testStory [i|#{name}.#{outcome_name}[#{n}]|] substitutions outcome_story
+            | outcome_story ← outcome_stories
+            | n ← [1..]
+            ]
+      )
+      story_outcome_multiple_labels
+    )
 
 withDatabase ∷ (SQLite.Connection → IO ()) → IO ()
 withDatabase action = SQLite.withConnection ":memory:" $ \c → do
