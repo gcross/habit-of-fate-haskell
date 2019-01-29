@@ -337,6 +337,12 @@ apiTestCase test_name action =
 test_account_id ∷ Text
 test_account_id = "test"
 
+test_account_id_1 ∷ Text
+test_account_id_1 = "test-1"
+
+test_account_id_2 ∷ Text
+test_account_id_2 = "test-2"
+
 test_group_id ∷ UUID
 test_group_id = read "f5ccdfde-1776-483c-9140-385e9e75e31d"
 
@@ -345,6 +351,7 @@ test_group = "group"
 test_group_2 = "grouper"
 
 test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
+test_habit_1 = Habit "name1" (Tagged (Success VeryLow) (Failure Medium)) Indefinite [] Nothing
 test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
 test_habit_once = Habit "once" (Tagged (Success Medium) (Failure Medium)) (Once $ Just $ day 0) [] Nothing
 test_habit_daily = def & name_ .~ "daily" & frequency_ .~ (Repeated (KeepNumberOfDays 2) (dayHour 2 3) (Daily 2))
@@ -689,6 +696,14 @@ main = defaultMain $ testGroup "All Tests"
       [ testDatabaseCase "Default" $ \c → do
           insertHabit c test_account_id test_habit_id def
           selectHabit c test_account_id test_habit_id >>= (@?= def)
+      , testDatabaseCase "Account 1" $ \c → do
+          insertHabit c test_account_id_1 test_habit_id test_habit_1
+          insertHabit c test_account_id_2 test_habit_id test_habit_2
+          selectHabit c test_account_id_1 test_habit_id >>= (@?= test_habit_1)
+      , testDatabaseCase "Account 2" $ \c → do
+          insertHabit c test_account_id_1 test_habit_id test_habit_1
+          insertHabit c test_account_id_2 test_habit_id test_habit_2
+          selectHabit c test_account_id_2 test_habit_id >>= (@?= test_habit_2)
       , QC.testProperty "Random name" $ \name →
           modifyAndCompare (name_ .~ name)
       , QC.testProperty "Random scales" $ \difficulty importance →
