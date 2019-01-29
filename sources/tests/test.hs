@@ -585,7 +585,7 @@ testStoryOutcomes name substitutions outcomes =
           then Nothing
           else Just $ testStory (name ⊕ "." ⊕ outcome_name) substitutions outcome_story
       )
-      story_outcome_labels
+      story_outcome_singleton_labels
 
 withDatabase ∷ (SQLite.Connection → IO ()) → IO ()
 withDatabase action = SQLite.withConnection ":memory:" $ \c → do

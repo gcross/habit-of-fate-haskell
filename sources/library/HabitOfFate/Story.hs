@@ -196,14 +196,20 @@ makeLenses ''StoryOutcomes
 instance Default StoryOutcomes where
   def = StoryOutcomes def def def def def def
 
-story_outcome_labels ∷ [(String, ALens' StoryOutcomes Story)]
-story_outcome_labels =
+story_outcome_singleton_labels ∷ [(String, ALens' StoryOutcomes Story)]
+story_outcome_singleton_labels =
   [("Common", story_common_)
   ,("Success", story_success_)
   ,("Success/Averted", story_success_or_averted_)
   ,("Averted/Failure", story_averted_or_failure_)
   ,("Averted", story_averted_)
   ,("Failure", story_failure_)
+  ]
+
+story_outcome_modifiers ∷ MonadThrow m ⇒ [(String, Story → StoryOutcomes → m StoryOutcomes)]
+story_outcome_modifiers =
+  [(label, \s o → pure (o & (lens_ #~ s)))
+  |(label, lens_) ← story_outcome_singleton_labels
   ]
 
 data NoSuchStoryOutcomeLabel = NoSuchStoryOutcomeLabel String deriving (Show, Typeable)
@@ -218,8 +224,8 @@ extractStoryOutcomes regions = do
   flip execStateT def $ forM_ outcome_list $ \(label, story) →
     maybe
       (throwM $ NoSuchStoryOutcomeLabel label)
-      (#= story)
-      (lookup label story_outcome_labels)
+      (\f → get >>= f story >>= put >> pure ())
+      (lookup label story_outcome_modifiers)
 
 story_outcomes ∷ QuasiQuoter
 story_outcomes = QuasiQuoter
