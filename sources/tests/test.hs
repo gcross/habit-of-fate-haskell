@@ -334,6 +334,9 @@ apiTestCase test_name action =
   )
   |> serverTestCase test_name
 
+test_account_id ∷ Text
+test_account_id = "test"
+
 test_group_id ∷ UUID
 test_group_id = read "f5ccdfde-1776-483c-9140-385e9e75e31d"
 
@@ -679,13 +682,13 @@ main = defaultMain $ testGroup "All Tests"
     , testGroup "insert/select habits" $
       let modifyAndCompare f = databaseProperty $ \c → do
             let habit = f def
-            insertHabit c test_habit_id habit
-            selectHabit c test_habit_id >>= (@?= habit)
+            insertHabit c test_account_id test_habit_id habit
+            selectHabit c test_account_id test_habit_id >>= (@?= habit)
       in
     ----------------------------------------------------------------------------
       [ testDatabaseCase "Default" $ \c → do
-          insertHabit c test_habit_id def
-          selectHabit c test_habit_id >>= (@?= def)
+          insertHabit c test_account_id test_habit_id def
+          selectHabit c test_account_id test_habit_id >>= (@?= def)
       , QC.testProperty "Random name" $ \name →
           modifyAndCompare (name_ .~ name)
       , QC.testProperty "Random scales" $ \difficulty importance →

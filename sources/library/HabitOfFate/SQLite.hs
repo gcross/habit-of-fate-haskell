@@ -124,9 +124,9 @@ data NumberOfRowsShouldHaveBeenOne = NumberOfRowsShouldHaveBeenOne String Int de
 instance Exception NumberOfRowsShouldHaveBeenOne where
   displayException (NumberOfRowsShouldHaveBeenOne table count) = [i|wrong number of rows for #{table}, not #{count}|]
 
-selectUniqueRow ∷ ∀ id r. (ToField id, FromRow r) ⇒ Connection → Query → id → IO r
+selectUniqueRow ∷ ∀ id r. (ToRow id, FromRow r) ⇒ Connection → Query → id → IO r
 selectUniqueRow c q id =
-  (query c q (Only id) ∷ IO [r])
+  (query c q id ∷ IO [r])
   >>=
   \case
     [row] → pure row
@@ -134,7 +134,7 @@ selectUniqueRow c q id =
 
 selectHabitFrequencyOnce ∷ Connection → Int64 → IO (Maybe LocalTime)
 selectHabitFrequencyOnce c rowid =
-  selectUniqueRow c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" rowid <&> fromOnly
+  selectUniqueRow c "SELECT (deadline) FROM habit_frequency_once WHERE rowid = ?" (Only rowid) <&> fromOnly
 
 createHabitFrequencyRepeatedTable ∷ Connection → IO ()
 createHabitFrequencyRepeatedTable c = execute_ c "CREATE TABLE habit_frequency_repeated (days_to_keep_mode INT, days_to_keep_number INT, deadline INT, repeated_mode INT, period INT, days_to_repeat INT);"
@@ -167,7 +167,7 @@ instance Exception InternalInconsistency where
 
 selectHabitFrequencyRepeated ∷ Connection → Int64 → IO (DaysToKeep, LocalTime, Repeated)
 selectHabitFrequencyRepeated c rowid =
-  selectUniqueRow c "SELECT days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, days_to_repeat FROM habit_frequency_repeated WHERE rowid = ?" rowid
+  selectUniqueRow c "SELECT days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, days_to_repeat FROM habit_frequency_repeated WHERE rowid = ?" (Only rowid)
   >>=
   \(days_to_keep_mode, days_to_keep_number, deadline, repeated_mode, period, maybe_days_to_repeat) →
     liftA3 (,,)
@@ -217,7 +217,7 @@ selectHabitGroups c habit_id =
   map fromOnly
 
 createHabitsTable ∷ Connection → IO ()
-createHabitsTable c = execute_ c "CREATE TABLE habits (habit_id BLOB, name TEXT, difficulty INT, frequency_mode INT, frequency_id INT, importance INT, last_marked INT);"
+createHabitsTable c = execute_ c "CREATE TABLE habits (account_id TEXT, habit_id BLOB, name TEXT, difficulty INT, frequency_mode INT, frequency_id INT, importance INT, last_marked INT);"
 
 data FrequencyMode = IndefiniteMode | OnceMode | RepeatedMode
 instance ToField FrequencyMode where
@@ -232,8 +232,8 @@ instance FromField FrequencyMode where
     SQLInteger _ → returnError ConversionFailed field "invalid numeric value for the frequency mode"
     _ → returnError ConversionFailed field "expected null or numeric value for the frequency mode"
 
-insertHabit ∷ Connection → UUID → Habit → IO ()
-insertHabit c habit_id Habit{..} = do
+insertHabit ∷ Connection → Text → UUID → Habit → IO ()
+insertHabit c account_id habit_id Habit{..} = do
   (frequency_mode, frequency_id) ← case _frequency_ of
     Indefinite → pure (IndefiniteMode, Nothing)
     Once maybe_deadline →
@@ -245,8 +245,9 @@ insertHabit c habit_id Habit{..} = do
       <&>
       (\frequency_id → (RepeatedMode, Just frequency_id))
   forM_ _group_membership_ $ insertHabitGroup c habit_id
-  execute c "INSERT INTO habits (habit_id, name, difficulty, importance, frequency_mode, frequency_id, last_marked) VALUES (?,?,?,?,?,?,?)"
-    ( habit_id
+  execute c "INSERT INTO habits (account_id, habit_id, name, difficulty, importance, frequency_mode, frequency_id, last_marked) VALUES (?,?,?,?,?,?,?,?)"
+    ( account_id
+    , habit_id
     , _name_
     , _scales_ ^. success_
     , _scales_ ^. failure_
@@ -255,10 +256,10 @@ insertHabit c habit_id Habit{..} = do
     , _maybe_last_marked_
     )
  
-selectHabit ∷ Connection → UUID → IO Habit
-selectHabit c habit_id = do
+selectHabit ∷ Connection → Text → UUID → IO Habit
+selectHabit c account_id habit_id = do
   (name, difficulty, importance, (frequency_mode), frequency_id, maybe_last_marked) ←
-    selectUniqueRow c "SELECT name, difficulty, importance, frequency_mode, frequency_id, last_marked FROM habits WHERE habit_id = ?" habit_id
+    selectUniqueRow c "SELECT name, difficulty, importance, frequency_mode, frequency_id, last_marked FROM habits WHERE account_id = ? AND habit_id = ?" (account_id, habit_id)
   Habit
     <$> pure name
     <*> pure (Tagged (Success difficulty) (Failure importance))
