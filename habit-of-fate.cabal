@@ -10,6 +10,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 data-files:          data/app/css/common.css
                      data/app/css/deadlines.css
+                     data/app/css/deeds.css
                      data/app/css/edit.css
                      data/app/css/enter.css
                      data/app/css/list.css
@@ -90,6 +91,7 @@ library
   exposed-modules:     HabitOfFate.API
                      , HabitOfFate.Data.Account
                      , HabitOfFate.Data.Configuration
+                     , HabitOfFate.Data.Deed
                      , HabitOfFate.Data.Group
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Data.InputHabit
@@ -135,6 +137,7 @@ library
                      , HabitOfFate.Server.Requests.Shared.Run
                      , HabitOfFate.Server.Requests.Web.ChangeTimeZone
                      , HabitOfFate.Server.Requests.Web.Deadlines
+                     , HabitOfFate.Server.Requests.Web.Deeds
                      , HabitOfFate.Server.Requests.Web.EditAndDeleteGroup
                      , HabitOfFate.Server.Requests.Web.EditAndDeleteHabit
                      , HabitOfFate.Server.Requests.Web.GetAllHabits

@@ -1,6 +1,6 @@
 {-
     Habit of Fate, a game to incentivize habit formation.
-    Copyright (C) 2018 Gregory Crosswhite
+    Copyright (C) 2019 Gregory Crosswhite
 
     This program is free software: you can redistribute it and/or modify
     it under version 3 of the terms of the GNU Affero General Public License.
@@ -14,27 +14,35 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE AutoDeriveTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Data.SuccessOrFailureResult where
+module HabitOfFate.Data.Deed where
 
 import HabitOfFate.Prelude
 
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(String), withText)
+import Data.Aeson (FromJSON(..), ToJSON(..), (.:), object, withObject)
+import Data.Time.LocalTime
+import qualified Data.Text.Lazy as Lazy
 
-data SuccessOrFailureResult = SuccessResult | FailureResult deriving (Enum, Eq, Read, Show, Ord)
+import HabitOfFate.Data.SuccessOrFailureResult
+import HabitOfFate.JSON
 
-instance ToJSON SuccessOrFailureResult where
-  toJSON SuccessResult = String "success"
-  toJSON FailureResult = String "failure"
+data Deed = Deed SuccessOrFailureResult Lazy.Text LocalTime deriving (Eq,Ord,Read,Show)
 
-instance FromJSON SuccessOrFailureResult where
-  parseJSON = withText "success/failure result value must have string shape" $ \case
-    "success" → pure SuccessResult
-    "failure" → pure FailureResult
-    other → fail [i|not success or failure: #{other}|]
+instance ToJSON Deed where
+  toJSON (Deed result text when) = object
+    [ "result" .== result
+    , "story" .== text
+    , "when" .== when
+    ]
+
+instance FromJSON Deed where
+  parseJSON = withObject "deed must be object-shaped" $ \o →
+    Deed
+      <$> (o .: "result")
+      <*> (o .: "story")
+      <*> (o .: "when")

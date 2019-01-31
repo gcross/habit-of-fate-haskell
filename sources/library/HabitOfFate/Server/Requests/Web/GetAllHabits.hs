@@ -238,7 +238,9 @@ handler environment = do
 
       H.hr
 
-      H.div $ H.a ! A.class_ "logout_link" ! A.href "/logout" $ H.toHtml ("Logout" ∷ Text)
+      H.div ! A.class_ "deeds_link" $ H.a ! A.href "/deeds" $ H.img ! A.src "/images/deeds.svgz"
+
+      H.div ! A.class_ "logout_link" $ H.a ! A.href "/logout" $ H.toHtml ("Logout" ∷ Text)
 
       H.hr
 

@@ -23,7 +23,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Quest.StateMachine where
@@ -34,6 +36,7 @@ import Control.Monad.Catch (MonadThrow(..), Exception(..))
 import Control.Monad.Random (MonadRandom,uniform)
 import qualified Data.Text.Lazy as Lazy
 
+import HabitOfFate.Data.Deed
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
@@ -94,23 +97,36 @@ trial ∷ (Eq label, Show label) ⇒ Transitions label → TrialQuestRunner (Sta
 trial transitions result scale = do
   old_state@State{..} ← get
   Transition{..} ← maybe (throwM $ NoSuchTransitionException current) pure $ lookup current transitions
-  let subSuccess, subFailure ∷ Story → MonadThrow m ⇒ m Lazy.Text
-      subSuccess = substitute (substitutions ⊕ mapFromList (extra_subs ^. success_))
-      subFailure = substitute (substitutions ⊕ mapFromList (extra_subs ^. failure_))
+  let sub ∷ MonadThrow m ⇒ SuccessOrFailureResult → Story → m Lazy.Text
+      sub result = substitute (substitutions ⊕ mapFromList (extra_subs ^. taggedLensForResult result))
+
+      continueQuest ∷ MonadThrow m ⇒ SuccessOrFailureResult → (StoryOutcomes → Story) → m TryQuestResult
+      continueQuest result storyFor = TryQuestResult QuestInProgress <$> (sub result $ storyFor outcomes)
+
+      endQuest ∷ (MonadRandom m, MonadThrow m) ⇒ (StoryOutcomes → Story) → SuccessOrFailureResult → m TryQuestResult
+      endQuest storyFor result = do
+        let (lens_name, deed_lens_)  = case result of
+              SuccessResult → ("fame", story_fame_)
+              FailureResult → ("shame", story_shame_)
+        text ← uniformOrDie current lens_name (outcomes ^. deed_lens_) >>= sub result
+        TryQuestResult (QuestHasEnded result text) <$> (sub result $ storyFor outcomes)
+
   tryBinomial (1/3) scale >>= bool
     (TryQuestResult QuestInProgress <$> (uniformOrDie current "between" between_stories >>= substitute substitutions))
     (if onull next
       then case result of
-        SuccessResult → TryQuestResult QuestHasEnded <$> (subSuccess $ storyForSuccess outcomes)
-        FailureResult → tryBinomial (1/2) scale >>= bool
-            (TryQuestResult QuestHasEnded   <$> (subFailure $ storyForFailure outcomes))
-            (TryQuestResult QuestInProgress <$> (subFailure $ storyForAverted outcomes))
+        SuccessResult → endQuest storyForSuccess SuccessResult
+        FailureResult → uniformAction
+          [ endQuest storyForFailure FailureResult
+          , endQuest storyForAverted SuccessResult
+          ]
       else do
         next_current ← uniform next
         put $ old_state { current = next_current }
         case result of
-          SuccessResult → TryQuestResult QuestInProgress <$> (subSuccess $ storyForSuccess outcomes)
-          FailureResult → tryBinomial (1/2) scale >>= bool
-            (TryQuestResult QuestHasEnded <$> (subFailure $ storyForFailure outcomes))
-            (TryQuestResult QuestHasEnded <$> (subFailure $ storyForAverted outcomes))
+          SuccessResult → continueQuest SuccessResult storyForSuccess
+          FailureResult → uniformAction
+            [ endQuest storyForFailure FailureResult
+            , continueQuest FailureResult storyForAverted
+            ]
     )

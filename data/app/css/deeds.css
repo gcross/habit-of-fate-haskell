@@ -1,0 +1,42 @@
+.deeds {
+    display: grid;
+    grid-template-columns: 75px auto 8em;
+}
+
+.return {
+    text-align: center;
+    font-size: 16pt;
+    margin: 10px;
+}
+
+.result {
+    padding: 10px;
+    background-size: 50px;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.result.treasure {
+    background-image: url("/images/treasure-chest.svgz");
+}
+
+.treasure {
+    background-color: #b3ffb3;
+}
+.result.grave {
+    background-image: url("/images/grave.svgz");
+}
+
+.grave {
+    background-color: #ffb3b3;
+}
+
+.text {
+    font-family: 'Gloria Hallelujah', cursive;
+    padding-left: 10px;
+}
+
+.when {
+    text-align: center;
+    padding-top: 7px;
+}

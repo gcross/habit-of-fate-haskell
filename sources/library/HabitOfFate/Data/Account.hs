@@ -50,6 +50,7 @@ import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Web.Scotty (Parsable)
 
 import HabitOfFate.Data.Configuration
+import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
@@ -75,6 +76,7 @@ data Account = Account
   ,   _configuration_ ∷ Configuration
   ,   _last_seen_ ∷ UTCTime
   ,   _groups_ ∷ Groups
+  ,   _deeds_ ∷ [Deed]
   } deriving (Read,Show)
 
 instance ToJSON Account where
@@ -87,6 +89,7 @@ instance ToJSON Account where
     writeField "configuration" _configuration_
     writeTextField "last_seen" $ pack $ formatTime defaultTimeLocale "%FT%T" _last_seen_
     writeField "groups" _groups_
+    writeField "deeds" _deeds_
 
 instance FromJSON Account where
   parseJSON = withObject "account must be object-shaped" $ \o →
@@ -101,6 +104,7 @@ instance FromJSON Account where
             unpack >>> parseTimeM False defaultTimeLocale "%FT%T"
           ))
       <*> (o .: "groups")
+      <*> (o .: "deeds")
 
 password_ ∷ Lens' Account Text
 password_ f a = (\nx → a {_password_ = nx}) <$> f (_password_ a)
@@ -123,6 +127,9 @@ last_seen_ = to _last_seen_
 groups_ ∷ Lens' Account Groups
 groups_ f a = (\nx → a {_groups_ = nx}) <$> f (_groups_ a)
 
+deeds_ ∷ Lens' Account [Deed]
+deeds_ f a = (\nx → a {_deeds_ = nx}) <$> f (_deeds_ a)
+
 newAccount ∷ Text → IO Account
 newAccount password =
   Account
@@ -137,6 +144,7 @@ newAccount password =
     <*> newStdGen
     <*> pure def
     <*> getCurrentTime
+    <*> pure []
     <*> pure []
 
 passwordIsValid ∷ Text → Account → Bool

@@ -45,7 +45,7 @@ data RunQuestResult s = RunQuestResult
   } deriving (Functor)
 makeLenses ''RunQuestResult
 
-data QuestStatus = QuestInProgress | QuestHasEnded
+data QuestStatus = QuestInProgress | QuestHasEnded SuccessOrFailureResult Lazy.Text
 
 data TryQuestResult = TryQuestResult
   { tryQuestStatus ∷ QuestStatus

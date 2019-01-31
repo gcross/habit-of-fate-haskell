@@ -34,6 +34,7 @@ import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Deed
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
@@ -72,10 +73,13 @@ runGame = do
                   quest
                     |> runQuestTrial
                     |> flip runStateT quest_state
-                maybe_current_quest_state_ .=
-                  case quest_status of
-                    QuestHasEnded → Nothing
-                    QuestInProgress → Just $ new_quest_state ^. re (questPrism quest)
+                case quest_status of
+                  QuestHasEnded result text → do
+                    maybe_current_quest_state_ .= Nothing
+                    when ← getCurrentTimeAsLocalTime
+                    deeds_ %= (Deed result text when:)
+                  QuestInProgress →
+                    maybe_current_quest_state_ .= Just (new_quest_state ^. re (questPrism quest))
                 pure event
               Nothing →
                 questGetStatus quest quest_state

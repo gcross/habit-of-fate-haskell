@@ -74,12 +74,14 @@ import Web.Scotty (Parsable(..))
 import HabitOfFate.API
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
+import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import qualified HabitOfFate.Quests.Forest.Stories as Forest
@@ -250,10 +252,17 @@ instance Eq StdGen where (==) x y = show x == show y
 
 deriving instance Eq Account
 
+instance Arbitrary SuccessOrFailureResult where
+  arbitrary = elements [SuccessResult, FailureResult]
+
+instance Arbitrary Deed where
+  arbitrary = Deed <$> arbitrary <*> (arbitrary <&> pack) <*> arbitrary
+
 instance Arbitrary Account where
   arbitrary =
     Account
       <$> arbitrary
+      <*> arbitrary
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
