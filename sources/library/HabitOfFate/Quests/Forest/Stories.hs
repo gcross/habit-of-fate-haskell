@@ -142,6 +142,10 @@ nowhere to be found.
 
 He/she| sobs -- there is no way that he/she| will be able to make it home in
 time now.
+===================================== Shame ====================================
+The sweet smell of gingerbread was just too alluring for |Susie.
+--------------------------------------------------------------------------------
+|Tommy was completely forgotten as |Susie was drawn into a gingerbread house.
 |]
 
 found_by_fairy ∷ StoryOutcomes
@@ -171,6 +175,10 @@ black.
 |Susie wakes up to the sounds of birds singing.  After a moment of
 disorientation, he/she| realizes that he/she| is still in the forest, and it is
 now morning.  She weeps, for surely by now |Tommy is dead.
+===================================== Shame ====================================
+Introspect, |Susie realized that chasing after a random fairy was a bad idea.
+--------------------------------------------------------------------------------
+|Susie learned the hard way that not all fairies are good fairies.
 |]
 
 found_by_cat ∷ StoryOutcomes
@@ -208,6 +216,12 @@ into a pit. Unable to catch herself in time, she falls into the put, breaking a
 leg. The cat looks down into the pit, flashes her a cheshire grin, and
 vanishes. |Susie growls in anger and then faints in pain. |Tommy will not be
 getting the medicine that he desperately needs tonight...
+===================================== Shame ====================================
+Too late |Susie remembered that it was the green cats that were good and the
+blue cats that were evil...
+--------------------------------------------------------------------------------
+|Susie learned the hard way that chasing after random cats in the middle of the
+night is a bad plan.
 |]
 
 fairy_circle ∷ StoryOutcomes
@@ -239,6 +253,12 @@ creatures on them, and branchless trees were everywhere with black rope strung
 between them. He/she| had no idea how much time she had spent away from the
 world, but she knew that |Tommy, as well as everyone else he/she| had known and
 loved, was certainly dead.
+===================================== Shame ====================================
+Next time |Susie needs to watch where she is stepping lest she step into a fairy
+circle again... if there is a next time.
+--------------------------------------------------------------------------------
+Having been mysteriously teleported to a distant realm by the enigmatic magic of
+the fairies, there was no way |Susie could make it back in time to save |Tommy.
 |]
 
 conclusion_parent ∷ StoryOutcomes
@@ -290,6 +310,12 @@ he/she| thinks that |Tommy is sleeping peacefully and starts to breathe a sigh
 of relief, but then he/she| realizes that |Tommy is not breathing at all.
 
 |Susie falls to the ground and weeps.  If only she had gotten the correct plant!
+===================================== Shame ====================================
+After a hard night wandering through the Wicked Forest, |Susie has nothing to
+show for it but a dead child.
+===================================== Fame =====================================
+Against all odds, |Susie was able to find the correct plant that was needed to
+mix a potion to save her sick son/daughter|Tommy.
 |]
 
 conclusion_healer ∷ StoryOutcomes
@@ -354,4 +380,9 @@ The thing frowned. “Who is Tommy?”
  tears were unable to push themselves out of her tear ducts.
 
 “Don’t worry,” said the thing. “You will be safe here… forever… with us.”
+===================================== Shame ====================================
+|Susie found herself trapped in a land of cardboard cutouts.
+===================================== Fame =====================================
+After a long and difficulty journey, |Susie returned triumphantly with the final
+herb she needed to save |Tommy.
 |]
