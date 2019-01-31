@@ -104,6 +104,7 @@ library
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
                      , HabitOfFate.Quest
+                     , HabitOfFate.Quest.StateMachine
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Quests.Forest.Stories

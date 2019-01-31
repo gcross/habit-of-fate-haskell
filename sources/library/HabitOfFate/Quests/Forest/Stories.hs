@@ -117,8 +117,8 @@ behind.
 -------------------------------- Event Stories -------------------------------
 --------------------------------------------------------------------------------
 
-gingerbread_house_event ∷ StoryOutcomes
-gingerbread_house_event = [story_outcomes|
+gingerbread_house ∷ StoryOutcomes
+gingerbread_house = [story_outcomes|
 ==================================== Common ====================================
 |Susie sees a house made out of... gingerbread? He/she| feels a strange
 compulsion to approach it.
@@ -144,8 +144,8 @@ He/she| sobs -- there is no way that he/she| will be able to make it home in
 time now.
 |]
 
-found_by_fairy_event ∷ StoryOutcomes
-found_by_fairy_event = [story_outcomes|
+found_by_fairy ∷ StoryOutcomes
+found_by_fairy = [story_outcomes|
 ==================================== Common ====================================
 |Susie starts to hear a sound and he/she| can't tell whether it is a buzzing or
 the most beautiful music he/she| has ever heard. As it gets louder he/she|
@@ -173,10 +173,10 @@ disorientation, he/she| realizes that he/she| is still in the forest, and it is
 now morning.  She weeps, for surely by now |Tommy is dead.
 |]
 
-found_by_cat_event ∷ StoryOutcomes
-found_by_cat_event = [story_outcomes|
+found_by_cat ∷ StoryOutcomes
+found_by_cat = [story_outcomes|
 ==================================== Common ====================================
-|Susie hears a meow. He/she| looks to the source, and sees a |color cat. The
+|Susie hears a meow. He/she| looks to the source, and sees a |catcolor cat. The
 cat beckons to her, and starts walking. He/she| thinks to herself, “Shoot, I
 can never remember, is it the blue cats who are the good ones and the green
 cats who are the evil ones, or is it the opposite?” He/she| does need to get
@@ -210,8 +210,8 @@ vanishes. |Susie growls in anger and then faints in pain. |Tommy will not be
 getting the medicine that he desperately needs tonight...
 |]
 
-fairy_circle_event ∷ StoryOutcomes
-fairy_circle_event = [story_outcomes|
+fairy_circle ∷ StoryOutcomes
+fairy_circle = [story_outcomes|
 ==================================== Success ===================================
 |Susie is paying so much attention to looking for |Illsbane that he/she| almost
 misses the ominous circle of mushrooms. He/she| says a prayer of thanks that
@@ -241,8 +241,8 @@ world, but she knew that |Tommy, as well as everyone else he/she| had known and
 loved, was certainly dead.
 |]
 
-conclusion_parent_event ∷ StoryOutcomes
-conclusion_parent_event = [story_outcomes|
+conclusion_parent ∷ StoryOutcomes
+conclusion_parent = [story_outcomes|
 ==================================== Success ===================================
 |Susie is starting to feel like he/she| will never make it back when he/she|
 notices that things are starting to get brighter == he/she| must be getting
@@ -292,8 +292,8 @@ of relief, but then he/she| realizes that |Tommy is not breathing at all.
 |Susie falls to the ground and weeps.  If only she had gotten the correct plant!
 |]
 
-conclusion_healer_event ∷ StoryOutcomes
-conclusion_healer_event = [story_outcomes|
+conclusion_healer ∷ StoryOutcomes
+conclusion_healer = [story_outcomes|
 ==================================== Success ===================================
 |Susie is starting to feel like he/she| will never make it back in time when
 he/she| sees the shapes of the huts of her village not far in the distance. Not

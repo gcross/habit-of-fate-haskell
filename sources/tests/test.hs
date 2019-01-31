@@ -83,6 +83,7 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import qualified HabitOfFate.Quests.Forest.Stories as Forest
+import HabitOfFate.Quest.StateMachine as StateMachine
 import HabitOfFate.Quests
 import HabitOfFate.Server
 import HabitOfFate.SQLite
@@ -161,15 +162,13 @@ instance Arbitrary Habit where
       <*> (arbitrary <&> setFromList)
       <*> arbitrary
 
-instance Monad m ⇒ Serial m Forest.Searcher where
-  series = cons0 Forest.Parent \/ cons0 Forest.Healer
-
-instance Monad m ⇒ Serial m Forest.NextEvent where
+instance Monad m ⇒ Serial m Forest.Label where
   series =
-      cons0 Forest.GingerbreadHouseEvent
-   \/ cons0 Forest.FoundEvent
-   \/ cons0 Forest.FairyCircleEvent
-   \/ cons0 Forest.VictoryEvent
+      cons0 Forest.GingerbreadHouse
+   \/ cons0 Forest.FoundByCat
+   \/ cons0 Forest.FoundByFairy
+   \/ cons0 Forest.FairyCircle
+   \/ cons0 Forest.Home
 
 instance Monad m ⇒ Serial m Gender where
   series = cons0 Male \/ cons0 Female \/ cons0 Neuter
@@ -183,8 +182,8 @@ instance Monad m ⇒ Serial m Gendered where
 instance Monad m ⇒ Serial m (HashMap Text Gendered) where
   series = series <&> mapFromList
 
-instance Monad m ⇒ Serial m Forest.State where
-  series = cons3 Forest.State
+instance (Serial m α, Monad m) ⇒ Serial m (StateMachine.State α) where
+  series = cons2 StateMachine.State
 
 instance Monad m ⇒ Serial m CurrentQuestState where
   series = cons1 Forest
@@ -211,22 +210,19 @@ instance Arbitrary Gendered where
 instance Arbitrary (HashMap Text Gendered) where
   arbitrary = arbitrary <&> mapFromList
 
-instance Arbitrary Forest.Searcher where
-  arbitrary = elements [Forest.Parent, Forest.Healer]
-
-instance Arbitrary Forest.NextEvent where
+instance Arbitrary Forest.Label where
   arbitrary = elements
-    [ Forest.GingerbreadHouseEvent
-    , Forest.FoundEvent
-    , Forest.FairyCircleEvent
-    , Forest.VictoryEvent
+    [ Forest.GingerbreadHouse
+    , Forest.FoundByCat
+    , Forest.FoundByFairy
+    , Forest.FairyCircle
+    , Forest.Home
     ]
 
-instance Arbitrary Forest.State where
+instance Arbitrary α ⇒ Arbitrary (StateMachine.State α) where
   arbitrary =
-    Forest.State
+    StateMachine.State
       <$> arbitrary
-      <*> arbitrary
       <*> arbitrary
 
 instance Arbitrary CurrentQuestState where
@@ -614,6 +610,25 @@ databaseProperty action = ioProperty $ withDatabase action
 testDatabaseCase ∷ String → (SQLite.Connection → IO ()) → TestTree
 testDatabaseCase name action = testCase name $ withDatabase action
 
+testTransitionsAreValid ∷ (Eq α, Show α) ⇒ String → [(α, Transition α)] → TestTree
+testTransitionsAreValid name transitions = testGroup name
+  [ testCase "All destination nodes are listed in the transitions" $
+      let missing_destinations =
+            transitions
+              |> map (second $ \Transition{..} → filter (flip notMember transitions) next)
+              |> filter (snd >>> onull >>> not)
+      in unless (onull missing_destinations) $
+          assertFailure $ "Missing destinations in transitions: " ⊕ show missing_destinations
+  , testCase "All transitions have at least between story" $
+      let transitions_with_no_between_stories =
+            [ label
+            | (label, Transition{..}) ← transitions
+            , onull between_stories
+            ]
+      in unless (onull transitions_with_no_between_stories) $
+          assertFailure $ "Missing between stories in transitions: " ⊕ show transitions_with_no_between_stories
+  ]
+
 dontTestGroup ∷ String → [TestTree] → TestTree
 dontTestGroup name _ = testGroup name []
 
@@ -748,13 +763,14 @@ main = defaultMain $ testGroup "All Tests"
         , testStory "looking_for_herb_story" subs Forest.looking_for_herb_story
         , testStory "returning_home_story" subs Forest.returning_home_story
         , testStories "wander" subs Forest.wander_stories
-        , testStoryOutcomes "gingerbread_house_event" subs Forest.gingerbread_house_event
-        , testStoryOutcomes "found_by_fairy_event" subs Forest.found_by_fairy_event
-        , testStoryOutcomes "found_by_cat_event" subs Forest.found_by_cat_event
-        , testStoryOutcomes "fairy_circle_event" subs Forest.fairy_circle_event
-        , testStoryOutcomes "conclusion_parent_event" subs Forest.conclusion_parent_event
-        , testStoryOutcomes "conclusion_healer_event" subs Forest.conclusion_healer_event
+        , testStoryOutcomes "gingerbread_house" subs Forest.gingerbread_house
+        , testStoryOutcomes "found_by_fairy" subs Forest.found_by_fairy
+        , testStoryOutcomes "found_by_cat" subs Forest.found_by_cat
+        , testStoryOutcomes "fairy_circle" subs Forest.fairy_circle
+        , testStoryOutcomes "conclusion_parent" subs Forest.conclusion_parent
+        , testStoryOutcomes "conclusion_healer" subs Forest.conclusion_healer
         ]
+      , testTransitionsAreValid "Forest" Forest.transitions
       ]
     ]
   ------------------------------------------------------------------------------
