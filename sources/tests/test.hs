@@ -182,8 +182,11 @@ instance Monad m ⇒ Serial m Gendered where
 instance Monad m ⇒ Serial m (HashMap Text Gendered) where
   series = series <&> mapFromList
 
-instance (Serial m α, Monad m) ⇒ Serial m (StateMachine.State α) where
-  series = cons2 StateMachine.State
+instance Monad m ⇒ Serial m (Forest.Searcher) where
+  series = cons0 Forest.Parent \/ cons0 Forest.Healer
+
+instance (Serial m label, Serial m s, Monad m) ⇒ Serial m (StateMachine.State label s) where
+  series = cons3 StateMachine.State
 
 instance Monad m ⇒ Serial m CurrentQuestState where
   series = cons1 Forest
@@ -196,7 +199,6 @@ instance Monad m ⇒ Serial m Scale where
     \/ cons0 Medium
     \/ cons0 High
     \/ cons0 VeryHigh
-
 
 instance Arbitrary Text where
   arbitrary = arbitrary <&> pack
@@ -219,10 +221,14 @@ instance Arbitrary Forest.Label where
     , Forest.Home
     ]
 
-instance Arbitrary α ⇒ Arbitrary (StateMachine.State α) where
+instance Arbitrary Forest.Searcher where
+  arbitrary = elements [Forest.Parent, Forest.Healer]
+
+instance (Arbitrary label, Arbitrary s) ⇒ Arbitrary (StateMachine.State label s) where
   arbitrary =
     StateMachine.State
       <$> arbitrary
+      <*> arbitrary
       <*> arbitrary
 
 instance Arbitrary CurrentQuestState where
@@ -770,7 +776,8 @@ main = defaultMain $ testGroup "All Tests"
         , testStoryOutcomes "conclusion_parent" subs Forest.conclusion_parent
         , testStoryOutcomes "conclusion_healer" subs Forest.conclusion_healer
         ]
-      , testTransitionsAreValid "Forest" Forest.transitions
+      , testTransitionsAreValid "Forest (parent)" (Forest.transitionsFor Forest.Parent)
+      , testTransitionsAreValid "Forest (healer)" (Forest.transitionsFor Forest.Healer)
       ]
     ]
   ------------------------------------------------------------------------------

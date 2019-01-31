@@ -42,54 +42,55 @@ import HabitOfFate.Substitution
 import HabitOfFate.TH
 import HabitOfFate.Trial
 
-data State α = State
+data State label s = State
   { substitutions ∷ HashMap Text Gendered
-  , current ∷ α
+  , current ∷ label
+  , internal ∷ s
   } deriving (Eq,Ord,Read,Show)
 makeLenses ''State
 deriveJSON ''State
 
-data Transition α = Transition
+data Transition label = Transition
   { outcomes ∷ StoryOutcomes
   , between_stories ∷ [Story]
   , status_story ∷ Story
-  , next ∷ [α]
+  , next ∷ [label]
   , extra_subs ∷ Tagged ([(Text, Gendered)])
   } deriving (Functor)
 
-type Transitions α = [(α, Transition α)]
+type Transitions label = [(label, Transition label)]
 
-initialize ∷ Substitutions → α → Story → InitializeQuestRunner (State α)
-initialize common_substitutions first intro_story = do
+initialize ∷ Substitutions → label → s → Story → InitializeQuestRunner (State label s)
+initialize common_substitutions first_label internal intro_story = do
   InitializeQuestResult
-    (State common_substitutions first)
+    (State common_substitutions first_label internal)
     <$> substitute common_substitutions intro_story
 
-data NoSuchTransitionException = ∀ α. Show α ⇒ NoSuchTransitionException α
+data NoSuchTransitionException = ∀ label. Show label ⇒ NoSuchTransitionException label
 instance Show NoSuchTransitionException where
-  show (NoSuchTransitionException x) = [i|NoSuchTransitionException (#{show x})|]
+  show (NoSuchTransitionException label) = [i|NoSuchTransitionException (#{show label})|]
 instance Exception NoSuchTransitionException where
-  displayException (NoSuchTransitionException state) = [i|No such state #{state}|]
+  displayException (NoSuchTransitionException label) = [i|No such state label #{label}|]
 
-getStatus ∷ (Show α, Eq α) ⇒ Transitions α → GetStatusQuestRunner (State α)
+getStatus ∷ (Show label, Eq label) ⇒ Transitions label → GetStatusQuestRunner (State label s)
 getStatus states State{..} =
   case lookup current states of
     Nothing → throwM $ NoSuchTransitionException current
     Just Transition{..} → substitute substitutions status_story
 
-data MissingStory = ∀ α. Show α ⇒ MissingStory α Text
+data MissingStory = ∀ label. Show label ⇒ MissingStory label Text
 instance Show MissingStory where
   show (MissingStory label category) = [i|MissingStory #{label} "#{category}"|]
 instance Exception MissingStory where
   displayException (MissingStory label category) =
     [i|Missing any story of category "#{category}" for state labeled #{label}.|]
 
-uniformOrDie ∷ (MonadRandom m, MonadThrow m, Show α) ⇒ α → Text → [x] → m x
+uniformOrDie ∷ (MonadRandom m, MonadThrow m, Show label) ⇒ label → Text → [x] → m x
 uniformOrDie label name list
   | onull list = throwM $ MissingStory label name
   | otherwise = uniform list
 
-trial ∷ (Eq α, Show α) ⇒ Transitions α → TrialQuestRunner (State α)
+trial ∷ (Eq label, Show label) ⇒ Transitions label → TrialQuestRunner (State label s)
 trial transitions result scale = do
   old_state@State{..} ← get
   Transition{..} ← maybe (throwM $ NoSuchTransitionException current) pure $ lookup current transitions

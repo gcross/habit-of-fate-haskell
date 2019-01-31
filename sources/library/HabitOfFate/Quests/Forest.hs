@@ -36,6 +36,7 @@ module HabitOfFate.Quests.Forest where
 import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Catch (MonadThrow)
+import Control.Monad.Random (uniform)
 
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
@@ -52,11 +53,14 @@ import HabitOfFate.Quests.Forest.Stories
 ------------------------------------ Types -------------------------------------
 --------------------------------------------------------------------------------
 
+data Searcher = Parent | Healer deriving (Eq,Ord,Read,Show)
+deriveJSON ''Searcher
+
 data Label = GingerbreadHouse | FoundByCat | FoundByFairy | FairyCircle | Home
   deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''Label
 
-type State = StateMachine.State Label
+type State = StateMachine.State Label Searcher
 
 static_substitutions ∷ Substitutions
 static_substitutions =
@@ -72,27 +76,36 @@ static_substitutions =
 ------------------------------------ Logic -------------------------------------
 --------------------------------------------------------------------------------
 
-transitions ∷ [(Label, Transition Label)]
-transitions =
+transitionsFor ∷ Searcher → [(Label, Transition Label)]
+transitionsFor searcher =
   [ (GingerbreadHouse, Transition gingerbread_house wander_stories looking_for_herb_story [FoundByCat, FoundByFairy] def)
   , (FoundByCat, Transition found_by_cat wander_stories looking_for_herb_story [FairyCircle]
-       (Tagged (Success [("catcolor", Gendered "green" Neuter)])
-               (Failure [("catcolor", Gendered "blue" Neuter)])
-       )
+      (Tagged (Success [("catcolor", Gendered "green" Neuter)])
+              (Failure [("catcolor", Gendered "blue" Neuter)])
+      )
     )
   , (FoundByFairy, Transition found_by_fairy wander_stories returning_home_story [FairyCircle] def)
   , (FairyCircle, Transition fairy_circle wander_stories returning_home_story [Home] def)
-  , (Home, Transition conclusion_parent wander_stories returning_home_story [] def)
+  , (Home, Transition conclusion wander_stories returning_home_story [] def)
   ]
+ where
+  conclusion = case searcher of
+    Parent → conclusion_parent
+    Healer → conclusion_healer
 
 initialize ∷ InitializeQuestRunner State
-initialize = StateMachine.initialize static_substitutions GingerbreadHouse intro_parent_story
+initialize = do
+  searcher ← uniform [Parent, Healer]
+  let introduction = case searcher of { Parent → intro_parent_story; Healer → intro_healer_story; }
+  StateMachine.initialize static_substitutions GingerbreadHouse searcher introduction
 
 getStatus ∷ GetStatusQuestRunner State
-getStatus = StateMachine.getStatus transitions
+getStatus s = StateMachine.getStatus (s |> StateMachine.internal |> transitionsFor) s
 
 trial ∷ TrialQuestRunner State
-trial = StateMachine.trial transitions
+trial result scale = do
+  transitions ← get <&> (StateMachine.internal >>> transitionsFor)
+  StateMachine.trial transitions result scale
 
 --------------------------------------------------------------------------------
 --------------------------------- Proofreading ---------------------------------
