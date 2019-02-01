@@ -66,9 +66,9 @@ static_substitutions ∷ Substitutions
 static_substitutions =
   mapFromList
     [ ( "", Gendered "Bobby" Male )
-    , ( "Susie", Gendered "Bobby" Male )
-    , ( "Tommy", Gendered "Mary" Female )
-    , ( "Illsbane", Gendered "Tigerlamp" Neuter )
+    , ( "Searcher", Gendered "Bobby" Male )
+    , ( "Child", Gendered "Mary" Female )
+    , ( "Plant", Gendered "Tigerlamp" Neuter )
     , ( "catcolor", Gendered "yellow" Neuter )
     ]
 
@@ -115,9 +115,9 @@ pages ∷ MonadThrow m ⇒ m Pages
 pages = buildPages
   (mapFromList
     [ ( "", Gendered "Andrea" Female )
-    , ( "Susie", Gendered "Andrea" Female )
-    , ( "Tommy", Gendered "Elly" Female )
-    , ( "Illsbane", Gendered "Tigerlamp" Neuter )
+    , ( "Searcher", Gendered "Andrea" Female )
+    , ( "Child", Gendered "Elly" Female )
+    , ( "Plant", Gendered "Tigerlamp" Neuter )
     ]
   )
   ( PageGroup "forest"
