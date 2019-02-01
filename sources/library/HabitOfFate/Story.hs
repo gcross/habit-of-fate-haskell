@@ -192,7 +192,7 @@ data StoryOutcomes = StoryOutcomes
   , _story_failure_ ∷ Story
   , _story_fame_ ∷ [Story]
   , _story_shame_ ∷ [Story]
-  } deriving (Lift)
+  } deriving (Eq,Lift,Ord,Read,Show)
 makeLenses ''StoryOutcomes
 
 instance Default StoryOutcomes where

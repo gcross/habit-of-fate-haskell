@@ -69,6 +69,7 @@ library
                      , pwstore-fast
                      , rainbow
                      , random
+                     , random-shuffle
                      , scotty
                      , split
                      , sqlite-simple

@@ -187,6 +187,15 @@ instance Monad m ⇒ Serial m (HashMap Text Gendered) where
 instance Monad m ⇒ Serial m (Forest.Searcher) where
   series = cons0 Forest.Parent \/ cons0 Forest.Healer
 
+instance Monad m ⇒ Serial m (Forest.Event) where
+  series = cons0 Forest.GingerbreadHouseEvent
+        \/ cons0 Forest.FoundEvent
+        \/ cons0 Forest.FairyCircleEvent
+        \/ cons0 Forest.HomeEvent
+
+instance Monad m ⇒ Serial m (Forest.Internal) where
+  series = cons2 Forest.Internal
+
 instance (Serial m label, Serial m s, Monad m) ⇒ Serial m (StateMachine.State label s) where
   series = cons3 StateMachine.State
 
@@ -225,6 +234,16 @@ instance Arbitrary Forest.Label where
 
 instance Arbitrary Forest.Searcher where
   arbitrary = elements [Forest.Parent, Forest.Healer]
+
+instance Arbitrary Forest.Event where
+  arbitrary = elements
+    [ Forest.GingerbreadHouseEvent
+    , Forest.FoundEvent
+    , Forest.FairyCircleEvent
+    ]
+
+instance Arbitrary Forest.Internal where
+  arbitrary = Forest.Internal <$> arbitrary <*> arbitrary
 
 instance (Arbitrary label, Arbitrary s) ⇒ Arbitrary (StateMachine.State label s) where
   arbitrary =
@@ -785,8 +804,18 @@ main = defaultMain $ testGroup "All Tests"
         , testStoryOutcomes "conclusion_parent" subs Forest.conclusion_parent
         , testStoryOutcomes "conclusion_healer" subs Forest.conclusion_healer
         ]
-      , testTransitionsAreValid "Forest (parent)" (Forest.transitionsFor Forest.Parent)
-      , testTransitionsAreValid "Forest (healer)" (Forest.transitionsFor Forest.Healer)
+      , testTransitionsAreValid
+          "Forest (parent)"
+          (Forest.transitionsFor $ Forest.Internal
+            Forest.Parent
+            [Forest.GingerbreadHouseEvent, Forest.FoundEvent, Forest.FairyCircleEvent]
+          )
+      , testTransitionsAreValid
+          "Forest (healer)"
+          (Forest.transitionsFor $ Forest.Internal
+            Forest.Healer
+            [Forest.FoundEvent, Forest.FairyCircleEvent, Forest.GingerbreadHouseEvent]
+          )
       ]
     ]
   ------------------------------------------------------------------------------

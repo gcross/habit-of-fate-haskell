@@ -59,7 +59,7 @@ data Transition label = Transition
   , status_story ∷ Story
   , next ∷ [label]
   , extra_subs ∷ Tagged ([(Text, Gendered)])
-  } deriving (Functor)
+  } deriving (Eq,Functor,Ord,Read,Show)
 
 type Transitions label = [(label, Transition label)]
 
