@@ -277,6 +277,9 @@ instance Arbitrary SuccessOrFailureResult where
 instance Arbitrary Deed where
   arbitrary = Deed <$> arbitrary <*> (arbitrary <&> pack) <*> arbitrary
 
+instance Arbitrary Age where
+  arbitrary = elements [Fantasy, Space]
+
 instance Arbitrary Account where
   arbitrary =
     Account
@@ -289,6 +292,8 @@ instance Arbitrary Account where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
+      <*> ((setToList >>> setFromList) <$> (arbitrary ∷ Gen (Set Text)))
+      <*> ((mapToList >>> mapFromList) <$> (arbitrary ∷ Gen (Map Age [Text])))
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of

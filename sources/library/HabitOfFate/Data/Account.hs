@@ -21,6 +21,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -36,6 +37,7 @@ import Crypto.PasswordStore
 import Data.Aeson
   ( FromJSON(..)
   , FromJSONKey(..)
+  , FromJSONKeyFunction(..)
   , ToJSON(..)
   , ToJSONKey(..)
   , Value(..)
@@ -44,6 +46,7 @@ import Data.Aeson
   , withObject
   , withText
   )
+import Data.Aeson.Types (toJSONKeyText)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
@@ -58,6 +61,7 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.JSON
 import HabitOfFate.Quests
+import HabitOfFate.TH
 
 instance ToJSON StdGen where
   toJSON = show >>> toJSON
@@ -66,6 +70,29 @@ instance FromJSON StdGen where
   parseJSON = parseJSON >>> fmap read
 
 type Groups = ItemsSequence Group
+
+data Age = Fantasy | Space deriving (Eq,Enum,Ord,Read,Show)
+
+instance ToJSON Age where
+  toJSON Fantasy = "fantasy"
+  toJSON Space = "space"
+
+instance ToJSONKey Age where
+  toJSONKey = toJSONKeyText $ \case
+    Fantasy → "fantasy"
+    Space → "space"
+
+instance FromJSON Age where
+  parseJSON = withText "age must be string-shaped" $ \case
+    "fantasy" → pure Fantasy
+    "space" → pure Space
+    other → fail [i|"unrecognized age #{other}|]
+
+instance FromJSONKey Age where
+  fromJSONKey = FromJSONKeyTextParser $ \case
+    "fantasy" → pure Fantasy
+    "space" → pure Space
+    other → fail [i|"unrecognized age #{other}|]
 
 data Account = Account
   {   _password_ ∷ Text
@@ -77,6 +104,8 @@ data Account = Account
   ,   _last_seen_ ∷ UTCTime
   ,   _groups_ ∷ Groups
   ,   _deeds_ ∷ [Deed]
+  ,   _appeared_ ∷ HashSet Text
+  ,   _rescued_ ∷ Map Age [Text]
   } deriving (Read,Show)
 
 instance ToJSON Account where
@@ -90,6 +119,8 @@ instance ToJSON Account where
     writeTextField "last_seen" $ pack $ formatTime defaultTimeLocale "%FT%T" _last_seen_
     writeField "groups" _groups_
     writeField "deeds" _deeds_
+    writeField "appeared" _appeared_
+    writeField "rescued" _rescued_
 
 instance FromJSON Account where
   parseJSON = withObject "account must be object-shaped" $ \o →
@@ -105,6 +136,8 @@ instance FromJSON Account where
           ))
       <*> (o .: "groups")
       <*> (o .: "deeds")
+      <*> (o .: "appeared")
+      <*> (o .: "rescued")
 
 password_ ∷ Lens' Account Text
 password_ f a = (\nx → a {_password_ = nx}) <$> f (_password_ a)
@@ -130,6 +163,12 @@ groups_ f a = (\nx → a {_groups_ = nx}) <$> f (_groups_ a)
 deeds_ ∷ Lens' Account [Deed]
 deeds_ f a = (\nx → a {_deeds_ = nx}) <$> f (_deeds_ a)
 
+appeared_ ∷ Lens' Account (HashSet Text)
+appeared_ f a = (\nx → a {_appeared_ = nx}) <$> f (_appeared_ a)
+
+rescued_ ∷ Lens' Account (Map Age [Text])
+rescued_ f a = (\nx → a {_rescued_ = nx}) <$> f (_rescued_ a)
+
 newAccount ∷ Text → IO Account
 newAccount password =
   Account
@@ -144,6 +183,8 @@ newAccount password =
     <*> newStdGen
     <*> pure def
     <*> getCurrentTime
+    <*> pure []
+    <*> pure []
     <*> pure []
     <*> pure []
 

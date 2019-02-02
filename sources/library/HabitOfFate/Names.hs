@@ -15,6 +15,8 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -23,22 +25,22 @@ module HabitOfFate.Names where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow(..), Exception(..))
 import Control.Monad.Random (MonadRandom(..), MonadSplit(..))
-import Data.Char (toLower, toUpper)
-import Data.List (head)
-import Data.MarkovChain (runMulti)
+import Data.List (head, splitAt, tail)
+import qualified Data.Text as Text
+import qualified Data.Vector as V
+import Data.Vector (Vector)
 import Language.Haskell.TH (Exp, Q)
-import qualified Language.Haskell.TH.Lift (lift)
+import Language.Haskell.TH.Lift (Lift)
+import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
-import System.Random (RandomGen)
+import System.Random.Shuffle (shuffleM)
 
-generateNameFrom ∷ (RandomGen g, MonadRandom m, MonadSplit g m) ⇒ Int → [String] → m Text
-generateNameFrom n input = do
-  g ← getSplit
-  start ← getRandomR (0, length input-1)
-  let result ∷ String
-      result = head $ runMulti 4 (input |> map (map toLower)) start g
-  pure (result & _head %~ toUpper & pack)
+import HabitOfFate.Data.Account
+import HabitOfFate.Server.Transaction
+
+newtype Characters = Characters (Vector Text) deriving (Lift)
 
 names ∷ QuasiQuoter
 names = QuasiQuoter
@@ -48,4 +50,33 @@ names = QuasiQuoter
   (error "Cannot use names as a dec")
  where
   process ∷ String → Q Exp
-  process input = [|generateNameFrom 4 (lines input)|]
+  process =
+    Text.pack
+    >>>
+    lines
+    >>>
+    V.fromList
+    >>>
+    Lift.lift
+
+data OutOfCharacters = OutOfCharacters deriving (Eq,Show)
+instance Exception OutOfCharacters where
+  displayException _ = "Out of names!"
+
+allocateNameFrom ∷ Vector Text → Age → Transaction Text
+allocateNameFrom characters age = do
+  rescued ← use rescued_
+  case lookup age rescued of
+    Just cs | not (onull cs) → do
+      (front, back) ← getRandomR (0, olength cs-1) <&> flip splitAt cs
+      rescued_ . at age .= Just (front ⊕ (tail back))
+      pure $ head back
+    _ → do
+      appeared ← use appeared_
+      let go (i:rest) = do
+            let c = characters ^?! ix i
+            if member c appeared
+              then (appeared_ %= insertSet c) >> pure c
+              else go rest
+          go [] = throwM OutOfCharacters
+      shuffleM [0, 1 .. olength characters-1] >>= go
