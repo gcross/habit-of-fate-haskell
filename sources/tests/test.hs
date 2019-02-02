@@ -184,7 +184,7 @@ instance Monad m ⇒ Serial m Gendered where
 instance Monad m ⇒ Serial m (HashMap Text Gendered) where
   series = series <&> mapFromList
 
-instance Monad m ⇒ Serial m (Forest.Searcher) where
+instance Monad m ⇒ Serial m (Forest.SearcherType) where
   series = cons0 Forest.Parent \/ cons0 Forest.Healer
 
 instance Monad m ⇒ Serial m (Forest.Event) where
@@ -232,7 +232,7 @@ instance Arbitrary Forest.Label where
     , Forest.Home
     ]
 
-instance Arbitrary Forest.Searcher where
+instance Arbitrary Forest.SearcherType where
   arbitrary = elements [Forest.Parent, Forest.Healer]
 
 instance Arbitrary Forest.Event where

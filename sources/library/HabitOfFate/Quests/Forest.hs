@@ -54,15 +54,15 @@ import HabitOfFate.Quests.Forest.Stories
 ------------------------------------ Types -------------------------------------
 --------------------------------------------------------------------------------
 
-data Searcher = Parent | Healer deriving (Eq,Ord,Read,Show)
-deriveJSON ''Searcher
+data SearcherType = Parent | Healer deriving (Eq,Ord,Read,Show)
+deriveJSON ''SearcherType
 
 data Event = GingerbreadHouseEvent | FoundEvent | FairyCircleEvent | HomeEvent
   deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''Event
 
 data Internal = Internal
-  { searcher ∷ Searcher
+  { searcher_type ∷ SearcherType
   , event_order ∷ [Event]
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Internal
@@ -131,20 +131,22 @@ transitionsFor Internal{..} =
       )
     ]
 
-  conclusion = case searcher of
+  conclusion = case searcher_type of
     Parent → conclusion_parent
     Healer → conclusion_healer
 
 initialize ∷ InitializeQuestRunner State
 initialize = do
-  searcher ← uniform [Parent, Healer]
+  searcher_type ← uniform [Parent, Healer]
   event_order ← shuffleM [GingerbreadHouseEvent, FoundEvent, FairyCircleEvent]
   first_label ← case event_order ^?! _head of
     GingerbreadHouseEvent → pure GingerbreadHouse
     FoundEvent → uniform [FoundByCat, FoundByFairy]
     FairyCircleEvent → pure FairyCircle
     _ → error "unexpected element in event order"
-  let introduction = case searcher of { Parent → intro_parent_story; Healer → intro_healer_story; }
+  let introduction = case searcher_type of
+        Parent → intro_parent_story
+        Healer → intro_healer_story
   StateMachine.initialize static_substitutions first_label Internal{..} introduction
 
 getStatus ∷ GetStatusQuestRunner State
