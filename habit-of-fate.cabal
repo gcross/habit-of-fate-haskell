@@ -103,6 +103,7 @@ library
                      , HabitOfFate.Data.Tagged
                      , HabitOfFate.JSON
                      , HabitOfFate.Logging
+                     , HabitOfFate.Names
                      , HabitOfFate.Pages
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
@@ -196,6 +197,15 @@ executable generate-html
                      , directory
                      , filepath
                      , optparse-applicative
+                     , text
+  default-language:    Haskell2010
+
+executable generate-names
+  hs-source-dirs:      sources/executables
+  main-is:             generate-names.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , markov-chain
                      , text
   default-language:    Haskell2010
 

@@ -193,9 +193,10 @@ import Data.List
   , findIndices
   , intercalate
   , intersperse
+  , group
+  , groupBy
   , length
   , nub
-  , reverse
   )
 
 import Data.Map.Strict (Map)
@@ -223,6 +224,7 @@ import Data.Sequences
   , pack
   , repack
   , replicate
+  , reverse
   , singleton
   , sort
   , stripPrefix
