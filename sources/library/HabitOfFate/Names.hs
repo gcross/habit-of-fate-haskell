@@ -15,67 +15,37 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TransformListComp #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Names where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Random (MonadRandom, fromList)
-import qualified Control.Monad.Random as Random
+import Control.Monad.Random (MonadRandom(..), MonadSplit(..))
+import Data.Char (toLower, toUpper)
+import Data.List (head)
+import Data.MarkovChain (runMulti)
+import Language.Haskell.TH (Exp, Q)
+import qualified Language.Haskell.TH.Lift (lift)
+import Language.Haskell.TH.Quote (QuasiQuoter(..))
+import System.Random (RandomGen)
 
-data MarkovModel = MarkovModel Int [(Text, Rational)] (HashMap Text [(Maybe Char, Rational)])
+generateNameFrom ∷ (RandomGen g, MonadRandom m, MonadSplit g m) ⇒ Int → [String] → m Text
+generateNameFrom n input = do
+  g ← getSplit
+  start ← getRandomR (0, length input-1)
+  let result ∷ String
+      result = head $ runMulti 4 (input |> map (map toLower)) start g
+  pure (result & _head %~ toUpper & pack)
 
-buildModel ∷ Int → Int → [Text] → MarkovModel
-buildModel p n training = MarkovModel n prefixes transitions
+names ∷ QuasiQuoter
+names = QuasiQuoter
+  process
+  (error "Cannot use names as a pattern")
+  (error "Cannot use names as a type")
+  (error "Cannot use names as a dec")
  where
-  prefixes =
-    training
-      |> map (take p)
-      |> sort
-      |> group
-      |> map (\grp@(prefix:_) → (prefix, grp |> length |> toRational))
-      |> mapFromList
-
-  transitions =
-    -- Take each word and slice it up into length-n pieces along with the
-    -- character that followed each piece.
-    [ (take n subword, subword ^? ix n)
-    | word ← training
-    , i ← [0, 1 .. olength word-n-1]
-    , let subword = drop i word ∷ Text
-    ]
-    -- Group the slices, and then for each group...
-    |> sort
-    |> groupBy ((==) `on` fst)
-    |> map (\grp1@((window,_):_) →
-          -- ...we return a pair with the slice in the first element and...
-          ( window
-          -- ...with the possible following characters and counts in the second element.
-          , grp1
-              |> map snd
-              |> group
-              |> map (\grp2@(mc:_) →
-                  ( mc
-                  , grp2 |> length |> toRational
-                  )
-                 )
-          )
-       )
-    |> mapFromList
-
-runModel ∷ MonadRandom m ⇒ MarkovModel → m Text
-runModel (MarkovModel n prefixes transitions) = do
-  prefix ← Random.fromList prefixes
-  go (prefix |> reverse |> unpack) prefix
- where
-  go ∷ MonadRandom m ⇒ String → Text → m Text
-  go accum prefix = do
-    transition ← maybe (pure Nothing) Random.fromList (lookup prefix transitions)
-    case transition of
-      Nothing → accum |> pack |> reverse |> pure
-      Just c → go (c:accum) (prefix |> drop 1 |> (`snoc` c))
+  process ∷ String → Q Exp
+  process input = [|generateNameFrom 4 (lines input)|]

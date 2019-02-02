@@ -22,10 +22,9 @@ module Main where
 
 import HabitOfFate.Prelude
 
-import Data.Text (toLower)
-import Data.Text.IO (getContents, putStrLn)
+import Data.Text.IO (putStrLn)
 import System.Environment (getArgs)
-import System.Random (getStdGen)
+import System.IO (getContents)
 
 import HabitOfFate.Names
 
@@ -34,5 +33,5 @@ main = do
   [n_str, num_str] ← getArgs
   let n = read n_str
       num = read num_str
-  model ← getContents <&> (lines >>> map toLower >>> buildModel n n)
-  replicateM_ num $ runModel model >>= putStrLn
+  training ← getContents <&> (unpack >>> lines)
+  replicateM_ num (generateNameFrom n training >>= putStrLn)
