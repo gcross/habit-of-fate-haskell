@@ -15,70 +15,62 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
-{-# LANGUAGE DeriveLift #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Names where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Catch (MonadThrow(..), Exception(..))
-import Control.Monad.Random (MonadRandom(..), MonadSplit(..))
-import Data.List (head, splitAt, tail)
-import qualified Data.Text as Text
-import qualified Data.Vector as V
 import Data.Vector (Vector)
-import Language.Haskell.TH (Exp, Q)
-import Language.Haskell.TH.Lift (Lift)
-import qualified Language.Haskell.TH.Lift as Lift
-import Language.Haskell.TH.Quote (QuasiQuoter(..))
 
-import HabitOfFate.Data.Account
-import HabitOfFate.Server.Transaction
+female_names, male_names ∷ Vector Text
 
-newtype Characters = Characters (Vector Text) deriving (Lift)
+female_names =
+  ["Alexa"
+  ,"Alora"
+  ,"Cassidy"
+  ,"Cathrine"
+  ,"Damet"
+  ,"Elena"
+  ,"Eliza"
+  ,"Ellie"
+  ,"Etheria"
+  ,"Jane"
+  ,"Jesset"
+  ,"Jezebel"
+  ,"Kat"
+  ,"Kit"
+  ,"Lessa"
+  ,"Nellie"
+  ,"Tessa"
+  ,"Topari"
+  ,"Topia"
+  ,"Zephrya"
+  ]
 
-names ∷ QuasiQuoter
-names = QuasiQuoter
-  process
-  (error "Cannot use names as a pattern")
-  (error "Cannot use names as a type")
-  (error "Cannot use names as a dec")
- where
-  process ∷ String → Q Exp
-  process =
-    Text.pack
-    >>>
-    lines
-    >>>
-    V.fromList
-    >>>
-    Lift.lift
-
-data OutOfCharacters = OutOfCharacters deriving (Eq,Show)
-instance Exception OutOfCharacters where
-  displayException _ = "Out of names!"
-
-allocateNameFrom ∷ Vector Text → Age → Transaction Text
-allocateNameFrom characters age = do
-  rescued ← use rescued_
-  case lookup age rescued of
-    Just cs | not (onull cs) → do
-      (front, back) ← getRandomR (0, olength cs-1) <&> flip splitAt cs
-      rescued_ . at age .= Just (front ⊕ (tail back))
-      pure $ head back
-    _ → do
-      appeared ← use appeared_
-      let go n
-            | n > olength characters =
-                throwM OutOfCharacters -- might not actually be true but close enough
-            | otherwise = do
-                i ← getRandomR (0, olength characters-1)
-                let c = characters ^?! ix i
-                if notMember c appeared
-                  then (appeared_ %= insertSet c) >> pure c
-                  else go (n+1)
-      go 0
+male_names =
+  ["Ablem"
+  ,"Adam"
+  ,"Alexus"
+  ,"Angelm"
+  ,"Brothsi"
+  ,"Byron"
+  ,"Cryon"
+  ,"Cyne"
+  ,"Cynsi"
+  ,"Econus"
+  ,"Edmund"
+  ,"Ethes"
+  ,"Fableron"
+  ,"Giles"
+  ,"Gylex"
+  ,"Gyrin"
+  ,"Krato"
+  ,"Thuron"
+  ,"Tiderus"
+  ,"Willew"
+  ,"Zachary"
+  ]

@@ -41,6 +41,7 @@ import qualified Control.Monad.Operational as Operational
 import Control.Monad.Random (MonadRandom(..), MonadSplit(..), RandT, StdGen, runRandT)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
 import qualified Data.ByteString.Lazy as LazyBS
+import Data.List (head, splitAt, tail)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime)
 import qualified Data.Time.Clock as Clock
@@ -48,6 +49,7 @@ import Data.Time.LocalTime (LocalTime)
 import Data.Time.Zones (utcToLocalTimeTZ)
 import Data.Time.Zones.All (tzByLabel)
 import Data.UUID (UUID)
+import Data.Vector (Vector)
 import Network.HTTP.Types.Status (Status(..), internalServerError500, temporaryRedirect307)
 import System.Random (Random)
 import Text.Blaze.Html5 (Html)
@@ -210,6 +212,31 @@ stripMissingGroupsFromHabit ∷ Habit → Transaction Habit
 stripMissingGroupsFromHabit habit = do
   isGroup ← use groups_ <&> flip itemsContainKey
   pure $ (habit & (group_membership_ %~ (setToList >>> filter isGroup >>> setFromList)))
+
+data OutOfCharacters = OutOfCharacters deriving (Eq,Show)
+instance Exception OutOfCharacters where
+  displayException _ = "Out of names!"
+
+allocateNameFrom ∷ Vector Text → Age → Transaction Text
+allocateNameFrom characters age = do
+  rescued ← use rescued_
+  case lookup age rescued of
+    Just cs | not (onull cs) → do
+      (front, back) ← getRandomR (0, olength cs-1) <&> flip splitAt cs
+      rescued_ . at age .= Just (front ⊕ (tail back))
+      pure $ head back
+    _ → do
+      appeared ← use appeared_
+      let go n
+            | n > olength characters =
+                throwM OutOfCharacters -- might not actually be true but close enough
+            | otherwise = do
+                i ← getRandomR (0, olength characters-1)
+                let c = characters ^?! ix i
+                if notMember c appeared
+                  then (appeared_ %= insertSet c) >> pure c
+                  else go (n+1)
+      go 0
 
 marksArePresent ∷ Transaction Bool
 marksArePresent = use marks_ <&> any (null >>> not)
