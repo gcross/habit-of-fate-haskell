@@ -42,6 +42,7 @@ import qualified Data.Vector as V
 import System.Random.Shuffle
 
 import HabitOfFate.Data.Age
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quest.StateMachine as StateMachine
@@ -66,6 +67,7 @@ deriveJSON ''Event
 
 data Internal = Internal
   { searcher_type ∷ SearcherType
+  , child ∷ Gendered
   , event_order ∷ [Event]
   } deriving (Eq,Ord,Read,Show)
 deriveJSON ''Internal
@@ -147,8 +149,8 @@ plants = V.fromList
 initialize ∷ InitializeQuestRunner State
 initialize = do
   searcher_type ← uniform [Parent, Healer]
-  searcher ← allocateAnyGendered Fantasy
-  child ← allocateAnyGendered Fantasy
+  searcher ← allocateAnyRescuedIfPossible Fantasy
+  child ← allocateAny Fantasy
   i ← getRandomR (0, olength plants-1)
   let substitutions = mapFromList
         [("", searcher)
@@ -172,8 +174,13 @@ getStatus s = StateMachine.getStatus (s |> StateMachine.internal |> transitionsF
 
 trial ∷ TrialQuestRunner State
 trial result scale = do
-  transitions ← get <&> (StateMachine.internal >>> transitionsFor)
-  StateMachine.trial transitions result scale
+  internal@Internal{..} ← get <&> StateMachine.internal
+  let transitions = transitionsFor internal
+  outcome ← StateMachine.trial transitions result scale
+  case tryQuestStatus outcome of
+    QuestHasEnded SuccessResult _ → addToRescues child Fantasy
+    _ → pure ()
+  pure outcome
 
 --------------------------------------------------------------------------------
 --------------------------------- Proofreading ---------------------------------

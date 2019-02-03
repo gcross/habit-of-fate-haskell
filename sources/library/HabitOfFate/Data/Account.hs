@@ -61,6 +61,7 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.JSON
 import HabitOfFate.Quests
+import HabitOfFate.Substitution
 import HabitOfFate.TH
 
 instance ToJSON StdGen where
@@ -82,7 +83,7 @@ data Account = Account
   ,   _groups_ ∷ Groups
   ,   _deeds_ ∷ [Deed]
   ,   _appeared_ ∷ HashSet Text
-  ,   _rescued_ ∷ Map Age [Text]
+  ,   _rescued_ ∷ Map (Gender, Age) [Text]
   } deriving (Read,Show)
 
 instance ToJSON Account where
@@ -143,7 +144,7 @@ deeds_ f a = (\nx → a {_deeds_ = nx}) <$> f (_deeds_ a)
 appeared_ ∷ Lens' Account (HashSet Text)
 appeared_ f a = (\nx → a {_appeared_ = nx}) <$> f (_appeared_ a)
 
-rescued_ ∷ Lens' Account (Map Age [Text])
+rescued_ ∷ Lens' Account (Map (Gender, Age) [Text])
 rescued_ f a = (\nx → a {_rescued_ = nx}) <$> f (_rescued_ a)
 
 newAccount ∷ Text → IO Account

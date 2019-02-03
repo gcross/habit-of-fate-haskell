@@ -195,7 +195,7 @@ instance Monad m ⇒ Serial m (Forest.Event) where
         \/ cons0 Forest.HomeEvent
 
 instance Monad m ⇒ Serial m (Forest.Internal) where
-  series = cons2 Forest.Internal
+  series = cons3 Forest.Internal
 
 instance (Serial m label, Serial m s, Monad m) ⇒ Serial m (StateMachine.State label s) where
   series = cons3 StateMachine.State
@@ -244,7 +244,7 @@ instance Arbitrary Forest.Event where
     ]
 
 instance Arbitrary Forest.Internal where
-  arbitrary = Forest.Internal <$> arbitrary <*> arbitrary
+  arbitrary = Forest.Internal <$> arbitrary <*> arbitrary <*> arbitrary
 
 instance (Arbitrary label, Arbitrary s) ⇒ Arbitrary (StateMachine.State label s) where
   arbitrary =
@@ -294,7 +294,7 @@ instance Arbitrary Account where
       <*> arbitrary
       <*> arbitrary
       <*> ((setToList >>> setFromList) <$> (arbitrary ∷ Gen (Set Text)))
-      <*> ((mapToList >>> mapFromList) <$> (arbitrary ∷ Gen (Map Age [Text])))
+      <*> ((mapToList >>> mapFromList) <$> (arbitrary ∷ Gen (Map (Gender, Age) [Text])))
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
@@ -814,12 +814,14 @@ main = defaultMain $ testGroup "All Tests"
           "Forest (parent)"
           (Forest.transitionsFor $ Forest.Internal
             Forest.Parent
+            (Gendered "Billy" Male)
             [Forest.GingerbreadHouseEvent, Forest.FoundEvent, Forest.FairyCircleEvent]
           )
       , testTransitionsAreValid
           "Forest (healer)"
           (Forest.transitionsFor $ Forest.Internal
             Forest.Healer
+            (Gendered "Elly" Female)
             [Forest.FoundEvent, Forest.FairyCircleEvent, Forest.GingerbreadHouseEvent]
           )
       ]

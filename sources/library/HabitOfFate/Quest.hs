@@ -57,19 +57,25 @@ data TryQuestResult = TryQuestResult
   }
 
 class MonadAllocateName m where
-  allocateNameFrom ∷ Vector Text → Age → m Text
+  allocateName ∷ Gender → Age → m Gendered
+  allocateRescuedNameIfPossible ∷ Gender → Age → m Gendered
+  addToRescues ∷ Gendered → Age → m ()
 
-allocateAnyGendered ∷ (MonadAllocateName m, MonadRandom m) ⇒ Age → m Gendered
-allocateAnyGendered age =
+allocateAny ∷ (MonadAllocateName m, MonadRandom m) ⇒ Age → m Gendered
+allocateAny age =
   getRandom
   >>=
-  bool
-    (flip Gendered Male <$> allocateNameFrom male_names age)
-    (flip Gendered Female <$> allocateNameFrom female_names age)
+  bool (allocateName Male age) (allocateName Female age)
+
+allocateAnyRescuedIfPossible ∷ (MonadAllocateName m, MonadRandom m) ⇒ Age → m Gendered
+allocateAnyRescuedIfPossible age =
+  getRandom
+  >>=
+  bool (allocateRescuedNameIfPossible Male age) (allocateRescuedNameIfPossible Female age)
 
 type InitializeQuestRunner s = ∀ m. (MonadAllocateName m, MonadRandom m, MonadThrow m) ⇒ m (InitializeQuestResult s)
 type GetStatusQuestRunner s = ∀ m. s → (MonadRandom m, MonadThrow m) ⇒ m Lazy.Text
-type TrialQuestRunner s = ∀ m. (MonadState s m, MonadRandom m, MonadThrow m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
+type TrialQuestRunner s = ∀ m. (MonadAllocateName m, MonadState s m, MonadRandom m, MonadThrow m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join

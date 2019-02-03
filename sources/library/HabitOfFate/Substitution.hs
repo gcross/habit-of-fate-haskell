@@ -64,7 +64,6 @@ import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.Data.Gender
-import HabitOfFate.JSON
 
 uppercase_ ∷ Lens' Char Bool
 uppercase_ = lens isUpper (\c → bool (toLower c) (toUpper c))

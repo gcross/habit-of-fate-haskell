@@ -56,15 +56,18 @@ import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Age
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Logging
+import HabitOfFate.Names
 import HabitOfFate.Quest
 import HabitOfFate.Server.Actions.Queries (authorizeWith)
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
+import HabitOfFate.Substitution
 
 data BadJSONError = BadJSONError String deriving (Eq, Show)
 instance Exception BadJSONError where
@@ -218,25 +221,39 @@ instance Exception OutOfCharacters where
   displayException _ = "Out of names!"
 
 instance MonadAllocateName Transaction where
-  allocateNameFrom characters age = do
+  allocateName gender age = do
+    appeared ← use appeared_
+    let go n
+          | n > olength characters =
+              throwM OutOfCharacters -- might not actually be true but close enough
+          | otherwise = do
+              i ← getRandomR (0, olength characters-1)
+              let c = characters ^?! ix i
+              if notMember c appeared
+                then (appeared_ %= insertSet c) >> pure (Gendered c gender)
+                else go (n+1)
+    go 0
+   where
+    characters = case gender of
+      Male → male_names
+      Female → female_names
+      Neuter → error "Neuter names not supported yet."
+
+  allocateRescuedNameIfPossible gender age = do
     rescued ← use rescued_
-    case lookup age rescued of
+    case lookup (gender, age) rescued of
       Just cs | not (onull cs) → do
         (front, back) ← getRandomR (0, olength cs-1) <&> flip splitAt cs
-        rescued_ . at age .= Just (front ⊕ (tail back))
-        pure $ head back
-      _ → do
-        appeared ← use appeared_
-        let go n
-              | n > olength characters =
-                  throwM OutOfCharacters -- might not actually be true but close enough
-              | otherwise = do
-                  i ← getRandomR (0, olength characters-1)
-                  let c = characters ^?! ix i
-                  if notMember c appeared
-                    then (appeared_ %= insertSet c) >> pure c
-                    else go (n+1)
-        go 0
+        rescued_ . at (gender, age) .= Just (front ⊕ (tail back))
+        pure $ Gendered (head back) gender
+      _ → allocateName gender age
+
+  addToRescues (Gendered name gender) age = rescued_ . at (gender, age) %= (maybe [name] (name:) >>> Just)
+
+instance (Monad m, MonadAllocateName m) ⇒ MonadAllocateName (StateT s m) where
+  allocateName gender age = lift $ allocateName gender age
+  allocateRescuedNameIfPossible gender age = lift $ allocateRescuedNameIfPossible gender age
+  addToRescues gendered age = lift $ addToRescues gendered age
 
 marksArePresent ∷ Transaction Bool
 marksArePresent = use marks_ <&> any (null >>> not)
