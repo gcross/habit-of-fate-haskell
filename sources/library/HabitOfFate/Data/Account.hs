@@ -46,12 +46,12 @@ import Data.Aeson
   , withObject
   , withText
   )
-import Data.Aeson.Types (toJSONKeyText)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Web.Scotty (Parsable)
 
+import HabitOfFate.Data.Age
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
@@ -70,29 +70,6 @@ instance FromJSON StdGen where
   parseJSON = parseJSON >>> fmap read
 
 type Groups = ItemsSequence Group
-
-data Age = Fantasy | Space deriving (Eq,Enum,Ord,Read,Show)
-
-instance ToJSON Age where
-  toJSON Fantasy = "fantasy"
-  toJSON Space = "space"
-
-instance ToJSONKey Age where
-  toJSONKey = toJSONKeyText $ \case
-    Fantasy → "fantasy"
-    Space → "space"
-
-instance FromJSON Age where
-  parseJSON = withText "age must be string-shaped" $ \case
-    "fantasy" → pure Fantasy
-    "space" → pure Space
-    other → fail [i|"unrecognized age #{other}|]
-
-instance FromJSONKey Age where
-  fromJSONKey = FromJSONKeyTextParser $ \case
-    "fantasy" → pure Fantasy
-    "space" → pure Space
-    other → fail [i|"unrecognized age #{other}|]
 
 data Account = Account
   {   _password_ ∷ Text

@@ -36,9 +36,12 @@ module HabitOfFate.Quests.Forest where
 import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Catch (MonadThrow)
-import Control.Monad.Random (uniform)
+import Control.Monad.Random (getRandomR, uniform)
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 import System.Random.Shuffle
 
+import HabitOfFate.Data.Age
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quest.StateMachine as StateMachine
@@ -135,9 +138,24 @@ transitionsFor Internal{..} =
     Parent → conclusion_parent
     Healer → conclusion_healer
 
+plants ∷ Vector Text
+plants = V.fromList
+  ["Illsbane"
+  ,"Tigerlamp"
+  ]
+
 initialize ∷ InitializeQuestRunner State
 initialize = do
   searcher_type ← uniform [Parent, Healer]
+  searcher ← allocateAnyGendered Fantasy
+  child ← allocateAnyGendered Fantasy
+  i ← getRandomR (0, olength plants-1)
+  let substitutions = mapFromList
+        [("", searcher)
+        ,("Searcher", searcher)
+        ,("Child", child)
+        ,("Plant", Gendered (plants ^?! ix i) Neuter)
+        ]
   event_order ← shuffleM [GingerbreadHouseEvent, FoundEvent, FairyCircleEvent]
   first_label ← case event_order ^?! _head of
     GingerbreadHouseEvent → pure GingerbreadHouse
@@ -147,7 +165,7 @@ initialize = do
   let introduction = case searcher_type of
         Parent → intro_parent_story
         Healer → intro_healer_story
-  StateMachine.initialize static_substitutions first_label Internal{..} introduction
+  StateMachine.initialize substitutions first_label Internal{..} introduction
 
 getStatus ∷ GetStatusQuestRunner State
 getStatus s = StateMachine.getStatus (s |> StateMachine.internal |> transitionsFor) s

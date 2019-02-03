@@ -73,6 +73,7 @@ import Web.Scotty (Parsable(..))
 
 import HabitOfFate.API
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Age
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group

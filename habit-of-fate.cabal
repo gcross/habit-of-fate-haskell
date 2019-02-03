@@ -92,6 +92,7 @@ library
                      , yaml
   exposed-modules:     HabitOfFate.API
                      , HabitOfFate.Data.Account
+                     , HabitOfFate.Data.Age
                      , HabitOfFate.Data.Configuration
                      , HabitOfFate.Data.Deed
                      , HabitOfFate.Data.Group
