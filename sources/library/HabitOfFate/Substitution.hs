@@ -23,7 +23,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -57,14 +56,15 @@ import Data.Aeson hiding (Object, (.=))
 import Data.Char
 import Data.MonoTraversable (Element)
 import Data.String (IsString(..))
+import Instances.TH.Lift ()
 import Language.Haskell.TH.Lift (Lift)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as Lazy
 import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
 
+import HabitOfFate.Data.Gender
 import HabitOfFate.JSON
-import HabitOfFate.TH
 
 uppercase_ ∷ Lens' Char Bool
 uppercase_ = lens isUpper (\c → bool (toLower c) (toUpper c))
@@ -210,38 +210,6 @@ parseSubstitutions story =
     go previous (next@(Substitution _):rest) = previous:go (singleton <$> next) rest
     go previous@(Substitution _) (next:rest) = previous:go (singleton <$> next) rest
     go (Literal x) (Literal y:rest) = go (Literal (y:x)) rest
-
-data Gender = Male | Female | Neuter deriving (Enum,Eq,Ord,Read,Show)
-
-instance ToJSON Gender where
-  toJSON Male = String "male"
-  toJSON Female = String "female"
-  toJSON Neuter = String "neuter"
-
-instance FromJSON Gender where
-  parseJSON = withText "expected text for the gender" $ \case
-    "male" → pure Male
-    "female" → pure Female
-    "neuter" → pure Neuter
-    wrong → fail [i|gender must be "male", "female", or "neuter", not "#{wrong}"|]
-
-data Gendered = Gendered
-  { _gendered_name_ ∷ Text
-  , _gendered_gender_ ∷ Gender
-  } deriving (Eq,Ord,Read,Show)
-makeLenses ''Gendered
-
-instance ToJSON Gendered where
-  toJSON Gendered{..} = object
-    [ "name" .== toJSON _gendered_name_
-    , "gender" .== toJSON _gendered_gender_
-    ]
-
-instance FromJSON Gendered where
-  parseJSON = withObject "gendered entity must have object shape" $ \o →
-    Gendered
-      <$> (o .: "name" >>= parseJSON)
-      <*> (o .: "gender" >>= parseJSON)
 
 data SubstitutionException =
     NoSuchKeyException Text

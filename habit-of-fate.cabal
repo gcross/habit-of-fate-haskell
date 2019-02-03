@@ -95,6 +95,7 @@ library
                      , HabitOfFate.Data.Age
                      , HabitOfFate.Data.Configuration
                      , HabitOfFate.Data.Deed
+                     , HabitOfFate.Data.Gender
                      , HabitOfFate.Data.Group
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Data.InputHabit
