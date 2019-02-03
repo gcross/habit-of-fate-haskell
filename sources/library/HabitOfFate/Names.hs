@@ -35,7 +35,6 @@ import Language.Haskell.TH (Exp, Q)
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
-import System.Random.Shuffle (shuffleM)
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Server.Transaction
@@ -73,10 +72,13 @@ allocateNameFrom characters age = do
       pure $ head back
     _ → do
       appeared ← use appeared_
-      let go (i:rest) = do
-            let c = characters ^?! ix i
-            if member c appeared
-              then (appeared_ %= insertSet c) >> pure c
-              else go rest
-          go [] = throwM OutOfCharacters
-      shuffleM [0, 1 .. olength characters-1] >>= go
+      let go n
+            | n > olength characters =
+                throwM OutOfCharacters -- might not actually be true but close enough
+            | otherwise = do
+                i ← getRandomR (0, olength characters-1)
+                let c = characters ^?! ix i
+                if notMember c appeared
+                  then (appeared_ %= insertSet c) >> pure c
+                  else go (n+1)
+      go 0
