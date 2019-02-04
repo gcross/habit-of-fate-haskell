@@ -35,7 +35,7 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
 import HabitOfFate.Pages
-import qualified HabitOfFate.Quests.Forest as Forest
+import qualified HabitOfFate.Quests.Forest.Pages as Forest
 import HabitOfFate.Story
 
 import Paths_habit_of_fate

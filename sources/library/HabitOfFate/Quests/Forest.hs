@@ -35,7 +35,6 @@ module HabitOfFate.Quests.Forest where
 
 import HabitOfFate.Prelude hiding (State)
 
-import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random (getRandomR, uniform)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -48,8 +47,6 @@ import HabitOfFate.Quest
 import qualified HabitOfFate.Quest.StateMachine as StateMachine
 import HabitOfFate.Quest.StateMachine (Transition(..))
 import HabitOfFate.Substitution
-import HabitOfFate.Story
-import HabitOfFate.Pages
 import HabitOfFate.TH
 
 import HabitOfFate.Quests.Forest.Stories
@@ -181,65 +178,3 @@ trial result scale = do
     QuestHasEnded SuccessResult _ → addToRescues child Fantasy
     _ → pure ()
   pure outcome
-
---------------------------------------------------------------------------------
---------------------------------- Proofreading ---------------------------------
---------------------------------------------------------------------------------
-
-pages ∷ MonadThrow m ⇒ m Pages
-pages = buildPages
-  (mapFromList
-    [ ( "", Gendered "Andrea" Female )
-    , ( "Searcher", Gendered "Andrea" Female )
-    , ( "Child", Gendered "Elly" Female )
-    , ( "Plant", Gendered "Tigerlamp" Neuter )
-    ]
-  )
-  ( PageGroup "forest"
-    [ PageItem
-        ""
-        "Searching For An Essential Ingredient In The Wicked Forest"
-        intro_healer_story
-        (NoChoice "gingerbread")
-    , PageGroup "gingerbread"
-      [ PageItem
-          ""
-          "The Gingerbread House"
-          (gingerbread_house ^. story_common_)
-          (Choices "Where do you guide Andrea?"
-            [("Towards the gingerbread house.",  "towards")
-            ,("Away from the gingerbread house.", "away")
-            ]
-          )
-      , PageItem
-          "away"
-          "Even Gingerbread Cannot Slow Her Search"
-          (gingerbread_house ^. story_success_)
-          (NoChoice "-forest-found")
-      , PageItem
-          "towards"
-          "The Gingerbread Compulsion is Too Great"
-          (gingerbread_house ^. story_averted_or_failure_)
-          (Choices "How do you have Andrea react?"
-            [("She enters the house.", "enter")
-            ,("She runs away!", "run")
-            ]
-          )
-      , PageItem
-          "enter"
-          "Entering The Gingerbread House"
-          (gingerbread_house ^. story_failure_)
-          DeadEnd
-      , PageItem
-          "run"
-          "Escaping The Gingerbread House"
-          (gingerbread_house ^. story_averted_)
-          (NoChoice "-forest-found")
-      ]
-    , PageItem
-        "found"
-        "The Ingredient Is Finally Found... Or Is It?"
-        "Test found page."
-        DeadEnd
-    ]
-  )
