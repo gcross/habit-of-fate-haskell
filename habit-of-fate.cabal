@@ -31,7 +31,9 @@ data-files:          data/app/css/common.css
                      data/app/images/treasure-chest.svgz
                      data/app/js/edit.js
                      data/static/css/style.css
-                     data/static/images/logo.svgz
+                     data/static/images/grave.svg
+                     data/static/images/logo.svg
+                     data/static/images/treasure-chest.png
 
 library
   hs-source-dirs:      sources/library

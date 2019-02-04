@@ -54,9 +54,19 @@ index_pages =
     ( "index"
     , (Page
         "The Adventure Begins"
-        ""
-        (Choices "Which quest shall we begin?" $
-          [ ("The search in the Wicked Forest.", "forest")
+        (unlines
+        ["<p>"
+        ,"Men, women, searchers, wanderers, people who just want to get home,"
+        ,"all of them send their prayers to you in the hope you will hear"
+        ,"them and grant them aid."
+        ,"</p><p>"
+        ,"But will you?  You are a God, after all, and these mortals can make"
+        ,"such fun playthings."
+        ,"</p>"
+        ]
+        )
+        (Choices "The choice is yours.  Where would you like to start?" $
+          [ ("A prayer from someone searching for an herb in the Wicked Forest.", "forest")
           ]
         )
       )
@@ -102,17 +112,24 @@ main = do
           ! A.type_ "text/css"
           ! A.href (H.toValue $ ("style.css" ∷ Text))
       H.body $ do
-        H.span ! A.class_ "title" $ toHtml (page ^. title_)
-        H.div $ H.preEscapedLazyText $ page ^. content_
-        case page ^. choices_ of
-          DeadEnd → H.b $ H.toHtml ("You have reached the end." ∷ Text)
-          NoChoice c_ref → H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml ("Continue." ∷ Text)
-          Choices question choices → do
-            H.span ! A.class_ "question" $ H.toHtml question
-            H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml c
+        H.div ! A.class_ "logo" $ do
+          H.div ! A.class_ "logo_entry" $ H.img ! A.src "treasure-chest.png" ! A.width "100px"
+          H.div ! A.class_ "logo_entry" $ H.img ! A.src "logo.svg" ! A.width "300px"
+          H.div ! A.class_ "logo_entry" $ H.img ! A.src "grave.svg" ! A.width "100px"
+        H.div $ do
+          H.span ! A.class_ "title" $ toHtml (page ^. title_)
+          H.preEscapedLazyText $ page ^. content_
+          case page ^. choices_ of
+            DeadEnd → H.b $ H.toHtml ("You have reached the end." ∷ Text)
+            NoChoice c_ref → H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml ("Continue." ∷ Text)
+            Choices question choices → do
+              H.span ! A.class_ "question" $ H.toHtml question
+              H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml c
   forM_
     [ ("css", "style.css")
-    , ("images", "logo.svgz")
+    , ("images", "grave.svg")
+    , ("images", "logo.svg")
+    , ("images", "treasure-chest.png")
     ] $ \(auxiliary_directory, auxiliary_filename) → do
     putStrLn [i|Writing auxiliary file #{auxiliary_filename}|]
     let destination_path = output_path </> auxiliary_filename
