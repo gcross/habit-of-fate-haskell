@@ -103,7 +103,9 @@ main = do
   pagemap ← constructAndValidatePageMap pages
   createDirectoryIfMissing True output_path
   forM_ (walkPages "index" pagemap) $ \(page_id, page) → do
-    writeFile (output_path </> unpack page_id <.> "html") $ renderHtml $ H.docTypeHtml $ do
+    let output_filepath = output_path </> unpack page_id <.> "html"
+    putStrLn [i|Writing story file #{output_filepath}|]
+    writeFile output_filepath $ renderHtml $ H.docTypeHtml $ do
       H.head $ do
         H.title $ toHtml (page ^. title_)
         H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
@@ -114,16 +116,16 @@ main = do
       H.body $ do
         H.div ! A.class_ "logo" $ do
           H.div ! A.class_ "logo_entry" $ H.img ! A.src "treasure-chest.png" ! A.width "100px"
-          H.div ! A.class_ "logo_entry" $ H.img ! A.src "logo.svg" ! A.width "300px"
+          H.div ! A.class_ "logo_entry" $ H.a ! A.href "index.html" $ H.img ! A.src "logo.svg" ! A.width "300px"
           H.div ! A.class_ "logo_entry" $ H.img ! A.src "grave.svg" ! A.width "100px"
         H.div $ do
-          H.span ! A.class_ "title" $ toHtml (page ^. title_)
+          H.h1 $ toHtml (page ^. title_)
           H.preEscapedLazyText $ page ^. content_
           case page ^. choices_ of
             DeadEnd → H.b $ H.toHtml ("You have reached the end." ∷ Text)
             NoChoice c_ref → H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml ("Continue." ∷ Text)
             Choices question choices → do
-              H.span ! A.class_ "question" $ H.toHtml question
+              H.h2 $ H.toHtml question
               H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml c
   forM_
     [ ("css", "style.css")
