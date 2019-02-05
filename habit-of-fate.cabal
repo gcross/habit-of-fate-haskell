@@ -75,7 +75,6 @@ library
                      , random-shuffle
                      , scotty
                      , split
-                     , sqlite-simple
                      , stm
                      , text
                      , th-lift
@@ -155,7 +154,6 @@ library
                      , HabitOfFate.Server.Requests.Web.MoveHabit
                      , HabitOfFate.Server.Requests.Web.NewGroup
                      , HabitOfFate.Server.Requests.Web.NewHabit
-                     , HabitOfFate.SQLite
                      , HabitOfFate.Story
                      , HabitOfFate.Substitution
                      , HabitOfFate.Trial

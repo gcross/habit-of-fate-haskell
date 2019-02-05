@@ -52,7 +52,6 @@ import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import qualified Data.Vector as V
-import qualified Database.SQLite.Simple as SQLite
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
@@ -89,7 +88,6 @@ import qualified HabitOfFate.Quests.Forest.Stories as Forest
 import HabitOfFate.Quest.StateMachine as StateMachine
 import HabitOfFate.Quests
 import HabitOfFate.Server
-import HabitOfFate.SQLite
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
@@ -397,7 +395,6 @@ test_habit_with_last_marked = def & name_ .~ "test" & maybe_last_marked_ .~ (Jus
 test_habit_group = Habit "group" (Tagged (Success High) (Failure Low)) Indefinite [test_group_id] Nothing
 
 test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
-test_habit_id_1 = read "634955c4-9121-481f-988d-4292c10e54b7"
 test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
 test_habit_id_once = read "7dbafaf9-560a-4ac4-b6bb-b64c647e387d"
 test_habit_id_with_last_marked = read "7ada06ff-ccf5-4c68-83df-e54999cc42b3"
@@ -639,17 +636,6 @@ testStoryOutcomes name substitutions outcomes =
       story_outcome_multiple_labels
     )
 
-withDatabase ∷ (SQLite.Connection → IO ()) → IO ()
-withDatabase action = SQLite.withConnection ":memory:" $ \c → do
-  createTables c
-  action c
-
-databaseProperty ∷ (SQLite.Connection → IO ()) → Property
-databaseProperty action = ioProperty $ withDatabase action
-
-testDatabaseCase ∷ String → (SQLite.Connection → IO ()) → TestTree
-testDatabaseCase name action = testCase name $ withDatabase action
-
 testTransitionsAreValid ∷ (Eq α, Show α) ⇒ String → [(α, Transition α)] → TestTree
 testTransitionsAreValid name transitions = testGroup name
   [ testCase "All destination nodes are listed in the transitions" $
@@ -690,108 +676,6 @@ main = defaultMain $ testGroup "All Tests"
     , QC.testProperty "Account" $ \(x ∷ Account) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
     ]
   ------------------------------------------------------------------------------
-  , testGroup "HabitOfFate.Data.Habit.SQL"
-  ------------------------------------------------------------------------------
-    [ QC.testProperty "encode/decode LocalTime" $ \(LocalToSecond t) → ioProperty $ do
-        (encodeLocalTime >>> decodeLocalTime) t @?= t
-    ----------------------------------------------------------------------------
-    , testGroup "insert/select once"
-    ----------------------------------------------------------------------------
-      [ testDatabaseCase "Nothing" $ \c →
-          insertHabitFrequencyOnce c Nothing
-          >>=
-          selectHabitFrequencyOnce c
-          >>=
-          (@?= Nothing)
-      , QC.testProperty "Random" $ \(LocalToSecond deadline) → databaseProperty $ \c →
-          insertHabitFrequencyOnce c (Just deadline)
-          >>=
-          selectHabitFrequencyOnce c
-          >>=
-          (@?= Just deadline)
-      , QC.testProperty "Invalid" $ \(i ∷ Int64) → databaseProperty $ \c →
-          (do void $ selectHabitFrequencyOnce c i
-              assertFailure "Should not have successfully retrieved a row."
-          ) `catch` (
-            \(NumberOfRowsShouldHaveBeenOne table count) → do
-            table @?= "once"
-            count @?= 0
-          )
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "insert/select repeated"
-    ----------------------------------------------------------------------------
-      [ testDatabaseCase "Simple" $ \c →
-          let days_to_keep = KeepNumberOfDays 1
-              deadline = day 0
-              repeated = Daily 1
-          in
-          insertHabitFrequencyRepeated c days_to_keep deadline repeated
-          >>=
-          selectHabitFrequencyRepeated c
-          >>=
-          (@?= (days_to_keep, deadline, repeated))
-      , QC.testProperty "Random" $ \days_to_keep (LocalToSecond deadline) repeated → databaseProperty $ \c →
-          insertHabitFrequencyRepeated c days_to_keep deadline repeated
-          >>=
-          selectHabitFrequencyRepeated c
-          >>=
-          (@?= (days_to_keep, deadline, repeated))
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "insert/select groups"
-    ----------------------------------------------------------------------------
-      [ testDatabaseCase "Nothing" $ \c →
-          selectHabitGroups c test_habit_id >>= (@?= [])
-      , testDatabaseCase "Single" $ \c → do
-          insertHabitGroup c test_habit_id test_group_id
-          selectHabitGroups c test_habit_id >>= (@?= [test_group_id])
-      , QC.testProperty "Multiple, Same Habit" $ \(test_group_ids ∷ [UUID]) → databaseProperty $ \c → do
-          forM_ test_group_ids $ insertHabitGroup c test_habit_id
-          selectHabitGroups c test_habit_id >>= (@?= test_group_ids)
-      , QC.testProperty "Multiple, Two Habits" $ \(test_group_ids_1 ∷ [UUID]) (test_group_ids_2 ∷ [UUID]) →
-          databaseProperty $ \c → do
-            forM_ test_group_ids_1 $ insertHabitGroup c test_habit_id_1
-            forM_ test_group_ids_2 $ insertHabitGroup c test_habit_id_2
-            selectHabitGroups c test_habit_id_1 >>= (@?= test_group_ids_1)
-            selectHabitGroups c test_habit_id_2 >>= (@?= test_group_ids_2)
-      ]
-    ]
-    ----------------------------------------------------------------------------
-    , testGroup "insert/select habits" $
-      let modifyAndCompare f = databaseProperty $ \c → do
-            let habit = f def
-            insertHabit c test_account_id test_habit_id habit
-            selectHabit c test_account_id test_habit_id >>= (@?= habit)
-      in
-    ----------------------------------------------------------------------------
-      [ testDatabaseCase "Default" $ \c → do
-          insertHabit c test_account_id test_habit_id def
-          selectHabit c test_account_id test_habit_id >>= (@?= def)
-      , testDatabaseCase "Account 1" $ \c → do
-          insertHabit c test_account_id_1 test_habit_id test_habit_1
-          insertHabit c test_account_id_2 test_habit_id test_habit_2
-          selectHabit c test_account_id_1 test_habit_id >>= (@?= test_habit_1)
-      , testDatabaseCase "Account 2" $ \c → do
-          insertHabit c test_account_id_1 test_habit_id test_habit_1
-          insertHabit c test_account_id_2 test_habit_id test_habit_2
-          selectHabit c test_account_id_2 test_habit_id >>= (@?= test_habit_2)
-      , QC.testProperty "Random name" $ \name →
-          modifyAndCompare (name_ .~ name)
-      , QC.testProperty "Random scales" $ \difficulty importance →
-          modifyAndCompare (scales_ .~ Tagged (Success difficulty) (Failure importance))
-      , QC.testProperty "Random groups" $ \groups →
-          modifyAndCompare (group_membership_ .~ setFromList groups)
-      , QC.testProperty "Random last marked" $ \(LocalToSecond deadline) →
-          modifyAndCompare (maybe_last_marked_ .~ Just deadline)
-      , QC.testProperty "Once with no deadline " $
-          modifyAndCompare (frequency_ .~ Once Nothing)
-      , QC.testProperty "Once with random deadline" $ \(LocalToSecond deadline) →
-          modifyAndCompare (frequency_ .~ Once (Just deadline))
-      , QC.testProperty "Repeated" $ \days_to_keep (LocalToSecond deadline) repeated →
-          modifyAndCompare (frequency_ .~ Repeated days_to_keep deadline repeated)
-      ]
-  ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Quests..."
   ------------------------------------------------------------------------------
     [ testGroup "HabitOfFate.Quests.Forest"
@@ -829,10 +713,7 @@ main = defaultMain $ testGroup "All Tests"
   ------------------------------------------------------------------------------
   , testGroup "HabitOfFate.Repeated"
   ------------------------------------------------------------------------------
-    [ QC.testProperty "encode/decode DaysToRepeat" $ \x →
-        (encodeDaysToRepeat >>> decodeDaysToRepeat) x == x
-    ----------------------------------------------------------------------------
-    , testGroup "nextDaily" $
+    [ testGroup "nextDaily" $
     ----------------------------------------------------------------------------
       let testNextDailyCase period today deadline expected_result =
             testCase
