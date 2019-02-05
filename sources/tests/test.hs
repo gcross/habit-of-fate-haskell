@@ -670,7 +670,7 @@ main = defaultMain $ testGroup "All Tests"
     , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
     , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
     , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
-    , SC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
+    , QC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
     , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
     , QC.testProperty "Configuration" $ \(x ∷ Configuration) → (encode >>> eitherDecode) x == Right x
     , QC.testProperty "Account" $ \(x ∷ Account) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
