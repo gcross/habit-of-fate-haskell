@@ -45,16 +45,15 @@ intro_healer_story ∷ Story
 intro_healer_story = [story|
 There were times when <strong>|Searcher</strong>, the village healer, cursed
 himself/herself| for deciding to become a healer, and this was one of them.
-Little <strong>|Child</strong> had brain fever, and the only way he would
-survive the night is if she could make a potion with an
-<strong>|Plant</strong> plant. Unfortunately, she was out of this herb, and
-the only way to get more of it was to search the Wicket Forest. He/she|
-considered telling the family that they would have to be the ones to do this,
-but his/her| conscious told her that it was his/her| duty, besides which they
-might not recognize it and pick the wrong plant. Also the gold helped.
+Little <strong>|Child</strong> had brain fever, and the only way he/she|Child
+would survive the night is if he/she| could make a potion with <strong>a
+|Plant</strong> plant. Unfortunately, she was out of this herb, and the only way
+to get more of it was to search the Wicket Forest. He/she| considered telling
+the family that they would have to be the ones to do this, but his/her|
+conscience told him/her| that it was his/her| duty, besides which they might not
+recognize it and pick the wrong plant. Also the gold helped.
 
-He/she| entered the forest.
-|]
+He/she| entered the forest. |]
 
 --------------------------------------------------------------------------------
 -------------------------------- Status Stories --------------------------------
@@ -82,13 +81,13 @@ As |Searcher continues to search he/she| hears the howling of wolves, which make
 him/her| shiver. Thank goodness they seem to be in the distance!
 ================================================================================
 |Searcher's candle goes out; the resulting darkness is oppressive. Fortunately,
-he/she| prepared for this. He/she| reached into his/her| pack and drew out
+he/she| had prepared for this. He/she| reached into his/her| pack and drew out
 flintstone, which he/she| uses to re-light the candle.
 ================================================================================
 |Searcher can feel that something is amiss, but he/she| can't figure out what. He/she|
 pauses for a moment and looks around. After a moment, he/she| realizes that
 his/her| shadow didn't stop walking when he/she| did. He/she| backs away slowly as
-his/her| shadow gets further and further away from him/her|. He/she| decide to
+his/her| shadow gets further and further away from him/her|. He/she| decides to
 start searching in a different direction.
 ================================================================================
 |Searcher looks up at the Moon. For reasons that nobody understands, the Moon is
@@ -164,9 +163,14 @@ he/she| looks up, the fairy is gone.
 
 He/she| falls to his/her| knees and thanks you for guiding her to the plant.
 He/she| then gets up and starts heading back to his/her| home.
+================================ Averted/Failure ===============================
+The chase after the fairy becomes faster and faster, but unfortunately |Searcher
+does not seem to be able to break free of its grip.
 ==================================== Averted ===================================
-Unfortunately, the fairy flies so quickly that it quickly leaves |Searcher’s sight.
-|Searcher shrugs and continues her search.
+Suddenly the run ends with |Searcher slamming into a tree. She falls to the
+ground. After a few moments, she gets up, nursing splitting headache.
+Miracuously, she finds a |Plant at the bottom of the tree. She picks it and
+returns home.
 ==================================== Failure ===================================
 |Searcher runs faster and faster to catch up with the fairy. Everything starts to
 blur until there is only him/her| and the fairy. Eventually it all fades to
@@ -205,17 +209,22 @@ He/she| walks over and picks the plant, and then scratches the cat. “Good
 kitty!” she says. It purrs.
 
 He/she| starts to journey home.
+================================ Averted/Failure ===============================
+|Searcher chases after the cat, barely able to keep up.  It is because of this
+that she does not notice that she is stepping into a put.
 ==================================== Averted ===================================
-|Searcher follows the cat for some time and just barely notices in time that she
-was about to step into a pit. The cat flashes her a cheshire grin and vanishes.
+|Searcher follows into the pit but somehow avoids getting any broken bones.
+He/she| looks up in time to see the cat flash her a cheshire grin and vanish.
 
-|Searcher grumbles at the existence of mischievous malevolent cats and keeps searching.
+|Searcher grumbles at the existence of mischievous malevolent cats, but at least
+she notices a |Plant herb at the bottom so she can start heading home.
 ==================================== Failure ===================================
-|Searcher follows the cat for some time and realizes too late that she is stepping
-into a pit. Unable to catch herself in time, she falls into the put, breaking a
-leg. The cat looks down into the pit, flashes her a cheshire grin, and
-vanishes. |Searcher growls in anger and then faints in pain. |Child will not be
-getting the medicine that he desperately needs tonight...
+|Searcher follows the cat for some time before he/she|Searcher realizes too late
+that she is stepping into a pit. Unable to catch herself in time, he/she| falls
+into the put, breaking a leg. The cat looks down into the pit, flashes him/her|
+a cheshire grin, and vanishes. |Searcher growls in anger and then faints in
+pain. |Child will not be getting the medicine that he desperately needs
+tonight...
 ===================================== Shame ====================================
 Too late |Searcher remembered that it was the green cats that were good and the
 blue cats that were evil...
@@ -263,11 +272,11 @@ the fairies, there was no way |Searcher could make it back in time to save |Chil
 
 conclusion_parent ∷ StoryOutcomes
 conclusion_parent = [story_outcomes|
-==================================== Success ===================================
+==================================== Common ====================================
 |Searcher is starting to feel like he/she| will never make it back when he/she|
 notices that things are starting to get brighter == he/she| must be getting
 close to the village! he/she| gives you thanks for guiding her home.
-
+==================================== Success ===================================
 A little bit further, and he/she| is back to to the healer. He/she| pounds on
 the door. When the healer opens it, |Searcher gives her the plant. The healer looks
 surprised. “I didn’t think that you would make it, let alone bring me the
@@ -280,10 +289,6 @@ throat; he/she|Child immediately falls back asleep. Exhausted himself/herself|,
 he/she| falls asleep on the floor; he/she| sleeps peacefully, with a smile on
 her face. The next day, he/she| builds an altar to you out of gratitude.
 ================================ Averted/Failure ===============================
-|Searcher is starting to feel like he/she| will never make it back when he/she|
-notices that things are starting to get brighter -- he/she| must be getting
-close to the village! he/she| gives you thanks for guiding her home.
-
 A little bit further, and he/she| is back to to the healer. He/she| pounds on
 the door. When the healer opens it, |Searcher gives her the plant. The healer looks
 surprised. “I didn’t think that you would make it, but unfortunately you have
