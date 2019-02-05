@@ -157,12 +157,12 @@ handler environment = do
 
       H.div ! A.class_ "list" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
-          [ ("mark_button", "I succeeded!")
-          , ("mark_button", "I failed.")
+          [ ("mark_button", "Success!")
+          , ("mark_button", "Failure.")
           , ("position", "#")
           , ("name", "Habit Name")
           , ("", ""∷Text)
-          , ("centered", "Last Marked")
+          , ("centered", "Last")
           , ("centered", "Deadline")
           , ("centered", "Difficulty")
           , ("centered", "Importance")

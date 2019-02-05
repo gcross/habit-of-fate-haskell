@@ -68,7 +68,7 @@ renderLocalTime time =
       >>>
       H.div
     )
-    ["%b %e, %Y", "%I:%M%P"]
+    ["%D", "%I:%M%P"]
 
 paramGuardingAgainstMissing ∷ Parsable α ⇒ Lazy.Text → ActionM α
 paramGuardingAgainstMissing name =
