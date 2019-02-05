@@ -109,9 +109,9 @@ handlePostDeadlines environment =
       in case UUID.fromText possible_habit_id of
            Nothing → log [i|Unable to parse habit id: #{possible_habit_id}|]
            Just habit_id → case value of
-             " 0" → markHabit habit_id $ Tagged (Success 0) (Failure 0)
-             "+1" → markHabit habit_id $ Tagged (Success 1) (Failure 0)
-             "-1" → markHabit habit_id $ Tagged (Success 0) (Failure 1)
+             " 0" → markHabit False habit_id $ Tagged (Success 0) (Failure 0)
+             "+1" → markHabit False habit_id $ Tagged (Success 1) (Failure 0)
+             "-1" → markHabit False habit_id $ Tagged (Success 0) (Failure 1)
              other → log [i|Invalid habit deadline status value: #{other}|]
      ))
     habits_ %= fmap (flip updateHabitDeadline current_time)
