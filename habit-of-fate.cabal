@@ -39,6 +39,7 @@ library
   hs-source-dirs:      sources/library
   ghc-options:         -Werror=incomplete-patterns
                        -Werror=missing-fields
+                       -Werror=missing-methods
   build-depends:       base
                      , aeson
                      , blaze-builder
@@ -93,7 +94,6 @@ library
                      , yaml
   exposed-modules:     HabitOfFate.API
                      , HabitOfFate.Data.Account
-                     , HabitOfFate.Data.Age
                      , HabitOfFate.Data.Configuration
                      , HabitOfFate.Data.Deed
                      , HabitOfFate.Data.Gender
