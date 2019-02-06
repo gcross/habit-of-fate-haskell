@@ -40,7 +40,6 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import System.Random.Shuffle
 
-import HabitOfFate.Data.Age
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
@@ -146,8 +145,8 @@ plants = V.fromList
 initialize ∷ InitializeQuestRunner State
 initialize = do
   searcher_type ← uniform [Parent, Healer]
-  searcher ← allocateAnyRescuedIfPossible Fantasy
-  child ← allocateAny Fantasy
+  searcher ← allocateAny
+  child ← allocateAny
   i ← getRandomR (0, olength plants-1)
   let substitutions = mapFromList
         [("", searcher)
@@ -174,7 +173,4 @@ trial result scale = do
   internal@Internal{..} ← get <&> StateMachine.internal
   let transitions = transitionsFor internal
   outcome ← StateMachine.trial transitions result scale
-  case tryQuestStatus outcome of
-    QuestHasEnded SuccessResult _ → addToRescues child Fantasy
-    _ → pure ()
   pure outcome

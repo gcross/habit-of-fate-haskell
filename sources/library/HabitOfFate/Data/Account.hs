@@ -51,7 +51,6 @@ import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Web.Scotty (Parsable)
 
-import HabitOfFate.Data.Age
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
@@ -83,7 +82,6 @@ data Account = Account
   ,   _groups_ ∷ Groups
   ,   _deeds_ ∷ [Deed]
   ,   _appeared_ ∷ HashSet Text
-  ,   _rescued_ ∷ Map (Gender, Age) [Text]
   } deriving (Read,Show)
 
 instance ToJSON Account where
@@ -98,7 +96,6 @@ instance ToJSON Account where
     writeField "groups" _groups_
     writeField "deeds" _deeds_
     writeField "appeared" _appeared_
-    writeField "rescued" _rescued_
 
 instance FromJSON Account where
   parseJSON = withObject "account must be object-shaped" $ \o →
@@ -115,7 +112,6 @@ instance FromJSON Account where
       <*> (o .: "groups")
       <*> (o .: "deeds")
       <*> (o .: "appeared")
-      <*> (o .: "rescued")
 
 password_ ∷ Lens' Account Text
 password_ f a = (\nx → a {_password_ = nx}) <$> f (_password_ a)
@@ -144,9 +140,6 @@ deeds_ f a = (\nx → a {_deeds_ = nx}) <$> f (_deeds_ a)
 appeared_ ∷ Lens' Account (HashSet Text)
 appeared_ f a = (\nx → a {_appeared_ = nx}) <$> f (_appeared_ a)
 
-rescued_ ∷ Lens' Account (Map (Gender, Age) [Text])
-rescued_ f a = (\nx → a {_rescued_ = nx}) <$> f (_rescued_ a)
-
 newAccount ∷ Text → IO Account
 newAccount password =
   Account
@@ -161,7 +154,6 @@ newAccount password =
     <*> newStdGen
     <*> pure def
     <*> getCurrentTime
-    <*> pure []
     <*> pure []
     <*> pure []
     <*> pure []

@@ -31,7 +31,6 @@ import Control.Monad.Random
 import qualified Data.Text.Lazy as Lazy
 import Data.Vector (Vector)
 
-import HabitOfFate.Data.Age
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Names
@@ -57,21 +56,13 @@ data TryQuestResult = TryQuestResult
   }
 
 class MonadAllocateName m where
-  allocateName ∷ Gender → Age → m Gendered
-  allocateRescuedNameIfPossible ∷ Gender → Age → m Gendered
-  addToRescues ∷ Gendered → Age → m ()
+  allocateName ∷ Gender → m Gendered
 
-allocateAny ∷ (MonadAllocateName m, MonadRandom m) ⇒ Age → m Gendered
-allocateAny age =
+allocateAny ∷ (MonadAllocateName m, MonadRandom m) ⇒ m Gendered
+allocateAny =
   getRandom
   >>=
-  bool (allocateName Male age) (allocateName Female age)
-
-allocateAnyRescuedIfPossible ∷ (MonadAllocateName m, MonadRandom m) ⇒ Age → m Gendered
-allocateAnyRescuedIfPossible age =
-  getRandom
-  >>=
-  bool (allocateRescuedNameIfPossible Male age) (allocateRescuedNameIfPossible Female age)
+  bool (allocateName Male) (allocateName Female)
 
 type InitializeQuestRunner s = ∀ m. (MonadAllocateName m, MonadRandom m, MonadThrow m) ⇒ m (InitializeQuestResult s)
 type GetStatusQuestRunner s = ∀ m. s → (MonadRandom m, MonadThrow m) ⇒ m Lazy.Text

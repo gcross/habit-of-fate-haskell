@@ -56,7 +56,6 @@ import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
-import HabitOfFate.Data.Age
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
@@ -221,7 +220,7 @@ instance Exception OutOfCharacters where
   displayException _ = "Out of names!"
 
 instance MonadAllocateName Transaction where
-  allocateName gender age = do
+  allocateName gender = do
     appeared ← use appeared_
     let go n
           | n > olength characters =
@@ -239,21 +238,8 @@ instance MonadAllocateName Transaction where
       Female → female_names
       Neuter → error "Neuter names not supported yet."
 
-  allocateRescuedNameIfPossible gender age = do
-    rescued ← use rescued_
-    case lookup (gender, age) rescued of
-      Just cs | not (onull cs) → do
-        (front, back) ← getRandomR (0, olength cs-1) <&> flip splitAt cs
-        rescued_ . at (gender, age) .= Just (front ⊕ (tail back))
-        pure $ Gendered (head back) gender
-      _ → allocateName gender age
-
-  addToRescues (Gendered name gender) age = rescued_ . at (gender, age) %= (maybe [name] (name:) >>> Just)
-
 instance (Monad m, MonadAllocateName m) ⇒ MonadAllocateName (StateT s m) where
-  allocateName gender age = lift $ allocateName gender age
-  allocateRescuedNameIfPossible gender age = lift $ allocateRescuedNameIfPossible gender age
-  addToRescues gendered age = lift $ addToRescues gendered age
+  allocateName gender = lift $ allocateName gender
 
 marksArePresent ∷ Transaction Bool
 marksArePresent = use marks_ <&> any (null >>> not)

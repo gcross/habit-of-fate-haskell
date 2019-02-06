@@ -72,7 +72,6 @@ import Web.Scotty (Parsable(..))
 
 import HabitOfFate.API
 import HabitOfFate.Data.Account
-import HabitOfFate.Data.Age
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
@@ -276,9 +275,6 @@ instance Arbitrary SuccessOrFailureResult where
 instance Arbitrary Deed where
   arbitrary = Deed <$> arbitrary <*> (arbitrary <&> pack) <*> arbitrary
 
-instance Arbitrary Age where
-  arbitrary = elements [Fantasy, Space]
-
 instance Arbitrary Account where
   arbitrary =
     Account
@@ -292,7 +288,6 @@ instance Arbitrary Account where
       <*> arbitrary
       <*> arbitrary
       <*> ((setToList >>> setFromList) <$> (arbitrary ∷ Gen (Set Text)))
-      <*> ((mapToList >>> mapFromList) <$> (arbitrary ∷ Gen (Map (Gender, Age) [Text])))
 
 stackString ∷ HasCallStack ⇒ String
 stackString = case reverse callStack of
