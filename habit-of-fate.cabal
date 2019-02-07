@@ -204,6 +204,17 @@ executable generate-html
                      , text
   default-language:    Haskell2010
 
+executable generate-latex
+  hs-source-dirs:      sources/executables
+  main-is:             generate-latex.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , directory
+                     , filepath
+                     , optparse-applicative
+                     , text
+  default-language:    Haskell2010
+
 test-suite test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      sources/tests
