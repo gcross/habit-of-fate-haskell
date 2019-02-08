@@ -78,6 +78,7 @@ import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
@@ -272,8 +273,11 @@ deriving instance Eq Account
 instance Arbitrary SuccessOrFailureResult where
   arbitrary = elements [SuccessResult, FailureResult]
 
+instance Arbitrary Markdown where
+  arbitrary = Markdown <$> arbitrary
+
 instance Arbitrary Deed where
-  arbitrary = Deed <$> arbitrary <*> (arbitrary <&> pack) <*> arbitrary
+  arbitrary = Deed <$> arbitrary <*> arbitrary <*> arbitrary
 
 instance Arbitrary Account where
   arbitrary =

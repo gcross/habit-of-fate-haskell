@@ -44,16 +44,9 @@ import HabitOfFate.Substitution
 
 import Paths_habit_of_fate (getDataFileName)
 
-addParagraphTags ∷ String → String
-addParagraphTags text = "<p>" ⊕ go text
- where
-  go ('\n':'\n':rest) = "</p><p>" ⊕ go rest
-  go (x:rest) = x:go rest
-  go [] = "</p>"
-
 story ∷ QuasiQuoter
 story = QuasiQuoter
-  ((addParagraphTags >>> parseSubstitutions) >=> Lift.lift)
+  (parseSubstitutions >=> Lift.lift)
   (error "Cannot use story as a pattern")
   (error "Cannot use story as a type")
   (error "Cannot use story as a dec")
@@ -72,7 +65,7 @@ splitStoriesOn c =
   >>>
   splitRegionsOn c
   >>>
-  map (unlines >>> addParagraphTags)
+  map unlines
 
 splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
 splitAndParseSubstitutions = splitStoriesOn '=' >>> mapM parseSubstitutions
@@ -129,7 +122,7 @@ subSplitStories =
   map (
     splitRegionsOn '-'
     >>>
-    map (unlines >>> addParagraphTags)
+    map unlines
   )
 
 subSplitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [[Story]]
@@ -179,7 +172,7 @@ splitNamedRegionsOn marker =
             |> dropWhile (== ' ')
             |> dropWhileEnd (== marker)
             |> dropWhileEnd (== ' ')
-        , text |> unlines |> addParagraphTags
+        , text |> unlines
         )
       )
 

@@ -64,6 +64,7 @@ import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
 
 import HabitOfFate.Data.Gender
+import HabitOfFate.Data.Markdown
 
 uppercase_ ∷ Lens' Char Bool
 uppercase_ = lens isUpper (\c → bool (toLower c) (toUpper c))
@@ -239,7 +240,7 @@ lookupAndApplySubstitution table s = do
 data KeyError = KeyError Text deriving (Show, Typeable)
 instance Exception KeyError
 
-substitute ∷ MonadThrow m ⇒ Substitutions → Story → m Lazy.Text
+substitute ∷ MonadThrow m ⇒ Substitutions → Story → m Markdown
 substitute table (Story text) =
   mapM
     (\case
@@ -248,7 +249,7 @@ substitute table (Story text) =
     )
     text
   <&>
-  Lazy.fromChunks
+  (mconcat >>> Markdown)
 
 applyKind ∷ Kind → Gendered → Text
 applyKind Name (Gendered name _) = name

@@ -34,6 +34,7 @@ import Text.Blaze.Html5 ((!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Pages
 import qualified HabitOfFate.Quests.Forest.Pages as Forest
 import HabitOfFate.Story
@@ -45,32 +46,6 @@ all_pages =
   [ index_pages
   , Forest.pages
   ]
-
-index_pages ∷ IO Pages
-index_pages =
-  pure
-  $
-  singleton
-    ( "index"
-    , (Page
-        "The Adventure Begins"
-        (unlines
-        ["<p>"
-        ,"Men, women, searchers, wanderers, people who just want to get home,"
-        ,"all of them send their prayers to you in the hope you will hear"
-        ,"them and grant them aid."
-        ,"</p><p>"
-        ,"But will you?  You are a God, after all, and these mortals can make"
-        ,"such fun playthings."
-        ,"</p>"
-        ]
-        )
-        (Choices "The choice is yours.  Where would you like to start?" $
-          [ ("A prayer from someone searching for an herb in the Wicked Forest.", "forest")
-          ]
-        )
-      )
-    )
 
 addSuffix ∷ Text → Text
 addSuffix x = x ⊕ case unsnoc x of
@@ -120,7 +95,7 @@ main = do
           H.div ! A.class_ "logo_entry" $ H.img ! A.src "grave.svg" ! A.width "100px"
         H.div $ do
           H.h1 $ toHtml (page ^. title_)
-          H.preEscapedLazyText $ page ^. content_
+          renderMarkdownToHtml $ page ^. content_
           case page ^. choices_ of
             DeadEnd → H.b $ H.toHtml ("You have reached the end." ∷ Text)
             NoChoice c_ref → H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml ("Continue." ∷ Text)

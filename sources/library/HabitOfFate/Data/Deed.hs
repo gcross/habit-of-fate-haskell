@@ -25,18 +25,19 @@ module HabitOfFate.Data.Deed where
 import HabitOfFate.Prelude
 
 import Data.Aeson (FromJSON(..), ToJSON(..), (.:), object, withObject)
-import Data.Time.LocalTime
 import qualified Data.Text.Lazy as Lazy
+import Data.Time.LocalTime
 
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.JSON
 
-data Deed = Deed SuccessOrFailureResult Lazy.Text LocalTime deriving (Eq,Ord,Read,Show)
+data Deed = Deed SuccessOrFailureResult Markdown LocalTime deriving (Eq,Ord,Read,Show)
 
 instance ToJSON Deed where
   toJSON (Deed result text when) = object
     [ "result" .== result
-    , "story" .== text
+    , "story" .== toJSON text
     , "when" .== when
     ]
 

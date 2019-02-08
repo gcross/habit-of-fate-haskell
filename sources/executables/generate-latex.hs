@@ -27,6 +27,9 @@ import HabitOfFate.Prelude hiding ((<.>))
 import Data.Text.Lazy.Builder (Builder, fromString, toLazyText)
 import Data.Text.Lazy.IO (writeFile)
 import Options.Applicative
+import Text.RawString.QQ (r)
+
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Pages
 import qualified HabitOfFate.Quests.Forest.Pages as Forest
 import HabitOfFate.Story
@@ -39,38 +42,23 @@ all_pages =
   , Forest.pages
   ]
 
-index_pages ∷ IO Pages
-index_pages =
-  pure
-  $
-  singleton
-    ( "index"
-    , (Page
-        "The Adventure Begins"
-        (unlines
-        ["<p>"
-        ,"Men, women, searchers, wanderers, people who just want to get home,"
-        ,"all of them send their prayers to you in the hope you will hear"
-        ,"them and grant them aid."
-        ,"</p><p>"
-        ,"But will you?  You are a God, after all, and these mortals can make"
-        ,"such fun playthings."
-        ,"</p>"
-        ]
-        )
-        (Choices "The choice is yours.  Where would you like to start?" $
-          [ ("A prayer from someone searching for an herb in the Wicked Forest.", "forest")
-          ]
-        )
-      )
-    )
-
 standard_prelude, standard_postlude ∷ Builder
-standard_prelude = fromString "\\documentclass[letterpaper]{book}\n\\begin{document}\n"
-standard_postlude = fromString "\\end{document}\n"
+standard_prelude = [r|
+\documentclass[letterpaper]{book}
+
+\usepackage{textcomp}
+\usepackage{hyperref}
+
+\begin{document}
+|]
+
+standard_postlude = [r|
+\end{document}
+|]
 
 generatePageContent ∷ Text → Page → Builder
-generatePageContent page_id Page{..} = fromString [i|\\section{#{_title_}} \n\\label{#{page_id}}\n#{_content_}\n|]
+generatePageContent page_id Page{..} = fromString
+  [i|\\section{#{_title_}} \n\\label{#{page_id}}\n#{renderMarkdownToLaTeX _content_}\n|]
 
 generatePageChoices ∷ Page → Builder
 generatePageChoices Page{..} = case _choices_ of

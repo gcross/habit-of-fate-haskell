@@ -33,12 +33,13 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch (Exception, MonadThrow(throwM))
 import qualified Data.Text.Lazy as Lazy
 
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
 data Page = Page
   { _title_ ∷ Text
-  , _content_ ∷ Lazy.Text
+  , _content_ ∷ Markdown
   , _choices_ ∷ PageChoices
   } deriving (Show)
 makeLenses ''Page
@@ -149,3 +150,27 @@ walkPages root pagemap
               (insertSet page_id visited)
             )
             (lookup page_id pagemap)
+
+index_pages ∷ IO Pages
+index_pages =
+  pure
+  $
+  singleton
+    ( "index"
+    , (Page
+        "The Adventure Begins"
+        (((unlines ∷ [Text] → Text) >>> Markdown)
+          ["Men, women, searchers, wanderers, people who just want to get home,"
+          ,"all of them send their prayers to you in the hope you will hear"
+          ,"them and grant them aid."
+          ,""
+          ,"But will you?  You are a God, after all, and these mortals can make"
+          ,"such fun playthings."
+          ]
+        )
+        (Choices "The choice is yours.  Where would you like to start?" $
+          [ ("A prayer from someone searching for an herb in the Wicked Forest.", "forest")
+          ]
+        )
+      )
+    )

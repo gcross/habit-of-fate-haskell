@@ -28,9 +28,9 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random
-import qualified Data.Text.Lazy as Lazy
 import Data.Vector (Vector)
 
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Names
@@ -38,21 +38,21 @@ import HabitOfFate.Substitution
 
 data InitializeQuestResult α = InitializeQuestResult
   { initialQuestState ∷ α
-  , initialQuestEvent ∷ Lazy.Text
+  , initialQuestEvent ∷ Markdown
   }
 makeLenses ''InitializeQuestResult
 
 data RunQuestResult s = RunQuestResult
   { maybeRunQuestState ∷ Maybe s
-  , runQuestEvent ∷ Lazy.Text
+  , runQuestEvent ∷ Markdown
   } deriving (Functor)
 makeLenses ''RunQuestResult
 
-data QuestStatus = QuestInProgress | QuestHasEnded SuccessOrFailureResult Lazy.Text
+data QuestStatus = QuestInProgress | QuestHasEnded SuccessOrFailureResult Markdown
 
 data TryQuestResult = TryQuestResult
   { tryQuestStatus ∷ QuestStatus
-  , tryQuestEvent ∷ Lazy.Text
+  , tryQuestEvent ∷ Markdown
   }
 
 class MonadAllocateName m where
@@ -65,7 +65,7 @@ allocateAny =
   bool (allocateName Male) (allocateName Female)
 
 type InitializeQuestRunner s = ∀ m. (MonadAllocateName m, MonadRandom m, MonadThrow m) ⇒ m (InitializeQuestResult s)
-type GetStatusQuestRunner s = ∀ m. s → (MonadRandom m, MonadThrow m) ⇒ m Lazy.Text
+type GetStatusQuestRunner s = ∀ m. s → (MonadRandom m, MonadThrow m) ⇒ m Markdown
 type TrialQuestRunner s = ∀ m. (MonadAllocateName m, MonadState s m, MonadRandom m, MonadThrow m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α

@@ -32,6 +32,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Deed
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
@@ -50,7 +51,7 @@ handler environment = do
               SuccessResult → "treasure"
               FailureResult → "grave"
         H.div ! A.class_ ("result " ⊕ result_class) $ mempty
-        H.div ! A.class_ ("text " ⊕ result_class) $ H.preEscapedLazyText text
+        H.div ! A.class_ ("text " ⊕ result_class) $ renderMarkdownToHtml text
         H.div ! A.class_ ("when " ⊕ result_class) $ H.toHtml $ renderLocalTime when
  where
   treasure = H.img ! A.src "/images/treasure-chest.svgz" ! A.width "100px"

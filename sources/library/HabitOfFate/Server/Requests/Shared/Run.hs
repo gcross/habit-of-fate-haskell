@@ -35,14 +35,16 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Deed
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
+import HabitOfFate.Substitution
 
-runGame ∷ Transaction Lazy.Text
+runGame ∷ Transaction Markdown
 runGame = do
   maybe_current_quest_state ← use maybe_current_quest_state_
   case maybe_current_quest_state of
@@ -52,7 +54,7 @@ runGame = do
       maybe_current_quest_state_ .= Just (questPrism quest # quest_state)
       pure intro_event
     Just current_quest_state → do
-      let run ∷ ∀ s. Quest s → s → Transaction Lazy.Text
+      let run ∷ ∀ s. Quest s → s → Transaction Markdown
           run quest quest_state = do
             marks ← use marks_
             maybe_runQuestTrial ←
@@ -88,7 +90,7 @@ runGame = do
 handleApi ∷ Environment → ScottyM ()
 handleApi environment =
   Scotty.post "/api/run" <<< apiTransaction environment $
-    runGame <&> lazyTextResult ok200
+    runGame <&> markdownResult ok200
 
 handleWeb ∷ Environment → ScottyM ()
 handleWeb environment = do
@@ -101,7 +103,7 @@ handleWeb environment = do
     \event → do
       marks_are_present ← marksArePresent
       renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
-        H.div ! A.class_ "story" $ H.preEscapedLazyText event
+        H.div ! A.class_ "story" $ renderMarkdownToHtml event
         if marks_are_present
           then
             H.form

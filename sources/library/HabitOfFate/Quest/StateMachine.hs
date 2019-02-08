@@ -34,9 +34,9 @@ import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Catch (MonadThrow(..), Exception(..))
 import Control.Monad.Random (MonadRandom,uniform)
-import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Data.Deed
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
@@ -97,7 +97,7 @@ trial ∷ (Eq label, Show label) ⇒ Transitions label → TrialQuestRunner (Sta
 trial transitions result scale = do
   old_state@State{..} ← get
   Transition{..} ← maybe (throwM $ NoSuchTransitionException current) pure $ lookup current transitions
-  let sub ∷ MonadThrow m ⇒ SuccessOrFailureResult → Story → m Lazy.Text
+  let sub ∷ MonadThrow m ⇒ SuccessOrFailureResult → Story → m Markdown
       sub result = substitute (substitutions ⊕ mapFromList (extra_subs ^. taggedLensForResult result))
 
       continueQuest ∷ MonadThrow m ⇒ SuccessOrFailureResult → (StoryOutcomes → Story) → m TryQuestResult

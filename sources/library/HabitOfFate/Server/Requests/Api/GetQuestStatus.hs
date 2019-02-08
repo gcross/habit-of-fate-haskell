@@ -33,4 +33,4 @@ import HabitOfFate.Server.Transaction
 handler ∷ Environment → ScottyM ()
 handler environment =
   Scotty.get "/api/status" <<< apiTransaction environment $
-    getQuestStatus <&> lazyTextResult ok200
+    getQuestStatus <&> markdownResult ok200

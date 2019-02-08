@@ -26,16 +26,18 @@ import HabitOfFate.Prelude
 import qualified Data.Text.Lazy as Lazy
 
 import HabitOfFate.Data.Account
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Quests
 import HabitOfFate.Server.Transaction
+import HabitOfFate.Substitution
 
-getQuestStatus ∷ Transaction Lazy.Text
+getQuestStatus ∷ Transaction Markdown
 getQuestStatus =
   use maybe_current_quest_state_
   >>=
   maybe
-    (pure "You are between quests.")
+    (pure $ Markdown "You are between quests.")
     (runCurrentQuest run)
   where
-   run ∷ ∀ s. Quest s → s → Transaction Lazy.Text
+   run ∷ ∀ s. Quest s → s → Transaction Markdown
    run quest quest_state = questGetStatus quest quest_state

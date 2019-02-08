@@ -60,6 +60,7 @@ import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Logging
 import HabitOfFate.Names
 import HabitOfFate.Quest
@@ -254,6 +255,9 @@ lazyTextResult s = TextContent >>> TransactionResult s
 
 lazyTextAsHTMLResult ∷ Status → Lazy.Text → TransactionResult
 lazyTextAsHTMLResult s = TextContentAsHTML >>> TransactionResult s
+
+markdownResult ∷ Status → Markdown → TransactionResult
+markdownResult s = unwrapMarkdown >>> Lazy.fromStrict >>> TextContent >>> TransactionResult s
 
 jsonResult ∷ (NFData α, ToJSON α) ⇒ Status → α → TransactionResult
 jsonResult s = JSONContent >>> TransactionResult s

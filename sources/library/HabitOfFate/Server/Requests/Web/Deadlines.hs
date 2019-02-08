@@ -39,6 +39,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.Deadlines
@@ -57,7 +58,7 @@ deadlinesPage = do
   quest_status ← getQuestStatus
   renderPageResult "Passed Deadlines" ["deadlines"] [] Nothing ok200 >>> pure $ do
     H.form ! A.method "post" $ do
-      generateTopHTML $ H.div ! A.class_ "story" $ H.preEscapedLazyText quest_status
+      generateTopHTML $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "deadlines" $ mconcat $
         map (\(class_ ∷ Text, column ∷ Text) → H.div ! A.class_ (H.toValue $ "header " ⊕ class_) $ H.toHtml column)
           [ ("", "Success")

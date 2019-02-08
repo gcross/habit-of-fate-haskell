@@ -31,27 +31,27 @@ import HabitOfFate.Substitution
 
 intro_parent_story ∷ Story
 intro_parent_story = [story|
-The last thing in the world that <strong>|Searcher</strong> wanted to do was to
-wander alone in the Wicked Forest at night, but his/her|Searcher
-son/daughter|Child, little <strong>|Child</strong>, was sick and would not live
-through the night unless |Searcher could find an <strong>|Plant</strong> plant
-to give to the healer to make a potion, as the healer refused to enter the
-forest herself at night. It is a hopeless task, but he/she| has no other choice.
+The last thing in the world that **|Searcher** wanted to do was to wander alone
+in the Wicked Forest at night, but his/her|Searcher son/daughter|Child, little
+**|Child**, was sick and would not live through the night unless |Searcher could
+find an **|Plant** plant to give to the healer to make a potion, as the healer
+refused to enter the forest herself at night. It is a hopeless task, but he/she|
+has no other choice.
 
 He/she| entered the forest.
 |]
 
 intro_healer_story ∷ Story
 intro_healer_story = [story|
-There were times when <strong>|Searcher</strong>, the village healer, cursed
-himself/herself| for deciding to become a healer, and this was one of them.
-Little <strong>|Child</strong> had brain fever, and the only way he/she|Child
-would survive the night is if he/she| could make a potion with <strong>a
-|Plant</strong> plant. Unfortunately, she was out of this herb, and the only way
-to get more of it was to search the Wicket Forest. He/she| considered telling
-the family that they would have to be the ones to do this, but his/her|
-conscience told him/her| that it was his/her| duty, besides which they might not
-recognize it and pick the wrong plant. Also the gold helped.
+There were times when **|Searcher**, the village healer, cursed himself/herself|
+for deciding to become a healer, and this was one of them. Little **|Child** had
+brain fever, and the only way he/she|Child would survive the night is if he/she|
+could make a potion with **a |Plant** plant. Unfortunately, she was out of this
+herb, and the only way to get more of it was to search the Wicket Forest.
+He/she| considered telling the family that they would have to be the ones to do
+this, but his/her| conscience told him/her| that it was his/her| duty, besides
+which they might not recognize it and pick the wrong plant. Also the gold
+helped.
 
 He/she| entered the forest. |]
 
@@ -66,7 +66,7 @@ looking_for_herb_story = [story|
 
 returning_home_story ∷ Story
 returning_home_story = [story|
-An |Plant] plant in hand, |Searcher continues home.
+An |Plant] plant in hand, **|Searcher** continues **home**.
 |]
 
 --------------------------------------------------------------------------------

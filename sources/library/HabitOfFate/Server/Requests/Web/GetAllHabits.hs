@@ -40,6 +40,7 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Scale
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.GetQuestStatus
@@ -79,7 +80,7 @@ handler environment = do
     current_time_as_local_time ← getCurrentTimeAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
     renderPageResult "Habit of Fate - List of Habits" ["list"] [] Nothing ok200 >>> pure $ do
-      generateTopHTML $ H.div ! A.class_ "story" $ H.preEscapedLazyText quest_status
+      generateTopHTML $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "groups" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
           [ ("position", "#")
