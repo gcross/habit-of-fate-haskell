@@ -12,3 +12,8 @@ dist
 gamedata
 *.prof
 .*.marks
+*.html
+*.dvi
+*.pdf
+*.aux
+*.tex
