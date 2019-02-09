@@ -141,8 +141,8 @@ armor...
 
 ceiling_of_snakes = [story_outcomes|
 ------------------------------------ Common ------------------------------------
-Something is up but it is not a bit this time.  By the time |Paladin realizes
-what it is, it is almost too late to react as the ceiling starts to open up.
+Something is up but by the time |Paladin realizes what it is, it is almost too
+late to react as the ceiling starts to open up.
 ------------------------------------ Success -----------------------------------
 The paladin decides that the easiest thing to do is to just stand and let the
 ceiling open.  Sure enough, he/she| gets dumped with a pile of snakes who all
@@ -156,12 +156,12 @@ continued down the hallway.
 fast has he could.
 ------------------------------------ Averted -----------------------------------
 Fortunately, |Paladin was fast enough that he outran whatever was behind
-him---which sounded a lot like hissing snakes but like he was going to stop and
+him---which sounded a lot like hissing snakes, not that he was going to stop and
 look back at this point.
 ------------------------------------ Failure -----------------------------------
-Unfortunately, it was too late, and a pile of snakes landed on the paladin.
+Unfortunately, it was too late, and a pile of snakes lands on the paladin.
 The sharpness of their teeth was bad enough given that it was designed to
-pierce the armor he was wearing, but the venom made his entire body swell into
+pierce the armor he was wearing, but the venom makes his entire body swell into
 his armor and... well, I think that is enough details to make the point.
 ------------------------------------- Shame ------------------------------------
 |Paladin was killed by snakes while single-handedly storming the fortress of
@@ -169,14 +169,15 @@ The Dark Lord.
 |]
 
 wall_of_spiderweb = [story_outcomes|
+------------------------------------ Common ------------------------------------
+A gigantic spider web blocks the corridor.
 ------------------------------------ Success -----------------------------------
-A gigantic spider web blocks the corridor. Fortunately, the paladin spots it
-immediately and chops away at it. “Do you know how long I had to work to make
-that?” heard the paladin; he/she| looks around and saw a gigantic spider.
-“Sorry,” says the paladin. The spider looks at the paladin and in particular
-his/her| very sharp looking sword, ponders for a moment, and then backs away.
-“Well, let’s face it, I really could have chosen a better spot for my web. I’ll
-just be on my way now...”
+Fortunately, the paladin spots it immediately and chops away at it. “Do you know
+how long I had to work to make that?” heard the paladin; he/she| looks around
+and saw a gigantic spider. “Sorry,” says the paladin. The spider looks at the
+paladin and in particular his/her| very sharp looking sword, ponders for a
+moment, and then backs away. “Well, let’s face it, I really could have chosen a
+better spot for my web. I’ll just be on my way now...”
 
 The paladin finishes slicing through the web and steps through.
 -------------------------------- Averted/Failure -------------------------------
@@ -187,7 +188,9 @@ Moving quickly, he/she| was able to cut away at the web and free
 himself/herself|. As he/she runs away he can year a sonorous voice, “Oh, why do
 you run so fast, human? We could have had such a good time…”
 ------------------------------------ Failure -----------------------------------
-He/she| starts to chop away at the bed, but his/her| sword is knocked away.  He/she looks up and sees a gigantic black spider.  “Thank you for coming, human; I was just starting to get hungry…”
+He/she| starts to chop away at the bed, but his/her| sword is knocked away.
+He/she looks up and sees a gigantic black spider. “Thank you for coming, human;
+I was just starting to get hungry…”
 ------------------------------------- Shame ------------------------------------
 |Paladin was caught in a web and eaten by a giant spider.
 |]
@@ -195,28 +198,28 @@ He/she| starts to chop away at the bed, but his/her| sword is knocked away.  He/
 found_guarded_door = [story|
 Turning a bend, the paladin sees a door with four guards beside it. Unlike the
 guard outside, these mean business. They draw their swords and shout a battle
-cry as they rush towards you. It probably would have more worrying to the
-palading if there were at least eight guards, but as it is he/she| struck down
-each of them with minimal effort. It’s times like this when the paladin gets
-angry when people like the Dark Lord can get away with harming the surrounding
-countryside with such inferior stock. Well, in fairness this was the fault of
-the paladins for being away so long -- though it’s not really their fault as
-they had to stop the bad kind of apocalypse from happening -- so that no one
-could keep these people in check. Now they have returned, however and things
-were going to change, starting with the Dark Lord |Darklord.
+cry as they rush towards you. It probably would have more worrying to the palad
+if there were at least eight guards, but as it is he/she| struck down each of
+them with minimal effort. It’s times like this when the paladin gets angry when
+people like the Dark Lord can get away with harming the surrounding countryside
+with such inferior stock. Well, in fairness this was in part the fault of the
+paladins for being away so long -- though it’s not really their fault as they
+had to stop the apocalypse from happening -- leaving no one to could keep these
+pests in check. Now the paladins have returned, however and things were going to
+change, starting with the Dark Lord |Darklord.
 
-He opened the door and stepped through me. The Dark Lord was there, sitting on
-his throne, reading a book. He yawned, and said, “Do we really have to do this
-now? I had been planning on taking a night off from killing people so that I can
-enjoy killing them even more tomorrow. Do you want to use one of my rooms for
-the night?”
+After the battle is over, |Paladin opens the door and steps through. The Dark
+Lord sits on his throne reading a book. He yawns and says, “Do we really have to
+do this now? I had been planning on taking a night off from killing people so
+that I can enjoy killing them even more tomorrow. Do you want to use one of my
+rooms for the night?”
 
-The paladin brandished his sword and said, “Have at you!” The Dark Lord drew his
-own black sword from some hidden place in his robe. The paladin immediately
-recognized it as a vampire blade -- a blade that sucks all of the life of its
-victim with a single cut. Also, it has the ability to break through armor if it
-hits head on. The paladin will have to be very careful, as a single hit would
-result in a fate worse than death.
+The paladin brandishes his sword and says, “Have at you!” The Dark Lord replies,
+"Oh, well", and dras his own black sword from some hidden place in his robe. The
+paladin immediately recognizes it as a vampire blade -- a blade that sucks all
+of the life of its victim with a single cut. Also, it has the ability to break
+through armor if it hits head on. The paladin will have to be very careful, as a
+single hit would result in a fate worse than death.
 
 Observing the paladin’s eyes on his sword, he smiles, and the battle begins.
 |]
@@ -231,11 +234,11 @@ lowers the barrier to keep it closed. The guards protest by their voices fade
 away as the paladin closes the door behind him/her|.
 
 The paladin turns to face the Dark Lord. “I am impressed that you were able to
-figure out my cunning trap,” said the Dark Lord. “But I am afraid that here is
+figure out my cunning trap,” says the Dark Lord. “But I am afraid that here is
 where your adventure will end. Have at you!”
 
-As the Dark Lord drew his blade from some hidden place in his robe, the paladin
-gasped on the inside. It was a vampire blade -- a blade that would eat his/her|
+As the Dark Lord draws his blade from some hidden place in his robe, the paladin
+gasps on the inside. It is a vampire blade -- a blade that would eat his/her|
 soul if it made a single cut. Also, it has the ability to break through armor if
 it hits head on. He would have to be incredible cautious.
 
