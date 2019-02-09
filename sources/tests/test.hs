@@ -640,7 +640,7 @@ testTransitionsAreValid name transitions = testGroup name
   [ testCase "All destination nodes are listed in the transitions" $
       let missing_destinations =
             transitions
-              |> map (second $ \Transition{..} → filter (flip notMember transitions) next)
+              |> map (second $ \Transition{..} → filter (flip notMember transitions) (next ^. success_ ⊕ next ^. failure_))
               |> filter (snd >>> onull >>> not)
       in unless (onull missing_destinations) $
           assertFailure $ "Missing destinations in transitions: " ⊕ show missing_destinations

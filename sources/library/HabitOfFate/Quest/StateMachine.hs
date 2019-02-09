@@ -57,7 +57,7 @@ data Transition label = Transition
   { outcomes ∷ StoryOutcomes
   , between_stories ∷ [Story]
   , status_story ∷ Story
-  , next ∷ [label]
+  , next ∷ Tagged [label]
   , extra_subs ∷ Tagged ([(Text, Gendered)])
   } deriving (Eq,Functor,Ord,Read,Show)
 
@@ -113,7 +113,8 @@ trial transitions result scale = do
 
   tryBinomial (1/3) scale >>= bool
     (TryQuestResult QuestInProgress <$> (uniformOrDie current "between" between_stories >>= substitute substitutions))
-    (if onull next
+    (let next_for_result = next ^. taggedLensForResult result
+     in if onull next_for_result
       then case result of
         SuccessResult → endQuest storyForSuccess SuccessResult
         FailureResult → uniformAction
@@ -121,7 +122,7 @@ trial transitions result scale = do
           , endQuest storyForAverted SuccessResult
           ]
       else do
-        next_current ← uniform next
+        next_current ← uniform next_for_result
         put $ old_state { current = next_current }
         case result of
           SuccessResult → continueQuest SuccessResult storyForSuccess

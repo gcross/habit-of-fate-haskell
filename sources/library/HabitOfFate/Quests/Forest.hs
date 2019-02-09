@@ -104,31 +104,34 @@ transitionsFor Internal{..} =
       FairyCircleEvent → [FairyCircle]
       HomeEvent → [Home]
 
+  dup ∷ α → Tagged α
+  dup x = Tagged (Success x) (Failure x)
+
   eventToTransitions ∷ Event → [Label] → [(Label, Transition Label)]
   eventToTransitions GingerbreadHouseEvent next_labels =
     [ ( GingerbreadHouse
-      , Transition gingerbread_house wander_stories looking_for_herb_story next_labels def
+      , Transition gingerbread_house wander_stories looking_for_herb_story (dup next_labels) def
       )
     ]
   eventToTransitions FoundEvent next_labels =
     [ ( FoundByCat
-      , Transition found_by_cat wander_stories looking_for_herb_story next_labels
+      , Transition found_by_cat wander_stories looking_for_herb_story (dup next_labels)
           (Tagged (Success [("catcolor", Gendered "green" Neuter)])
                   (Failure [("catcolor", Gendered "blue" Neuter)])
           )
       )
     , ( FoundByFairy
-      , Transition found_by_fairy wander_stories returning_home_story next_labels def
+      , Transition found_by_fairy wander_stories returning_home_story (dup next_labels) def
       )
     ]
   eventToTransitions FairyCircleEvent next_labels =
     [ ( FairyCircle
-      , Transition fairy_circle wander_stories returning_home_story next_labels def
+      , Transition fairy_circle wander_stories returning_home_story (dup next_labels) def
       )
     ]
   eventToTransitions HomeEvent next_labels =
     [ ( Home
-      , Transition conclusion wander_stories returning_home_story [] def
+      , Transition conclusion wander_stories returning_home_story (dup []) def
       )
     ]
 
