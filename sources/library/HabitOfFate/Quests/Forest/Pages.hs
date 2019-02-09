@@ -162,8 +162,8 @@ pages = buildPages
           "Does She See The Fairy Circle?"
           "A mushroom circle lies just along Adrea's path, but she is too busy looking for a Tigerlamp plant."
           (Choices "Does she see it?"
-            [("Yes",  "towards")
-            ,("No", "away")
+            [("Yes", "away")
+            ,("No",  "towards")
             ]
           )
       , PageItem "away"
