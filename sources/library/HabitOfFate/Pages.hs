@@ -22,6 +22,7 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -37,10 +38,16 @@ import HabitOfFate.Data.Markdown
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
+data PageGroup = GoBackTo
+  { group_id ∷ Text
+  , group_name ∷ Text
+  } deriving (Show)
+
 data Page = Page
   { _title_ ∷ Text
   , _content_ ∷ Markdown
   , _choices_ ∷ PageChoices
+  , _groups_ ∷ [PageGroup]
   } deriving (Show)
 makeLenses ''Page
 
@@ -50,30 +57,31 @@ choices_page_ids_ = choices_ . linked_page_ids_
 type Pages = [(Text, Page)]
 type PageMap = HashMap Text Page
 
-data PageTree = PageGroup Text [PageTree] | PageItem Text Text Story PageChoices
+data PageTree = PageGroup Text (Maybe Text) [PageTree] | PageItem Text Text Story PageChoices
 
 buildPages ∷ MonadThrow m ⇒ Substitutions → PageTree → m Pages
-buildPages subs = go ""
+buildPages subs = go "" [GoBackTo "index" "The Adventures"]
  where
-  go ∷ MonadThrow m ⇒ Text → PageTree → m Pages
-  go prefix (PageItem id title content choices) = do
+  go ∷ MonadThrow m ⇒ Text → [PageGroup] → PageTree → m Pages
+  go id_prefix groups (PageItem id title content choices) = do
     substituted_content ← substitute subs content
-    pure [(prependPrefix id,
-           Page title substituted_content (choices & linked_page_ids_ %~ prependPrefix)
+    pure [(prependIdPrefix id,
+           Page title substituted_content (choices & linked_page_ids_ %~ prependIdPrefix) groups
           )]
    where
-    prependPrefix ∷ Text → Text
-    prependPrefix "" = prefix
-    prependPrefix x = case uncons x of
+    prependIdPrefix ∷ Text → Text
+    prependIdPrefix "" = id_prefix
+    prependIdPrefix x = case uncons x of
       Just ('-', rest) → rest
-      _ → prefix ⊕ "-" ⊕ x
-  go prefix (PageGroup name children) =
-    mapM (go new_prefix) children <&> concat
+      _ → id_prefix ⊕ "-" ⊕ x
+  go id_prefix groups (PageGroup id maybe_name children) =
+    mapM (go new_id_prefix new_groups) children <&> concat
    where
-    new_prefix
-      | onull prefix = name
-      | onull name   = prefix
-      | otherwise    = prefix ⊕ "-" ⊕ name
+    new_groups = maybe groups (\name → GoBackTo new_id_prefix name:groups) maybe_name
+    new_id_prefix
+      | onull id_prefix = id
+      | onull id        = id_prefix
+      | otherwise       = id_prefix ⊕ "-" ⊕ id
 
 data OverlappingPageIds = OverlappingPageIds [(Text,Int)] deriving (Eq,Show)
 instance Exception OverlappingPageIds
@@ -172,5 +180,6 @@ index_pages =
           [ ("A prayer from someone searching for an herb in the Wicked Forest.", "forest")
           ]
         )
+        []
       )
     )

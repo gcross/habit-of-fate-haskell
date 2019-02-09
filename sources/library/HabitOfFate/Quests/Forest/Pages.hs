@@ -52,12 +52,12 @@ pages = buildPages
     , ( "Plant", Gendered "Tigerlamp" Neuter )
     ]
   )
-  ( PageGroup "forest"
+  ( PageGroup "forest" (Just "The Wicked Forest")
     [ PageItem ""
         "Searching For An Essential Ingredient In The Wicked Forest"
         intro_healer_story
         (NoChoice "gingerbread")
-    , PageGroup "gingerbread"
+    , PageGroup "gingerbread" (Just "The Gingerbread House")
       [ PageItem ""
           "The Gingerbread House"
           (gingerbread_house ^. story_common_)
@@ -87,7 +87,7 @@ pages = buildPages
           (gingerbread_house ^. story_averted_)
           (NoChoice "-forest-found")
       ]
-    , PageGroup "found"
+    , PageGroup "found" (Just "The Forest Creature")
       [ PageItem ""
           "Finding the Herb"
           ""
@@ -96,7 +96,7 @@ pages = buildPages
               ,("A fairy.", "fairy")
               ]
             )
-      , PageGroup "cat"
+      , PageGroup "cat" Nothing
         [ PageItem ""
             "Chance Encounter with a Cat"
             (found_by_fairy ^. story_common_)
@@ -126,7 +126,7 @@ pages = buildPages
             (found_by_fairy ^. story_success_)
             (NoChoice "-forest-fairy-circle")
         ]
-      , PageGroup "fairy"
+      , PageGroup "fairy" Nothing
         [ PageItem ""
             "Running After a Fairy"
             (found_by_fairy ^. story_common_)
@@ -157,7 +157,7 @@ pages = buildPages
             DeadEnd
         ]
       ]
-    , PageGroup "fairy-circle"
+    , PageGroup "fairy-circle" (Just "The Circle of Mushrooms")
       [ PageItem ""
           "Does She See The Fairy Circle?"
           "A mushroom circle lies just along Adrea's path, but she is too busy looking for a Tigerlamp plant."
@@ -187,9 +187,9 @@ pages = buildPages
           (fairy_circle ^. story_failure_)
           DeadEnd
       ]
-    , PageGroup "home"
+    , PageGroup "home" (Just "Almost done")
       [ PageItem ""
-          "Tge Right Herb?"
+          "The Right Herb?"
           (conclusion_parent ^. story_common_)
           (Choices "What plant Did Andrea bring the right herb to the healer?"
             [("A Tigerlamp Plant", "victory")

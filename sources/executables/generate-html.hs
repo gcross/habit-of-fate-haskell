@@ -93,15 +93,26 @@ main = do
           H.div ! A.class_ "logo_entry" $ H.img ! A.src "treasure-chest.png" ! A.width "100px"
           H.div ! A.class_ "logo_entry" $ H.a ! A.href "index.html" $ H.img ! A.src "logo.svg" ! A.width "300px"
           H.div ! A.class_ "logo_entry" $ H.img ! A.src "grave.svg" ! A.width "100px"
+        let showBackToChoices =
+              H.ul $ forM_ (page ^. groups_) $ \GoBackTo{..} →
+                H.li $ H.a ! A.href (H.toValue $ group_id ⊕ ".html") $ H.toHtml group_name
         H.div $ do
           H.h1 $ toHtml (page ^. title_)
           renderMarkdownToHtml $ page ^. content_
           case page ^. choices_ of
-            DeadEnd → H.b $ H.toHtml ("You have reached the end." ∷ Text)
-            NoChoice c_ref → H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml ("Continue." ∷ Text)
+            DeadEnd → do
+              H.b $ H.toHtml ("You have reached the end.  Go back to..." ∷ Text)
+              showBackToChoices
+            NoChoice c_ref → do
+              H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml ("Continue." ∷ Text)
+              H.br >> H.hr >> H.br >> H.toHtml ("Or, go back to..." ∷ Text)
+              showBackToChoices
             Choices question choices → do
               H.h2 $ H.toHtml question
               H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (H.toValue $ c_ref ⊕ ".html") $ H.toHtml c
+              unless (page_id == "index") $ do
+                H.br >> H.hr >> H.br >> H.toHtml ("Or, go back to..." ∷ Text)
+                showBackToChoices
   forM_
     [ ("css", "style.css")
     , ("images", "grave.svg")
