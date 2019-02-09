@@ -260,26 +260,28 @@ he says, laughing.
 first_stage_event = [story_outcomes|
 ------------------------------------ Common ------------------------------------
 ------------------------------------ Success -----------------------------------
-With a mighty blow, the paladin slices off the Dark Lord’s arm. Blood starts to
-spray.
+The battle is a whirlwind of strike and counterstrike until eventually with a
+mighty blow the paladin slices off the Dark Lord’s arm. Blood starts to spray.
 
 “Give up!” shouts the paladin, “And I will find a healer for you.”
 
-The Dark Lord chuckled. “This is only a flesh wound!” He reached into his pouch
-with his remaining arm and pulled out <i>another vampire sword</i>. “How on
-earth could he have two?” thinks the paladin.
+The Dark Lord chuckles. “This is only a flesh wound!” He reached into his pouch
+with his remaining arm and pulls out *another vampire sword*. “How on earth
+could he have two?” thinks the paladin.
 
 The Dark Lord brandishes the sword. “Have at you!” he says.
 -------------------------------- Averted/Failure -------------------------------
-The paladin fails to block a blow.
+The battle is a whirlwind of strike and counterstrike until eventually the
+paladin fails to block a blow.
 ------------------------------------ Averted -----------------------------------
-Happily, he was able to duck out of the way as the hungry blade flew past his neck.
+Happily, he was able to duck out of the way as the hungry blade flies past his
+neck.
 ------------------------------------ Failure -----------------------------------
 The vampire sword hits his/her| neck straight on and makes it half way through
 before stopping; this is not because there is not enough force but because the
 blade refuses to leave the flesh so that it can eat the paladin’s soul.
 
-The paladin screams in agony as his/her| life energy is ripped from his body, as
+The paladin screams in agony as his/her| life energy is ripped from his body as
 it feeds the blade. The last thing that he/she| remembers is floating into a
 gigantic, hungry mouth, and the Dark Lord saying, “Good boy!” just before the
 mouth completely devours him/her|.
@@ -290,18 +292,18 @@ mouth completely devours him/her|.
 second_phase_fighting = first_phase_fighting
 
 second_stage_event = first_stage_event & story_success_ .~ [story|
-With another might blow the paladin slices off the Dark Lord’s other arm. Even
+With another mighty blow the paladin slices off the Dark Lord’s other arm. Even
 more blood starts to spray.
 
 “Give up!” shouts the paladin, “There is no possible way you can win -- you have
 no arms!”
 
-“Do you really think that such a minor scratch would be enough to make me unable
-to kill you, paladin?” He kicked a leg while twisting it and a dagger -- this
-also a vampire blade -- emerged at his foot. He rushed at the paladin, hopping
-on one foot.
+“Do you really think that such a minor scratch is enough to make me unable to
+kill you, paladin?” He kicks a leg while twisting it and a dagger -- also a
+vampire blade -- emerges at his foot. He rushes at the paladin, hopping on one
+foot.
 
-“For the love of…” the paladin said as he met the attack.
+“For the love of...” the paladin said as he met the attack.
 |]
 
 third_phase_fighting = [stories|
@@ -318,10 +320,10 @@ he says, laughing.
 
 third_stage_event = first_stage_event & story_success_ .~ [story|
 Although it was an awkward angle, the paladin manages to chop off the leg with a
-dagger. The Dark Lord almost fell, but somehow stays stable on his single leg.
-“Give up you idiot!” said the paladin. “You can’t win with only a single leg.”
-“Oh can’t I?” With another twist and a kick a dagger emerged from his remaining
-foot. He hops and kicks his way towards the paladin.
+dagger. The Dark Lord almost wfallsell, but somehow stays stable on his single
+leg. “Give up you idiot!” said the paladin. “You can’t win with only a single
+leg.” “Oh can’t I?” With another twist and a kick a dagger emerges from his
+remaining foot. He hops and kicks his way towards the paladin.
 
 The paladin groans; this was definitely not covered in the paladin manual.
 |]
@@ -349,7 +351,7 @@ They all turned around and took off.
 Some things never get hold.
 
 He/she| starts his way to the Paladin’s Guild in order to get another mission.
-As he does so, he was stopped by every village on the way to hold a feast on his
-honor, and everywhere he goes he/she sings of the greatness of you, the God of
-Fate.
+As he/she| does so, he was stopped by every village on the way to hold a feast
+on his honor, and everywhere he goes he/she| sings of the greatness of you, the
+God of Fate.
 |]
