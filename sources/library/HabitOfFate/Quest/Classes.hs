@@ -27,8 +27,8 @@ import HabitOfFate.Substitution
 class AllocateName m where
   allocateName ∷ Gender → m Gendered
 
-class ChooseFrom m where
+class Monad m ⇒ ChooseFrom m where
   chooseFrom ∷ [α] → m α
 
-class ShuffleFrom m where
+class Monad m ⇒ ShuffleFrom m where
   shuffleFrom ∷ [α] → m [α]

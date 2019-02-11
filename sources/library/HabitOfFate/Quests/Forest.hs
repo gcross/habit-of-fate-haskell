@@ -38,7 +38,6 @@ import HabitOfFate.Prelude hiding (State)
 import Control.Monad.Random (getRandomR, uniform)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import System.Random.Shuffle
 
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
@@ -54,7 +53,7 @@ import HabitOfFate.Quests.Forest.Stories
 ------------------------------------ Types -------------------------------------
 --------------------------------------------------------------------------------
 
-data SearcherType = Parent | Healer deriving (Eq,Ord,Read,Show)
+data SearcherType = Parent | Healer deriving (Bounded,Enum,Eq,Ord,Read,Show)
 deriveJSON ''SearcherType
 
 data Event = GingerbreadHouseEvent | FoundEvent | FairyCircleEvent | HomeEvent
@@ -139,28 +138,28 @@ transitionsFor Internal{..} =
     Parent → conclusion_parent
     Healer → conclusion_healer
 
-plants ∷ Vector Text
-plants = V.fromList
+plants ∷ [Text]
+plants =
   ["Illsbane"
   ,"Tigerlamp"
   ]
 
 initialize ∷ InitializeQuestRunner State
 initialize = do
-  searcher_type ← uniform [Parent, Healer]
+  searcher_type ← chooseFromAll
   searcher ← allocateAny
   child ← allocateAny
-  i ← getRandomR (0, olength plants-1)
+  plant ← chooseFrom plants
   let substitutions = mapFromList
         [("", searcher)
         ,("Searcher", searcher)
         ,("Child", child)
-        ,("Plant", Gendered (plants ^?! ix i) Neuter)
+        ,("Plant", Gendered plant Neuter)
         ]
-  event_order ← shuffleM [GingerbreadHouseEvent, FoundEvent, FairyCircleEvent]
+  event_order ← shuffleFrom [GingerbreadHouseEvent, FoundEvent, FairyCircleEvent]
   first_label ← case event_order ^?! _head of
     GingerbreadHouseEvent → pure GingerbreadHouse
-    FoundEvent → uniform [FoundByCat, FoundByFairy]
+    FoundEvent → chooseFrom [FoundByCat, FoundByFairy]
     FairyCircleEvent → pure FairyCircle
     _ → error "unexpected element in event order"
   let introduction = case searcher_type of

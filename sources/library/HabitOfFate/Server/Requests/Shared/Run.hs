@@ -40,6 +40,7 @@ import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quest.Runners.GetStatus.Transaction as GetStatus
+import qualified HabitOfFate.Quest.Runners.Initialize.Transaction as Initialize
 import HabitOfFate.Quests
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.GetQuestStatus
@@ -52,7 +53,7 @@ runGame = do
   case maybe_current_quest_state of
     Nothing → do
       WrappedQuest quest ← uniform quests
-      InitializeQuestResult quest_state intro_event ← questInitialize quest
+      InitializeQuestResult quest_state intro_event ← Initialize.runInTransaction $ questInitialize quest
       maybe_current_quest_state_ .= Just (questPrism quest # quest_state)
       pure intro_event
     Just current_quest_state → do

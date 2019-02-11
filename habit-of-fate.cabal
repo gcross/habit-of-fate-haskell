@@ -117,6 +117,8 @@ library
                      , HabitOfFate.Quest.Classes
                      , HabitOfFate.Quest.Runners.GetStatus
                      , HabitOfFate.Quest.Runners.GetStatus.Transaction
+                     , HabitOfFate.Quest.Runners.Initialize
+                     , HabitOfFate.Quest.Runners.Initialize.Transaction
                      , HabitOfFate.Quest.StateMachine
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest

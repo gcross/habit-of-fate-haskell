@@ -24,6 +24,8 @@
 
 module HabitOfFate.Quest
   ( AllocateName(..)
+  , ChooseFrom(..)
+  , ShuffleFrom(..)
 
   , InitializeQuestResult(..)
   , RunQuestResult(..)
@@ -35,6 +37,7 @@ module HabitOfFate.Quest
   , TrialQuestRunner
 
   , allocateAny
+  , chooseFromAll
   , uniformAction
   , weightedAction
   ) where
@@ -49,13 +52,17 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Quest.Classes
 import qualified HabitOfFate.Quest.Runners.GetStatus as GetStatus
+import qualified HabitOfFate.Quest.Runners.Initialize as Initialize
 import HabitOfFate.Substitution
 
-allocateAny ∷ (AllocateName m, MonadRandom m) ⇒ m Gendered
+allocateAny ∷ (AllocateName m, ChooseFrom m) ⇒ m Gendered
 allocateAny =
-  getRandom
+  chooseFromAll
   >>=
   bool (allocateName Male) (allocateName Female)
+
+chooseFromAll ∷ (Bounded α, Enum α, ChooseFrom m) ⇒ m α
+chooseFromAll = chooseFrom [minBound .. maxBound]
 
 uniformAction ∷ MonadRandom m ⇒ [m α] → m α
 uniformAction = uniform >>> join
@@ -82,6 +89,6 @@ data TryQuestResult = TryQuestResult
   , tryQuestEvent ∷ Markdown
   }
 
-type InitializeQuestRunner s = ∀ m. (AllocateName m, MonadRandom m, MonadThrow m) ⇒ m (InitializeQuestResult s)
+type InitializeQuestRunner s = Initialize.Program (InitializeQuestResult s)
 type GetStatusQuestRunner s = GetStatus.Program s Markdown
 type TrialQuestRunner s = ∀ m. (MonadState s m, MonadRandom m, MonadThrow m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
