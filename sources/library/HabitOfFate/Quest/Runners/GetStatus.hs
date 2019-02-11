@@ -35,7 +35,7 @@ import HabitOfFate.Quest.Classes
 data Instruction s α where
   Instruction_Ask ∷ Instruction s s
   Instruction_ChooseFrom ∷ [α] → Instruction s α
-  -- Instruction_Local ∷ (s → s) → InnerProgram s α → Instruction s α
+  Instruction_Local ∷ (s → s) → InnerProgram s α → Instruction s α
   Instruction_Throw ∷ Exception e ⇒ e → Instruction s α
 
 type InnerProgram s = Operational.Program (Instruction s)
@@ -54,8 +54,7 @@ instance ChooseFrom (Program s) where
 
 instance MonadReader s (Program s) where
   ask = wrapConstant Instruction_Ask
-  -- local f (Program inner) = Operational.singleton >>> Program $ Instruction_Local f inner
-  local _ _ = error "local not implemented for GetStatus"
+  local f (Program inner) = Operational.singleton >>> Program $ Instruction_Local f inner
 
 instance MonadThrow (Program s) where
   throwM = wrapFunction Instruction_Throw

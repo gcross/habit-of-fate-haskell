@@ -38,4 +38,5 @@ runInTransaction state = unwrapProgram >>> interpretWithMonad interpret
   interpret ∷ ∀ β. Instruction s β → Transaction β
   interpret  Instruction_Ask = pure state
   interpret (Instruction_ChooseFrom list) = uniform list
+  interpret (Instruction_Local f action) = runInTransaction (f state) (Program action)
   interpret (Instruction_Throw exc) = throwM exc
