@@ -169,7 +169,10 @@ initialize = do
   StateMachine.initialize substitutions first_label Internal{..} introduction
 
 getStatus ∷ GetStatusQuestRunner State
-getStatus s = StateMachine.getStatus (s |> StateMachine.internal |> transitionsFor) s
+getStatus =
+  (ask <&> (StateMachine.internal >>> transitionsFor))
+  >>=
+  StateMachine.getStatus
 
 trial ∷ TrialQuestRunner State
 trial result scale = do

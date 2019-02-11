@@ -41,6 +41,7 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Quests
 import HabitOfFate.Server.Common
+import HabitOfFate.Server.Requests.Shared.GetQuestStatus
 import HabitOfFate.Server.Transaction
 import HabitOfFate.Substitution
 
@@ -84,7 +85,7 @@ runGame = do
                     maybe_current_quest_state_ .= Just (new_quest_state ^. re (questPrism quest))
                 pure event
               Nothing →
-                questGetStatus quest quest_state
+                runGetQuestStatus quest quest_state
       runCurrentQuest run current_quest_state
 
 handleApi ∷ Environment → ScottyM ()

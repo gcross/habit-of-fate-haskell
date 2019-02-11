@@ -14,22 +14,27 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Requests.Shared.GetQuestStatus where
 
 import HabitOfFate.Prelude
 
-import qualified Data.Text.Lazy as Lazy
+import Control.Monad.Catch (MonadThrow(..))
+import Control.Monad.Operational (interpretWithMonad)
+import Control.Monad.Random (uniform)
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Quest.Runners.GetStatus
 import HabitOfFate.Quests
 import HabitOfFate.Server.Transaction
-import HabitOfFate.Substitution
 
 getQuestStatus ∷ Transaction Markdown
 getQuestStatus =
@@ -37,7 +42,16 @@ getQuestStatus =
   >>=
   maybe
     (pure $ Markdown "You are between quests.")
-    (runCurrentQuest run)
-  where
-   run ∷ ∀ s. Quest s → s → Transaction Markdown
-   run quest quest_state = questGetStatus quest quest_state
+    (runCurrentQuest runGetQuestStatus)
+
+runGetQuestStatus ∷ ∀ s. Quest s → s → Transaction Markdown
+runGetQuestStatus quest quest_state =
+  quest
+    |> questGetStatus
+    |> unwrapProgram
+    |> interpretWithMonad interpret
+ where
+  interpret ∷ ∀ α. Instruction s α → Transaction α
+  interpret  Instruction_Ask = pure quest_state
+  interpret (Instruction_ChooseFrom list) = uniform list
+  interpret (Instruction_Throw exc) = throwM exc

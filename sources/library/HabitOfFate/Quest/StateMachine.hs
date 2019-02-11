@@ -76,7 +76,8 @@ instance Exception NoSuchTransitionException where
   displayException (NoSuchTransitionException label) = [i|No such state label #{label}|]
 
 getStatus ∷ (Show label, Eq label) ⇒ Transitions label → GetStatusQuestRunner (State label s)
-getStatus states State{..} =
+getStatus states =
+  ask >>= \State{..} →
   case lookup current states of
     Nothing → throwM $ NoSuchTransitionException current
     Just Transition{..} → substitute substitutions status_story

@@ -22,19 +22,46 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Quest where
+module HabitOfFate.Quest
+  ( AllocateName(..)
+
+  , InitializeQuestResult(..)
+  , RunQuestResult(..)
+  , QuestStatus(..)
+  , TryQuestResult(..)
+
+  , InitializeQuestRunner
+  , GetStatusQuestRunner
+  , TrialQuestRunner
+
+  , allocateAny
+  , uniformAction
+  , weightedAction
+  ) where
 
 import HabitOfFate.Prelude
 
 import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random
-import Data.Vector (Vector)
 
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
-import HabitOfFate.Names
+import HabitOfFate.Quest.Classes
+import qualified HabitOfFate.Quest.Runners.GetStatus as GetStatus
 import HabitOfFate.Substitution
+
+allocateAny ∷ (AllocateName m, MonadRandom m) ⇒ m Gendered
+allocateAny =
+  getRandom
+  >>=
+  bool (allocateName Male) (allocateName Female)
+
+uniformAction ∷ MonadRandom m ⇒ [m α] → m α
+uniformAction = uniform >>> join
+
+weightedAction ∷ MonadRandom m ⇒ [(m α, Rational)] → m α
+weightedAction = weighted >>> join
 
 data InitializeQuestResult α = InitializeQuestResult
   { initialQuestState ∷ α
@@ -55,21 +82,6 @@ data TryQuestResult = TryQuestResult
   , tryQuestEvent ∷ Markdown
   }
 
-class MonadAllocateName m where
-  allocateName ∷ Gender → m Gendered
-
-allocateAny ∷ (MonadAllocateName m, MonadRandom m) ⇒ m Gendered
-allocateAny =
-  getRandom
-  >>=
-  bool (allocateName Male) (allocateName Female)
-
-type InitializeQuestRunner s = ∀ m. (MonadAllocateName m, MonadRandom m, MonadThrow m) ⇒ m (InitializeQuestResult s)
-type GetStatusQuestRunner s = ∀ m. s → (MonadRandom m, MonadThrow m) ⇒ m Markdown
+type InitializeQuestRunner s = ∀ m. (AllocateName m, MonadRandom m, MonadThrow m) ⇒ m (InitializeQuestResult s)
+type GetStatusQuestRunner s = GetStatus.Program s Markdown
 type TrialQuestRunner s = ∀ m. (MonadState s m, MonadRandom m, MonadThrow m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
-
-uniformAction ∷ MonadRandom m ⇒ [m α] → m α
-uniformAction = uniform >>> join
-
-weightedAction ∷ MonadRandom m ⇒ [(m α, Rational)] → m α
-weightedAction = weighted >>> join

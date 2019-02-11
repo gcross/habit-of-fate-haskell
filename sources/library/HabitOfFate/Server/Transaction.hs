@@ -63,7 +63,7 @@ import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Logging
 import HabitOfFate.Names
-import HabitOfFate.Quest
+import HabitOfFate.Quest.Classes
 import HabitOfFate.Server.Actions.Queries (authorizeWith)
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
@@ -220,7 +220,7 @@ data OutOfCharacters = OutOfCharacters deriving (Eq,Show)
 instance Exception OutOfCharacters where
   displayException _ = "Out of names!"
 
-instance MonadAllocateName Transaction where
+instance AllocateName Transaction where
   allocateName gender = do
     appeared ← use appeared_
     let go n
@@ -239,7 +239,7 @@ instance MonadAllocateName Transaction where
       Female → female_names
       Neuter → error "Neuter names not supported yet."
 
-instance (Monad m, MonadAllocateName m) ⇒ MonadAllocateName (StateT s m) where
+instance (Monad m, AllocateName m) ⇒ AllocateName (StateT s m) where
   allocateName gender = lift $ allocateName gender
 
 marksArePresent ∷ Transaction Bool

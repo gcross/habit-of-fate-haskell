@@ -114,6 +114,8 @@ library
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
                      , HabitOfFate.Quest
+                     , HabitOfFate.Quest.Classes
+                     , HabitOfFate.Quest.Runners.GetStatus
                      , HabitOfFate.Quest.StateMachine
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
