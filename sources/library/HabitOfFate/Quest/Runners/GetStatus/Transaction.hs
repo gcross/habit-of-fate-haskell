@@ -1,6 +1,6 @@
 {-
     Habit of Fate, a game to incentivize habit formation.
-    Copyright (C) 2017 Gregory Crosswhite
+    Copyright (C) 2019 Gregory Crosswhite
 
     This program is free software: you can redistribute it and/or modify
     it under version 3 of the terms of the GNU Affero General Public License.
@@ -14,30 +14,28 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE AutoDeriveTypeable #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Shared.GetQuestStatus where
+module HabitOfFate.Quest.Runners.GetStatus.Transaction where
 
 import HabitOfFate.Prelude
 
-import HabitOfFate.Data.Account
-import HabitOfFate.Data.Markdown
-import HabitOfFate.Quest.Runners.GetStatus.Transaction
-import HabitOfFate.Quests
+import Control.Monad.Catch (MonadThrow(throwM))
+import Control.Monad.Operational (interpretWithMonad)
+import Control.Monad.Random (uniform)
+
+import HabitOfFate.Quest.Runners.GetStatus
 import HabitOfFate.Server.Transaction
 
-getQuestStatus ∷ Transaction Markdown
-getQuestStatus =
-  use maybe_current_quest_state_
-  >>=
-  maybe
-    (pure $ Markdown "You are between quests.")
-    (runCurrentQuest $ flip runGetQuestStatus)
-
-runGetQuestStatus ∷ s → Quest s → Transaction Markdown
-runGetQuestStatus quest_state = questGetStatus >>> runInTransaction quest_state
+runInTransaction ∷ ∀ s α. s → Program s α → Transaction α
+runInTransaction state = unwrapProgram >>> interpretWithMonad interpret
+ where
+  interpret ∷ ∀ β. Instruction s β → Transaction β
+  interpret  Instruction_Ask = pure state
+  interpret (Instruction_ChooseFrom list) = uniform list
+  interpret (Instruction_Throw exc) = throwM exc
