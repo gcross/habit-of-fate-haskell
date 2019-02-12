@@ -33,17 +33,13 @@ module HabitOfFate.Quest.StateMachine where
 import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Catch (MonadThrow(..), Exception(..))
-import Control.Monad.Random (MonadRandom,uniform)
 
-import HabitOfFate.Data.Deed
-import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 import HabitOfFate.TH
-import HabitOfFate.Trial
 
 data State label s = State
   { substitutions ∷ HashMap Text Gendered
@@ -89,46 +85,36 @@ instance Exception MissingStory where
   displayException (MissingStory label category) =
     [i|Missing any story of category "#{category}" for state labeled #{label}.|]
 
-uniformOrDie ∷ (MonadRandom m, MonadThrow m, Show label) ⇒ label → Text → [x] → m x
-uniformOrDie label name list
-  | onull list = throwM $ MissingStory label name
-  | otherwise = uniform list
-
 trial ∷ (Eq label, Show label) ⇒ Transitions label → TrialQuestRunner (State label s)
-trial transitions result scale = do
+trial transitions result = do
   old_state@State{..} ← get
   Transition{..} ← maybe (throwM $ NoSuchTransitionException current) pure $ lookup current transitions
-  let sub ∷ MonadThrow m ⇒ SuccessOrFailureResult → Story → m Markdown
-      sub result = substitute (substitutions ⊕ mapFromList (extra_subs ^. taggedLensForResult result))
+  let sub result = substitute (substitutions ⊕ mapFromList (extra_subs ^. taggedLensForResult result))
 
-      continueQuest ∷ MonadThrow m ⇒ SuccessOrFailureResult → (StoryOutcomes → Story) → m TryQuestResult
       continueQuest result storyFor = TryQuestResult QuestInProgress <$> (sub result $ storyFor outcomes)
 
-      endQuest ∷ (MonadRandom m, MonadThrow m) ⇒ (StoryOutcomes → Story) → SuccessOrFailureResult → m TryQuestResult
       endQuest storyFor result = do
-        let (lens_name, deed_lens_)  = case result of
-              SuccessResult → ("fame", story_fame_)
-              FailureResult → ("shame", story_shame_)
-        text ← uniformOrDie current lens_name (outcomes ^. deed_lens_) >>= sub result
+        let deed_lens_  = case result of
+              SuccessResult → story_fame_
+              FailureResult → story_shame_
+        text ← chooseFrom (outcomes ^. deed_lens_) >>= sub result
         TryQuestResult (QuestHasEnded result text) <$> (sub result $ storyFor outcomes)
 
-  tryBinomial (1/3) scale >>= bool
-    (TryQuestResult QuestInProgress <$> (uniformOrDie current "between" between_stories >>= substitute substitutions))
+  tryProgress
+    (TryQuestResult QuestInProgress <$> chooseFromAndSubstitute between_stories substitutions)
     (let next_for_result = next ^. taggedLensForResult result
      in if onull next_for_result
       then case result of
         SuccessResult → endQuest storyForSuccess SuccessResult
-        FailureResult → uniformAction
-          [ endQuest storyForFailure FailureResult
-          , endQuest storyForAverted SuccessResult
-          ]
+        FailureResult → tryAverted $ Tagged
+          (Success $ endQuest storyForAverted SuccessResult)
+          (Failure $ endQuest storyForFailure FailureResult)
       else do
-        next_current ← uniform next_for_result
+        next_current ← chooseFrom next_for_result
         put $ old_state { current = next_current }
         case result of
           SuccessResult → continueQuest SuccessResult storyForSuccess
-          FailureResult → uniformAction
-            [ endQuest storyForFailure FailureResult
-            , continueQuest FailureResult storyForAverted
-            ]
+          FailureResult → tryAverted $ Tagged
+            (Success $ continueQuest FailureResult storyForAverted)
+            (Failure $ endQuest storyForFailure FailureResult)
     )

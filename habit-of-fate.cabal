@@ -119,6 +119,8 @@ library
                      , HabitOfFate.Quest.Runners.GetStatus.Transaction
                      , HabitOfFate.Quest.Runners.Initialize
                      , HabitOfFate.Quest.Runners.Initialize.Transaction
+                     , HabitOfFate.Quest.Runners.Trial
+                     , HabitOfFate.Quest.Runners.Trial.Transaction
                      , HabitOfFate.Quest.StateMachine
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest

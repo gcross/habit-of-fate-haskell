@@ -174,8 +174,8 @@ getStatus =
   StateMachine.getStatus
 
 trial ∷ TrialQuestRunner State
-trial result scale = do
+trial result = do
   internal@Internal{..} ← get <&> StateMachine.internal
   let transitions = transitionsFor internal
-  outcome ← StateMachine.trial transitions result scale
+  outcome ← StateMachine.trial transitions result
   pure outcome

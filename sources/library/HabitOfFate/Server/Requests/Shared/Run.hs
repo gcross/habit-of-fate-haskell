@@ -41,6 +41,7 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quest.Runners.GetStatus.Transaction as GetStatus
 import qualified HabitOfFate.Quest.Runners.Initialize.Transaction as Initialize
+import qualified HabitOfFate.Quest.Runners.Trial.Transaction as Trial
 import HabitOfFate.Quests
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.GetQuestStatus
@@ -60,23 +61,19 @@ runGame = do
       let run ∷ ∀ s. Quest s → s → Transaction Markdown
           run quest quest_state = do
             marks ← use marks_
-            maybe_runQuestTrial ←
-              case uncons (marks ^. success_) of
-                Just (scale, rest) → do
-                  marks_ . success_ .= rest
-                  pure $ Just $ questTrial >>> ($ SuccessResult) >>> ($ scale)
-                Nothing →
-                  case uncons (marks ^. failure_) of
-                    Just (scale, rest) → do
-                      marks_ . failure_ .= rest
-                      pure $ Just $ questTrial >>> ($ FailureResult) >>> ($ scale)
-                    Nothing →
-                      pure Nothing
-            case maybe_runQuestTrial of
-              Just runQuestTrial → do
+            let mark_properties =
+                  case (uncons (marks ^. success_), uncons (marks ^. failure_)) of
+                    (Just (scale, rest), _) → Just (scale, success_, rest, SuccessResult)
+                    (_, Just (scale, rest)) → Just (scale, failure_, rest, FailureResult)
+                    _                       → Nothing
+            case mark_properties of
+              Just (scale, lens_, rest, result) → do
+                marks_ . lens_ .= rest
                 (TryQuestResult quest_status event, new_quest_state) ←
                   quest
-                    |> runQuestTrial
+                    |> questTrial
+                    |> ($ result)
+                    |> Trial.runInTransaction scale
                     |> flip runStateT quest_state
                 case quest_status of
                   QuestHasEnded result text → do

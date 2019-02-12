@@ -37,7 +37,10 @@ module HabitOfFate.Quest
   , TrialQuestRunner
 
   , allocateAny
+  , chooseFromAndSubstitute
   , chooseFromAll
+  , tryAverted
+  , tryProgress
   , uniformAction
   , weightedAction
   ) where
@@ -48,11 +51,12 @@ import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random
 
 import HabitOfFate.Data.Markdown
-import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Quest.Classes
 import qualified HabitOfFate.Quest.Runners.GetStatus as GetStatus
 import qualified HabitOfFate.Quest.Runners.Initialize as Initialize
+import qualified HabitOfFate.Quest.Runners.Trial as Trial
+import HabitOfFate.Quest.Runners.Trial (tryAverted, tryProgress)
 import HabitOfFate.Substitution
 
 allocateAny ∷ (AllocateName m, ChooseFrom m) ⇒ m Gendered
@@ -60,6 +64,10 @@ allocateAny =
   chooseFromAll
   >>=
   bool (allocateName Male) (allocateName Female)
+
+chooseFromAndSubstitute ∷ (ChooseFrom m, MonadThrow m) ⇒ [Story] → Substitutions → m Markdown
+chooseFromAndSubstitute stories substitutions =
+  chooseFrom stories >>= substitute substitutions
 
 chooseFromAll ∷ (Bounded α, Enum α, ChooseFrom m) ⇒ m α
 chooseFromAll = chooseFrom [minBound .. maxBound]
@@ -91,4 +99,4 @@ data TryQuestResult = TryQuestResult
 
 type InitializeQuestRunner s = Initialize.Program (InitializeQuestResult s)
 type GetStatusQuestRunner s = GetStatus.Program s Markdown
-type TrialQuestRunner s = ∀ m. (MonadState s m, MonadRandom m, MonadThrow m) ⇒ SuccessOrFailureResult → Scale → m TryQuestResult
+type TrialQuestRunner s = SuccessOrFailureResult → Trial.Program s TryQuestResult
