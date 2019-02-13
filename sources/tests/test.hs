@@ -42,27 +42,19 @@ import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
 import Data.CallStack
-import Data.Int
 import Data.Time.Calendar
-import Data.Time.Calendar.WeekDate
 import Data.Time.Clock
-import Data.Time.Format
 import Data.Time.LocalTime
 import qualified Data.Text.Lazy as Lazy
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
-import qualified Data.Vector as V
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
-import System.Random (StdGen)
 import Test.QuickCheck hiding (Failure, Success)
-import Test.QuickCheck.Gen (chooseAny)
-import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons1, cons2, cons3)
-import Test.Tasty (TestTree, defaultMain, testGroup)
-import qualified Test.Tasty.HUnit as HUnit
+import Test.Tasty (TestTree, testGroup)
 import qualified Test.Tasty.SmallCheck as SC
 import qualified Test.Tasty.QuickCheck as QC
 import Data.Time.Zones.All
@@ -73,15 +65,12 @@ import Web.Scotty (Parsable(..))
 import HabitOfFate.API
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
-import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
-import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
-import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import qualified HabitOfFate.Quests.Forest.Stories as Forest
@@ -92,220 +81,11 @@ import HabitOfFate.Story
 import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
-
-dayHour d h = LocalTime (ModifiedJulianDay d) (TimeOfDay h 0 0)
-day = flip dayHour 0
-
-newtype LocalToSecond = LocalToSecond LocalTime deriving (Eq, Ord, Show)
-instance Arbitrary LocalToSecond where
-  arbitrary =
-    LocalToSecond
-      <$> (LocalTime
-            <$> (ModifiedJulianDay <$> choose (0, 999999))
-            <*> (TimeOfDay <$> choose (0, 23) <*> choose (0, 59) <*> (fromIntegral <$> choose (0 ∷ Int, 59)))
-          )
-
-day_of_week_names ∷ [String]
-day_of_week_names = ["M", "T", "W", "Th", "F", "Sat", "Sun"]
-
-repeatDays ∷ DaysToRepeat → String
-repeatDays days_to_repeat =
-  intercalate "+"
-    [ day_of_week_name
-    | (days_to_repeat_lens_, day_of_week_name) ←
-        zip (V.toList days_to_repeat_lenses) day_of_week_names
-    , days_to_repeat ^# days_to_repeat_lens_
-    ]
-
-instance Arbitrary DaysToKeep where
-  arbitrary = do
-    n ← arbitrary `suchThat` (> 0)
-    elements [KeepNumberOfDays, KeepDaysInPast] <&> ($ n)
-
-instance Arbitrary DaysToRepeat where
-  arbitrary =
-    (DaysToRepeat
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-    )
-    `suchThat`
-    (/= def)
-
-instance Arbitrary Repeated where
-  arbitrary = oneof [Daily <$> arbitrary, Weekly <$> arbitrary <*> arbitrary]
-
-instance Arbitrary Frequency where
-  arbitrary = oneof
-    [ pure Indefinite
-    , Once <$> arbitrary
-    , Repeated <$> arbitrary <*> arbitrary <*> arbitrary
-    ]
-
-instance Arbitrary Scale where arbitrary = elements [None, VeryLow .. VeryHigh]
-
-instance Arbitrary α ⇒ Arbitrary (Tagged α) where
-  arbitrary = Tagged <$> (Success <$> arbitrary) <*> (Failure <$> arbitrary)
-
-instance Arbitrary UUID where arbitrary = chooseAny
-
-instance Arbitrary α ⇒ Arbitrary (ItemsSequence α) where
-  arbitrary = arbitrary <&> itemsFromList
-
-instance Arbitrary Habit where
-  arbitrary =
-    Habit
-      <$> (arbitrary <&> pack)
-      <*> arbitrary
-      <*> arbitrary
-      <*> (arbitrary <&> setFromList)
-      <*> arbitrary
-
-instance Monad m ⇒ Serial m Forest.Label where
-  series =
-      cons0 Forest.GingerbreadHouse
-   \/ cons0 Forest.FoundByCat
-   \/ cons0 Forest.FoundByFairy
-   \/ cons0 Forest.FairyCircle
-   \/ cons0 Forest.Home
-
-instance Monad m ⇒ Serial m Gender where
-  series = cons0 Male \/ cons0 Female \/ cons0 Neuter
-
-instance Monad m ⇒ Serial m Text where
-  series = series <&> pack
-
-instance Monad m ⇒ Serial m Gendered where
-  series = cons2 Gendered
-
-instance Monad m ⇒ Serial m (HashMap Text Gendered) where
-  series = series <&> mapFromList
-
-instance Monad m ⇒ Serial m (Forest.SearcherType) where
-  series = cons0 Forest.Parent \/ cons0 Forest.Healer
-
-instance Monad m ⇒ Serial m (Forest.Event) where
-  series = cons0 Forest.GingerbreadHouseEvent
-        \/ cons0 Forest.FoundEvent
-        \/ cons0 Forest.FairyCircleEvent
-        \/ cons0 Forest.HomeEvent
-
-instance Monad m ⇒ Serial m (Forest.Internal) where
-  series = cons3 Forest.Internal
-
-instance (Serial m label, Serial m s, Monad m) ⇒ Serial m (StateMachine.State label s) where
-  series = cons3 StateMachine.State
-
-instance Monad m ⇒ Serial m CurrentQuestState where
-  series = cons1 Forest
-
-instance Monad m ⇒ Serial m Scale where
-  series =
-       cons0 None
-    \/ cons0 VeryLow
-    \/ cons0 Low
-    \/ cons0 Medium
-    \/ cons0 High
-    \/ cons0 VeryHigh
-
-instance Arbitrary Text where
-  arbitrary = arbitrary <&> pack
-
-instance Arbitrary Gender where
-  arbitrary = elements [Male, Female, Neuter]
-
-instance Arbitrary Gendered where
-  arbitrary = Gendered <$> arbitrary <*> arbitrary
-
-instance Arbitrary (HashMap Text Gendered) where
-  arbitrary = arbitrary <&> mapFromList
-
-instance Arbitrary Forest.Label where
-  arbitrary = elements
-    [ Forest.GingerbreadHouse
-    , Forest.FoundByCat
-    , Forest.FoundByFairy
-    , Forest.FairyCircle
-    , Forest.Home
-    ]
-
-instance Arbitrary Forest.SearcherType where
-  arbitrary = elements [Forest.Parent, Forest.Healer]
-
-instance Arbitrary Forest.Event where
-  arbitrary = elements
-    [ Forest.GingerbreadHouseEvent
-    , Forest.FoundEvent
-    , Forest.FairyCircleEvent
-    ]
-
-instance Arbitrary Forest.Internal where
-  arbitrary = Forest.Internal <$> arbitrary <*> arbitrary <*> arbitrary
-
-instance (Arbitrary label, Arbitrary s) ⇒ Arbitrary (StateMachine.State label s) where
-  arbitrary =
-    StateMachine.State
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-
-instance Arbitrary CurrentQuestState where
-  arbitrary = oneof [Forest <$> arbitrary]
-
-instance Arbitrary Configuration where
-  arbitrary = Configuration <$> elements [minBound..]
-
-instance Arbitrary UTCTime where
-  arbitrary = UTCTime <$> arbitrary <*> (choose (0, 3600) <&> secondsToDiffTime)
-
-instance Arbitrary StdGen where
-  arbitrary = do
-    x ∷ Positive Int ← arbitrary
-    y ∷ Positive Int ← arbitrary
-    pure $ read [i|#{getPositive x} #{getPositive y}|]
-
-instance Eq StdGen where (==) x y = show x == show y
-
-deriving instance Eq Account
-
-instance Arbitrary SuccessOrFailureResult where
-  arbitrary = elements [SuccessResult, FailureResult]
-
-instance Arbitrary Markdown where
-  arbitrary = Markdown <$> arbitrary
-
-instance Arbitrary Deed where
-  arbitrary = Deed <$> arbitrary <*> arbitrary <*> arbitrary
-
-instance Arbitrary Account where
-  arbitrary =
-    Account
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-      <*> ((setToList >>> setFromList) <$> (arbitrary ∷ Gen (Set Text)))
+import HabitOfFate.Testing.DayHour
+import HabitOfFate.Testing.Instances ()
 
 type LazyByteString = LazyBS.ByteString
 type Tags = [Tag Lazy.Text]
-
-instance Arbitrary Day where
-  arbitrary = ModifiedJulianDay <$> arbitrary `suchThat` (> 0)
-
-instance Arbitrary TimeOfDay where
-  arbitrary = dayFractionToTimeOfDay <$> (toRational <$> choose (0 ∷ Float, 1) `suchThat` (< 1))
-
-instance Arbitrary LocalTime where
-  arbitrary = LocalTime <$> arbitrary <*> arbitrary
 
 withApplication' action =
   (makeAppRunningInTestMode
@@ -672,211 +452,6 @@ main = doMain
             (Gendered "Elly" Female)
             [Forest.FoundEvent, Forest.FairyCircleEvent, Forest.GingerbreadHouseEvent]
           )
-      ]
-    ]
-  ------------------------------------------------------------------------------
-  , testGroup "HabitOfFate.Repeated"
-  ------------------------------------------------------------------------------
-    [ testGroup "nextDaily" $
-    ----------------------------------------------------------------------------
-      let testNextDailyCase period today deadline expected_result =
-            testCase
-              (printf
-                "%i %s %s"
-                period
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
-              )
-              (nextDaily period today deadline @?= expected_result)
-      in
-      [ testNextDailyCase 2 (dayHour 4 0) (dayHour 3 0) (dayHour 5 0)
-      , testNextDailyCase 1 (dayHour 4 1) (dayHour 3 2) (dayHour 4 2)
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "previousDailies" $
-    ----------------------------------------------------------------------------
-      let testPreviousDailiesCase takeDays period next_deadline expected_result =
-            testCase
-              (printf
-                "%i %s"
-                period
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" next_deadline)
-              )
-              (takeDays (previousDailies period next_deadline) @?= expected_result)
-      in
-      [ testPreviousDailiesCase (take 7) 1 (dayHour 20 2) [ dayHour d 2 | d ← [19, 18..13] ]
-      , testPreviousDailiesCase (take 3) 2 (dayHour 20 2) [ dayHour d 2 | d ← [18, 16, 14] ]
-      , testPreviousDailiesCase (take 3) 3 (dayHour 17 2) [ dayHour d 2 | d ← [14, 11,  8] ]
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "nextWeeklyDay" $
-    ----------------------------------------------------------------------------
-      let testNextWeeklyDayCase days_to_repeat period today next_deadline =
-            testCase
-              (printf "%s %i %s"
-                (repeatDays days_to_repeat)
-                period
-                (formatTime defaultTimeLocale "%y-%m-%d" today)
-              )
-              (nextWeeklyDay days_to_repeat period today @?= next_deadline)
-      in
-      [ QC.testProperty "next_deadline >= today" $ \days_to_repeat (Positive period) today →
-          nextWeeklyDay days_to_repeat period today >= today
-      , testNextWeeklyDayCase
-          (def & monday_ .~ True & tuesday_ .~ True)
-          1
-          (fromWeekDate 1 1 1)
-          (fromWeekDate 1 1 2)
-      , testNextWeeklyDayCase
-          (def & monday_ .~ True & wednesday_ .~ True)
-          1
-          (fromWeekDate 1 1 2)
-          (fromWeekDate 1 1 3)
-      , testNextWeeklyDayCase
-          (def & monday_ .~ True)
-          2
-          (fromWeekDate 1 1 1)
-          (fromWeekDate 1 3 1)
-      , testNextWeeklyDayCase
-          (def & monday_ .~ True)
-          3
-          (fromWeekDate 1 1 1)
-          (fromWeekDate 1 4 1)
-      , testNextWeeklyDayCase
-          (def & monday_ .~ True)
-          2
-          (fromWeekDate 1 1 2)
-          (fromWeekDate 1 3 1)
-      , testNextWeeklyDayCase
-          (def & wednesday_ .~ True)
-          2
-          (fromWeekDate 1 1 3)
-          (fromWeekDate 1 3 3)
-      , testNextWeeklyDayCase
-          (def & tuesday_ .~ True & wednesday_ .~ True)
-          2
-          (fromWeekDate 1 1 4)
-          (fromWeekDate 1 3 2)
-      , testNextWeeklyDayCase
-          (def & tuesday_ .~ True & friday_ .~ True)
-          2
-          (fromWeekDate 1 1 2)
-          (fromWeekDate 1 1 5)
-      , testNextWeeklyDayCase
-          (def & monday_ .~ True & wednesday_ .~ True)
-          2
-          (fromWeekDate 1 5 5)
-          (fromWeekDate 1 7 1)
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "nextWeeklies" $
-    ----------------------------------------------------------------------------
-      let testNextWeeklyCase days_to_repeat period today deadline result =
-            testCase
-              (printf "%s %i %s %s"
-                (repeatDays days_to_repeat)
-                period
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
-              )
-              (nextWeekly period days_to_repeat today deadline @?= result)
-      in
-      [ testNextWeeklyCase
-          (def & monday_ .~ True & wednesday_ .~ True)
-          1
-          (LocalTime (fromWeekDate 1 1 2) midnight)
-          (LocalTime (fromWeekDate 1 1 1) midnight)
-          (LocalTime (fromWeekDate 1 1 3) midnight)
-      , testNextWeeklyCase
-          (def & monday_ .~ True & wednesday_ .~ True)
-          2
-          (LocalTime (fromWeekDate 1 5 5) midnight)
-          (LocalTime (fromWeekDate 1 1 1) midnight)
-          (LocalTime (fromWeekDate 1 7 1) midnight)
-      , testNextWeeklyCase
-          (def & monday_ .~ True & wednesday_ .~ True)
-          1
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 1 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0))
-      , testNextWeeklyCase
-          (def & monday_ .~ True & wednesday_ .~ True)
-          1
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 1 0))
-          (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 1 0))
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "previousWeekliesBeforePresent" $
-    ----------------------------------------------------------------------------
-      let testPreviousWeekliesCase takeDays days_to_repeat period next_deadline previous_deadlines =
-            testCase
-              (printf "%s %i %s"
-                (repeatDays days_to_repeat)
-                period
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" next_deadline)
-              )
-              (
-                takeDays (previousWeeklies period days_to_repeat next_deadline)
-                  @?= previous_deadlines
-              )
-      in
-      [ testPreviousWeekliesCase
-          (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
-          (def & monday_ .~ True & tuesday_ .~ True)
-          1
-          (LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0))
-          [ LocalTime (fromWeekDate 1 1 2) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
-          ]
-      , testPreviousWeekliesCase
-          (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
-          (def & monday_ .~ True)
-          1
-          (LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0))
-          [ LocalTime (fromWeekDate 1 2 1) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
-          ]
-      , testPreviousWeekliesCase
-          (takeWhile (>= (LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0))))
-          (def & monday_ .~ True & thursday_ .~ True)
-          2
-          (LocalTime (fromWeekDate 1 5 4) (TimeOfDay 1 0 0))
-          [ LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 3 4) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 1 4) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 1 1) (TimeOfDay 1 0 0)
-          ]
-      , testPreviousWeekliesCase
-          (take 5)
-          (def & monday_ .~ True & wednesday_ .~ True)
-          2
-          (LocalTime (fromWeekDate 1 5 5) (TimeOfDay 1 0 0))
-          [ LocalTime (fromWeekDate 1 5 3) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 5 1) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 3 3) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 3 1) (TimeOfDay 1 0 0)
-          , LocalTime (fromWeekDate 1 1 3) (TimeOfDay 1 0 0)
-          ]
-      ]
-    ----------------------------------------------------------------------------
-    , testGroup "takeDays" $
-    ----------------------------------------------------------------------------
-      let testTakePreviousDeadlinesCase days_to_keep today deadline previous_deadlines expected_result =
-            testCase
-              (printf
-                "(%s) %s %s"
-                (show days_to_keep)
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" today)
-                (formatTime defaultTimeLocale "%y-%m-%d.%Hh" deadline)
-              )
-              (takePreviousDeadlines days_to_keep today deadline previous_deadlines @?= expected_result)
-      in
-      [ testTakePreviousDeadlinesCase (KeepNumberOfDays 1) (day 3) (day 0) [day 2, day 1] [day 2]
-      , testTakePreviousDeadlinesCase (KeepNumberOfDays 3) (day 3) (day 0) [day 2, day 1] [day 2, day 1]
-      , testTakePreviousDeadlinesCase (KeepDaysInPast 1) (day 3) (day 0) [day 2, day 1] [day 2]
-      , testTakePreviousDeadlinesCase (KeepDaysInPast 3) (day 3) (day 0) [day 2, day 1] [day 2, day 1]
       ]
     ]
   ------------------------------------------------------------------------------
