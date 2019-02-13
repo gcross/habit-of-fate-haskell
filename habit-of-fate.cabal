@@ -46,6 +46,7 @@ library
                      , blaze-html
                      , blaze-markup
                      , bytestring
+                     , call-stack
                      , cmark
                      , connection
                      , containers
@@ -78,6 +79,8 @@ library
                      , scotty
                      , split
                      , stm
+                     , tasty
+                     , tasty-hunit
                      , text
                      , th-lift
                      , th-lift-instances
@@ -165,6 +168,8 @@ library
                      , HabitOfFate.Server.Requests.Web.NewHabit
                      , HabitOfFate.Story
                      , HabitOfFate.Substitution
+                     , HabitOfFate.Testing
+                     , HabitOfFate.Testing.Assertions
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   other-modules:       Paths_habit_of_fate
@@ -263,4 +268,13 @@ test-suite test
                      , vector
                      , warp
                      , xml-conduit
+  default-language:    Haskell2010
+
+test-suite test-substitutions
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      sources/tests
+  main-is:             test-substitutions.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , call-stack
   default-language:    Haskell2010

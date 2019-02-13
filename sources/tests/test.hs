@@ -90,6 +90,8 @@ import HabitOfFate.Quests
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Substitution
+import HabitOfFate.Testing
+import HabitOfFate.Testing.Assertions
 
 dayHour d h = LocalTime (ModifiedJulianDay d) (TimeOfDay h 0 0)
 day = flip dayHour 0
@@ -292,40 +294,6 @@ instance Arbitrary Account where
       <*> arbitrary
       <*> arbitrary
       <*> ((setToList >>> setFromList) <$> (arbitrary ∷ Gen (Set Text)))
-
-stackString ∷ HasCallStack ⇒ String
-stackString = case reverse callStack of
-  [] → "No stack."
-  (function_name, _):rest →
-    intercalate "\n" $
-    "Stack:"
-    :
-    (
-      mapAccumL
-        (\function_name (next_function_name, SrcLoc{..}) →
-          (next_function_name, [i|    #{srcLocFile}:#{srcLocEndLine}:#{function_name}|])
-        )
-        function_name
-        rest
-      &
-      (snd >>> reverse)
-    )
-
-assertBool ∷ MonadIO m ⇒ String → Bool → m ()
-assertBool message = HUnit.assertBool message >>> liftIO
-
-assertFailure ∷ (HasCallStack, MonadIO m) ⇒ String → m α
-assertFailure message = liftIO $
-  HUnit.assertFailure (message ⊕ "\n\n" ⊕ stackString)
-
-(@?=) ∷ (MonadIO m, Eq α, Show α) ⇒ α → α → m ()
-(@?=) x y = liftIO $ (HUnit.@?=) x y
-
-(@=?) ∷ (MonadIO m, Eq α, Show α) ⇒ α → α → m ()
-(@=?) x y = liftIO $ (HUnit.@=?) x y
-
-testCase ∷ String → IO () → TestTree
-testCase name = HUnit.testCase name
 
 type LazyByteString = LazyBS.ByteString
 type Tags = [Tag Lazy.Text]
@@ -654,11 +622,8 @@ testTransitionsAreValid name transitions = testGroup name
           assertFailure $ "Missing between stories in transitions: " ⊕ show transitions_with_no_between_stories
   ]
 
-dontTestGroup ∷ String → [TestTree] → TestTree
-dontTestGroup name _ = testGroup name []
-
 main ∷ HasCallStack ⇒ IO ()
-main = defaultMain $ testGroup "All Tests"
+main = doMain
   ------------------------------------------------------------------------------
   [ testGroup "JSON instances"
   ------------------------------------------------------------------------------
@@ -1354,76 +1319,6 @@ main = defaultMain $ testGroup "All Tests"
             ]
         ]
         ------------------------------------------------------------------------
-    ]
-  ------------------------------------------------------------------------------
-  , testGroup "HabitOfFate.Substitution"
-  ------------------------------------------------------------------------------
-    [ testCase "literal, one char" $ do
-        story ← parseSubstitutions "l"
-        extractPlaceholders story @?= []
-        substitute mempty story >>= (@?= "l")
-    , testCase "literal, whole string" $
-        parseSubstitutions "xyz"
-        >>=
-        substitute mempty
-        >>=
-        (@?= "xyz")
-    , testCase "substitution, name" $ do
-        story ← parseSubstitutions "|name"
-        extractPlaceholders story @?= ["name"]
-        substitute (singletonMap "name" (Gendered "value" Male)) story >>= (@?= "value")
-    , testCase "substitution, subject" $
-        parseSubstitutions "he/she|name"
-        >>=
-        substitute (singletonMap "name" (Gendered "value" Female))
-        >>=
-        (@?= "she")
-    , testCase "substitution, possessive" $
-        parseSubstitutions "his/her|name"
-        >>=
-        substitute (singletonMap "name" (Gendered "value" Male))
-        >>=
-        (@?= "his")
-    , testCase "substitution, proper possessive" $
-        parseSubstitutions "his/hers|name"
-        >>=
-        substitute (singletonMap "name" (Gendered "value" Female))
-        >>=
-        (@?= "hers")
-    , testCase "substitution, with a article" $
-        parseSubstitutions "an |name"
-        >>=
-        substitute (singletonMap "name" (Gendered "cat" Female))
-        >>=
-        (@?= "a cat")
-    , testCase "substitution, with an article" $
-        parseSubstitutions "a |name"
-        >>=
-        substitute (singletonMap "name" (Gendered "apple" Female))
-        >>=
-        (@?= "an apple")
-    , testCase "substitution, with capitalized article" $
-        parseSubstitutions "An |name"
-        >>=
-        substitute (singletonMap "name" (Gendered "value" Female))
-        >>=
-        (@?= "A value")
-    , testCase "substitution, with article and a newline" $
-        parseSubstitutions "an\n|name"
-        >>=
-        substitute (singletonMap "name" (Gendered "value" Female))
-        >>=
-        (@?= "a value")
-    , testCase "substitution, uppercase referrant" $
-        parseSubstitutions "His/hers|name"
-        >>=
-        substitute (singletonMap "name" (Gendered "value" Male))
-        >>= (@?= "His")
-    , testCase "unrecognized key" $
-        parseSubstitutions "His/hers|Bob"
-        >>=
-        (substitute mempty >>> try)
-        >>= (@?= Left (NoSuchKeyException "Bob"))
     ]
     ----------------------------------------------------------------------------
   ]
