@@ -303,10 +303,10 @@ test-suite test-repeated
                      , vector
   default-language:    Haskell2010
 
-test-suite test-substitutions
+test-suite test-substitution
   type:                exitcode-stdio-1.0
   hs-source-dirs:      sources/tests
-  main-is:             test-substitutions.hs
+  main-is:             test-substitution.hs
   build-depends:       habit-of-fate
                      , base
                      , call-stack
