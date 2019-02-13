@@ -38,7 +38,6 @@ import HabitOfFate.Prelude hiding (elements, text)
 import Control.Concurrent.MVar (newEmptyMVar, tryTakeMVar)
 import Control.Concurrent.STM.TVar (newTVarIO)
 import Control.Monad.Catch
-import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
 import Data.CallStack
@@ -53,17 +52,13 @@ import Network.HTTP.Conduit (Response(..), responseStatus)
 import Network.HTTP.Simple
 import Network.HTTP.Types.Status (ok200)
 import Network.Wai.Handler.Warp
-import Test.QuickCheck hiding (Failure, Success)
 import Test.Tasty (TestTree, testGroup)
-import qualified Test.Tasty.SmallCheck as SC
-import qualified Test.Tasty.QuickCheck as QC
 import Data.Time.Zones.All
 import Text.HTML.Scalpel
 import Text.HTML.TagSoup (Tag, parseTags)
 import Web.Scotty (Parsable(..))
 
 import HabitOfFate.API
-import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
@@ -75,7 +70,6 @@ import HabitOfFate.Data.Tagged
 import qualified HabitOfFate.Quests.Forest as Forest
 import qualified HabitOfFate.Quests.Forest.Stories as Forest
 import HabitOfFate.Quest.StateMachine as StateMachine
-import HabitOfFate.Quests
 import HabitOfFate.Server
 import HabitOfFate.Story
 import HabitOfFate.Substitution
@@ -405,22 +399,7 @@ testTransitionsAreValid name transitions = testGroup name
 main ∷ HasCallStack ⇒ IO ()
 main = doMain
   ------------------------------------------------------------------------------
-  [ testGroup "JSON instances"
-  ------------------------------------------------------------------------------
-    [ QC.testProperty "Frequency" $ \(x ∷ Frequency) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-    , SC.testProperty "Scale" $ \(x ∷ Scale) → (encode >>> eitherDecode) x == Right x
-    , QC.testProperty "Habit" $ \(x ∷ Habit) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-    , QC.testProperty "ItemsSequence" $ \(x ∷ ItemsSequence Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-    , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-    , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
-    , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
-    , QC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
-    , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
-    , QC.testProperty "Configuration" $ \(x ∷ Configuration) → (encode >>> eitherDecode) x == Right x
-    , QC.testProperty "Account" $ \(x ∷ Account) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-    ]
-  ------------------------------------------------------------------------------
-  , testGroup "HabitOfFate.Quests..."
+  [ testGroup "HabitOfFate.Quests..."
   ------------------------------------------------------------------------------
     [ testGroup "HabitOfFate.Quests.Forest"
     ----------------------------------------------------------------------------

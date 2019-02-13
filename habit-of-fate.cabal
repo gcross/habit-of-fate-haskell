@@ -274,6 +274,21 @@ test-suite test
                      , xml-conduit
   default-language:    Haskell2010
 
+test-suite test-json
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      sources/tests
+  main-is:             test-json.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , aeson
+                     , call-stack
+                     , QuickCheck
+                     , smallcheck
+                     , tasty
+                     , tasty-quickcheck
+                     , tasty-smallcheck
+  default-language:    Haskell2010
+
 test-suite test-repeated
   type:                exitcode-stdio-1.0
   hs-source-dirs:      sources/tests
