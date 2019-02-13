@@ -233,47 +233,6 @@ executable generate-latex
                      , text
   default-language:    Haskell2010
 
-test-suite test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      sources/tests
-  main-is:             test.hs
-  build-depends:       habit-of-fate
-                     , base
-                     , aeson
-                     , bytestring
-                     , call-stack
-                     , containers
-                     , exceptions
-                     , html-conduit
-                     , http-client
-                     , http-conduit
-                     , http-types
-                     , jwt
-                     , lens
-                     , parsec
-                     , QuickCheck
-                     , quickcheck-text
-                     , random
-                     , scalpel
-                     , scotty
-                     , smallcheck
-                     , sqlite-simple
-                     , stm
-                     , tagsoup
-                     , tasty
-                     , tasty-hunit
-                     , tasty-quickcheck
-                     , tasty-smallcheck
-                     , temporary
-                     , text
-                     , time
-                     , tz
-                     , uuid
-                     , vector
-                     , warp
-                     , xml-conduit
-  default-language:    Haskell2010
-
 test-suite test-json
   type:                exitcode-stdio-1.0
   hs-source-dirs:      sources/tests
@@ -301,6 +260,39 @@ test-suite test-repeated
                      , tasty-quickcheck
                      , time
                      , vector
+  default-language:    Haskell2010
+
+test-suite test-server
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      sources/tests
+  main-is:             test-server.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , bytestring
+                     , call-stack
+                     , exceptions
+                     , http-client
+                     , http-conduit
+                     , http-types
+                     , scalpel
+                     , scotty
+                     , stm
+                     , tagsoup
+                     , tasty
+                     , text
+                     , time
+                     , tz
+                     , uuid
+                     , warp
+  default-language:    Haskell2010
+
+test-suite test-stories
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      sources/tests
+  main-is:             test-stories.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , call-stack
   default-language:    Haskell2010
 
 test-suite test-substitution

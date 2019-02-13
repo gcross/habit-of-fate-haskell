@@ -1,2 +1,2 @@
 #!/bin/sh
-stack build :test :test-json :test-repeated :test-substitution
+stack build :test-json :test-repeated :test-server :test-substitution

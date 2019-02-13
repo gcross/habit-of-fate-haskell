@@ -20,7 +20,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Testing (doMain, dontTestGroup, stackString) where
+module HabitOfFate.Testing (TestTree, doMain, testGroup, dontTestGroup, stackString) where
 
 import HabitOfFate.Prelude
 
