@@ -85,7 +85,7 @@ testStoryOutcomes name substitutions outcomes =
       story_outcome_multiple_labels
     )
 
-testTransitionsAreValid ∷ (Eq α, Show α) ⇒ String → [(α, Transition α)] → TestTree
+testTransitionsAreValid ∷ (Bounded α, Enum α, Eq α, Ord α, Show α) ⇒ String → [(α, Transition α)] → TestTree
 testTransitionsAreValid name transitions = testGroup name
   [ testCase "All destination nodes are listed in the transitions" $
       let missing_destinations =
@@ -102,6 +102,8 @@ testTransitionsAreValid name transitions = testGroup name
             ]
       in unless (onull transitions_with_no_between_stories) $
           assertFailure $ "Missing between stories in transitions: " ⊕ show transitions_with_no_between_stories
+  , testCase "All transition labels are present in transitions" $
+      (transitions |> map fst |> sort) @?= [minBound .. maxBound]
   ]
 
 main ∷ HasCallStack ⇒ IO ()
