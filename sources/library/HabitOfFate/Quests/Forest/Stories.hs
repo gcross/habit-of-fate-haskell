@@ -35,8 +35,8 @@ The last thing in the world that **|Searcher** wanted to do was to wander alone
 in the Wicked Forest at night, but his/her|Searcher son/daughter|Child, little
 **|Child**, was sick and would not live through the night unless |Searcher could
 find an **|Plant** plant to give to the healer to make a potion, as the healer
-refused to enter the forest herself at night. It is a hopeless task, but he/she|
-has no other choice.
+refused to enter the forest himself/herself| at night. It is a hopeless task,
+but he/she| has no other choice.
 
 He/she| entered the forest.
 |]
@@ -101,7 +101,7 @@ werewolves...
 laugh. “You are just as stupid as the rest of your kind. Look, I am over here.”
 
 |Searcher finally realized that the voice was coming from the tree right next to
-her.
+him/her|.
 
 “Why are you here?” it asked. |Searcher replied, “I am looking for an |Plant
 plant. I down't suppose you have seen one?” It laughed. “Do I look like I have
@@ -124,8 +124,9 @@ compulsion to approach it.
 ==================================== Success ===================================
 He/she| fights the compulsion, and continues on his/her| search.
 ================================ Averted/Failure ===============================
-As he/she| gets closer, the door opens and an old woman beckons her in. “You've
-arrived just in time!” she says. “Dinner has just finished cooking. Come on in!”
+As he/she| gets closer, the door opens and an old woman beckons him/her| in.
+“You've arrived just in time!” she says. “Dinner has just finished cooking. Come
+on in!”
 ==================================== Averted ===================================
 The smell from the cottage is overwhelming, and shocks |Searcher to his/her|
 senses. He/she| sprints away from the cottage as fast as he/she| can.
@@ -161,7 +162,7 @@ such a good idea, when the fairy stops. He/she| catches up to it and sees an
 |Plant plant under it. Carefully, he/she| reaches down and picks it. When
 he/she| looks up, the fairy is gone.
 
-He/she| falls to his/her| knees and thanks you for guiding her to the plant.
+He/she| falls to his/her| knees and thanks you for guiding him/her| to the plant.
 He/she| then gets up and starts heading back to his/her| home.
 ================================ Averted/Failure ===============================
 The chase after the fairy becomes faster and faster, but unfortunately |Searcher
@@ -188,25 +189,25 @@ Introspect, |Searcher realized that chasing after a random fairy was a bad idea.
 found_by_cat ∷ StoryOutcomes
 found_by_cat = [story_outcomes|
 ==================================== Common ====================================
-|Searcher hears a meow. He/she| looks to the source, and sees a |catcolor cat. The
-cat beckons to her, and starts walking. He/she| thinks to herself, “Shoot, I
-can never remember, is it the blue cats who are the good ones and the green
-cats who are the evil ones, or is it the opposite?” He/she| does need to get
-the herb as soon as he/she| can, though, so he/she| decides to roll the dice
-and follow the cat.
+|Searcher hears a meow. He/she| looks to the source, and sees a |catcolor cat.
+The cat beckons to him/her|, and starts walking. He/she| thinks to
+himself/herself, “Shoot, I can never remember, is it the blue cats who are the
+good ones and the green cats who are the evil ones, or is it the opposite?”
+He/she| does need to get the herb as soon as he/she| can, though, so he/she|
+decides to roll the dice and follow the cat.
 ==================================== Success ===================================
 He/she| follows the cat for some time, and eventually it stops. It picks
-something up and brings it to her. Excitedly, she bends down to look at it.
+something up and brings it to him/her|. Excitedly, she bends down to look at it.
 
 It is a mouse.
 
 He/she| growls and tosses the mouse to the side. He/she| starts to walk away
-when she realizes that the cat is sitting right next to a |Plant plant.
+when he/she| realizes that the cat is sitting right next to a |Plant plant.
 
 Well, cats are cats, even the good ones.
 
 He/she| walks over and picks the plant, and then scratches the cat. “Good
-kitty!” she says. It purrs.
+kitty!” he/she| says. It purrs.
 
 He/she| starts to journey home.
 ================================ Averted/Failure ===============================
@@ -214,17 +215,18 @@ He/she| starts to journey home.
 that she does not notice that she is stepping into a put.
 ==================================== Averted ===================================
 |Searcher follows into the pit but somehow avoids getting any broken bones.
-He/she| looks up in time to see the cat flash her a cheshire grin and vanish.
+He/she| looks up in time to see the cat flash him/her| a cheshire grin and
+vanish.
 
 |Searcher grumbles at the existence of mischievous malevolent cats, but at least
 she notices a |Plant herb at the bottom so she can start heading home.
 ==================================== Failure ===================================
 |Searcher follows the cat for some time before he/she|Searcher realizes too late
-that she is stepping into a pit. Unable to catch herself in time, he/she| falls
-into the put, breaking a leg. The cat looks down into the pit, flashes him/her|
-a cheshire grin, and vanishes. |Searcher growls in anger and then faints in
-pain. |Child will not be getting the medicine that he desperately needs
-tonight...
+that she is stepping into a pit. Unable to catch himself/herself| in time,
+he/she| falls into the put, breaking a leg. The cat looks down into the pit,
+flashes him/her| a cheshire grin, and vanishes. |Searcher growls in anger and
+then faints in pain. |Child will not be getting the medicine that he desperately
+needs tonight...
 ===================================== Shame ====================================
 Too late |Searcher remembered that it was the green cats that were good and the
 blue cats that were evil...
@@ -246,22 +248,22 @@ he/she| turned around and starts to run out of it.
 ==================================== Averted ===================================
 Miraculously, he/she| makes it out. He/she| continues the search.
 ==================================== Failure ===================================
-Unfortunately, he/she| sees a leprechaun between her and the mushroom border.
-“Welcome, mortal!” it says to him/her| cheerfully. “I am sure you will have a
-wonderful time in our land.”
+Unfortunately, he/she| sees a leprechaun between him/her| and the mushroom
+border. “Welcome, mortal!” it says to him/her| cheerfully. “I am sure you will
+have a wonderful time in our land.”
 
-<hr>
+********************************************************************************
 
 His/her| times in the fairy world all felt like a dream; when it was all over,
-he/she| could hardly remember what it had been like. He/she| found herself
-standing in the forest in the bright light of day, with mushrooms nowhere to be
-seen. He/she| ran back to the village, but it was no longer there -- at least,
-as she remembered it. The houses were not in the same place and were larger,
-the dirt roads were now covered with some black material and had strange shiny
-creatures on them, and branchless trees were everywhere with black rope strung
-between them. He/she| had no idea how much time she had spent away from the
-world, but she knew that |Child, as well as everyone else he/she| had known and
-loved, was certainly dead.
+he/she| could hardly remember what it had been like. He/she| found
+himself/herself| standing in the forest in the bright light of day, with
+mushrooms nowhere to be seen. He/she| ran back to the village, but it was no
+longer there -- at least, as she remembered it. The houses were not in the same
+place and were larger, the dirt roads were now covered with some black material
+and had strange shiny creatures on them, and branchless trees were everywhere
+with black rope strung between them. He/she| had no idea how much time he/she|
+had spent away from the world, but she knew that |Child, as well as everyone
+else he/she| had known and loved, was certainly dead.
 ===================================== Shame ====================================
 Next time |Searcher needs to watch where she is stepping lest she step into a fairy
 circle again... if there is a next time.
@@ -274,25 +276,26 @@ conclusion_parent ∷ StoryOutcomes
 conclusion_parent = [story_outcomes|
 ==================================== Common ====================================
 |Searcher is starting to feel like he/she| will never make it back when he/she|
-notices that things are starting to get brighter == he/she| must be getting
-close to the village! he/she| gives you thanks for guiding her home.
+notices that things are starting to get brighter--he/she| must be getting
+close to the village! He/she| gives you thanks for guiding him/her| home.
 ==================================== Success ===================================
 A little bit further, and he/she| is back to to the healer. He/she| pounds on
-the door. When the healer opens it, |Searcher gives her the plant. The healer looks
-surprised. “I didn’t think that you would make it, let alone bring me the
-correct plant. Come in and sit; this won’t take long.” |Searcher enters the hut and
-sits. A moment latter he/she| feels himself/herself| being shaken. “Don’t fall
-asleep now, fool, take this potion home and give it to |Child. Quickly!”
+the door. When the healer opens it, |Searcher gives him/her| the plant. The
+healer looks surprised. “I didn’t think that you would make it, let alone bring
+me the correct plant. Come in and sit; this won’t take long.” |Searcher enters
+the hut and sits. A moment latter he/she| feels himself/herself| being shaken.
+“Don’t fall asleep now, fool, take this potion home and give it to |Child.
+Quickly!”
 
 |Searcher rushes home and wakes up |Child long enough to ladle the potion down this
 throat; he/she|Child immediately falls back asleep. Exhausted himself/herself|,
 he/she| falls asleep on the floor; he/she| sleeps peacefully, with a smile on
-her face. The next day, he/she| builds an altar to you out of gratitude.
+him/her| face. The next day, he/she| builds an altar to you out of gratitude.
 ================================ Averted/Failure ===============================
 A little bit further, and he/she| is back to to the healer. He/she| pounds on
-the door. When the healer opens it, |Searcher gives her the plant. The healer looks
-surprised. “I didn’t think that you would make it, but unfortunately you have
-brought me the wrong plant.”
+the door. When the healer opens it, |Searcher gives her/ the plant. The healer
+looks surprised. “I didn’t think that you would make it, but unfortunately you
+have brought me the wrong plant.”
 
 “I… I did?” asked |Searcher, tears starting to form in her eyes.
 
@@ -328,23 +331,23 @@ conclusion_healer = [story_outcomes|
 ==================================== Success ===================================
 |Searcher is starting to feel like he/she| will never make it back in time when
 he/she| sees the shapes of the huts of her village not far in the distance. Not
-long after, he/she| makes it back to her hut and immediately starts brewing
+long after, he/she| makes it back to his/her| hut and immediately starts brewing
 medicine for |Child. He/she| takes it to the family’s hut and gives it to them
 to administer to |Child. It is true that he/she| had just risked life and limb
 to save a single person, but he/she| considered it to be well worth it. Also
-they gave her extra gold.
+they gave her a bonus.
 
-He/she| returned to her own hut and did not even have enough energy to make it
-to the bed; she fell asleep on the floor, though with a smile on her face. The
-next day, he/she| builds an altar to you out of gratitude.
+He/she| returned to his/her| own hut and did not even have enough energy to make
+it to the bed; she fell asleep on the floor, though with a smile on his/her|
+face. The next day, he/she| builds an altar to you out of gratitude.
 ================================ Averted/Failure ===============================
 |Searcher is starting to feel like he/she| will never make it back in time when
-he/she| sees the shapes of the huts of her village not far in the distance. She
-starts to breathe a sigh of relief when she realizes that something is off that
-she cannot quite place. As she got closer, she realized that the doors to the
-huts were all facing her, and that they seemed to always be facing her no
-matter how close she got to the village. Had they always been that way? Or was
-something strange going on.
+he/she| sees the shapes of the huts of her village not far in the distance.
+He/she starts to breathe a sigh of relief when she realizes that something is
+off that she cannot quite place. As she got closer, she realized that the doors
+to the huts were all facing him/her|, and that they seemed to always be facing
+him/her| no matter how close she got to the village. Had they always been that
+way? Or was something strange going on.
 ==================================== Averted ===================================
 When in or close to the Wicked Forest, it is best to trust one’s instincts.
 Thus, even though it was the last thing that |Searcher wanted to do, she turned
@@ -356,11 +359,11 @@ Again, nothing seemed amiss so he/she| entered the village and headed towards
 his/her| hut. He/she| immediately starts brewing medicine for |Child and then
 takes it to the family’s hut and gives it to them to administer to |Child. It is
 true that he/she| had just risked life and limb to save a single person, but
-he/she| considered it to be well worth it. Also they gave her extra gold.
+he/she| considered it to be well worth it. Also they gave him/her| a bonus.
 
-He/she| returned to her own hut and did not even have enough energy to make it
-to the bed; she fell asleep on the floor, though with a smile on her face. The
-next day, he/she| builds an altar to you out of gratitude.
+He/she| returned to his/her| own hut and did not even have enough energy to make
+it to the bed; she fell asleep on the floor, though with a smile on his/her|
+face. The next day, he/she| builds an altar to you out of gratitude.
 ==================================== Failure ===================================
 He/she| dismissed the notion; it had been a long night and the most likely
 explanation was that his/her| mind was going after her long search in the Wicked
@@ -384,7 +387,7 @@ The thing frowned. “Who is |Child?”
 |Searcher started to weep in pain and anguish but as his/her| head flattened the
  tears were unable to push themselves out of her tear ducts.
 
-“Don’t worry,” said the thing. “You will be safe here… forever… with us.”
+“Don’t worry,” said the thing. “You will be safe here... forever... with us.”
 ===================================== Shame ====================================
 |Searcher found herself trapped in a land of cardboard cutouts.
 ===================================== Fame =====================================
