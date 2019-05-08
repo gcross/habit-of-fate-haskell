@@ -169,6 +169,8 @@ library
                      , HabitOfFate.Server.Requests.Web.NewGroup
                      , HabitOfFate.Server.Requests.Web.NewHabit
                      , HabitOfFate.Story
+                     , HabitOfFate.StoryLine
+                     , HabitOfFate.StoryLine.Forest
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing
                      , HabitOfFate.Testing.Assertions

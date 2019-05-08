@@ -29,6 +29,12 @@ import HabitOfFate.Substitution
 --------------------------------- Intro Stories --------------------------------
 --------------------------------------------------------------------------------
 
+intro ∷ Story
+intro = [story|
+The Wicked Forest, frightful enough during the day, full of even greater terrors
+by night. Unfortunately, it is also the only place where a healing *|Plant*
+plant can be obtained, so a brave man/woman| is about to enter it.|]
+
 intro_parent_story ∷ Story
 intro_parent_story = [story|
 The last thing in the world that **|Searcher** wanted to do was to wander alone
@@ -237,14 +243,16 @@ night is a bad plan.
 
 fairy_circle ∷ StoryOutcomes
 fairy_circle = [story_outcomes|
+==================================== Common ====================================
+A mushroom circle lies just along |Searcher's path, but he/she| is so busy
+looking for a |Plant plant that he/she| walks straight towards it.
 ==================================== Success ===================================
-|Searcher is paying so much attention to looking for |Plant that he/she| almost
-misses the ominous circle of mushrooms. He/she| says a prayer of thanks that
-he/she| noticed it before stepping inside.
+Fortunately, |Searcher sees it just before stepping inside. After a moment of
+letting his/her| heart clm down, he/she| says a prayer of thanks to you and
+resumes searching in a different direction.
 ================================ Averted/Failure ===============================
-|Searcher is so focused on looking at the ground for the |Plant plant that she
-doesn’t notice that he/she| had walked into a circle of mushrooms. Desperately,
-he/she| turned around and starts to run out of it.
+Unfortunately, by the time |Searcher notices it she was already inside.
+Desperately, he/she| turns around and starts to run out of it.
 ==================================== Averted ===================================
 Miraculously, he/she| makes it out. He/she| continues the search.
 ==================================== Failure ===================================
@@ -328,9 +336,11 @@ mix a potion to save her sick son/daughter|Child.
 
 conclusion_healer ∷ StoryOutcomes
 conclusion_healer = [story_outcomes|
-==================================== Success ===================================
+==================================== Common ====================================
 |Searcher is starting to feel like he/she| will never make it back in time when
-he/she| sees the shapes of the huts of her village not far in the distance. Not
+he/she| sees the shapes of the huts of her village not far in the distance.
+==================================== Success ===================================
+ Not
 long after, he/she| makes it back to his/her| hut and immediately starts brewing
 medicine for |Child. He/she| takes it to the family’s hut and gives it to them
 to administer to |Child. It is true that he/she| had just risked life and limb
