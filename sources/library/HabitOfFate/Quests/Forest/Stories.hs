@@ -122,7 +122,7 @@ behind.
 -------------------------------- Event Stories -------------------------------
 --------------------------------------------------------------------------------
 
-gingerbread_house ∷ StoryOutcomes
+gingerbread_house ∷ StoryOutcomes Story
 gingerbread_house = [story_outcomes|
 ==================================== Common ====================================
 |Searcher sees a house made out of... gingerbread? He/she| feels a strange
@@ -154,7 +154,7 @@ The sweet smell of gingerbread was just too alluring for |Searcher.
 |Child was completely forgotten as |Searcher was drawn into a gingerbread house.
 |]
 
-found_by_fairy ∷ StoryOutcomes
+found_by_fairy ∷ StoryOutcomes Story
 found_by_fairy = [story_outcomes|
 ==================================== Common ====================================
 |Searcher starts to hear a sound and he/she| can't tell whether it is a buzzing or
@@ -192,7 +192,7 @@ Introspect, |Searcher realized that chasing after a random fairy was a bad idea.
 |Searcher learned the hard way that not all fairies are good fairies.
 |]
 
-found_by_cat ∷ StoryOutcomes
+found_by_cat ∷ StoryOutcomes Story
 found_by_cat = [story_outcomes|
 ==================================== Common ====================================
 |Searcher hears a meow. He/she| looks to the source, and sees a |catcolor cat.
@@ -241,7 +241,7 @@ blue cats that were evil...
 night is a bad plan.
 |]
 
-fairy_circle ∷ StoryOutcomes
+fairy_circle ∷ StoryOutcomes Story
 fairy_circle = [story_outcomes|
 ==================================== Common ====================================
 A mushroom circle lies just along |Searcher's path, but he/she| is so busy
@@ -280,7 +280,7 @@ Having been mysteriously teleported to a distant realm by the enigmatic magic of
 the fairies, there was no way |Searcher could make it back in time to save |Child.
 |]
 
-conclusion_parent ∷ StoryOutcomes
+conclusion_parent ∷ StoryOutcomes Story
 conclusion_parent = [story_outcomes|
 ==================================== Common ====================================
 |Searcher is starting to feel like he/she| will never make it back when he/she|
@@ -334,7 +334,7 @@ Against all odds, |Searcher was able to find the correct plant that was needed t
 mix a potion to save her sick son/daughter|Child.
 |]
 
-conclusion_healer ∷ StoryOutcomes
+conclusion_healer ∷ StoryOutcomes Story
 conclusion_healer = [story_outcomes|
 ==================================== Common ====================================
 |Searcher is starting to feel like he/she| will never make it back in time when

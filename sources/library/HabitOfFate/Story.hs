@@ -176,22 +176,22 @@ splitNamedRegionsOn marker =
         )
       )
 
-data StoryOutcomes = StoryOutcomes
-  { _story_common_ ∷ Story
-  , _story_success_ ∷ Story
-  , _story_success_or_averted_ ∷ Story
-  , _story_averted_or_failure_ ∷ Story
-  , _story_averted_ ∷ Story
-  , _story_failure_ ∷ Story
-  , _story_fame_ ∷ [Story]
-  , _story_shame_ ∷ [Story]
+data StoryOutcomes content = StoryOutcomes
+  { _story_common_ ∷ content
+  , _story_success_ ∷ content
+  , _story_success_or_averted_ ∷ content
+  , _story_averted_or_failure_ ∷ content
+  , _story_averted_ ∷ content
+  , _story_failure_ ∷ content
+  , _story_fame_ ∷ [content]
+  , _story_shame_ ∷ [content]
   } deriving (Eq,Lift,Ord,Read,Show)
 makeLenses ''StoryOutcomes
 
-instance Default StoryOutcomes where
+instance Default content ⇒ Default (StoryOutcomes content) where
   def = StoryOutcomes def def def def def def def def
 
-story_outcome_singleton_labels ∷ [(String, ALens' StoryOutcomes Story)]
+story_outcome_singleton_labels ∷ [(String, ALens' (StoryOutcomes Story) Story)]
 story_outcome_singleton_labels =
   [("Common", story_common_)
   ,("Success", story_success_)
@@ -201,7 +201,7 @@ story_outcome_singleton_labels =
   ,("Failure", story_failure_)
   ]
 
-story_outcome_multiple_labels ∷ [(String, ALens' StoryOutcomes [Story])]
+story_outcome_multiple_labels ∷ [(String, ALens' (StoryOutcomes Story) [Story])]
 story_outcome_multiple_labels =
   [("Fame", story_fame_)
   ,("Shame", story_shame_)
@@ -211,7 +211,7 @@ data WrongNumberOfStories = NoStoriesForLabel String | TooManyStoriesForLabel St
   deriving (Show)
 instance Exception WrongNumberOfStories
 
-story_outcome_modifiers ∷ MonadThrow m ⇒ [(String, [Story] → StoryOutcomes → m StoryOutcomes)]
+story_outcome_modifiers ∷ MonadThrow m ⇒ [(String, [Story] → StoryOutcomes Story → m (StoryOutcomes Story))]
 story_outcome_modifiers =
   [ ( label,
       \stories outcomes → case stories of
@@ -231,7 +231,7 @@ story_outcome_modifiers =
 data NoSuchStoryOutcomeLabel = NoSuchStoryOutcomeLabel String deriving (Show, Typeable)
 instance Exception NoSuchStoryOutcomeLabel where
 
-extractStoryOutcomes ∷ MonadThrow m ⇒ String → m StoryOutcomes
+extractStoryOutcomes ∷ MonadThrow m ⇒ String → m (StoryOutcomes Story)
 extractStoryOutcomes regions =
   (regions
     |> splitNamedRegionsOn '='
@@ -269,13 +269,13 @@ Typical usage:
 |]
 -}
 
-storyForSuccess ∷ StoryOutcomes → Story
+storyForSuccess ∷ StoryOutcomes Story → Story
 storyForSuccess StoryOutcomes{..} = _story_common_ ⊕ _story_success_or_averted_ ⊕ _story_success_
 
-storyForAverted ∷ StoryOutcomes → Story
+storyForAverted ∷ StoryOutcomes Story → Story
 storyForAverted StoryOutcomes{..} = _story_common_ ⊕ _story_success_or_averted_ ⊕ _story_averted_or_failure_ ⊕ _story_averted_
 
-storyForFailure ∷ StoryOutcomes → Story
+storyForFailure ∷ StoryOutcomes Story → Story
 storyForFailure StoryOutcomes{..} = _story_common_ ⊕ _story_averted_or_failure_ ⊕ _story_failure_
 
 data PageChoices = DeadEnd | NoChoice Text | Choices Text [(Text,Text)] deriving (Eq,Ord,Read,Show)

@@ -26,55 +26,55 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
-data StoryLineOutcome = StoryLineOutcome
-  { _outcome_text_ ∷ Story
+data StoryLineOutcome content = StoryLineOutcome
+  { _outcome_text_ ∷ content
   , _outcome_title_ ∷ Text
   , _outcome_substitutions_ ∷ [(Text, Gendered)]
   }
 
-data StoryQuestion = StoryQuestion
-  { _question_story_ ∷ Story
-  , _question_outcomes_ ∷ Tagged StoryLineOutcome
+data StoryQuestion content = StoryQuestion
+  { _question_story_ ∷ content
+  , _question_outcomes_ ∷ Tagged (StoryLineOutcome content)
   }
 
-data StoryEntry =
+data StoryEntry content =
     StoryEvent
       { _event_name_ ∷ Text
       , _event_title_ ∷ Text
-      , _event_outcomes_ ∷ StoryOutcomes
-      , _event_initial_question ∷ StoryQuestion
-      , _event_failure_question ∷ StoryQuestion
-      , _event_random_stories ∷ [Story]
+      , _event_outcomes_ ∷ StoryOutcomes content
+      , _event_initial_question ∷ StoryQuestion content
+      , _event_failure_question ∷ StoryQuestion content
+      , _event_random_stories ∷ [content]
       }
   | StoryNarrative
       { _narrative_name ∷ Text
       , _narrative_title ∷ Text
-      , _narrative_content ∷ Story
+      , _narrative_content ∷ content
       }
   | StoryLine
       { _story_line_name ∷ Text
-      , _story_line_content ∷ [StoryEntry]
+      , _story_line_content ∷ [StoryEntry content]
       }
   | StoryShuffle
-      { _story_lines_to_shuffle_ ∷ [StoryEntry]
+      { _story_lines_to_shuffle_ ∷ [StoryEntry content]
       }
   | StorySplit
       { _split_name_ ∷ Text
       , _split_title_ ∷ Text
-      , _split_story ∷ Story
+      , _split_story ∷ content
       , _split_question ∷ Text
-      , _split_branches_ ∷ [StoryBranch]
+      , _split_branches_ ∷ [StoryBranch content]
       }
 
-data StoryBranch = StoryBranch
+data StoryBranch content = StoryBranch
   { _branch_text_ ∷ Text
-  , _branch_story_entry_ ∷ StoryEntry
+  , _branch_story_entry_ ∷ StoryEntry content
   }
 
 data RandomSubstitution = AnyPerson | AnyMan | AnyWoman | AnyFrom [Gendered]
 
-data QuestStory = QuestStory
+data QuestStory content = QuestStory
   { _quest_name_ ∷ Text
   , _quest_random_substitutions_ ∷ [(Text, RandomSubstitution)]
-  , _quest_entry_ ∷ StoryEntry
+  , _quest_entry_ ∷ StoryEntry content
   }

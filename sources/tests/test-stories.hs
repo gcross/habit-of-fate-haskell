@@ -57,7 +57,7 @@ testStories name substitutions stories =
     | story ← stories
     ]
 
-testStoryOutcomes ∷ String → Substitutions → StoryOutcomes → TestTree
+testStoryOutcomes ∷ String → Substitutions → StoryOutcomes Story → TestTree
 testStoryOutcomes name substitutions outcomes =
   testGroup name $
     mapMaybe

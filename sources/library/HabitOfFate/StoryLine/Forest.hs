@@ -29,6 +29,7 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Quests.Forest.Stories
 import HabitOfFate.Story
 import HabitOfFate.StoryLine
+import HabitOfFate.Substitution
 
 plants ∷ [Gendered]
 plants = map (\name → Gendered name Neuter) $
@@ -36,7 +37,7 @@ plants = map (\name → Gendered name Neuter) $
   ,"Tigerlamp"
   ]
 
-quest_story ∷ QuestStory
+quest_story ∷ QuestStory Story
 quest_story = QuestStory
   "forest"
   [("Searcher", AnyWoman)
@@ -123,7 +124,7 @@ quest_story = QuestStory
     ]
   )
 
-shared_story_entries ∷ [StoryEntry]
+shared_story_entries ∷ [StoryEntry Story]
 shared_story_entries =
   [ StoryEvent
       "gingerbread"

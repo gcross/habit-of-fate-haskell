@@ -50,7 +50,7 @@ makeLenses ''State
 deriveJSON ''State
 
 data Transition label = Transition
-  { outcomes ∷ StoryOutcomes
+  { outcomes ∷ StoryOutcomes Story
   , between_stories ∷ [Story]
   , status_story ∷ Story
   , next ∷ Tagged [label]
