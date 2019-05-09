@@ -29,7 +29,7 @@ import HabitOfFate.Substitution
 data StoryLineOutcome content = StoryLineOutcome
   { outcome_text ∷ content
   , outcome_title ∷ Text
-  , outcome_substitutions ∷ [(Text, Gendered)]
+  , outcome_substitutions ∷ Substitutions
   }
 
 data StoryQuestion content = StoryQuestion
