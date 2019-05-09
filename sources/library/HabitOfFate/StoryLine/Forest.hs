@@ -40,10 +40,6 @@ plants = map (\name → Gendered name Neuter) $
 quest_story ∷ QuestStory Story
 quest_story = QuestStory
   "forest"
-  [("Searcher", AnyWoman)
-  ,("Child", AnyPerson)
-  ,("Plant", AnyFrom plants)
-  ]
   (StorySplit
     "who"
     "Entering the Wicked Forest"

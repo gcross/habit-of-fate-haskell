@@ -71,10 +71,8 @@ data StoryBranch content = StoryBranch
   , branch_story_entry ∷ StoryEntry content
   }
 
-data RandomSubstitution = AnyPerson | AnyMan | AnyWoman | AnyFrom [Gendered]
 
 data QuestStory content = QuestStory
   { quest_name ∷ Text
-  , quest_random_substitutions ∷ [(Text, RandomSubstitution)]
   , quest_entryr∷ StoryEntry content
   }
