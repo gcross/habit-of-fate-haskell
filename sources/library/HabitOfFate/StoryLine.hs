@@ -15,13 +15,21 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.StoryLine where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow)
+import Data.Traversable (Traversable(traverse))
+
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Story
 import HabitOfFate.Substitution
@@ -30,12 +38,12 @@ data StoryLineOutcome content = StoryLineOutcome
   { outcome_text ∷ content
   , outcome_title ∷ Text
   , outcome_substitutions ∷ Substitutions
-  }
+  } deriving (Foldable,Functor,Traversable)
 
 data StoryQuestion content = StoryQuestion
   { question_story ∷ content
   , question_outcomes ∷ Tagged (StoryLineOutcome content)
-  }
+  } deriving (Foldable,Functor,Traversable)
 
 data StoryEntry content =
     StoryEvent
@@ -53,7 +61,7 @@ data StoryEntry content =
       }
   | StoryLine
       { story_line_name ∷ Text
-      , story_line_content ∷ [StoryEntry content]
+      , story_line_contents ∷ [StoryEntry content]
       }
   | StoryShuffle
       { story_lines_to_shuffle ∷ [StoryEntry content]
@@ -65,14 +73,17 @@ data StoryEntry content =
       , split_question ∷ Text
       , split_branches ∷ [StoryBranch content]
       }
+ deriving (Foldable,Functor,Traversable)
 
 data StoryBranch content = StoryBranch
   { branch_text ∷ Text
   , branch_story_entry ∷ StoryEntry content
-  }
-
+  } deriving (Foldable,Functor,Traversable)
 
 data QuestStory content = QuestStory
   { quest_name ∷ Text
   , quest_entry ∷ StoryEntry content
-  }
+  } deriving (Foldable,Functor,Traversable)
+
+substituteQuestStory ∷ MonadThrow m ⇒ Substitutions → QuestStory Story → m (QuestStory Markdown)
+substituteQuestStory subs = traverse (substitute subs)

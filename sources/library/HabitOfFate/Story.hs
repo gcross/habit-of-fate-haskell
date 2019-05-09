@@ -15,7 +15,10 @@
 -}
 
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -40,6 +43,7 @@ import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import System.FilePath ((</>))
 import System.IO (readFile)
 
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Substitution
 
 import Paths_habit_of_fate (getDataFileName)
@@ -185,7 +189,7 @@ data StoryOutcomes content = StoryOutcomes
   , _story_failure_ ∷ content
   , _story_fame_ ∷ [content]
   , _story_shame_ ∷ [content]
-  } deriving (Eq,Lift,Ord,Read,Show)
+  } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 makeLenses ''StoryOutcomes
 
 instance Default content ⇒ Default (StoryOutcomes content) where
