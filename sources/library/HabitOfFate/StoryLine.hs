@@ -74,5 +74,5 @@ data StoryBranch content = StoryBranch
 
 data QuestStory content = QuestStory
   { quest_name ∷ Text
-  , quest_entryr∷ StoryEntry content
+  , quest_entry ∷ StoryEntry content
   }
