@@ -48,12 +48,12 @@ quest_story = QuestStory
     "Who shall we follow into the Wicked Forest?"
     [ StoryBranch
         "The village healer."
-        (StoryLine "healer" $
+        (StoryLine NoShuffle "healer" $
           [ StoryNarrative
               "intro"
               "A Healer Prepares to Enter the Forest"
               intro_healer_story
-          , StoryShuffle shared_story_entries
+          , StoryLine Shuffle "events" shared_story_entries
           , StoryEvent
               "conclusion"
               "Almost home!"
@@ -84,12 +84,12 @@ quest_story = QuestStory
           ])
     , StoryBranch
         "The parent of the sick child."
-        (StoryLine "parent" $
+        (StoryLine NoShuffle "parent" $
           [ StoryNarrative
               "intro"
               "A Parent Prepares to Enter the Forest"
               intro_parent_story
-          , StoryShuffle shared_story_entries
+          , StoryLine Shuffle "events" shared_story_entries
           , StoryEvent
               "conclusion"
               "The Right Herb?"

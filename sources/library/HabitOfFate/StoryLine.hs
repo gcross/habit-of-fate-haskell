@@ -45,6 +45,8 @@ data StoryQuestion content = StoryQuestion
   , question_outcomes ∷ Tagged (StoryLineOutcome content)
   } deriving (Foldable,Functor,Traversable)
 
+data ShuffleMode = Shuffle | NoShuffle
+
 data StoryEntry content =
     StoryEvent
       { event_name ∷ Text
@@ -60,11 +62,9 @@ data StoryEntry content =
       , narrative_content ∷ content
       }
   | StoryLine
-      { story_line_name ∷ Text
+      { story_line_shuffle_mode ∷ ShuffleMode
+      , story_line_name ∷ Text
       , story_line_contents ∷ [StoryEntry content]
-      }
-  | StoryShuffle
-      { story_lines_to_shuffle ∷ [StoryEntry content]
       }
   | StorySplit
       { split_name ∷ Text
