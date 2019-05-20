@@ -44,6 +44,7 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quest.StateMachine as StateMachine
 import HabitOfFate.Quest.StateMachine (Transition(..))
+import HabitOfFate.Story
 import HabitOfFate.Substitution
 import HabitOfFate.TH
 
@@ -109,7 +110,7 @@ transitionsFor Internal{..} =
   eventToTransitions ∷ Event → [Label] → [(Label, Transition Label)]
   eventToTransitions GingerbreadHouseEvent next_labels =
     [ ( GingerbreadHouse
-      , Transition gingerbread_house wander_stories looking_for_herb_story (dup next_labels) def
+      , Transition gingerbread_house wander_stories looking_for_herb_story (dup next_labels) def []
       )
     ]
   eventToTransitions FoundEvent next_labels =
@@ -118,19 +119,20 @@ transitionsFor Internal{..} =
           (Tagged (Success [("catcolor", Gendered "green" Neuter)])
                   (Failure [("catcolor", Gendered "blue" Neuter)])
           )
+          []
       )
     , ( FoundByFairy
-      , Transition found_by_fairy wander_stories returning_home_story (dup next_labels) def
+      , Transition found_by_fairy wander_stories returning_home_story (dup next_labels) def []
       )
     ]
   eventToTransitions FairyCircleEvent next_labels =
     [ ( FairyCircle
-      , Transition fairy_circle wander_stories returning_home_story (dup next_labels) def
+      , Transition fairy_circle wander_stories returning_home_story (dup next_labels) def []
       )
     ]
   eventToTransitions HomeEvent next_labels =
     [ ( Home
-      , Transition conclusion wander_stories returning_home_story (dup []) def
+      , Transition conclusion wander_stories returning_home_story (dup []) def fames_parent
       )
     ]
 
@@ -163,9 +165,9 @@ initialize = do
     FairyCircleEvent → pure FairyCircle
     _ → error "unexpected element in event order"
   let introduction = case searcher_type of
-        Parent → intro_parent_story
-        Healer → intro_healer_story
-  StateMachine.initialize substitutions first_label Internal{..} introduction
+        Parent → intro_parent
+        Healer → intro_healer
+  StateMachine.initialize substitutions first_label Internal{..} (introduction & narrative_story)
 
 getStatus ∷ GetStatusQuestRunner State
 getStatus =

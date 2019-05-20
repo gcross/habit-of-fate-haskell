@@ -30,36 +30,20 @@ import Control.Monad.Catch (MonadThrow)
 import Data.Traversable (Traversable(traverse))
 
 import HabitOfFate.Data.Markdown
-import HabitOfFate.Data.Tagged
 import HabitOfFate.Story
 import HabitOfFate.Substitution
-
-data StoryLineOutcome content = StoryLineOutcome
-  { outcome_text ∷ content
-  , outcome_title ∷ Text
-  , outcome_substitutions ∷ Substitutions
-  } deriving (Foldable,Functor,Traversable)
-
-data StoryQuestion content = StoryQuestion
-  { question_story ∷ content
-  , question_outcomes ∷ Tagged (StoryLineOutcome content)
-  } deriving (Foldable,Functor,Traversable)
 
 data ShuffleMode = Shuffle | NoShuffle
 
 data StoryEntry content =
     StoryEvent
       { event_name ∷ Text
-      , event_title ∷ Text
       , event_outcomes ∷ StoryOutcomes content
-      , event_initial_question ∷ StoryQuestion content
-      , event_failure_question ∷ StoryQuestion content
       , event_random_stories ∷ [content]
       }
   | StoryNarrative
       { narrative_name ∷ Text
-      , narrative_title ∷ Text
-      , narrative_content ∷ content
+      , narrative_story ∷ Narrative content
       }
   | StoryLine
       { story_line_shuffle_mode ∷ ShuffleMode
@@ -68,10 +52,12 @@ data StoryEntry content =
       }
   | StorySplit
       { split_name ∷ Text
-      , split_title ∷ Text
-      , split_story ∷ content
+      , split_story ∷ Narrative content
       , split_question ∷ Text
       , split_branches ∷ [StoryBranch content]
+      }
+  | StoryFames
+      { story_fames ∷ [content]
       }
  deriving (Foldable,Functor,Traversable)
 

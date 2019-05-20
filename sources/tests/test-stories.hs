@@ -57,34 +57,6 @@ testStories name substitutions stories =
     | story ← stories
     ]
 
-testStoryOutcomes ∷ String → Substitutions → StoryOutcomes Story → TestTree
-testStoryOutcomes name substitutions outcomes =
-  testGroup name $
-    mapMaybe
-      (\(outcome_name, outcome_lens_) →
-        let outcome_story = outcomes ^# outcome_lens_
-        in if onull outcome_story
-          then Nothing
-          else Just $ testStory (name ⊕ "." ⊕ outcome_name) substitutions outcome_story
-      )
-      story_outcome_singleton_labels
-    ⊕
-    (concat
-     $
-     mapMaybe
-      (\(outcome_name, outcome_lens_) →
-        let outcome_stories = outcomes ^# outcome_lens_
-        in if onull outcome_stories
-          then Nothing
-          else Just
-            [ testStory [i|#{name}.#{outcome_name}[#{n}]|] substitutions outcome_story
-            | outcome_story ← outcome_stories
-            | n ← [1..]
-            ]
-      )
-      story_outcome_multiple_labels
-    )
-
 testTransitionsAreValid ∷ (Bounded α, Enum α, Eq α, Ord α, Show α) ⇒ String → [(α, Transition α)] → TestTree
 testTransitionsAreValid name transitions = testGroup name
   [ testCase "All destination nodes are listed in the transitions" $
@@ -111,17 +83,11 @@ main = doMain
   ----------------------------------------------------------------------------
   [ testGroup "Forest" $ let subs = Forest.static_substitutions in
   ----------------------------------------------------------------------------
-    [ testStory "intro_parent_story" subs Forest.intro_parent_story
-    , testStory "intro_healer_story" subs Forest.intro_healer_story
+    [ testStory "intro_parent" subs (Forest.intro_parent & narrative_story)
+    , testStory "intro_healer" subs (Forest.intro_healer & narrative_story)
     , testStory "looking_for_herb_story" subs Forest.looking_for_herb_story
     , testStory "returning_home_story" subs Forest.returning_home_story
     , testStories "wander" subs Forest.wander_stories
-    , testStoryOutcomes "gingerbread_house" subs Forest.gingerbread_house
-    , testStoryOutcomes "found_by_fairy" subs Forest.found_by_fairy
-    , testStoryOutcomes "found_by_cat" subs Forest.found_by_cat
-    , testStoryOutcomes "fairy_circle" subs Forest.fairy_circle
-    , testStoryOutcomes "conclusion_parent" subs Forest.conclusion_parent
-    , testStoryOutcomes "conclusion_healer" subs Forest.conclusion_healer
     ]
   , testTransitionsAreValid
       "Forest (parent)"

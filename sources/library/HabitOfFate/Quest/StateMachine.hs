@@ -33,6 +33,7 @@ module HabitOfFate.Quest.StateMachine where
 import HabitOfFate.Prelude hiding (State)
 
 import Control.Monad.Catch (MonadThrow(..), Exception(..))
+import Control.Monad.Random.Class (uniform)
 
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
@@ -55,6 +56,7 @@ data Transition label = Transition
   , status_story ∷ Story
   , next ∷ Tagged [label]
   , extra_subs ∷ Tagged ([(Text, Gendered)])
+  , story_fames ∷ [Story]
   } deriving (Eq,Functor,Ord,Read,Show)
 
 type Transitions label = [(label, Transition label)]
@@ -94,10 +96,10 @@ trial transitions result = do
       continueQuest result storyFor = TryQuestResult QuestInProgress <$> (sub result $ storyFor outcomes)
 
       endQuest storyFor result = do
-        let deed_lens_  = case result of
-              SuccessResult → story_fame_
-              FailureResult → story_shame_
-        text ← chooseFrom (outcomes ^. deed_lens_) >>= sub result
+        let deeds = case result of
+              SuccessResult → story_fames
+              FailureResult → outcomes & story_shames
+        text ← chooseFrom deeds >>= sub result
         TryQuestResult (QuestHasEnded result text) <$> (sub result $ storyFor outcomes)
 
   tryProgress
