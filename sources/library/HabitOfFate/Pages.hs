@@ -46,7 +46,7 @@ data PageGroup = GoBackTo
 data Page = Page
   { _title_ ∷ Text
   , _content_ ∷ Markdown
-  , _choices_ ∷ PageChoices
+  , _choices_ ∷ PageChoices Text
   , _groups_ ∷ [PageGroup]
   } deriving (Show)
 makeLenses ''Page
@@ -57,7 +57,7 @@ choices_page_ids_ = choices_ . linked_page_ids_
 type Pages = [(Text, Page)]
 type PageMap = HashMap Text Page
 
-data PageTree = PageGroup Text (Maybe Text) [PageTree] | PageItem Text Text Story PageChoices
+data PageTree = PageGroup Text (Maybe Text) [PageTree] | PageItem Text Text Story (PageChoices Text)
 
 buildPages ∷ MonadThrow m ⇒ Substitutions → PageTree → m Pages
 buildPages subs = go "" [GoBackTo "index" "The Adventures"]
