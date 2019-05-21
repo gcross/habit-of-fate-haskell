@@ -190,65 +190,65 @@ parseSections =
   >>>
   traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
 
-data StoryOutcomes content =
+data Outcomes content =
     SuccessFailure
-      { story_common_title ∷ content
-      , story_common_story ∷ content
-      , story_common_question ∷ content
-      , story_success_choice ∷ content
-      , story_success_title ∷ content
-      , story_success_story ∷ content
-      , story_failure_choice ∷ content
-      , story_failure_title ∷ content
-      , story_failure_story ∷ content
-      , story_shames ∷ [content]
+      { outcomes_common_title ∷ content
+      , outcomes_common_story ∷ content
+      , outcomes_common_question ∷ content
+      , outcomes_success_choice ∷ content
+      , outcomes_success_title ∷ content
+      , outcomes_success_story ∷ content
+      , outcomes_failure_choice ∷ content
+      , outcomes_failure_title ∷ content
+      , outcomes_failure_story ∷ content
+      , outcomes_shames ∷ [content]
       }
   | SuccessAvertedFailure
-      { story_common_title ∷ content
-      , story_common_story ∷ content
-      , story_common_question ∷ content
-      , story_success_choice ∷ content
-      , story_success_title ∷ content
-      , story_success_story ∷ content
-      , story_averted_choice ∷ content
-      , story_averted_title ∷ content
-      , story_averted_story ∷ content
-      , story_failure_choice ∷ content
-      , story_failure_title ∷ content
-      , story_failure_story ∷ content
-      , story_shames ∷ [content]
+      { outcomes_common_title ∷ content
+      , outcomes_common_story ∷ content
+      , outcomes_common_question ∷ content
+      , outcomes_success_choice ∷ content
+      , outcomes_success_title ∷ content
+      , outcomes_success_story ∷ content
+      , outcomes_averted_choice ∷ content
+      , outcomes_averted_title ∷ content
+      , outcomes_averted_story ∷ content
+      , outcomes_failure_choice ∷ content
+      , outcomes_failure_title ∷ content
+      , outcomes_failure_story ∷ content
+      , outcomes_shames ∷ [content]
       }
   | SuccessDangerAvertedFailure
-      { story_common_title ∷ content
-      , story_common_story ∷ content
-      , story_common_question ∷ content
-      , story_success_choice ∷ content
-      , story_success_title ∷ content
-      , story_success_story ∷ content
-      , story_danger_choice ∷ content
-      , story_danger_title ∷ content
-      , story_danger_story ∷ content
-      , story_danger_question ∷ content
-      , story_averted_choice ∷ content
-      , story_averted_title ∷ content
-      , story_averted_story ∷ content
-      , story_failure_choice ∷ content
-      , story_failure_title ∷ content
-      , story_failure_story ∷ content
-      , story_shames ∷ [content]
+      { outcomes_common_title ∷ content
+      , outcomes_common_story ∷ content
+      , outcomes_common_question ∷ content
+      , outcomes_success_choice ∷ content
+      , outcomes_success_title ∷ content
+      , outcomes_success_story ∷ content
+      , outcomes_danger_choice ∷ content
+      , outcomes_danger_title ∷ content
+      , outcomes_danger_story ∷ content
+      , outcomes_danger_question ∷ content
+      , outcomes_averted_choice ∷ content
+      , outcomes_averted_title ∷ content
+      , outcomes_averted_story ∷ content
+      , outcomes_failure_choice ∷ content
+      , outcomes_failure_title ∷ content
+      , outcomes_failure_story ∷ content
+      , outcomes_shames ∷ [content]
       } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
-data InvalidStoryOutcomes =
+data InvalidOutcomes =
     NoStoriesForHeading String
   | TooManyStoriesForHeading String Int
   | InvalidHeading String
   | DuplicateHeading String
   | UnrecognizedOutcomePattern [String]
   deriving (Show)
-instance Exception InvalidStoryOutcomes
+instance Exception InvalidOutcomes
 
-separateStoryOutcomes ∷ MonadThrow m ⇒ [(String, [Story])] → m ([(String, Story)], [Story])
-separateStoryOutcomes =
+separateOutcomes ∷ MonadThrow m ⇒ [(String, [Story])] → m ([(String, Story)], [Story])
+separateOutcomes =
   foldM
     (\(outcomes, maybe_shames) (heading, stories) → if
       | heading ∈
@@ -290,8 +290,8 @@ extractOutcomeFrom outcomes heading =
     (error $ "invariant violated: no such heading " ⊕ heading)
     (lookup heading outcomes)
 
-constructStoryOutcomes ∷ MonadThrow m ⇒ ([(String, Story)], [Story]) → m (StoryOutcomes Story)
-constructStoryOutcomes (outcomes, story_shames) =
+constructOutcomes ∷ MonadThrow m ⇒ ([(String, Story)], [Story]) → m (Outcomes Story)
+constructOutcomes (outcomes, outcomes_shames) =
   case sort (keys outcomes) of
     ( [ "Common Question"
       , "Common Story"
@@ -302,15 +302,15 @@ constructStoryOutcomes (outcomes, story_shames) =
       , "Success Choice"
       , "Success Story"
       , "Success Title"
-      ] ) → let story_common_title = extractOutcome "Common Title"
-                story_common_story = extractOutcome "Common Story"
-                story_common_question = extractOutcome "Common Question"
-                story_success_choice = extractOutcome "Success Choice"
-                story_success_title = extractOutcome "Success Title"
-                story_success_story = extractOutcome "Success Story"
-                story_failure_choice = extractOutcome "Failure Choice"
-                story_failure_title = extractOutcome "Failure Title"
-                story_failure_story = extractOutcome "Failure Story"
+      ] ) → let outcomes_common_title = extractOutcome "Common Title"
+                outcomes_common_story = extractOutcome "Common Story"
+                outcomes_common_question = extractOutcome "Common Question"
+                outcomes_success_choice = extractOutcome "Success Choice"
+                outcomes_success_title = extractOutcome "Success Title"
+                outcomes_success_story = extractOutcome "Success Story"
+                outcomes_failure_choice = extractOutcome "Failure Choice"
+                outcomes_failure_title = extractOutcome "Failure Title"
+                outcomes_failure_story = extractOutcome "Failure Story"
             in pure $ SuccessFailure{..}
     ( [ "Averted Choice"
       , "Averted Story"
@@ -324,18 +324,18 @@ constructStoryOutcomes (outcomes, story_shames) =
       , "Success Choice"
       , "Success Story"
       , "Success Title"
-      ] ) → let story_common_title = extractOutcome "Common Title"
-                story_common_story = extractOutcome "Common Story"
-                story_common_question = extractOutcome "Common Question"
-                story_success_choice = extractOutcome "Success Choice"
-                story_success_title = extractOutcome "Success Title"
-                story_success_story = extractOutcome "Success Story"
-                story_averted_choice = extractOutcome "Averted Choice"
-                story_averted_title = extractOutcome "Averted Title"
-                story_averted_story = extractOutcome "Averted Story"
-                story_failure_choice = extractOutcome "Failure Choice"
-                story_failure_title = extractOutcome "Failure Title"
-                story_failure_story = extractOutcome "Failure Story"
+      ] ) → let outcomes_common_title = extractOutcome "Common Title"
+                outcomes_common_story = extractOutcome "Common Story"
+                outcomes_common_question = extractOutcome "Common Question"
+                outcomes_success_choice = extractOutcome "Success Choice"
+                outcomes_success_title = extractOutcome "Success Title"
+                outcomes_success_story = extractOutcome "Success Story"
+                outcomes_averted_choice = extractOutcome "Averted Choice"
+                outcomes_averted_title = extractOutcome "Averted Title"
+                outcomes_averted_story = extractOutcome "Averted Story"
+                outcomes_failure_choice = extractOutcome "Failure Choice"
+                outcomes_failure_title = extractOutcome "Failure Title"
+                outcomes_failure_story = extractOutcome "Failure Story"
             in pure $ SuccessAvertedFailure{..}
     ( [ "Averted Choice"
       , "Averted Story"
@@ -353,38 +353,38 @@ constructStoryOutcomes (outcomes, story_shames) =
       , "Success Choice"
       , "Success Story"
       , "Success Title"
-      ] ) → let story_common_title = extractOutcome "Common Title"
-                story_common_story = extractOutcome "Common Story"
-                story_common_question = extractOutcome "Common Question"
-                story_success_choice = extractOutcome "Success Choice"
-                story_success_title = extractOutcome "Success Title"
-                story_success_story = extractOutcome "Success Story"
-                story_danger_choice = extractOutcome "Danger Choice"
-                story_danger_title = extractOutcome "Danger Title"
-                story_danger_story = extractOutcome "Danger Story"
-                story_danger_question = extractOutcome "Danger Question"
-                story_averted_choice = extractOutcome "Averted Choice"
-                story_averted_title = extractOutcome "Averted Title"
-                story_averted_story = extractOutcome "Averted Story"
-                story_failure_choice = extractOutcome "Failure Choice"
-                story_failure_title = extractOutcome "Failure Title"
-                story_failure_story = extractOutcome "Failure Story"
+      ] ) → let outcomes_common_title = extractOutcome "Common Title"
+                outcomes_common_story = extractOutcome "Common Story"
+                outcomes_common_question = extractOutcome "Common Question"
+                outcomes_success_choice = extractOutcome "Success Choice"
+                outcomes_success_title = extractOutcome "Success Title"
+                outcomes_success_story = extractOutcome "Success Story"
+                outcomes_danger_choice = extractOutcome "Danger Choice"
+                outcomes_danger_title = extractOutcome "Danger Title"
+                outcomes_danger_story = extractOutcome "Danger Story"
+                outcomes_danger_question = extractOutcome "Danger Question"
+                outcomes_averted_choice = extractOutcome "Averted Choice"
+                outcomes_averted_title = extractOutcome "Averted Title"
+                outcomes_averted_story = extractOutcome "Averted Story"
+                outcomes_failure_choice = extractOutcome "Failure Choice"
+                outcomes_failure_title = extractOutcome "Failure Title"
+                outcomes_failure_story = extractOutcome "Failure Story"
             in pure $ SuccessDangerAvertedFailure{..}
     x → throwM $ UnrecognizedOutcomePattern x
  where
   extractOutcome = extractOutcomeFrom outcomes
 
-story_outcomes ∷ QuasiQuoter
-story_outcomes = QuasiQuoter
-  (parseSections >=> separateStoryOutcomes >=> constructStoryOutcomes >=> Lift.lift)
-  (error "Cannot use story_outcomes as a pattern")
-  (error "Cannot use story_outcomes as a type")
-  (error "Cannot use story_outcomes as a dec")
+outcomes ∷ QuasiQuoter
+outcomes = QuasiQuoter
+  (parseSections >=> separateOutcomes >=> constructOutcomes >=> Lift.lift)
+  (error "Cannot use outcomes as a pattern")
+  (error "Cannot use outcomes as a type")
+  (error "Cannot use outcomes as a dec")
 
 {-
 Typical usage:
 
-... = [story_outcomes|
+... = [outcomes_outcomes|
 ================================= Common Title =================================
 
 ================================= Common Story =================================
@@ -424,20 +424,20 @@ Typical usage:
 |]
 -}
 
-storyForSuccess ∷ Semigroup content ⇒ StoryOutcomes content → content
-storyForSuccess SuccessFailure{..} = story_common_story ⊕ story_success_story
-storyForSuccess SuccessAvertedFailure{..} = story_common_story ⊕ story_success_story
-storyForSuccess SuccessDangerAvertedFailure{..} = story_common_story ⊕ story_success_story
+storyForSuccess ∷ Semigroup content ⇒ Outcomes content → content
+storyForSuccess SuccessFailure{..} = outcomes_common_story ⊕ outcomes_success_story
+storyForSuccess SuccessAvertedFailure{..} = outcomes_common_story ⊕ outcomes_success_story
+storyForSuccess SuccessDangerAvertedFailure{..} = outcomes_common_story ⊕ outcomes_success_story
 
-storyForAverted ∷ Semigroup content ⇒ StoryOutcomes content → content
-storyForAverted SuccessFailure{..} = story_common_story ⊕ story_success_story
-storyForAverted SuccessAvertedFailure{..} = story_common_story ⊕ story_averted_story
-storyForAverted SuccessDangerAvertedFailure{..} = story_common_story ⊕ story_danger_story ⊕ story_averted_story
+storyForAverted ∷ Semigroup content ⇒ Outcomes content → content
+storyForAverted SuccessFailure{..} = outcomes_common_story ⊕ outcomes_success_story
+storyForAverted SuccessAvertedFailure{..} = outcomes_common_story ⊕ outcomes_averted_story
+storyForAverted SuccessDangerAvertedFailure{..} = outcomes_common_story ⊕ outcomes_danger_story ⊕ outcomes_averted_story
 
-storyForFailure ∷ Semigroup content ⇒ StoryOutcomes content → content
-storyForFailure SuccessFailure{..} = story_common_story ⊕ story_failure_story
-storyForFailure SuccessAvertedFailure{..} = story_common_story ⊕ story_failure_story
-storyForFailure SuccessDangerAvertedFailure{..} = story_common_story ⊕ story_danger_story ⊕ story_failure_story
+storyForFailure ∷ Semigroup content ⇒ Outcomes content → content
+storyForFailure SuccessFailure{..} = outcomes_common_story ⊕ outcomes_failure_story
+storyForFailure SuccessAvertedFailure{..} = outcomes_common_story ⊕ outcomes_failure_story
+storyForFailure SuccessDangerAvertedFailure{..} = outcomes_common_story ⊕ outcomes_danger_story ⊕ outcomes_failure_story
 
 data Narrative content = Narrative
   { narrative_title ∷ content

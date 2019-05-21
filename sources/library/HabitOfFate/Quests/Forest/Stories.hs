@@ -131,8 +131,8 @@ behind.
 -------------------------------- Event Stories -------------------------------
 --------------------------------------------------------------------------------
 
-gingerbread_house ∷ StoryOutcomes Story
-gingerbread_house = [story_outcomes|
+gingerbread_house ∷ Outcomes Story
+gingerbread_house = [outcomes|
 ================================= Common Title =================================
 The Gingerbread House
 ================================= Common Story =================================
@@ -194,8 +194,8 @@ Some Help Arrives?
 Finally, just when all hope is lost, a creature arrives to help |Searcher.
 |]
 
-found_by_fairy ∷ StoryOutcomes Story
-found_by_fairy = [story_outcomes|
+found_by_fairy ∷ Outcomes Story
+found_by_fairy = [outcomes|
 ================================= Common Title =================================
 Running After a Fairy
 ================================= Common Story =================================
@@ -255,8 +255,8 @@ idea.
 |Searcher learned the hard way that not all fairies are good fairies.
 |]
 
-found_by_cat ∷ StoryOutcomes Story
-found_by_cat = [story_outcomes|
+found_by_cat ∷ Outcomes Story
+found_by_cat = [outcomes|
 ================================= Common Title =================================
 Chance Encounter with a Cat
 ================================= Common Story =================================
@@ -330,8 +330,8 @@ knowing its color.
 middle of the night is a bad plan.
 |]
 
-fairy_circle ∷ StoryOutcomes Story
-fairy_circle = [story_outcomes|
+fairy_circle ∷ Outcomes Story
+fairy_circle = [outcomes|
 ================================= Common Title =================================
 The Mushroom Circle
 ================================= Common Story =================================
@@ -391,8 +391,8 @@ Having been mysteriously teleported to a distant realm by the enigmatic magic of
 the fairies, there was no way |Searcher could make it back in time to save |Child.
 |]
 
-conclusion_parent ∷ StoryOutcomes Story
-conclusion_parent = [story_outcomes|
+conclusion_parent ∷ Outcomes Story
+conclusion_parent = [outcomes|
 ================================= Common Title =================================
 He/she| has made it home!
 ================================= Common Story =================================
@@ -470,8 +470,8 @@ Against all odds, |Searcher was able to find the correct plant that was needed
 to mix a potion to save her sick son/daughter|Child.
 |]
 
-conclusion_healer ∷ StoryOutcomes Story
-conclusion_healer = [story_outcomes|
+conclusion_healer ∷ Outcomes Story
+conclusion_healer = [outcomes|
 ================================= Common Title =================================
 Finally Back Home
 ================================= Common Story =================================

@@ -51,7 +51,7 @@ makeLenses ''State
 deriveJSON ''State
 
 data Transition label = Transition
-  { outcomes ∷ StoryOutcomes Story
+  { outcomes ∷ Outcomes Story
   , between_stories ∷ [Story]
   , status_story ∷ Story
   , next ∷ Tagged [label]
@@ -98,7 +98,7 @@ trial transitions result = do
       endQuest storyFor result = do
         let deeds = case result of
               SuccessResult → story_fames
-              FailureResult → outcomes & story_shames
+              FailureResult → outcomes & outcomes_shames
         text ← chooseFrom deeds >>= sub result
         TryQuestResult (QuestHasEnded result text) <$> (sub result $ storyFor outcomes)
 

@@ -38,7 +38,7 @@ data ShuffleMode = Shuffle | NoShuffle
 data StoryEntry content =
     StoryEvent
       { event_name ∷ Text
-      , event_outcomes ∷ StoryOutcomes content
+      , event_outcomes ∷ Outcomes content
       , event_random_stories ∷ [content]
       }
   | StoryNarrative
