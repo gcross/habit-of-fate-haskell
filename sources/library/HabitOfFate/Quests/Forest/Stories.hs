@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -23,6 +24,7 @@ module HabitOfFate.Quests.Forest.Stories where
 import HabitOfFate.Prelude
 
 import HabitOfFate.Story
+import HabitOfFate.StoryLine
 import HabitOfFate.Substitution
 
 --------------------------------------------------------------------------------
@@ -565,3 +567,72 @@ fames_healer = [stories|
 After a long and difficulty journey, |Searcher returned triumphantly with the
 final herb she needed to save |Child.
 |]
+
+--------------------------------------------------------------------------------
+------------------------------------- Quest ------------------------------------
+--------------------------------------------------------------------------------
+
+quest ∷ Quest Story
+quest = Quest
+  "forest"
+  (SplitEntry
+    "who"
+    intro
+    "Who shall we follow into the Wicked Forest?"
+    [ Branch
+        "The village healer."
+        (LineEntry NoShuffle "healer" $
+          [ FamesEntry fames_healer
+          , NarrativeEntry
+              "intro"
+              intro_healer
+          , LineEntry Shuffle "events" shared_story_entries
+          , EventEntry
+              "conclusion"
+              conclusion_healer
+              wander_stories
+          ])
+    , Branch
+        "The parent of the sick child."
+        (LineEntry NoShuffle "parent" $
+          [ FamesEntry fames_parent
+          , NarrativeEntry
+              "intro"
+              intro_parent
+          , LineEntry Shuffle "events" shared_story_entries
+          , EventEntry
+              "conclusion"
+              conclusion_parent
+              wander_stories
+          ])
+    ]
+  )
+
+shared_story_entries ∷ [Entry Story]
+shared_story_entries =
+  [ EventEntry
+      "gingerbread"
+      gingerbread_house
+      wander_stories
+  , SplitEntry
+      "found"
+      found
+      "Who is this?"
+      [ Branch
+          "A cat."
+          (EventEntry
+            "cat"
+            found_by_cat
+            wander_stories)
+      , Branch
+          "A fairy."
+          (EventEntry
+            "fairy"
+            found_by_fairy
+            wander_stories)
+      ]
+  , EventEntry
+      "fairy-circle"
+      fairy_circle
+      wander_stories
+  ]

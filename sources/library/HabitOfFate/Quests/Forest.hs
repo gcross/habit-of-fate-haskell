@@ -44,6 +44,7 @@ import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quest.StateMachine as StateMachine
 import HabitOfFate.Quest.StateMachine (Transition(..))
+import HabitOfFate.StoryLine
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 import HabitOfFate.TH
