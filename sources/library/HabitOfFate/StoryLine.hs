@@ -205,7 +205,7 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
       let base = parent ⊕ "/" ⊕ split_name
           Narrative{..} = split_story
       in
-        [("common", Page
+        [(base ⊕ "/" ⊕ "common", Page
           { page_title = narrative_title
           , page_content = narrative_story
           , page_choices = Choices split_question $

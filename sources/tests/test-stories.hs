@@ -50,6 +50,17 @@ import HabitOfFate.Testing.Assertions
 testQuest ∷ String → Quest Story → HashMap Text Gendered → TestTree
 testQuest name quest static_substitutions = testGroup name
   [ testCase "Substitutions" $ extractAllPlaceholders quest @?= keysSet static_substitutions
+  , testCase "Pages" $ do
+      pages ← substituteEverywhere static_substitutions quest <&> buildPagesFromQuest
+      let names = map fst pages
+          name_counts ∷ HashMap Text Int
+          name_counts =
+            foldl'
+              (flip $ alterMap (maybe 1 (+1) >>> Just))
+              mempty
+              names
+          duplicate_names = name_counts |> mapToList |> filter (\(_,count) → count > 1) |> sort
+      duplicate_names @?= []
   ]
 
 main ∷ HasCallStack ⇒ IO ()

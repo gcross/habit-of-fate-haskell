@@ -47,6 +47,7 @@ module HabitOfFate.Substitution
   , extractPlaceholders
   , parseSubstitutions
   , substitute
+  , substituteEverywhere
   ) where
 
 import HabitOfFate.Prelude
@@ -254,6 +255,9 @@ substitute table (Story text) =
     text
   <&>
   (mconcat >>> Markdown)
+
+substituteEverywhere ∷ (MonadThrow m, Traversable t) ⇒ Substitutions → t Story → m (t Markdown)
+substituteEverywhere = substitute >>> mapM
 
 applyKind ∷ Kind → Gendered → Text
 applyKind Name (Gendered name _) = name
