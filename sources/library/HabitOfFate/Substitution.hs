@@ -43,6 +43,7 @@ module HabitOfFate.Substitution
   , Substitutions
 
   -- Functions
+  , extractAllPlaceholders
   , extractPlaceholders
   , parseSubstitutions
   , substitute
@@ -146,6 +147,9 @@ extractPlaceholders =
   mapMaybe (\case { Literal _ → Nothing; Substitution s → Just (s ^. key_) })
   >>>
   setFromList
+
+extractAllPlaceholders ∷ Foldable f ⇒ f Story → HashSet Text
+extractAllPlaceholders = foldMap extractPlaceholders
 
 type Parser = Parsec String ()
 
