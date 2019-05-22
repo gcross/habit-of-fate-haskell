@@ -38,35 +38,35 @@ plants = map (\name → Gendered name Neuter) $
   ,"Tigerlamp"
   ]
 
-quest_story ∷ QuestStory Story
-quest_story = QuestStory
+quest ∷ Quest Story
+quest = Quest
   "forest"
-  (StorySplit
+  (SplitEntry
     "who"
     intro
     "Who shall we follow into the Wicked Forest?"
-    [ StoryBranch
+    [ Branch
         "The village healer."
-        (StoryLine NoShuffle "healer" $
-          [ StoryFames fames_healer
-          , StoryNarrative
+        (LineEntry NoShuffle "healer" $
+          [ FamesEntry fames_healer
+          , NarrativeEntry
               "intro"
               intro_healer
-          , StoryLine Shuffle "events" shared_story_entries
-          , StoryEvent
+          , LineEntry Shuffle "events" shared_story_entries
+          , EventEntry
               "conclusion"
               conclusion_healer
               wander_stories
           ])
-    , StoryBranch
+    , Branch
         "The parent of the sick child."
-        (StoryLine NoShuffle "parent" $
-          [ StoryFames fames_parent
-          , StoryNarrative
+        (LineEntry NoShuffle "parent" $
+          [ FamesEntry fames_parent
+          , NarrativeEntry
               "intro"
               intro_parent
-          , StoryLine Shuffle "events" shared_story_entries
-          , StoryEvent
+          , LineEntry Shuffle "events" shared_story_entries
+          , EventEntry
               "conclusion"
               conclusion_parent
               wander_stories
@@ -74,30 +74,30 @@ quest_story = QuestStory
     ]
   )
 
-shared_story_entries ∷ [StoryEntry Story]
+shared_story_entries ∷ [Entry Story]
 shared_story_entries =
-  [ StoryEvent
+  [ EventEntry
       "gingerbread"
       gingerbread_house
       wander_stories
-  , StorySplit
+  , SplitEntry
       "found"
       found
       "Who is this?"
-      [ StoryBranch
+      [ Branch
           "A cat."
-          (StoryEvent
+          (EventEntry
             "cat"
             found_by_cat
             wander_stories)
-      , StoryBranch
+      , Branch
           "A fairy."
-          (StoryEvent
+          (EventEntry
             "fairy"
             found_by_fairy
             wander_stories)
       ]
-  , StoryEvent
+  , EventEntry
       "fairy-circle"
       fairy_circle
       wander_stories

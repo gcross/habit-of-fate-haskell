@@ -37,183 +37,183 @@ import HabitOfFate.Substitution
 
 data ShuffleMode = Shuffle | NoShuffle
 
-data StoryEntry content =
-    StoryEvent
+data Entry content =
+    EventEntry
       { event_name ∷ Text
       , event_outcomes ∷ Outcomes content
       , event_random_stories ∷ [content]
       }
-  | StoryNarrative
+  | NarrativeEntry
       { narrative_name ∷ Text
       , narrative_content ∷ Narrative content
       }
-  | StoryLine
+  | LineEntry
       { story_line_shuffle_mode ∷ ShuffleMode
       , story_line_name ∷ Text
-      , story_line_contents ∷ [StoryEntry content]
+      , story_line_contents ∷ [Entry content]
       }
-  | StorySplit
+  | SplitEntry
       { split_name ∷ Text
       , split_story ∷ Narrative content
       , split_question ∷ Markdown
-      , split_branches ∷ [StoryBranch content]
+      , split_branches ∷ [Branch content]
       }
-  | StoryFames
+  | FamesEntry
       { story_fames ∷ [content]
       }
  deriving (Foldable,Functor,Traversable)
 
-nameOf ∷ StoryEntry content → Maybe Text
-nameOf StoryEvent{..} = Just event_name
-nameOf StoryNarrative{..} = Just narrative_name
-nameOf StoryLine{..} = Just story_line_name
-nameOf StorySplit{..} = Just split_name
-nameOf StoryFames{..} = Nothing
+nameOf ∷ Entry content → Maybe Text
+nameOf EventEntry{..} = Just event_name
+nameOf NarrativeEntry{..} = Just narrative_name
+nameOf LineEntry{..} = Just story_line_name
+nameOf SplitEntry{..} = Just split_name
+nameOf FamesEntry{..} = Nothing
 
-data StoryBranch content = StoryBranch
+data Branch content = Branch
   { branch_choice ∷ Markdown
-  , branch_entry ∷ StoryEntry content
+  , branch_entry ∷ Entry content
   } deriving (Foldable,Functor,Traversable)
 
-data QuestStory content = QuestStory
+data Quest content = Quest
   { quest_name ∷ Text
-  , quest_entry ∷ StoryEntry content
+  , quest_entry ∷ Entry content
   } deriving (Foldable,Functor,Traversable)
 
-substituteQuestStory ∷ MonadThrow m ⇒ Substitutions → QuestStory Story → m (QuestStory Markdown)
-substituteQuestStory subs = traverse (substitute subs)
+substituteQuest ∷ MonadThrow m ⇒ Substitutions → Quest Story → m (Quest Markdown)
+substituteQuest subs = traverse (substitute subs)
 
-data StoryPage = StoryPage
-  { story_page_title ∷ Markdown
-  , story_page_content ∷ Markdown
-  , story_page_choices ∷ PageChoices Markdown
+data Page = Page
+  { page_title ∷ Markdown
+  , page_content ∷ Markdown
+  , page_choices ∷ PageChoices Markdown
   }
 
 nextPageChoice ∷ Maybe Text → PageChoices content
 nextPageChoice Nothing = DeadEnd
 nextPageChoice (Just next) = NoChoice next
 
-buildPagesFromQuestStory ∷ QuestStory Markdown → [(Text, StoryPage)]
-buildPagesFromQuestStory QuestStory{..} = process Nothing quest_name quest_entry
+buildPagesFromQuest ∷ Quest Markdown → [(Text, Page)]
+buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
  where
-  process ∷ Maybe Text → Text → StoryEntry Markdown → [(Text, StoryPage)]
+  process ∷ Maybe Text → Text → Entry Markdown → [(Text, Page)]
   process maybe_next_choice parent node = case node of
-    StoryEvent{..} →
+    EventEntry{..} →
       let base = parent ⊕ "/" ⊕ event_name ⊕ "/"
       in map (first (base ⊕)) $ case event_outcomes of
         SuccessFailure{..} →
-          [("common", StoryPage
-            { story_page_title = outcomes_common_title
-            , story_page_content = outcomes_common_story
-            , story_page_choices = Choices outcomes_common_question
+          [("common", Page
+            { page_title = outcomes_common_title
+            , page_content = outcomes_common_story
+            , page_choices = Choices outcomes_common_question
                 [(outcomes_success_choice,"success")
                 ,(outcomes_failure_choice,"failure")
                 ]
             })
-          ,("success", StoryPage
-            { story_page_title = outcomes_success_title
-            , story_page_content = outcomes_success_story
-            , story_page_choices = nextPageChoice maybe_next_choice
+          ,("success", Page
+            { page_title = outcomes_success_title
+            , page_content = outcomes_success_story
+            , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("failure", StoryPage
-            { story_page_title = outcomes_failure_title
-            , story_page_content = outcomes_failure_story
-            , story_page_choices = DeadEnd
+          ,("failure", Page
+            { page_title = outcomes_failure_title
+            , page_content = outcomes_failure_story
+            , page_choices = DeadEnd
             })
           ]
         SuccessAvertedFailure{..} →
-          [("common", StoryPage
-            { story_page_title = outcomes_common_title
-            , story_page_content = outcomes_common_story
-            , story_page_choices = Choices outcomes_common_question
+          [("common", Page
+            { page_title = outcomes_common_title
+            , page_content = outcomes_common_story
+            , page_choices = Choices outcomes_common_question
                 [(outcomes_success_choice,"success")
                 ,(outcomes_averted_choice,"averted")
                 ,(outcomes_failure_choice,"failure")
                 ]
             })
-          ,("success", StoryPage
-            { story_page_title = outcomes_success_title
-            , story_page_content = outcomes_success_story
-            , story_page_choices = nextPageChoice maybe_next_choice
+          ,("success", Page
+            { page_title = outcomes_success_title
+            , page_content = outcomes_success_story
+            , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("averted", StoryPage
-            { story_page_title = outcomes_averted_title
-            , story_page_content = outcomes_averted_story
-            , story_page_choices = nextPageChoice maybe_next_choice
+          ,("averted", Page
+            { page_title = outcomes_averted_title
+            , page_content = outcomes_averted_story
+            , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("failure", StoryPage
-            { story_page_title = outcomes_failure_title
-            , story_page_content = outcomes_failure_story
-            , story_page_choices = DeadEnd
+          ,("failure", Page
+            { page_title = outcomes_failure_title
+            , page_content = outcomes_failure_story
+            , page_choices = DeadEnd
             })
           ]
         SuccessDangerAvertedFailure{..} →
-          [("common", StoryPage
-            { story_page_title = outcomes_common_title
-            , story_page_content = outcomes_common_story
-            , story_page_choices = Choices outcomes_common_question
+          [("common", Page
+            { page_title = outcomes_common_title
+            , page_content = outcomes_common_story
+            , page_choices = Choices outcomes_common_question
                 [(outcomes_success_choice,"success")
                 ,(outcomes_danger_choice,"danger")
                 ]
             })
-          ,("success", StoryPage
-            { story_page_title = outcomes_success_title
-            , story_page_content = outcomes_success_story
-            , story_page_choices = nextPageChoice maybe_next_choice
+          ,("success", Page
+            { page_title = outcomes_success_title
+            , page_content = outcomes_success_story
+            , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("danger", StoryPage
-            { story_page_title = outcomes_danger_title
-            , story_page_content = outcomes_danger_story
-            , story_page_choices = Choices outcomes_danger_question
+          ,("danger", Page
+            { page_title = outcomes_danger_title
+            , page_content = outcomes_danger_story
+            , page_choices = Choices outcomes_danger_question
                 [(outcomes_averted_choice,"averted")
                 ,(outcomes_failure_choice,"failure")
                 ]
             })
-          ,("averted", StoryPage
-            { story_page_title = outcomes_averted_title
-            , story_page_content = outcomes_averted_story
-            , story_page_choices = nextPageChoice maybe_next_choice
+          ,("averted", Page
+            { page_title = outcomes_averted_title
+            , page_content = outcomes_averted_story
+            , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("failure", StoryPage
-            { story_page_title = outcomes_failure_title
-            , story_page_content = outcomes_failure_story
-            , story_page_choices = DeadEnd
+          ,("failure", Page
+            { page_title = outcomes_failure_title
+            , page_content = outcomes_failure_story
+            , page_choices = DeadEnd
             })
           ]
-    StoryNarrative{..} →
+    NarrativeEntry{..} →
       [(parent ⊕ "/" ⊕ narrative_name
        ,let Narrative{..} = narrative_content
-        in StoryPage
-          { story_page_title = narrative_title
-          , story_page_content = narrative_story
-          , story_page_choices = nextPageChoice maybe_next_choice
+        in Page
+          { page_title = narrative_title
+          , page_content = narrative_story
+          , page_choices = nextPageChoice maybe_next_choice
           })
       ]
-    StoryLine{..} →
+    LineEntry{..} →
       let base = parent ⊕ "/" ⊕ story_line_name
-          go ∷ [StoryEntry Markdown] → [[(Text, StoryPage)]]
+          go ∷ [Entry Markdown] → [[(Text, Page)]]
           go [] = []
-          go ((StoryFames _):rest) = go rest
+          go ((FamesEntry _):rest) = go rest
           go (x:[]) = process maybe_next_choice base x:[]
           go (x:rest@(y:_)) = process (Just next_choice) base x:go rest
            where
             next_choice = case nameOf x of
-              Nothing → error "Internal error: StoryFames should already have been covered"
+              Nothing → error "Internal error: FamesEntry should already have been covered"
               Just next_choice → next_choice
       in go story_line_contents |> concat
-    StorySplit{..} →
+    SplitEntry{..} →
       let base = parent ⊕ "/" ⊕ split_name
           Narrative{..} = split_story
       in
-        [("common", StoryPage
-          { story_page_title = narrative_title
-          , story_page_content = narrative_story
-          , story_page_choices = Choices split_question $
+        [("common", Page
+          { page_title = narrative_title
+          , page_content = narrative_story
+          , page_choices = Choices split_question $
               mapMaybe
-                (\StoryBranch{..} → (branch_choice,) <$> nameOf branch_entry)
+                (\Branch{..} → (branch_choice,) <$> nameOf branch_entry)
                 split_branches
           })
         ]
         ⊕
         concatMap ((& branch_entry) >>> process maybe_next_choice base) split_branches
-    StoryFames{..} → []
+    FamesEntry{..} → []
