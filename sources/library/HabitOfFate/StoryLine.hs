@@ -35,7 +35,7 @@ import HabitOfFate.Data.Markdown
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
-data ShuffleMode = Shuffle | NoShuffle
+data ShuffleMode = Shuffle | NoShuffle deriving (Enum,Eq,Ord,Read,Show)
 
 data Entry content =
     EventEntry
@@ -61,7 +61,7 @@ data Entry content =
   | FamesEntry
       { story_fames ∷ [content]
       }
- deriving (Foldable,Functor,Traversable)
+ deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 nameOf ∷ Entry content → Maybe Text
 nameOf EventEntry{..} = Just event_name
@@ -73,12 +73,12 @@ nameOf FamesEntry{..} = Nothing
 data Branch content = Branch
   { branch_choice ∷ Markdown
   , branch_entry ∷ Entry content
-  } deriving (Foldable,Functor,Traversable)
+  } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 data Quest content = Quest
   { quest_name ∷ Text
   , quest_entry ∷ Entry content
-  } deriving (Foldable,Functor,Traversable)
+  } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 substituteQuest ∷ MonadThrow m ⇒ Substitutions → Quest Story → m (Quest Markdown)
 substituteQuest subs = traverse (substitute subs)
@@ -87,7 +87,7 @@ data Page = Page
   { page_title ∷ Markdown
   , page_content ∷ Markdown
   , page_choices ∷ PageChoices Markdown
-  }
+  } deriving (Eq,Ord,Read,Show)
 
 nextPageChoice ∷ Maybe Text → PageChoices content
 nextPageChoice Nothing = DeadEnd
