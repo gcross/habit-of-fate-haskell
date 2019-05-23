@@ -61,6 +61,15 @@ testQuest name quest static_substitutions = testGroup name
               names
           duplicate_names = name_counts |> mapToList |> filter (\(_,count) → count > 1) |> sort
       duplicate_names @?= []
+      let links =
+            pages
+            |> concatMap
+                (\(source, Page{..}) → case page_choices of
+                  Choices _ branches → [(source, target) | (_, target) ← branches]
+                  _ → []
+                )
+          missing_links = filter (\(source, target) → target `notElem` names) links
+      missing_links @?= []
   ]
 
 main ∷ HasCallStack ⇒ IO ()

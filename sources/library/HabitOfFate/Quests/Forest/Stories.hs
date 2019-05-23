@@ -576,15 +576,16 @@ final herb she needed to save |Child.
 quest ∷ Quest Story
 quest = Quest
   "forest"
+  []
   (SplitEntry
     "who"
     intro
     "Who shall we follow into the Wicked Forest?"
     [ Branch
         "The village healer."
+        fames_healer
         (LineEntry NoShuffle "healer" $
-          [ FamesEntry fames_healer
-          , NarrativeEntry
+          [ NarrativeEntry
               "intro"
               intro_healer
           , LineEntry Shuffle "events" shared_story_entries
@@ -595,9 +596,9 @@ quest = Quest
           ])
     , Branch
         "The parent of the sick child."
+        fames_parent
         (LineEntry NoShuffle "parent" $
-          [ FamesEntry fames_parent
-          , NarrativeEntry
+          [ NarrativeEntry
               "intro"
               intro_parent
           , LineEntry Shuffle "events" shared_story_entries
@@ -621,12 +622,14 @@ shared_story_entries =
       "Who is this?"
       [ Branch
           "A cat."
+          []
           (EventEntry
             "cat"
             found_by_cat
             wander_stories)
       , Branch
           "A fairy."
+          []
           (EventEntry
             "fairy"
             found_by_fairy

@@ -58,25 +58,31 @@ data Entry content =
       , split_question ∷ Markdown
       , split_branches ∷ [Branch content]
       }
-  | FamesEntry
-      { fames_contents ∷ [content]
-      }
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-nameOf ∷ Entry content → Maybe Text
-nameOf EventEntry{..} = Just event_name
-nameOf NarrativeEntry{..} = Just narrative_name
-nameOf LineEntry{..} = Just line_name
-nameOf SplitEntry{..} = Just split_name
-nameOf FamesEntry{..} = Nothing
+nameOf ∷ Entry content → Text
+nameOf EventEntry{..} = event_name
+nameOf NarrativeEntry{..} = narrative_name
+nameOf LineEntry{..} = line_name
+nameOf SplitEntry{..} = split_name
+
+nextNameOf ∷ Show content ⇒ Entry content → Text
+nextNameOf EventEntry{..} = event_name ⊕ "/common"
+nextNameOf NarrativeEntry{..} = narrative_name
+nextNameOf entry@LineEntry{..} = case line_contents of
+  [] → error "Empty line has no next name."
+  entry:_ → line_name ⊕ "/" ⊕ nextNameOf entry
+nextNameOf entry@SplitEntry{..} = split_name ⊕ "/common"
 
 data Branch content = Branch
   { branch_choice ∷ Markdown
+  , branch_fames ∷ [content]
   , branch_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 data Quest content = Quest
   { quest_name ∷ Text
+  , quest_fames ∷ [content]
   , quest_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
@@ -100,81 +106,81 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
   process maybe_next_choice parent node = case node of
     EventEntry{..} →
       let base = parent ⊕ "/" ⊕ event_name ⊕ "/"
-      in map (first (base ⊕)) $ case event_outcomes of
+      in case event_outcomes of
         SuccessFailure{..} →
-          [("common", Page
+          [(base ⊕ "common", Page
             { page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question
-                [(outcomes_success_choice,"success")
-                ,(outcomes_failure_choice,"failure")
+                [(outcomes_success_choice, base ⊕ "success")
+                ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
             })
-          ,("success", Page
+          ,(base ⊕ "success", Page
             { page_title = outcomes_success_title
             , page_content = outcomes_success_story
             , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("failure", Page
+          ,(base ⊕ "failure", Page
             { page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
             , page_choices = DeadEnd
             })
           ]
         SuccessAvertedFailure{..} →
-          [("common", Page
+          [(base ⊕ "common", Page
             { page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question
-                [(outcomes_success_choice,"success")
-                ,(outcomes_averted_choice,"averted")
-                ,(outcomes_failure_choice,"failure")
+                [(outcomes_success_choice, base ⊕ "success")
+                ,(outcomes_averted_choice, base ⊕ "averted")
+                ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
             })
-          ,("success", Page
+          ,(base ⊕ "success", Page
             { page_title = outcomes_success_title
             , page_content = outcomes_success_story
             , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("averted", Page
+          ,(base ⊕ "averted", Page
             { page_title = outcomes_averted_title
             , page_content = outcomes_averted_story
             , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("failure", Page
+          ,(base ⊕ "failure", Page
             { page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
             , page_choices = DeadEnd
             })
           ]
         SuccessDangerAvertedFailure{..} →
-          [("common", Page
+          [(base ⊕ "common", Page
             { page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question
-                [(outcomes_success_choice,"success")
-                ,(outcomes_danger_choice,"danger")
+                [(outcomes_success_choice, base ⊕ "success")
+                ,(outcomes_danger_choice, base ⊕ "danger")
                 ]
             })
-          ,("success", Page
+          ,(base ⊕ "success", Page
             { page_title = outcomes_success_title
             , page_content = outcomes_success_story
             , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("danger", Page
+          ,(base ⊕ "danger", Page
             { page_title = outcomes_danger_title
             , page_content = outcomes_danger_story
             , page_choices = Choices outcomes_danger_question
-                [(outcomes_averted_choice,"averted")
-                ,(outcomes_failure_choice,"failure")
+                [(outcomes_averted_choice,base ⊕ "averted")
+                ,(outcomes_failure_choice,base ⊕ "failure")
                 ]
             })
-          ,("averted", Page
+          ,(base ⊕ "averted", Page
             { page_title = outcomes_averted_title
             , page_content = outcomes_averted_story
             , page_choices = nextPageChoice maybe_next_choice
             })
-          ,("failure", Page
+          ,(base ⊕ "failure", Page
             { page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
             , page_choices = DeadEnd
@@ -191,29 +197,25 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
       ]
     LineEntry{..} →
       let base = parent ⊕ "/" ⊕ line_name
-          go ∷ [Entry Markdown] → [[(Text, Page)]]
-          go [] = []
-          go ((FamesEntry _):rest) = go rest
-          go (x:[]) = process maybe_next_choice base x:[]
-          go (x:rest@(y:_)) = process (Just next_choice) base x:go rest
-           where
-            next_choice = case nameOf x of
-              Nothing → error "Internal error: FamesEntry should already have been covered"
-              Just next_choice → next_choice
-      in go line_contents |> concat
+          go ∷ Entry Markdown → [Entry Markdown] → [[(Text, Page)]]
+          go x [] = process maybe_next_choice base x:[]
+          go x (y:rest) = process (Just $ nameOf y) base x:go y rest
+      in concat $ case line_contents of
+        [] → []
+        x:rest → go x rest
     SplitEntry{..} →
-      let base = parent ⊕ "/" ⊕ split_name
+      let name = parent ⊕ "/" ⊕ split_name
+          base = name ⊕ "/"
           Narrative{..} = split_story
       in
-        [(base ⊕ "/" ⊕ "common", Page
+        [(base ⊕ "common", Page
           { page_title = narrative_title
           , page_content = narrative_story
           , page_choices = Choices split_question $
-              mapMaybe
-                (\Branch{..} → (branch_choice,) <$> nameOf branch_entry)
+              map
+                (\Branch{..} → (branch_choice, base ⊕ nextNameOf branch_entry))
                 split_branches
           })
         ]
         ⊕
-        concatMap ((& branch_entry) >>> process maybe_next_choice base) split_branches
-    FamesEntry{..} → []
+        concatMap ((& branch_entry) >>> process maybe_next_choice name) split_branches
