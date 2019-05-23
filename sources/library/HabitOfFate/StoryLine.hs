@@ -59,7 +59,7 @@ data Entry content =
       , split_branches ∷ [Branch content]
       }
   | FamesEntry
-      { story_fames ∷ [content]
+      { fames_contents ∷ [content]
       }
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
