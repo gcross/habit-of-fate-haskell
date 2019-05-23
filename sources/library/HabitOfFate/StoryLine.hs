@@ -48,9 +48,9 @@ data Entry content =
       , narrative_content ∷ Narrative content
       }
   | LineEntry
-      { story_line_shuffle_mode ∷ ShuffleMode
-      , story_line_name ∷ Text
-      , story_line_contents ∷ [Entry content]
+      { line_shuffle_mode ∷ ShuffleMode
+      , line_name ∷ Text
+      , line_contents ∷ [Entry content]
       }
   | SplitEntry
       { split_name ∷ Text
@@ -66,7 +66,7 @@ data Entry content =
 nameOf ∷ Entry content → Maybe Text
 nameOf EventEntry{..} = Just event_name
 nameOf NarrativeEntry{..} = Just narrative_name
-nameOf LineEntry{..} = Just story_line_name
+nameOf LineEntry{..} = Just line_name
 nameOf SplitEntry{..} = Just split_name
 nameOf FamesEntry{..} = Nothing
 
@@ -190,7 +190,7 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
           })
       ]
     LineEntry{..} →
-      let base = parent ⊕ "/" ⊕ story_line_name
+      let base = parent ⊕ "/" ⊕ line_name
           go ∷ [Entry Markdown] → [[(Text, Page)]]
           go [] = []
           go ((FamesEntry _):rest) = go rest
@@ -200,7 +200,7 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
             next_choice = case nameOf x of
               Nothing → error "Internal error: FamesEntry should already have been covered"
               Just next_choice → next_choice
-      in go story_line_contents |> concat
+      in go line_contents |> concat
     SplitEntry{..} →
       let base = parent ⊕ "/" ⊕ split_name
           Narrative{..} = split_story
