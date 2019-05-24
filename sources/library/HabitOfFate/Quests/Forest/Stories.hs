@@ -577,6 +577,11 @@ quest ∷ Quest Story
 quest = Quest
   "forest"
   []
+  [("Searcher",Gendered "Andrea" Female),("",Gendered "Andrea" Female)
+  ,("Child",Gendered "Tommy" Male)
+  ,("Plant",Gendered "Illsbane" Neuter)
+  ,("WrongPlant",Gendered "Tigerlamp" Neuter)
+  ]
   (SplitEntry
     "who"
     intro
@@ -639,17 +644,4 @@ shared_story_entries =
       "fairy-circle"
       fairy_circle
       wander_stories
-  ]
-
---------------------------------------------------------------------------------
------------------------------- Pages Substitutions -----------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-pages_substitutions ∷ HashMap Text Gendered
-pages_substitutions =
-  [("Searcher",Gendered "Andrea" Female),("",Gendered "Andrea" Female)
-  ,("Child",Gendered "Tommy" Male)
-  ,("Plant",Gendered "Illsbane" Neuter)
-  ,("WrongPlant",Gendered "Tigerlamp" Neuter)
   ]

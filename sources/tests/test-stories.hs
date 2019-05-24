@@ -47,11 +47,11 @@ import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
 
-testQuest ∷ String → Quest Story → HashMap Text Gendered → TestTree
-testQuest name quest static_substitutions = testGroup name
-  [ testCase "Substitutions" $ extractAllPlaceholders quest @?= keysSet static_substitutions
+testQuest ∷ String → Quest Story → TestTree
+testQuest name quest@Quest{..} = testGroup name
+  [ testCase "Substitutions" $ extractAllPlaceholders quest @?= keysSet quest_standard_substitutions
   , testCase "Pages" $ do
-      pages ← substituteEverywhere static_substitutions quest <&> buildPagesFromQuest
+      pages ← substituteQuestWithStandardSubstitutions quest <&> buildPagesFromQuest
       let names = map fst pages
           name_counts ∷ HashMap Text Int
           name_counts =
@@ -74,5 +74,5 @@ testQuest name quest static_substitutions = testGroup name
 
 main ∷ HasCallStack ⇒ IO ()
 main = doMain
-  [ testQuest "Forest" Forest.quest Forest.pages_substitutions
+  [ testQuest "Forest" Forest.quest
   ]

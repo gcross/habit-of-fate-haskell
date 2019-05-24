@@ -83,11 +83,15 @@ data Branch content = Branch
 data Quest content = Quest
   { quest_name ∷ Text
   , quest_fames ∷ [content]
+  , quest_standard_substitutions ∷ Substitutions
   , quest_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 substituteQuest ∷ MonadThrow m ⇒ Substitutions → Quest Story → m (Quest Markdown)
 substituteQuest subs = traverse (substitute subs)
+
+substituteQuestWithStandardSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
+substituteQuestWithStandardSubstitutions quest@Quest{..} = substituteQuest quest_standard_substitutions quest
 
 data Page = Page
   { page_title ∷ Markdown
