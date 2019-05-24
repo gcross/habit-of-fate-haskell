@@ -17,12 +17,15 @@
 {-# LANGUAGE AutoDeriveTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.StoryLineQuests where
 
 import HabitOfFate.Prelude
 
+import HabitOfFate.Data.Markdown
+import HabitOfFate.Story
 import HabitOfFate.StoryLine
 import HabitOfFate.Substitution
 import qualified HabitOfFate.Quests.Forest.Stories as Forest
@@ -31,3 +34,18 @@ quests ∷ [Quest Story]
 quests =
   [ Forest.quest
   ]
+
+index_page ∷ Page
+index_page = Page
+  "The Adventure Begins"
+  (["Men, women, searchers, wanderers, people who just want to get home,"
+    ,"all of them send their prayers to you in the hope you will hear"
+    ,"them and grant them aid."
+    ,""
+    ,"But will you?  You are a God, after all, and these mortals can make"
+    ,"such fun playthings."
+    ]
+    |> (unlines ∷ [Text] → Text)
+    |> Markdown)
+  (Choices "The choice is yours.  Where would you like to start?" $
+    [ (quest_choice, initialQuestPath quest) | quest@Quest{..} ← quests])

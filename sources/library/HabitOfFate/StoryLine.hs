@@ -82,6 +82,7 @@ data Branch content = Branch
 
 data Quest content = Quest
   { quest_name ∷ Text
+  , quest_choice ∷ Markdown
   , quest_fames ∷ [content]
   , quest_standard_substitutions ∷ Substitutions
   , quest_entry ∷ Entry content

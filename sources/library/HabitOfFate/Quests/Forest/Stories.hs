@@ -576,6 +576,7 @@ final herb she needed to save |Child.
 quest ∷ Quest Story
 quest = Quest
   "forest"
+  "A prayer from someone searching for an herb in the Wicked Forest."
   []
   [("Searcher",Gendered "Andrea" Female),("",Gendered "Andrea" Female)
   ,("Child",Gendered "Tommy" Male)
