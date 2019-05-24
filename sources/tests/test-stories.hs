@@ -71,6 +71,7 @@ testQuest name quest@Quest{..} = testGroup (unpack name)
                 )
           missing_links = filter (\(source, target) → target `notElem` paths) links
       missing_links @?= []
+      -- assertBool "initial quest path does not exist" $ initialQuestPath quest ∈ paths
   ]
 
 main ∷ HasCallStack ⇒ IO ()

@@ -93,6 +93,9 @@ substituteQuest subs = traverse (substitute subs)
 substituteQuestWithStandardSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
 substituteQuestWithStandardSubstitutions quest@Quest{..} = substituteQuest quest_standard_substitutions quest
 
+initialQuestPath ∷ Quest content → Text
+initialQuestPath Quest{..} = quest_name ⊕ "/" ⊕ nextPathOf quest_entry
+
 data Page = Page
   { page_title ∷ Markdown
   , page_content ∷ Markdown
