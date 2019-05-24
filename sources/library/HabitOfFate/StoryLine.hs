@@ -66,7 +66,7 @@ nameOf NarrativeEntry{..} = narrative_name
 nameOf LineEntry{..} = line_name
 nameOf SplitEntry{..} = split_name
 
-nextNameOf ∷ Show content ⇒ Entry content → Text
+nextNameOf ∷ Entry content → Text
 nextNameOf EventEntry{..} = event_name ⊕ "/common"
 nextNameOf NarrativeEntry{..} = narrative_name
 nextNameOf entry@LineEntry{..} = case line_contents of
