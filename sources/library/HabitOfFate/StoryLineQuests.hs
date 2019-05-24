@@ -27,7 +27,7 @@ import HabitOfFate.StoryLine
 import HabitOfFate.Substitution
 import qualified HabitOfFate.Quests.Forest.Stories as Forest
 
-quests ∷ [(Text, Quest Story)]
+quests ∷ [Quest Story]
 quests =
-  [ ("The Wicked Forest", Forest.quest)
+  [ Forest.quest
   ]

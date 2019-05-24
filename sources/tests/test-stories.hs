@@ -48,17 +48,17 @@ import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
 
-testSubstititutions ∷ Text → Quest Story → TestTree
-testSubstititutions name quest@Quest{..} =
-  testCase (unpack name) $
+testSubstititutions ∷ Quest Story → TestTree
+testSubstititutions quest@Quest{..} =
+  testCase (unpack quest_name) $
     extractAllPlaceholders quest @?= keysSet quest_standard_substitutions
 
 main ∷ HasCallStack ⇒ IO ()
 main = doMain $
-  [ testGroup "Substitutions" $ map (uncurry testSubstititutions) quests
+  [ testGroup "Substitutions" $ map testSubstititutions quests
   , testCase "Pages" $ do
       pages ←
-        mapM substituteQuestWithStandardSubstitutions (map snd quests)
+        mapM substituteQuestWithStandardSubstitutions quests
         <&>
         concatMap buildPagesFromQuest
       let paths = map fst pages
@@ -79,7 +79,7 @@ main = doMain $
                 )
           missing_links = filter (\(source, target) → target `notElem` paths) links
       missing_links @?= []
-      forM_ quests $ \(_,quest@Quest{..}) →
+      forM_ quests $ \quest@Quest{..} →
         assertBool
           [i|"initial quest {quest_name} path {initialQuestPath quest} does not exist"|]
           (initialQuestPath quest ∈ paths)
