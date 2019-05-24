@@ -37,6 +37,7 @@ quests =
 
 index_page ∷ Page
 index_page = Page
+  "index"
   "The Adventure Begins"
   (["Men, women, searchers, wanderers, people who just want to get home,"
     ,"all of them send their prayers to you in the hope you will hear"

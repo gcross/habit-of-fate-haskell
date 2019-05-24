@@ -98,7 +98,8 @@ initialQuestPath ∷ Quest content → Text
 initialQuestPath Quest{..} = quest_name ⊕ "/" ⊕ nextPathOf quest_entry
 
 data Page = Page
-  { page_title ∷ Markdown
+  { page_path ∷ Text
+  , page_title ∷ Markdown
   , page_content ∷ Markdown
   , page_choices ∷ PageChoices Markdown
   } deriving (Eq,Ord,Read,Show)
@@ -107,105 +108,117 @@ nextPageChoice ∷ Maybe Text → PageChoices content
 nextPageChoice Nothing = DeadEnd
 nextPageChoice (Just next) = NoChoice next
 
-buildPagesFromQuest ∷ Quest Markdown → [(Text, Page)]
+buildPagesFromQuest ∷ Quest Markdown → [Page]
 buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
  where
-  process ∷ Maybe Text → Text → Entry Markdown → [(Text, Page)]
+  process ∷ Maybe Text → Text → Entry Markdown → [Page]
   process maybe_next_choice parent node = case node of
     EventEntry{..} →
       let base = parent ⊕ "/" ⊕ event_name ⊕ "/"
       in case event_outcomes of
         SuccessFailure{..} →
-          [(base ⊕ "common", Page
-            { page_title = outcomes_common_title
+          [Page
+            { page_path = base ⊕ "common"
+            , page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question
                 [(outcomes_success_choice, base ⊕ "success")
                 ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
-            })
-          ,(base ⊕ "success", Page
-            { page_title = outcomes_success_title
+            }
+          ,Page
+            { page_path = base ⊕ "success"
+            , page_title = outcomes_success_title
             , page_content = outcomes_success_story
             , page_choices = nextPageChoice maybe_next_choice
-            })
-          ,(base ⊕ "failure", Page
-            { page_title = outcomes_failure_title
+            }
+          ,Page
+            { page_path = base ⊕ "failure"
+            , page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
             , page_choices = DeadEnd
-            })
+            }
           ]
         SuccessAvertedFailure{..} →
-          [(base ⊕ "common", Page
-            { page_title = outcomes_common_title
+          [Page
+            { page_path = base ⊕ "common"
+            , page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question
                 [(outcomes_success_choice, base ⊕ "success")
                 ,(outcomes_averted_choice, base ⊕ "averted")
                 ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
-            })
-          ,(base ⊕ "success", Page
-            { page_title = outcomes_success_title
+            }
+          ,Page
+            { page_path = base ⊕ "success"
+            , page_title = outcomes_success_title
             , page_content = outcomes_success_story
             , page_choices = nextPageChoice maybe_next_choice
-            })
-          ,(base ⊕ "averted", Page
-            { page_title = outcomes_averted_title
+            }
+          ,Page
+            { page_path = base ⊕ "averted"
+            , page_title = outcomes_averted_title
             , page_content = outcomes_averted_story
             , page_choices = nextPageChoice maybe_next_choice
-            })
-          ,(base ⊕ "failure", Page
-            { page_title = outcomes_failure_title
+            }
+          ,Page
+            { page_path = base ⊕ "failure"
+            , page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
             , page_choices = DeadEnd
-            })
+            }
           ]
         SuccessDangerAvertedFailure{..} →
-          [(base ⊕ "common", Page
-            { page_title = outcomes_common_title
+          [Page
+            { page_path = base ⊕ "common"
+            , page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question
                 [(outcomes_success_choice, base ⊕ "success")
                 ,(outcomes_danger_choice, base ⊕ "danger")
                 ]
-            })
-          ,(base ⊕ "success", Page
-            { page_title = outcomes_success_title
+            }
+          ,Page
+            { page_path = base ⊕ "success"
+            , page_title = outcomes_success_title
             , page_content = outcomes_success_story
             , page_choices = nextPageChoice maybe_next_choice
-            })
-          ,(base ⊕ "danger", Page
-            { page_title = outcomes_danger_title
+            }
+          ,Page
+            { page_path = base ⊕ "danger"
+            , page_title = outcomes_danger_title
             , page_content = outcomes_danger_story
             , page_choices = Choices outcomes_danger_question
                 [(outcomes_averted_choice,base ⊕ "averted")
                 ,(outcomes_failure_choice,base ⊕ "failure")
                 ]
-            })
-          ,(base ⊕ "averted", Page
-            { page_title = outcomes_averted_title
+            }
+          ,Page
+            { page_path = base ⊕ "averted"
+            , page_title = outcomes_averted_title
             , page_content = outcomes_averted_story
             , page_choices = nextPageChoice maybe_next_choice
-            })
-          ,(base ⊕ "failure", Page
-            { page_title = outcomes_failure_title
+            }
+          ,Page
+            { page_path = base ⊕ "failure"
+            , page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
             , page_choices = DeadEnd
-            })
+            }
           ]
     NarrativeEntry{..} →
-      [(parent ⊕ "/" ⊕ narrative_name
-       ,let Narrative{..} = narrative_content
-        in Page
-          { page_title = narrative_title
-          , page_content = narrative_story
-          , page_choices = nextPageChoice maybe_next_choice
-          })
+      [let Narrative{..} = narrative_content
+       in Page
+        { page_path = parent ⊕ "/" ⊕ narrative_name
+        , page_title = narrative_title
+        , page_content = narrative_story
+        , page_choices = nextPageChoice maybe_next_choice
+        }
       ]
     LineEntry{..} →
       let base = parent ⊕ "/" ⊕ line_name
-          go ∷ Entry Markdown → [Entry Markdown] → [[(Text, Page)]]
+          go ∷ Entry Markdown → [Entry Markdown] → [[Page]]
           go x [] = process maybe_next_choice base x:[]
           go x (y:rest) = process (Just $ nameOf y) base x:go y rest
       in concat $ case line_contents of
@@ -216,14 +229,15 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
           base = name ⊕ "/"
           Narrative{..} = split_story
       in
-        [(base ⊕ "common", Page
-          { page_title = narrative_title
+        [Page
+          { page_path = base ⊕ "common"
+          , page_title = narrative_title
           , page_content = narrative_story
           , page_choices = Choices split_question $
               map
                 (\Branch{..} → (branch_choice, base ⊕ nextPathOf branch_entry))
                 split_branches
-          })
+          }
         ]
         ⊕
         concatMap ((& branch_entry) >>> process maybe_next_choice name) split_branches

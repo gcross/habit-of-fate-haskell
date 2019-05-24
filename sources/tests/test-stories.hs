@@ -61,7 +61,7 @@ main = doMain $
         mapM substituteQuestWithStandardSubstitutions quests
         <&>
         concatMap buildPagesFromQuest
-      let paths = map fst pages
+      let paths = map page_path pages
           path_counts ∷ HashMap Text Int
           path_counts =
             foldl'
@@ -73,8 +73,8 @@ main = doMain $
       let links =
             pages
             |> concatMap
-                (\(source, Page{..}) → case page_choices of
-                  Choices _ branches → [(source, target) | (_, target) ← branches]
+                (\Page{..} → case page_choices of
+                  Choices _ branches → [(page_path, target) | (_, target) ← branches]
                   _ → []
                 )
           missing_links = filter (\(source, target) → target `notElem` paths) links
