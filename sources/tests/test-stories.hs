@@ -52,15 +52,15 @@ testQuest name quest@Quest{..} = testGroup name
   [ testCase "Substitutions" $ extractAllPlaceholders quest @?= keysSet quest_standard_substitutions
   , testCase "Pages" $ do
       pages ← substituteQuestWithStandardSubstitutions quest <&> buildPagesFromQuest
-      let names = map fst pages
-          name_counts ∷ HashMap Text Int
-          name_counts =
+      let paths = map fst pages
+          path_counts ∷ HashMap Text Int
+          path_counts =
             foldl'
               (flip $ alterMap (maybe 1 (+1) >>> Just))
               mempty
-              names
-          duplicate_names = name_counts |> mapToList |> filter (\(_,count) → count > 1) |> sort
-      duplicate_names @?= []
+              paths
+          duplicate_paths = path_counts |> mapToList |> filter (\(_,count) → count > 1) |> sort
+      duplicate_paths @?= []
       let links =
             pages
             |> concatMap
@@ -68,7 +68,7 @@ testQuest name quest@Quest{..} = testGroup name
                   Choices _ branches → [(source, target) | (_, target) ← branches]
                   _ → []
                 )
-          missing_links = filter (\(source, target) → target `notElem` names) links
+          missing_links = filter (\(source, target) → target `notElem` paths) links
       missing_links @?= []
   ]
 
