@@ -66,13 +66,13 @@ nameOf NarrativeEntry{..} = narrative_name
 nameOf LineEntry{..} = line_name
 nameOf SplitEntry{..} = split_name
 
-nextNameOf ∷ Entry content → Text
-nextNameOf EventEntry{..} = event_name ⊕ "/common"
-nextNameOf NarrativeEntry{..} = narrative_name
-nextNameOf entry@LineEntry{..} = case line_contents of
+nextPathOf ∷ Entry content → Text
+nextPathOf EventEntry{..} = event_name ⊕ "/common"
+nextPathOf NarrativeEntry{..} = narrative_name
+nextPathOf entry@LineEntry{..} = case line_contents of
   [] → error "Empty line has no next name."
-  entry:_ → line_name ⊕ "/" ⊕ nextNameOf entry
-nextNameOf entry@SplitEntry{..} = split_name ⊕ "/common"
+  entry:_ → line_name ⊕ "/" ⊕ nextPathOf entry
+nextPathOf entry@SplitEntry{..} = split_name ⊕ "/common"
 
 data Branch content = Branch
   { branch_choice ∷ Markdown
@@ -217,7 +217,7 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
           , page_content = narrative_story
           , page_choices = Choices split_question $
               map
-                (\Branch{..} → (branch_choice, base ⊕ nextNameOf branch_entry))
+                (\Branch{..} → (branch_choice, base ⊕ nextPathOf branch_entry))
                 split_branches
           })
         ]
