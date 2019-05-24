@@ -170,6 +170,7 @@ library
                      , HabitOfFate.Server.Requests.Web.NewHabit
                      , HabitOfFate.Story
                      , HabitOfFate.StoryLine
+                     , HabitOfFate.StoryLineQuests
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing
                      , HabitOfFate.Testing.Assertions

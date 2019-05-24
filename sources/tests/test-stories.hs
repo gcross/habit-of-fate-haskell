@@ -43,12 +43,13 @@ import qualified HabitOfFate.Quests.Forest.Stories as Forest
 import HabitOfFate.Quest.StateMachine
 import HabitOfFate.Story
 import HabitOfFate.StoryLine
+import HabitOfFate.StoryLineQuests
 import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
 
-testQuest ∷ String → Quest Story → TestTree
-testQuest name quest@Quest{..} = testGroup name
+testQuest ∷ Text → Quest Story → TestTree
+testQuest name quest@Quest{..} = testGroup (unpack name)
   [ testCase "Substitutions" $ extractAllPlaceholders quest @?= keysSet quest_standard_substitutions
   , testCase "Pages" $ do
       pages ← substituteQuestWithStandardSubstitutions quest <&> buildPagesFromQuest
@@ -73,6 +74,4 @@ testQuest name quest@Quest{..} = testGroup name
   ]
 
 main ∷ HasCallStack ⇒ IO ()
-main = doMain
-  [ testQuest "Forest" Forest.quest
-  ]
+main = doMain $ map (uncurry testQuest) quests
