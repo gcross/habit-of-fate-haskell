@@ -482,13 +482,11 @@ narrative = QuasiQuoter
   (error "Cannot use narrative as a dec")
 
 data PageChoices content =
-    DeadEnd
-  | NoChoice Text
+    NoChoice Text
   | Choices content [(content,Text)]
   deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 linked_page_ids_ ∷ Traversal' (PageChoices content) Text
-linked_page_ids_ _ DeadEnd = pure DeadEnd
 linked_page_ids_ f (NoChoice c) = NoChoice <$> f c
 linked_page_ids_ f (Choices query choices) =
   Choices query <$> traverse (traverseOf _2 f) choices

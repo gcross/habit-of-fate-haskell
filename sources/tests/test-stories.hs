@@ -60,7 +60,7 @@ main = doMain $
       pages ←
         mapM substituteQuestWithStandardSubstitutions quests
         <&>
-        concatMap buildPagesFromQuest
+        (concatMap buildPagesFromQuest >>> (Page "index" "" "" (Choices "" []):))
       let paths = map page_path pages
           path_counts ∷ HashMap Text Int
           path_counts =

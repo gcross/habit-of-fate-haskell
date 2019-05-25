@@ -129,7 +129,6 @@ library
                      , HabitOfFate.Quest.StateMachine
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
-                     , HabitOfFate.Quests.Forest.Pages
                      , HabitOfFate.Quests.Forest.Stories
                      , HabitOfFate.Server
                      , HabitOfFate.Server.Actions.Queries
@@ -220,6 +219,7 @@ executable generate-html
                      , blaze-html
                      , directory
                      , filepath
+                     , lens
                      , optparse-applicative
                      , text
   default-language:    Haskell2010
@@ -229,6 +229,7 @@ executable generate-latex
   main-is:             generate-latex.hs
   build-depends:       habit-of-fate
                      , base
+                     , directory
                      , filepath
                      , optparse-applicative
                      , raw-strings-qq

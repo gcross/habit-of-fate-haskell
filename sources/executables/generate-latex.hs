@@ -27,20 +27,16 @@ import HabitOfFate.Prelude hiding ((<.>))
 import Data.Text.Lazy.Builder (Builder, fromString, toLazyText)
 import Data.Text.Lazy.IO (writeFile)
 import Options.Applicative
+import System.Directory
+import System.FilePath
 import Text.RawString.QQ (r)
 
 import HabitOfFate.Data.Markdown
-import HabitOfFate.Pages
-import qualified HabitOfFate.Quests.Forest.Pages as Forest
 import HabitOfFate.Story
+import HabitOfFate.StoryLine
+import HabitOfFate.StoryLineQuests
 
 import Paths_habit_of_fate
-
-all_pages ∷ [IO Pages]
-all_pages =
-  [ index_pages
-  , Forest.pages
-  ]
 
 standard_prelude, standard_postlude ∷ Builder
 standard_prelude = [r|
@@ -56,25 +52,23 @@ standard_postlude = [r|
 \end{document}
 |]
 
-generatePageContent ∷ Text → Page → Builder
-generatePageContent page_id Page{..} = fromString
-  [i|\\section{#{_title_}} \n\\label{#{page_id}}\n#{renderMarkdownToLaTeX _content_}\n|]
+generatePageContent ∷ Page → Builder
+generatePageContent Page{..} = fromString
+  [i|\\section{#{renderMarkdownToLaTeX page_title}} \n\\label{#{page_path}}\n#{renderMarkdownToLaTeX page_content}\n|]
 
 generatePageChoices ∷ Page → Builder
-generatePageChoices Page{..} = case _choices_ of
-  DeadEnd →
-    fromString "\\textbf{You have reached the end.}\n"
+generatePageChoices Page{..} = case page_choices of
   NoChoice c_ref →
     fromString [i|Continue to page \\pageref{#{c_ref}}.\n|]
   Choices question choices →
-    fromString [i|#{question}\n\\\\\n\\begin{enumerate}\n|]
+    fromString [i|#{renderMarkdownToLaTeX question}\n\n\\begin{enumerate}\n|]
     ⊕
     mconcat
-      [ fromString [i|\\item #{c} (Go to page \\pageref{#{c_ref}}.)|]
+      [ fromString [i|\\item #{renderMarkdownToLaTeX c} (Go to page \\pageref{#{c_ref}}.)|]
       | (c, c_ref) ← choices
       ]
     ⊕
-    fromString "\\end{enumerate}\n"
+    fromString "\\end{enumerate}\n\n"
 
 data Configuration = Configuration
   { output_path ∷ FilePath
@@ -97,16 +91,19 @@ main = do
       (configuration_parser <**> helper)
       (fullDesc <> header "generate-latex -- generate story latex file"
       )
-  pages ← sequence all_pages <&> concat
-  pagemap ← constructAndValidatePageMap pages
+  pages ←
+    (mapM substituteQuestWithStandardSubstitutions quests ∷ IO [Quest Markdown])
+    <&>
+    (concatMap buildPagesFromQuest >>> (index_page:))
+  createDirectoryIfMissing True $ takeDirectory output_path
   toLazyText >>> writeFile output_path $
     standard_prelude
     ⊕
     foldl'
-      (\chunks (page_id, page) →
-        chunks ⊕ generatePageContent page_id page ⊕ generatePageChoices page
+      (\chunks page →
+        chunks ⊕ generatePageContent page ⊕ generatePageChoices page
       )
       mempty
-      (walkPages "index" pagemap)
+      pages
     ⊕
     standard_postlude

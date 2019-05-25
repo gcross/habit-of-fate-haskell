@@ -104,13 +104,32 @@ data Page = Page
   , page_choices ∷ PageChoices Markdown
   } deriving (Eq,Ord,Read,Show)
 
-nextPageChoice ∷ Maybe Text → PageChoices content
-nextPageChoice Nothing = DeadEnd
-nextPageChoice (Just next) = NoChoice next
-
 buildPagesFromQuest ∷ Quest Markdown → [Page]
-buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
+buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
  where
+  quest_choices, quest_choices_without_brackets ∷ [(Markdown, Text)]
+  quest_choices =
+    [("[Return to the beginning of this quest.]", initialQuestPath quest)
+    ,("[Return to the choice of quests.]", "index")
+    ]
+  quest_choices_without_brackets =
+    [("Return to the beginning of this quest.", initialQuestPath quest)
+    ,("Return to the choice of quests.", "index")
+    ]
+
+  proceedChoices ∷ Maybe Text → PageChoices Markdown
+  proceedChoices Nothing =
+    Choices
+      "You have guided your chosen protagonist to success.  What next?"
+      quest_choices_without_brackets
+  proceedChoices (Just next_path) = NoChoice next_path
+
+  failure_dead_end ∷ PageChoices Markdown
+  failure_dead_end =
+    Choices
+      "You have guided your chosen protagonist to failure.  What next?"
+      quest_choices_without_brackets
+
   process ∷ Maybe Text → Text → Entry Markdown → [Page]
   process maybe_next_choice parent node = case node of
     EventEntry{..} →
@@ -121,22 +140,24 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
             { page_path = base ⊕ "common"
             , page_title = outcomes_common_title
             , page_content = outcomes_common_story
-            , page_choices = Choices outcomes_common_question
+            , page_choices = Choices outcomes_common_question $
                 [(outcomes_success_choice, base ⊕ "success")
                 ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
+                ⊕
+                quest_choices
             }
           ,Page
             { page_path = base ⊕ "success"
             , page_title = outcomes_success_title
             , page_content = outcomes_success_story
-            , page_choices = nextPageChoice maybe_next_choice
+            , page_choices = proceedChoices maybe_next_choice
             }
           ,Page
             { page_path = base ⊕ "failure"
             , page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
-            , page_choices = DeadEnd
+            , page_choices = failure_dead_end
             }
           ]
         SuccessAvertedFailure{..} →
@@ -144,29 +165,31 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
             { page_path = base ⊕ "common"
             , page_title = outcomes_common_title
             , page_content = outcomes_common_story
-            , page_choices = Choices outcomes_common_question
+            , page_choices = Choices outcomes_common_question $
                 [(outcomes_success_choice, base ⊕ "success")
                 ,(outcomes_averted_choice, base ⊕ "averted")
                 ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
+                ⊕
+                quest_choices
             }
           ,Page
             { page_path = base ⊕ "success"
             , page_title = outcomes_success_title
             , page_content = outcomes_success_story
-            , page_choices = nextPageChoice maybe_next_choice
+            , page_choices = proceedChoices maybe_next_choice
             }
           ,Page
             { page_path = base ⊕ "averted"
             , page_title = outcomes_averted_title
             , page_content = outcomes_averted_story
-            , page_choices = nextPageChoice maybe_next_choice
+            , page_choices = proceedChoices maybe_next_choice
             }
           ,Page
             { page_path = base ⊕ "failure"
             , page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
-            , page_choices = DeadEnd
+            , page_choices = failure_dead_end
             }
           ]
         SuccessDangerAvertedFailure{..} →
@@ -174,37 +197,41 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
             { page_path = base ⊕ "common"
             , page_title = outcomes_common_title
             , page_content = outcomes_common_story
-            , page_choices = Choices outcomes_common_question
+            , page_choices = Choices outcomes_common_question $
                 [(outcomes_success_choice, base ⊕ "success")
                 ,(outcomes_danger_choice, base ⊕ "danger")
                 ]
+                ⊕
+                quest_choices
             }
           ,Page
             { page_path = base ⊕ "success"
             , page_title = outcomes_success_title
             , page_content = outcomes_success_story
-            , page_choices = nextPageChoice maybe_next_choice
+            , page_choices = proceedChoices maybe_next_choice
             }
           ,Page
             { page_path = base ⊕ "danger"
             , page_title = outcomes_danger_title
             , page_content = outcomes_danger_story
-            , page_choices = Choices outcomes_danger_question
+            , page_choices = Choices outcomes_danger_question $
                 [(outcomes_averted_choice,base ⊕ "averted")
                 ,(outcomes_failure_choice,base ⊕ "failure")
                 ]
+                ⊕
+                quest_choices
             }
           ,Page
             { page_path = base ⊕ "averted"
             , page_title = outcomes_averted_title
             , page_content = outcomes_averted_story
-            , page_choices = nextPageChoice maybe_next_choice
+            , page_choices = proceedChoices maybe_next_choice
             }
           ,Page
             { page_path = base ⊕ "failure"
             , page_title = outcomes_failure_title
             , page_content = outcomes_failure_story
-            , page_choices = DeadEnd
+            , page_choices = failure_dead_end
             }
           ]
     NarrativeEntry{..} →
@@ -213,14 +240,14 @@ buildPagesFromQuest Quest{..} = process Nothing quest_name quest_entry
         { page_path = parent ⊕ "/" ⊕ narrative_name
         , page_title = narrative_title
         , page_content = narrative_story
-        , page_choices = nextPageChoice maybe_next_choice
+        , page_choices = proceedChoices maybe_next_choice
         }
       ]
     LineEntry{..} →
       let base = parent ⊕ "/" ⊕ line_name
           go ∷ Entry Markdown → [Entry Markdown] → [[Page]]
           go x [] = process maybe_next_choice base x:[]
-          go x (y:rest) = process (Just $ nameOf y) base x:go y rest
+          go x (y:rest) = process (Just $ base ⊕ "/" ⊕ nextPathOf y) base x:go y rest
       in concat $ case line_contents of
         [] → []
         x:rest → go x rest
