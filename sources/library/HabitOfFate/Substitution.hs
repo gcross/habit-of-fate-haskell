@@ -95,16 +95,23 @@ data Kind =
 
 referrents ∷ [(String, Referrent)]
 referrents =
-  [ ( "he/she", Subject)
-  , ( "him/her", Object)
-  , ( "his/her", Possessive)
-  , ( "his/hers", ProperPossessive)
-  , ( "himself/herself", Reflexive)
-  , ( "man/woman", Category)
-  , ( "men/women", CategoryPlural)
-  , ( "son/daughter", Offspring)
-  , ( "sons/daughters", OffspringPlural)
-  ]
+  concatMap
+    (\(male, female, referrent) →
+      [ (male ⊕ "/" ⊕ female, referrent)
+      , ((male & _head . uppercase_ .~ True) ⊕ "/" ⊕ female, referrent)
+      , ((male & _head . uppercase_ .~ True) ⊕ "/" ⊕ (female & _head . uppercase_ .~ True), referrent)
+      ]
+    )
+    [ ("he", "she", Subject)
+    , ("him", "her", Object)
+    , ("his", "her", Possessive)
+    , ("his", "hers", ProperPossessive)
+    , ("himself", "herself", Reflexive)
+    , ("man", "woman", Category)
+    , ("men", "women", CategoryPlural)
+    , ("son", "daughter", Offspring)
+    , ("sons", "daughters", OffspringPlural)
+    ]
 
 data HasArticle = HasArticle | HasNoArticle
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
@@ -165,9 +172,7 @@ parseSubstitutionChunk article maybe_case = do
     try (string "|" >> pure Name)
     <|>
     msum
-      [ try (string word <|> string (word & _head . uppercase_ .~ True) >> char '|')
-        >>
-        (pure $ Referrent referrent)
+      [ try (string word >> char '|') >> (pure $ Referrent referrent)
       | (word, referrent) ← referrents
       ]
   case_ ←

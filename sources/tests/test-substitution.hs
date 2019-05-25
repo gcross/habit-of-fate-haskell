@@ -76,6 +76,18 @@ main = doMain
       substitute (singletonMap "name" (Gendered "value" Female))
       >>=
       (@?= "hers")
+  , testCase "substitution, proper possessive, male capitalized" $
+      parseSubstitutions "His/hers|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "Hers")
+  , testCase "substitution, proper possessive, both capitalized" $
+      parseSubstitutions "His/Hers|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "Hers")
   , testCase "substitution, with a article" $
       parseSubstitutions "an |name"
       >>=
