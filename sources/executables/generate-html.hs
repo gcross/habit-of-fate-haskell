@@ -86,7 +86,7 @@ main = do
     createDirectoryIfMissing True $ takeDirectory output_filepath
     writeFile output_filepath $ renderHtml $ H.docTypeHtml $ do
       H.head $ do
-        H.title $ renderMarkdownToHtml page_title
+        H.title $ H.toHtml $ unwrapMarkdown page_title
         H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
         H.link
           ! A.rel "stylesheet"

@@ -16,6 +16,7 @@
 
 {-# LANGUAGE AutoDeriveTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Data.Markdown where
@@ -38,6 +39,9 @@ instance ToJSON Markdown where
 
 instance FromJSON Markdown where
   parseJSON = withText "markdown must be string-shaped" (Markdown >>> pure)
+
+embolden ∷ Markdown → Markdown
+embolden x = Markdown $ "**" ⊕ unwrapMarkdown x ⊕ "**"
 
 renderMarkdownToHtml ∷ Markdown → Html
 renderMarkdownToHtml = unwrapMarkdown >>> commonmarkToHtml [] >>> H.preEscapedToHtml

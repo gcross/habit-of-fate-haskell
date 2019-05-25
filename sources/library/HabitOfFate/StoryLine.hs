@@ -124,16 +124,15 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
       quest_choices_without_brackets
   proceedChoices (Just next_path) = NoChoice next_path
 
-  failure_dead_end ∷ PageChoices Markdown
-  failure_dead_end =
-    Choices
-      "You have guided your chosen protagonist to failure.  What next?"
-      quest_choices_without_brackets
-
   process ∷ Maybe Text → Text → Entry Markdown → [Page]
   process maybe_next_choice parent node = case node of
     EventEntry{..} →
       let base = parent ⊕ "/" ⊕ event_name ⊕ "/"
+          quest_choices_with_undo = (("[Return to the beginning of this event.]", base ⊕ "common"):quest_choices)
+          failure_dead_end =
+            Choices
+              "You have guided your chosen protagonist to failure.  What next?"
+              (("Return to the beginning of this event.", base ⊕ "common"):quest_choices_without_brackets)
       in case event_outcomes of
         SuccessFailure{..} →
           [Page
@@ -145,7 +144,7 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
                 ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
                 ⊕
-                quest_choices
+                quest_choices_with_undo
             }
           ,Page
             { page_path = base ⊕ "success"
@@ -171,7 +170,7 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
                 ,(outcomes_failure_choice, base ⊕ "failure")
                 ]
                 ⊕
-                quest_choices
+                quest_choices_with_undo
             }
           ,Page
             { page_path = base ⊕ "success"
@@ -202,7 +201,7 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
                 ,(outcomes_danger_choice, base ⊕ "danger")
                 ]
                 ⊕
-                quest_choices
+                quest_choices_with_undo
             }
           ,Page
             { page_path = base ⊕ "success"
@@ -219,7 +218,7 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
                 ,(outcomes_failure_choice,base ⊕ "failure")
                 ]
                 ⊕
-                quest_choices
+                quest_choices_with_undo
             }
           ,Page
             { page_path = base ⊕ "averted"
