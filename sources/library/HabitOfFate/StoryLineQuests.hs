@@ -49,4 +49,4 @@ index_page = Page
     |> (unlines ∷ [Text] → Text)
     |> Markdown)
   (Choices "The choice is yours.  Where would you like to start?" $
-    [ (quest_choice, initialQuestPath quest) | quest@Quest{..} ← quests])
+    [ (embolden quest_choice, initialQuestPath quest) | quest@Quest{..} ← quests])

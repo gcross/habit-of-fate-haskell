@@ -186,7 +186,7 @@ parseSections ∷ MonadThrow m ⇒ String → m [(String, [Story])]
 parseSections =
   splitNamedRegionsOn '='
   >>>
-  map (second (splitStoriesOn '-'))
+  map (second (splitStoriesOn '-' >>> map (dropWhileEnd (== '\n'))))
   >>>
   traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
 

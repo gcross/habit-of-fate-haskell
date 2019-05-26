@@ -113,8 +113,8 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
     ,("[Return to the choice of quests.]", "index")
     ]
   quest_choices_without_brackets =
-    [("Return to the beginning of this quest.", initialQuestPath quest)
-    ,("Return to the choice of quests.", "index")
+    [(embolden "Return to the beginning of this quest.", initialQuestPath quest)
+    ,(embolden "Return to the choice of quests.", "index")
     ]
 
   proceedChoices ∷ Maybe Text → PageChoices Markdown
@@ -132,7 +132,7 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
           failure_dead_end =
             Choices
               "You have guided your chosen protagonist to failure.  What next?"
-              (("Return to the beginning of this event.", base ⊕ "common"):quest_choices_without_brackets)
+              ((embolden "Return to the beginning of this event.", base ⊕ "common"):quest_choices_without_brackets)
       in case event_outcomes of
         SuccessFailure{..} →
           [Page
@@ -140,11 +140,11 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
             , page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question $
-                [(outcomes_success_choice, base ⊕ "success")
-                ,(outcomes_failure_choice, base ⊕ "failure")
+                [(embolden outcomes_success_choice, base ⊕ "success")
+                ,(embolden outcomes_failure_choice, base ⊕ "failure")
                 ]
                 ⊕
-                quest_choices_with_undo
+                quest_choices
             }
           ,Page
             { page_path = base ⊕ "success"
@@ -165,12 +165,12 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
             , page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question $
-                [(outcomes_success_choice, base ⊕ "success")
-                ,(outcomes_averted_choice, base ⊕ "averted")
-                ,(outcomes_failure_choice, base ⊕ "failure")
+                [(embolden outcomes_success_choice, base ⊕ "success")
+                ,(embolden outcomes_averted_choice, base ⊕ "averted")
+                ,(embolden outcomes_failure_choice, base ⊕ "failure")
                 ]
                 ⊕
-                quest_choices_with_undo
+                quest_choices
             }
           ,Page
             { page_path = base ⊕ "success"
@@ -197,11 +197,11 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
             , page_title = outcomes_common_title
             , page_content = outcomes_common_story
             , page_choices = Choices outcomes_common_question $
-                [(outcomes_success_choice, base ⊕ "success")
-                ,(outcomes_danger_choice, base ⊕ "danger")
+                [(embolden outcomes_success_choice, base ⊕ "success")
+                ,(embolden outcomes_danger_choice, base ⊕ "danger")
                 ]
                 ⊕
-                quest_choices_with_undo
+                quest_choices
             }
           ,Page
             { page_path = base ⊕ "success"
@@ -214,8 +214,8 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
             , page_title = outcomes_danger_title
             , page_content = outcomes_danger_story
             , page_choices = Choices outcomes_danger_question $
-                [(outcomes_averted_choice,base ⊕ "averted")
-                ,(outcomes_failure_choice,base ⊕ "failure")
+                [(embolden outcomes_averted_choice,base ⊕ "averted")
+                ,(embolden outcomes_failure_choice,base ⊕ "failure")
                 ]
                 ⊕
                 quest_choices_with_undo
@@ -261,7 +261,7 @@ buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
           , page_content = narrative_story
           , page_choices = Choices split_question $
               map
-                (\Branch{..} → (branch_choice, base ⊕ nextPathOf branch_entry))
+                (\Branch{..} → (embolden branch_choice, base ⊕ nextPathOf branch_entry))
                 split_branches
           }
         ]
