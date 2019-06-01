@@ -16,6 +16,7 @@
 
 {-# LANGUAGE AutoDeriveTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate. where
