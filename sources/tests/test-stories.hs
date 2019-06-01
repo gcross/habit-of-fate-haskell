@@ -37,13 +37,9 @@ import HabitOfFate.Prelude
 
 import Data.CallStack (HasCallStack)
 
-import HabitOfFate.Data.Tagged
-import qualified HabitOfFate.Quests.Forest as Forest
-import qualified HabitOfFate.Quests.Forest.Stories as Forest
-import HabitOfFate.Quest.StateMachine
-import HabitOfFate.Story
 import HabitOfFate.StoryLine
-import HabitOfFate.StoryLineQuests
+import HabitOfFate.StoryLine.Pages
+import HabitOfFate.StoryLine.Quests
 import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions

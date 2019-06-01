@@ -20,20 +20,14 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.StoryLineQuests where
+module HabitOfFate.StoryLine.Pages.Index where
 
 import HabitOfFate.Prelude
 
 import HabitOfFate.Data.Markdown
-import HabitOfFate.Story
 import HabitOfFate.StoryLine
-import HabitOfFate.Substitution
-import qualified HabitOfFate.Quests.Forest.Stories as Forest
-
-quests ∷ [Quest Story]
-quests =
-  [ Forest.quest
-  ]
+import HabitOfFate.StoryLine.Pages
+import HabitOfFate.StoryLine.Quests
 
 index_page ∷ Page
 index_page = Page

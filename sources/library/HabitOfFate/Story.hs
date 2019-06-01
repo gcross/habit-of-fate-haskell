@@ -480,13 +480,3 @@ narrative = QuasiQuoter
   (error "Cannot use narrative as a pattern")
   (error "Cannot use narrative as a type")
   (error "Cannot use narrative as a dec")
-
-data PageChoices content =
-    NoChoice Text
-  | Choices content [(content,Text)]
-  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
-
-linked_page_ids_ ∷ Traversal' (PageChoices content) Text
-linked_page_ids_ f (NoChoice c) = NoChoice <$> f c
-linked_page_ids_ f (Choices query choices) =
-  Choices query <$> traverse (traverseOf _2 f) choices

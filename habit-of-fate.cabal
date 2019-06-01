@@ -115,7 +115,6 @@ library
                      , HabitOfFate.JSON
                      , HabitOfFate.Logging
                      , HabitOfFate.Names
-                     , HabitOfFate.Pages
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
                      , HabitOfFate.Quest
@@ -169,7 +168,9 @@ library
                      , HabitOfFate.Server.Requests.Web.NewHabit
                      , HabitOfFate.Story
                      , HabitOfFate.StoryLine
-                     , HabitOfFate.StoryLineQuests
+                     , HabitOfFate.StoryLine.Pages
+                     , HabitOfFate.StoryLine.Pages.Index
+                     , HabitOfFate.StoryLine.Quests
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing
                      , HabitOfFate.Testing.Assertions
