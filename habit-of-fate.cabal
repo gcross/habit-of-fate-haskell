@@ -170,6 +170,7 @@ library
                      , HabitOfFate.StoryLine
                      , HabitOfFate.StoryLine.Pages
                      , HabitOfFate.StoryLine.Pages.Index
+                     , HabitOfFate.StoryLine.Paths
                      , HabitOfFate.StoryLine.Quests
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing
@@ -297,6 +298,7 @@ test-suite test-stories
   build-depends:       habit-of-fate
                      , base
                      , call-stack
+                     , text
   default-language:    Haskell2010
 
 test-suite test-substitution

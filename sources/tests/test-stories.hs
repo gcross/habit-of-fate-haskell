@@ -36,9 +36,11 @@ module Main where
 import HabitOfFate.Prelude
 
 import Data.CallStack (HasCallStack)
+import qualified Data.Text as T
 
 import HabitOfFate.StoryLine
 import HabitOfFate.StoryLine.Pages
+import HabitOfFate.StoryLine.Paths
 import HabitOfFate.StoryLine.Quests
 import HabitOfFate.Substitution
 import HabitOfFate.Testing
@@ -48,6 +50,20 @@ testSubstititutions ∷ Quest Story → TestTree
 testSubstititutions quest@Quest{..} =
   testCase (unpack quest_name) $
     extractAllPlaceholders quest @?= keysSet quest_standard_substitutions
+
+testFames ∷ Quest Story → TestTree
+testFames quest@Quest{..} =
+  testCase (unpack quest_name) $ do
+    let all_paths = allPaths quest
+    all_paths
+      |> mapMaybe (\(name, QuestPath{..}) → if onull quest_path_fames then Just name else Nothing)
+      |> (\paths_without_fames →
+          assertBool
+            ("No fames in: " ⊕ (unpack $ T.intercalate ", " paths_without_fames))
+            (onull paths_without_fames)
+         )
+    let all_names = map fst all_paths
+    nub all_names @?= all_names
 
 main ∷ HasCallStack ⇒ IO ()
 main = doMain $
@@ -79,4 +95,5 @@ main = doMain $
         assertBool
           [i|"initial quest {quest_name} path {initialQuestPath quest} does not exist"|]
           (initialQuestPath quest ∈ paths)
+  , testGroup "Fames" $ map testFames quests
   ]
