@@ -20,13 +20,13 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.StoryLine.Pages.Index where
+module HabitOfFate.Quest.Pages.Index where
 
 import HabitOfFate.Prelude
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Quest.Pages
 import HabitOfFate.StoryLine
-import HabitOfFate.StoryLine.Pages
 import HabitOfFate.StoryLine.Quests
 
 index_page ∷ Page

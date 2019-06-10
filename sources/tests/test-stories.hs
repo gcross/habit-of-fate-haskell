@@ -38,9 +38,9 @@ import HabitOfFate.Prelude
 import Data.CallStack (HasCallStack)
 import qualified Data.Text as T
 
+import HabitOfFate.Quest.Pages
+import HabitOfFate.Quest.Paths
 import HabitOfFate.StoryLine
-import HabitOfFate.StoryLine.Pages
-import HabitOfFate.StoryLine.Paths
 import HabitOfFate.StoryLine.Quests
 import HabitOfFate.Substitution
 import HabitOfFate.Testing

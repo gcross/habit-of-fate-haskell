@@ -25,15 +25,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.StoryLine.Paths where
+module HabitOfFate.Quest.Paths where
 
 import HabitOfFate.Prelude
 
 import Control.Monad.Random.Class (MonadRandom, uniform)
 import System.Random.Shuffle (shuffleM)
 
-import HabitOfFate.Story
 import HabitOfFate.StoryLine
+import HabitOfFate.Story
 
 data Step content =
     EventStep
@@ -46,14 +46,15 @@ data Step content =
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 data QuestPath content = QuestPath
-  { quest_path_steps ∷ [Step content]
+  { quest_path_name ∷ Text
+  , quest_path_steps ∷ [Step content]
   , quest_path_fames ∷ [content]
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 generatePath ∷ ∀ m content. Monad m ⇒ (∀ α. [α] → m α) → (∀ α. [α] → m [α]) → Quest content → m (Text, QuestPath content)
 generatePath select shuffle Quest{..} = do
   (name, steps, fames) ← foldlM folder (quest_name, mempty, mempty) [quest_entry]
-  pure (name, QuestPath (toList steps) fames)
+  pure (name, QuestPath quest_name (toList steps) fames)
  where
   folder ∷ Monad m ⇒ (Text, Seq (Step content), [content]) → Entry content → m (Text, Seq (Step content), [content])
   folder (parent_name, steps, fames) entry = case entry of

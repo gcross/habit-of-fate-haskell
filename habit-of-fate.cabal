@@ -119,6 +119,9 @@ library
                      , HabitOfFate.Proofread
                      , HabitOfFate.Quest
                      , HabitOfFate.Quest.Classes
+                     , HabitOfFate.Quest.Pages
+                     , HabitOfFate.Quest.Pages.Index
+                     , HabitOfFate.Quest.Paths
                      , HabitOfFate.Quest.Runners.GetStatus
                      , HabitOfFate.Quest.Runners.GetStatus.Transaction
                      , HabitOfFate.Quest.Runners.Initialize
@@ -168,9 +171,6 @@ library
                      , HabitOfFate.Server.Requests.Web.NewHabit
                      , HabitOfFate.Story
                      , HabitOfFate.StoryLine
-                     , HabitOfFate.StoryLine.Pages
-                     , HabitOfFate.StoryLine.Pages.Index
-                     , HabitOfFate.StoryLine.Paths
                      , HabitOfFate.StoryLine.Quests
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing

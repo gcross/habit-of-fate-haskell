@@ -37,9 +37,9 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Quest.Pages
+import HabitOfFate.Quest.Pages.Index
 import HabitOfFate.StoryLine
-import HabitOfFate.StoryLine.Pages
-import HabitOfFate.StoryLine.Pages.Index
 import HabitOfFate.StoryLine.Quests
 
 import Paths_habit_of_fate

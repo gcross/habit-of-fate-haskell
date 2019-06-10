@@ -32,9 +32,11 @@ import System.FilePath
 import Text.RawString.QQ (r)
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Quest.Pages
+import HabitOfFate.Quest.Pages.Index
 import HabitOfFate.Story
 import HabitOfFate.StoryLine
-import HabitOfFate.StoryLineQuests
+import HabitOfFate.StoryLine.Quests
 
 import Paths_habit_of_fate
 

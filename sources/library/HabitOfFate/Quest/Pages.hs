@@ -23,7 +23,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.StoryLine.Pages where
+module HabitOfFate.Quest.Pages where
 
 import HabitOfFate.Prelude
 
