@@ -109,6 +109,7 @@ library
                      , HabitOfFate.Data.ItemsSequence
                      , HabitOfFate.Data.Markdown
                      , HabitOfFate.Data.Outcomes
+                     , HabitOfFate.Data.QuestState
                      , HabitOfFate.Data.Repeated
                      , HabitOfFate.Data.Scale
                      , HabitOfFate.Data.SuccessOrFailureResult
@@ -122,7 +123,6 @@ library
                      , HabitOfFate.Quest.Classes
                      , HabitOfFate.Quest.Pages
                      , HabitOfFate.Quest.Pages.Index
-                     , HabitOfFate.Quest.Paths
                      , HabitOfFate.Quest.Runners.GetStatus
                      , HabitOfFate.Quest.Runners.GetStatus.Transaction
                      , HabitOfFate.Quest.Runners.Initialize

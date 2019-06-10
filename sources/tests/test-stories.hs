@@ -38,8 +38,8 @@ import HabitOfFate.Prelude
 import Data.CallStack (HasCallStack)
 import qualified Data.Text as T
 
+import HabitOfFate.Data.QuestState
 import HabitOfFate.Quest.Pages
-import HabitOfFate.Quest.Paths
 import HabitOfFate.StoryLine
 import HabitOfFate.StoryLine.Quests
 import HabitOfFate.Substitution
@@ -54,15 +54,15 @@ testSubstititutions quest@Quest{..} =
 testFames ∷ Quest Story → TestTree
 testFames quest@Quest{..} =
   testCase (unpack quest_name) $ do
-    let all_paths = allPaths quest
-    all_paths
-      |> mapMaybe (\(name, QuestPath{..}) → if onull quest_path_fames then Just name else Nothing)
+    let all_states = allQuestStates quest
+    all_states
+      |> mapMaybe (\(name, QuestState{..}) → if onull quest_state_fames then Just name else Nothing)
       |> (\paths_without_fames →
           assertBool
             ("No fames in: " ⊕ (unpack $ T.intercalate ", " paths_without_fames))
             (onull paths_without_fames)
          )
-    let all_names = map fst all_paths
+    let all_names = map fst all_states
     nub all_names @?= all_names
 
 main ∷ HasCallStack ⇒ IO ()
