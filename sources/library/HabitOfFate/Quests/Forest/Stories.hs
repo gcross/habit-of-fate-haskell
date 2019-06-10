@@ -24,6 +24,7 @@ module HabitOfFate.Quests.Forest.Stories where
 
 import HabitOfFate.Prelude
 
+import HabitOfFate.Data.Outcomes
 import HabitOfFate.Story
 import HabitOfFate.StoryLine
 import HabitOfFate.Substitution

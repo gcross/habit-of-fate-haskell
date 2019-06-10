@@ -28,6 +28,7 @@ module HabitOfFate.Quest.Pages where
 import HabitOfFate.Prelude
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Data.Outcomes
 import HabitOfFate.Story
 import HabitOfFate.StoryLine
 

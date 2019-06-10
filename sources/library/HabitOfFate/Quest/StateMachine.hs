@@ -35,6 +35,7 @@ import HabitOfFate.Prelude hiding (State)
 import Control.Monad.Catch (MonadThrow(..), Exception(..))
 import Control.Monad.Random.Class (uniform)
 
+import HabitOfFate.Data.Outcomes
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest

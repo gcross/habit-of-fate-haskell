@@ -32,6 +32,7 @@ import HabitOfFate.Prelude
 import Control.Monad.Random.Class (MonadRandom, uniform)
 import System.Random.Shuffle (shuffleM)
 
+import HabitOfFate.Data.Outcomes
 import HabitOfFate.StoryLine
 import HabitOfFate.Story
 

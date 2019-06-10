@@ -108,6 +108,7 @@ library
                      , HabitOfFate.Data.InputHabit
                      , HabitOfFate.Data.ItemsSequence
                      , HabitOfFate.Data.Markdown
+                     , HabitOfFate.Data.Outcomes
                      , HabitOfFate.Data.Repeated
                      , HabitOfFate.Data.Scale
                      , HabitOfFate.Data.SuccessOrFailureResult

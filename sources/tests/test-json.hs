@@ -33,6 +33,8 @@ import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Markdown
+import HabitOfFate.Data.Outcomes
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quests
@@ -55,4 +57,5 @@ main = doMain
   , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
   , QC.testProperty "Configuration" $ \(x ∷ Configuration) → (encode >>> eitherDecode) x == Right x
   , QC.testProperty "Account" $ \(x ∷ Account) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+  , QC.testProperty "Outcomes" $ \(x ∷ Outcomes Markdown) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
   ]

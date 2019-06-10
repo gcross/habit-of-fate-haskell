@@ -46,6 +46,9 @@ import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import System.FilePath ((</>))
 import System.IO (readFile)
 
+import HabitOfFate.Data.Markdown
+import HabitOfFate.Data.Outcomes
+import HabitOfFate.JSON
 import HabitOfFate.Substitution
 
 import Paths_habit_of_fate (getDataFileName)
@@ -189,54 +192,6 @@ parseSections =
   map (second (splitStoriesOn '-' >>> map (dropWhileEnd (== '\n'))))
   >>>
   traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
-
-data Outcomes content =
-    SuccessFailure
-      { outcomes_common_title ∷ content
-      , outcomes_common_story ∷ content
-      , outcomes_common_question ∷ content
-      , outcomes_success_choice ∷ content
-      , outcomes_success_title ∷ content
-      , outcomes_success_story ∷ content
-      , outcomes_failure_choice ∷ content
-      , outcomes_failure_title ∷ content
-      , outcomes_failure_story ∷ content
-      , outcomes_shames ∷ [content]
-      }
-  | SuccessAvertedFailure
-      { outcomes_common_title ∷ content
-      , outcomes_common_story ∷ content
-      , outcomes_common_question ∷ content
-      , outcomes_success_choice ∷ content
-      , outcomes_success_title ∷ content
-      , outcomes_success_story ∷ content
-      , outcomes_averted_choice ∷ content
-      , outcomes_averted_title ∷ content
-      , outcomes_averted_story ∷ content
-      , outcomes_failure_choice ∷ content
-      , outcomes_failure_title ∷ content
-      , outcomes_failure_story ∷ content
-      , outcomes_shames ∷ [content]
-      }
-  | SuccessDangerAvertedFailure
-      { outcomes_common_title ∷ content
-      , outcomes_common_story ∷ content
-      , outcomes_common_question ∷ content
-      , outcomes_success_choice ∷ content
-      , outcomes_success_title ∷ content
-      , outcomes_success_story ∷ content
-      , outcomes_danger_choice ∷ content
-      , outcomes_danger_title ∷ content
-      , outcomes_danger_story ∷ content
-      , outcomes_danger_question ∷ content
-      , outcomes_averted_choice ∷ content
-      , outcomes_averted_title ∷ content
-      , outcomes_averted_story ∷ content
-      , outcomes_failure_choice ∷ content
-      , outcomes_failure_title ∷ content
-      , outcomes_failure_story ∷ content
-      , outcomes_shames ∷ [content]
-      } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
 data InvalidOutcomes =
     NoStoriesForHeading String

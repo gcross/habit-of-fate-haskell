@@ -32,6 +32,7 @@ import Control.Monad.Catch (MonadThrow)
 import Data.Traversable (Traversable(traverse))
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Data.Outcomes
 import HabitOfFate.Story
 import HabitOfFate.Substitution
 
