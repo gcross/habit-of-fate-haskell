@@ -44,7 +44,6 @@ import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import System.FilePath ((</>))
-import System.IO (readFile)
 
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
@@ -110,18 +109,6 @@ stories_fixed = QuasiQuoter
   (error "Cannot use s1 as a type")
   (error "Cannot use s1 as a dec")
 
-loadStories ∷ String → String → Q Exp
-loadStories quest section =
-  liftIO (
-    getDataFileName ("stories" </> quest </> section ⊕ ".txt")
-    >>=
-    readFile
-  )
-  >>=
-  splitAndParseSubstitutions
-  >>=
-  Lift.lift
-
 subSplitStories ∷ String → [[String]]
 subSplitStories =
   lines
@@ -143,22 +130,6 @@ subStories = QuasiQuoter
   (error "Cannot use s as a pattern")
   (error "Cannot use s as a type")
   (error "Cannot use s as a dec")
-
-loadSubStoriesWithoutLifting ∷ (MonadIO m, MonadThrow m) ⇒ String → String → m [[Story]]
-loadSubStoriesWithoutLifting quest section =
-  liftIO (
-    getDataFileName ("stories" </> quest </> section ⊕ ".txt")
-    >>=
-    readFile
-  )
-  >>=
-  subSplitAndParseSubstitutions
-
-loadSubStories ∷ String → String → Q Exp
-loadSubStories quest section =
-  loadSubStoriesWithoutLifting quest section
-  >>=
-  Lift.lift
 
 splitNamedRegionsOn ∷ Char → String → [(String, String)]
 splitNamedRegionsOn marker =
