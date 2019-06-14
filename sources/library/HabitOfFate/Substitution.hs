@@ -30,12 +30,8 @@
 
 module HabitOfFate.Substitution
   (
-  -- Exceptions
-    SubstitutionException(..)
-  , ParseError
-
   -- Regular types + lenses
-  , Gender(..)
+    Gender(..)
   , Gendered(..)
       , gendered_name_
       , gendered_gender_
@@ -47,13 +43,10 @@ module HabitOfFate.Substitution
   , extractPlaceholders
   , parseSubstitutions
   , substitute
-  , substituteEverywhere
   ) where
 
 import HabitOfFate.Prelude
 
-import Control.Exception (Exception)
-import Control.Monad.Catch (MonadThrow(throwM))
 import Data.Aeson hiding (Object, (.=))
 import Data.Char
 import Data.MonoTraversable (Element)
@@ -200,16 +193,13 @@ parseChunk = do
     <|> parseSubstitutionChunk HasNoArticle maybe_case_
     <|> (anyToken <&> Literal)
 
-instance Exception ParseError
-
-parseSubstitutions ∷ MonadThrow m ⇒ String → m Story
+parseSubstitutions ∷ String → Story
 parseSubstitutions story =
-  (
-    runParser (many parseChunk ∷ Parser [Chunk Char]) () "<story>" story
-    |> either throwM pure
-  )
-  <&>
-  (mergeChunks >>> map ((pack >>> Text.reverse) <$>) >>> Story)
+  runParser (many parseChunk ∷ Parser [Chunk Char]) () "<story>" story
+  |> either (show >>> error) identity
+  |> mergeChunks
+  |> map ((pack >>> Text.reverse) <$>)
+  |> Story
  where
   mergeChunks ∷ [Chunk Char] → [Chunk [Char]]
   mergeChunks [] = []
@@ -221,48 +211,35 @@ parseSubstitutions story =
     go previous@(Substitution _) (next:rest) = previous:go (singleton <$> next) rest
     go (Literal x) (Literal y:rest) = go (Literal (y:x)) rest
 
-data SubstitutionException =
-    NoSuchKeyException Text
-  | EmptyNameException
-  deriving (Eq, Ord, Read, Show)
-instance Exception SubstitutionException
-
 type Substitutions = HashMap Text Gendered
 
-lookupAndApplySubstitution ∷ MonadThrow m ⇒ Substitutions → SubstitutionData → m Text
-lookupAndApplySubstitution table s = do
-  gendered@(Gendered name _) ←
-    maybe
-      (throwM $ NoSuchKeyException $ s ^. key_)
-      pure
+lookupAndApplySubstitution ∷ Substitutions → SubstitutionData → Text
+lookupAndApplySubstitution table s
+ | name == "" = error "Empty substitution name exception."
+ | otherwise = (article ⊕ word) & first_uppercase_ .~ (s ^. is_uppercase_)
+ where
+  gendered@(Gendered name _) =
+    fromMaybe
+      (error [i|No such substitution key: #{s ^. key_}|])
       (lookup (s ^. key_) table)
-  when (onull name) $ throwM EmptyNameException
-  let article
-        | s ^. has_article_ =
-            if isVowel (name ^?! _head)
-              then "an "
-              else "a "
-        | otherwise = ""
-      word = applyKind (s ^. kind_) gendered
-  pure $
-    (article ⊕ word) & first_uppercase_ .~ (s ^. is_uppercase_)
+  article
+    | s ^. has_article_ =
+        if isVowel (name ^?! _head)
+          then "an "
+          else "a "
+    | otherwise = ""
+  word = applyKind (s ^. kind_) gendered
 
-data KeyError = KeyError Text deriving (Show, Typeable)
-instance Exception KeyError
-
-substitute ∷ MonadThrow m ⇒ Substitutions → Story → m Markdown
+substitute ∷ Substitutions → Story → Markdown
 substitute table (Story text) =
-  mapM
-    (\case
-      Literal l → pure l
-      Substitution s → lookupAndApplySubstitution table s
-    )
-    text
-  <&>
-  (mconcat >>> Markdown)
-
-substituteEverywhere ∷ (MonadThrow m, Traversable t) ⇒ Substitutions → t Story → m (t Markdown)
-substituteEverywhere = substitute >>> mapM
+  text
+  |> map
+      (\case
+        Literal l → l
+        Substitution s → lookupAndApplySubstitution table s
+      )
+  |> oconcat
+  |> Markdown
 
 applyKind ∷ Kind → Gendered → Text
 applyKind Name (Gendered name _) = name

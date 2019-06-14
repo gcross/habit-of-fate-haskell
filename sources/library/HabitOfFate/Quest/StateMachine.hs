@@ -32,7 +32,6 @@ module HabitOfFate.Quest.StateMachine where
 
 import HabitOfFate.Prelude hiding (State)
 
-import Control.Monad.Catch (MonadThrow(..), Exception(..))
 import Control.Monad.Random.Class (uniform)
 
 import HabitOfFate.Data.Outcomes
@@ -63,45 +62,33 @@ data Transition label = Transition
 type Transitions label = [(label, Transition label)]
 
 initialize ∷ Substitutions → label → s → Story → InitializeQuestRunner (State label s)
-initialize common_substitutions first_label internal intro_story = do
+initialize common_substitutions first_label internal intro_story = pure $
   InitializeQuestResult
     (State common_substitutions first_label internal)
-    <$> substitute common_substitutions intro_story
-
-data NoSuchTransitionException = ∀ label. Show label ⇒ NoSuchTransitionException label
-instance Show NoSuchTransitionException where
-  show (NoSuchTransitionException label) = [i|NoSuchTransitionException (#{show label})|]
-instance Exception NoSuchTransitionException where
-  displayException (NoSuchTransitionException label) = [i|No such state label #{label}|]
+    (substitute common_substitutions intro_story)
 
 getStatus ∷ (Show label, Eq label) ⇒ Transitions label → GetStatusQuestRunner (State label s)
 getStatus states =
-  ask >>= \State{..} →
+  ask >>= \State{..} → pure $
   case lookup current states of
-    Nothing → throwM $ NoSuchTransitionException current
+    Nothing → error [i|No such transition exception: #{current}|]
     Just Transition{..} → substitute substitutions status_story
-
-data MissingStory = ∀ label. Show label ⇒ MissingStory label Text
-instance Show MissingStory where
-  show (MissingStory label category) = [i|MissingStory #{label} "#{category}"|]
-instance Exception MissingStory where
-  displayException (MissingStory label category) =
-    [i|Missing any story of category "#{category}" for state labeled #{label}.|]
 
 trial ∷ (Eq label, Show label) ⇒ Transitions label → TrialQuestRunner (State label s)
 trial transitions result = do
   old_state@State{..} ← get
-  Transition{..} ← maybe (throwM $ NoSuchTransitionException current) pure $ lookup current transitions
-  let sub result = substitute (substitutions ⊕ mapFromList (extra_subs ^. taggedLensForResult result))
+  let Transition{..} = fromMaybe (error [i|No such transition exception: #{current}|]) $ lookup current transitions
 
-      continueQuest result storyFor = TryQuestResult QuestInProgress <$> (sub result $ storyFor outcomes)
+      sub result = substitute (substitutions ⊕ mapFromList (extra_subs ^. taggedLensForResult result))
+
+      continueQuest result storyFor = pure $ TryQuestResult QuestInProgress (sub result $ storyFor outcomes)
 
       endQuest storyFor result = do
         let deeds = case result of
               SuccessResult → story_fames
               FailureResult → outcomes & outcomes_shames
-        text ← chooseFrom deeds >>= sub result
-        TryQuestResult (QuestHasEnded result text) <$> (sub result $ storyFor outcomes)
+        text ← chooseFrom deeds <&> sub result
+        pure $ TryQuestResult (QuestHasEnded result text) (sub result $ storyFor outcomes)
 
   tryProgress
     (TryQuestResult QuestInProgress <$> chooseFromAndSubstitute between_stories substitutions)

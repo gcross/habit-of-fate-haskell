@@ -15,6 +15,8 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -24,12 +26,14 @@ module HabitOfFate.Data.Markdown where
 import HabitOfFate.Prelude
 
 import CMark (commonmarkToHtml, commonmarkToLaTeX)
+import Control.DeepSeq
+import GHC.Generics (Generic)
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(String), withText)
 import GHC.Exts (IsString(..))
 import qualified Text.Blaze.Html5 as H
 import Text.Blaze.Html5 (Html)
 
-newtype Markdown = Markdown { unwrapMarkdown ∷ Text } deriving (Eq,Ord,Read,Show)
+newtype Markdown = Markdown { unwrapMarkdown ∷ Text } deriving (Eq,Generic,NFData,Ord,Read,Show)
 
 instance IsString Markdown where
   fromString = pack >>> Markdown

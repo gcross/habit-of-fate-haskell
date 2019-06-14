@@ -15,8 +15,10 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -27,6 +29,9 @@ module HabitOfFate.Quest.Pages where
 
 import HabitOfFate.Prelude
 
+import Control.DeepSeq
+import GHC.Generics (Generic)
+
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Story
@@ -35,14 +40,14 @@ import HabitOfFate.StoryLine
 data PageChoices content =
     NoChoice Text
   | Choices content [(content,Text)]
-  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
+  deriving (Eq,Foldable,Functor,Generic,NFData,Ord,Read,Show,Traversable)
 
 data Page = Page
   { page_path ∷ Text
   , page_title ∷ Markdown
   , page_content ∷ Markdown
   , page_choices ∷ PageChoices Markdown
-  } deriving (Eq,Ord,Read,Show)
+  } deriving (Eq,Generic,NFData,Ord,Read,Show)
 
 buildPagesFromQuest ∷ Quest Markdown → [Page]
 buildPagesFromQuest quest@Quest{..} = process Nothing quest_name quest_entry
