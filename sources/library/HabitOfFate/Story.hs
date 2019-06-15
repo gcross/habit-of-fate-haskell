@@ -26,6 +26,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -34,6 +35,7 @@ module HabitOfFate.Story where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (Exception, MonadThrow(throwM))
 import Data.List (dropWhileEnd, tail)
 import Data.List.Split
 import Data.Typeable (Typeable)
@@ -52,7 +54,7 @@ import Paths_habit_of_fate (getDataFileName)
 
 story ∷ QuasiQuoter
 story = QuasiQuoter
-  (parseSubstitutions >>> Lift.lift)
+  (parseSubstitutions >=> Lift.lift)
   (error "Cannot use story as a pattern")
   (error "Cannot use story as a type")
   (error "Cannot use story as a dec")
@@ -73,12 +75,12 @@ splitStoriesOn c =
   >>>
   map unlines
 
-splitAndParseSubstitutions ∷ String → [Story]
-splitAndParseSubstitutions = splitStoriesOn '=' >>> map parseSubstitutions
+splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
+splitAndParseSubstitutions = splitStoriesOn '=' >>> mapM parseSubstitutions
 
 stories ∷ QuasiQuoter
 stories = QuasiQuoter
-  (splitAndParseSubstitutions >>> Lift.lift)
+  (splitAndParseSubstitutions >=> Lift.lift)
   (error "Cannot use s as a pattern")
   (error "Cannot use s as a type")
   (error "Cannot use s as a dec")
@@ -87,7 +89,7 @@ stories_fixed ∷ QuasiQuoter
 stories_fixed = QuasiQuoter
   (
     splitAndParseSubstitutions
-    >>>
+    >=>
     (\case
       [] → [|()|]
       [x1] → [|x1|]
@@ -119,12 +121,12 @@ subSplitStories =
     map unlines
   )
 
-subSplitAndParseSubstitutions ∷ String → [[Story]]
-subSplitAndParseSubstitutions = subSplitStories >>> map (map parseSubstitutions)
+subSplitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [[Story]]
+subSplitAndParseSubstitutions = subSplitStories >>> mapM (mapM parseSubstitutions)
 
 subStories ∷ QuasiQuoter
 subStories = QuasiQuoter
-  (subSplitAndParseSubstitutions >>> Lift.lift)
+  (subSplitAndParseSubstitutions >=> Lift.lift)
   (error "Cannot use s as a pattern")
   (error "Cannot use s as a type")
   (error "Cannot use s as a dec")
@@ -154,17 +156,26 @@ splitNamedRegionsOn marker =
         )
       )
 
-parseSections ∷ String → [(String, [Story])]
+parseSections ∷ MonadThrow m ⇒ String → m [(String, [Story])]
 parseSections =
   splitNamedRegionsOn '='
   >>>
   map (second (splitStoriesOn '-' >>> map (dropWhileEnd (== '\n'))))
   >>>
-  map (second (map parseSubstitutions))
+  traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
 
-separateOutcomes ∷ [(String, [Story])] → ([(String, Story)], [Story])
+data InvalidOutcomes =
+    NoStoriesForHeading String
+  | TooManyStoriesForHeading String Int
+  | InvalidHeading String
+  | DuplicateHeading String
+  | UnrecognizedOutcomePattern [String]
+  deriving (Show)
+instance Exception InvalidOutcomes
+
+separateOutcomes ∷ MonadThrow m ⇒ [(String, [Story])] → m ([(String, Story)], [Story])
 separateOutcomes =
-  foldl'
+  foldM
     (\(outcomes, maybe_shames) (heading, stories) → if
       | heading ∈
           [ "Common Question"
@@ -185,18 +196,18 @@ separateOutcomes =
           , "Failure Title"
           ] →
             case stories of
-              [story] → (((heading,story):outcomes), maybe_shames)
-              _ → error [i|Too many stories for heading "#{heading}" (#{length stories})|]
+              [story] → pure (((heading,story):outcomes), maybe_shames)
+              _ → throwM $ TooManyStoriesForHeading heading (length stories)
       | heading == "Shame" → case maybe_shames of
-          Nothing → (outcomes, Just stories)
-          Just _ → error [i|Duplicate heading "Shame"|]
-      | otherwise → error [i|Invalid heading "#{heading}"|]
+          Nothing → pure (outcomes, (Just stories))
+          Just _ → throwM $ DuplicateHeading "Shame"
+      | otherwise → throwM $ InvalidHeading heading
     )
     ([], Nothing)
-  >>>
+  >=>
   (\case
-    (outcomes, Just shames) → (outcomes, shames)
-    (_, Nothing) → error [i|No stories for heading "Shame"|]
+    (outcomes, Just shames) → pure (outcomes, shames)
+    (_, Nothing) → throwM $ NoStoriesForHeading "Shame"
   )
 
 extractOutcomeFrom ∷ [(String, Story)] → String → Story
@@ -205,7 +216,7 @@ extractOutcomeFrom outcomes heading =
     (error $ "invariant violated: no such heading " ⊕ heading)
     (lookup heading outcomes)
 
-constructOutcomes ∷ ([(String, Story)], [Story]) → Outcomes Story
+constructOutcomes ∷ MonadThrow m ⇒ ([(String, Story)], [Story]) → m (Outcomes Story)
 constructOutcomes (outcomes, outcomes_shames) =
   case sort (keys outcomes) of
     ( [ "Common Question"
@@ -217,7 +228,7 @@ constructOutcomes (outcomes, outcomes_shames) =
       , "Success Choice"
       , "Success Story"
       , "Success Title"
-      ] ) → SuccessFailure
+      ] ) → pure $ SuccessFailure
         { outcomes_common_title = extractOutcome "Common Title"
         , outcomes_common_story = extractOutcome "Common Story"
         , outcomes_common_question = extractOutcome "Common Question"
@@ -241,7 +252,7 @@ constructOutcomes (outcomes, outcomes_shames) =
       , "Success Choice"
       , "Success Story"
       , "Success Title"
-      ] ) → SuccessAvertedFailure
+      ] ) → pure $ SuccessAvertedFailure
         { outcomes_common_title = extractOutcome "Common Title"
         , outcomes_common_story = extractOutcome "Common Story"
         , outcomes_common_question = extractOutcome "Common Question"
@@ -272,7 +283,7 @@ constructOutcomes (outcomes, outcomes_shames) =
       , "Success Choice"
       , "Success Story"
       , "Success Title"
-      ] ) → SuccessDangerAvertedFailure
+      ] ) → pure $ SuccessDangerAvertedFailure
         { outcomes_common_title = extractOutcome "Common Title"
         , outcomes_common_story = extractOutcome "Common Story"
         , outcomes_common_question = extractOutcome "Common Question"
@@ -291,13 +302,13 @@ constructOutcomes (outcomes, outcomes_shames) =
         , outcomes_failure_story = extractOutcome "Failure Story"
         , outcomes_shames = outcomes_shames
         }
-    x → error [i|Unrecognized outcome pattern: #{x}|]
+    x → throwM $ UnrecognizedOutcomePattern x
  where
   extractOutcome = extractOutcomeFrom outcomes
 
 outcomes ∷ QuasiQuoter
 outcomes = QuasiQuoter
-  (parseSections >>> separateOutcomes >>> constructOutcomes >>> Lift.lift)
+  (parseSections >=> separateOutcomes >=> constructOutcomes >=> Lift.lift)
   (error "Cannot use outcomes as a pattern")
   (error "Cannot use outcomes as a type")
   (error "Cannot use outcomes as a dec")
@@ -365,33 +376,33 @@ data Narrative content = Narrative
   , narrative_story ∷ content
   } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
-separateNarrative ∷ [(String, [Story])] → Narrative Story
+separateNarrative ∷ ∀ m. MonadThrow m ⇒ [(String, [Story])] → m (Narrative Story)
 separateNarrative =
-  foldl'
+  foldM
     (\found (heading, stories) → case stories of
       [story] →
-        let doFound ∷ Lens' (Maybe Story, Maybe Story) (Maybe Story) → (Maybe Story, Maybe Story)
+        let doFound ∷ Lens' (Maybe Story, Maybe Story) (Maybe Story) → m (Maybe Story, Maybe Story)
             doFound lens_ =
               case found ^. lens_ of
-                Nothing → found & lens_ .~ Just story
-                _ → error [i|Duplicate heading "#{heading}"|]
+                Nothing → pure $ (found & lens_ .~ Just story)
+                _ → throwM $ DuplicateHeading heading
         in case heading of
           "Title" → doFound _1
           "Story" → doFound _2
-          _ → error [i|Invalid heading "#{heading}"|]
-      _ → error [i|Too many stories for heading "#{heading}" (#{length stories})|]
+          _ → throwM $ InvalidHeading heading
+      _ → throwM $ TooManyStoriesForHeading heading (length stories)
     )
     (Nothing, Nothing)
-  >>>
+  >=>
   (\case
-    (Just narrative_title, Just narrative_story) → Narrative{..}
-    (Nothing, _) → error [i|No stories for heading "Title"|]
-    (_, _) → error [i|No stories for heading "Story"|]
+    (Just narrative_title, Just narrative_story) → pure $ Narrative{..}
+    (Nothing, _) → throwM $ NoStoriesForHeading "Title"
+    (_, _) → throwM $ NoStoriesForHeading "Story"
   )
 
 narrative ∷ QuasiQuoter
 narrative = QuasiQuoter
-  (parseSections >>> separateNarrative >>> Lift.lift)
+  (parseSections >=> separateNarrative >=> Lift.lift)
   (error "Cannot use narrative as a pattern")
   (error "Cannot use narrative as a type")
   (error "Cannot use narrative as a dec")

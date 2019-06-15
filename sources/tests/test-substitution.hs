@@ -35,7 +35,7 @@ module Main where
 
 import HabitOfFate.Prelude hiding (elements, text)
 
-import Control.Exception (SomeException,evaluate,try)
+import Control.Exception (try)
 import Data.CallStack (HasCallStack)
 
 import HabitOfFate.Substitution
@@ -45,84 +45,81 @@ import HabitOfFate.Testing.Assertions
 main ∷ HasCallStack ⇒ IO ()
 main = doMain
   [ testCase "literal, one char" $ do
-      let story = parseSubstitutions "l"
+      story ← parseSubstitutions "l"
       extractPlaceholders story @?= []
-      substitute mempty story @?= "l"
+      substitute mempty story >>= (@?= "l")
   , testCase "literal, whole string" $
-      (parseSubstitutions "xyz" |> substitute mempty) @?= "xyz"
-  , testCase "substitution, name" $ do
-      let story = parseSubstitutions "|name"
-      extractPlaceholders story @?= ["name"]
-      substitute (singletonMap "name" (Gendered "value" Male)) story @?= "value"
-  , testCase "substitution, subject"
-      (
-        parseSubstitutions "he/she|name"
-        |> substitute (singletonMap "name" (Gendered "value" Female))
-        |> (@?= "she")
-      )
-  , testCase "substitution, possessive"
-      (
-        parseSubstitutions "his/her|name"
-        |> substitute (singletonMap "name" (Gendered "value" Male))
-        |> (@?= "his")
-      )
-  , testCase "substitution, proper possessive"
-      (
-        parseSubstitutions "his/hers|name"
-        |> substitute (singletonMap "name" (Gendered "value" Female))
-        |> (@?= "hers")
-      )
-  , testCase "substitution, proper possessive, male capitalized"
-      (
-        parseSubstitutions "His/hers|name"
-        |> substitute (singletonMap "name" (Gendered "value" Female))
-        |> (@?= "Hers")
-      )
-  , testCase "substitution, proper possessive, both capitalized"
-      (
-        parseSubstitutions "His/Hers|name"
-        |> substitute (singletonMap "name" (Gendered "value" Female))
-        |> (@?= "Hers")
-      )
-  , testCase "substitution, with a article"
-      (
-        parseSubstitutions "an |name"
-        |> substitute (singletonMap "name" (Gendered "cat" Female))
-        |> (@?= "a cat")
-      )
-  , testCase "substitution, with an article"
-      (
-        parseSubstitutions "a |name"
-        |> substitute (singletonMap "name" (Gendered "apple" Female))
-        |> (@?= "an apple")
-      )
-  , testCase "substitution, with capitalized article"
-      (
-        parseSubstitutions "An |name"
-        |> substitute (singletonMap "name" (Gendered "value" Female))
-        |> (@?= "A value")
-      )
-  , testCase "substitution, with article and a newline"
-      (
-        parseSubstitutions "an\n|name"
-        |> substitute (singletonMap "name" (Gendered "value" Female))
-        |> (@?= "a value")
-      )
-  , testCase "substitution, uppercase referrant"
-      (
-        parseSubstitutions "His/hers|name"
-        |> substitute (singletonMap "name" (Gendered "value" Male))
-        |> (@?= "His")
-      )
-  , testCase "unrecognized key" $
-      try
-        (
-          parseSubstitutions "His/hers|Bob"
-          |> substitute mempty
-          |> evaluate
-        )
+      parseSubstitutions "xyz"
       >>=
-      either
-        (\(_ ∷ SomeException) → pure ())
-        (\x → assertFailure $ [i|should have raised an error instead of returning #{x}|])
+      substitute mempty
+      >>=
+      (@?= "xyz")
+  , testCase "substitution, name" $ do
+      story ← parseSubstitutions "|name"
+      extractPlaceholders story @?= ["name"]
+      substitute (singletonMap "name" (Gendered "value" Male)) story >>= (@?= "value")
+  , testCase "substitution, subject" $
+      parseSubstitutions "he/she|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "she")
+  , testCase "substitution, possessive" $
+      parseSubstitutions "his/her|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Male))
+      >>=
+      (@?= "his")
+  , testCase "substitution, proper possessive" $
+      parseSubstitutions "his/hers|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "hers")
+  , testCase "substitution, proper possessive, male capitalized" $
+      parseSubstitutions "His/hers|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "Hers")
+  , testCase "substitution, proper possessive, both capitalized" $
+      parseSubstitutions "His/Hers|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "Hers")
+  , testCase "substitution, with a article" $
+      parseSubstitutions "an |name"
+      >>=
+      substitute (singletonMap "name" (Gendered "cat" Female))
+      >>=
+      (@?= "a cat")
+  , testCase "substitution, with an article" $
+      parseSubstitutions "a |name"
+      >>=
+      substitute (singletonMap "name" (Gendered "apple" Female))
+      >>=
+      (@?= "an apple")
+  , testCase "substitution, with capitalized article" $
+      parseSubstitutions "An |name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "A value")
+  , testCase "substitution, with article and a newline" $
+      parseSubstitutions "an\n|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Female))
+      >>=
+      (@?= "a value")
+  , testCase "substitution, uppercase referrant" $
+      parseSubstitutions "His/hers|name"
+      >>=
+      substitute (singletonMap "name" (Gendered "value" Male))
+      >>= (@?= "His")
+  , testCase "unrecognized key" $
+      parseSubstitutions "His/hers|Bob"
+      >>=
+      (substitute mempty >>> try)
+      >>= (@?= Left (NoSuchKeyException "Bob"))
   ]

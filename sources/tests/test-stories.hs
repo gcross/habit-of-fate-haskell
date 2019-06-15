@@ -35,8 +35,6 @@ module Main where
 
 import HabitOfFate.Prelude
 
-import Control.DeepSeq
-import Control.Exception (evaluate)
 import Data.CallStack (HasCallStack)
 import qualified Data.Text as T
 
@@ -71,11 +69,10 @@ main ∷ HasCallStack ⇒ IO ()
 main = doMain $
   [ testGroup "Substitutions" $ map testSubstititutions quests
   , testCase "Pages" $ do
-      let pages =
-            map substituteQuestWithStandardSubstitutions quests
-            |> concatMap buildPagesFromQuest
-            |> (Page "index" "" "" (Choices "" []):)
-      evaluate $ rnf pages
+      pages ←
+        mapM substituteQuestWithStandardSubstitutions quests
+        <&>
+        (concatMap buildPagesFromQuest >>> (Page "index" "" "" (Choices "" []):))
       let paths = map page_path pages
           path_counts ∷ HashMap Text Int
           path_counts =

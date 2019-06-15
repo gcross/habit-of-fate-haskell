@@ -47,6 +47,7 @@ module HabitOfFate.Quest
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random
 
 import HabitOfFate.Data.Markdown
@@ -64,9 +65,9 @@ allocateAny =
   >>=
   bool (allocateName Male) (allocateName Female)
 
-chooseFromAndSubstitute ∷ ChooseFrom m ⇒ [Story] → Substitutions → m Markdown
+chooseFromAndSubstitute ∷ (ChooseFrom m, MonadThrow m) ⇒ [Story] → Substitutions → m Markdown
 chooseFromAndSubstitute stories substitutions =
-  chooseFrom stories <&> substitute substitutions
+  chooseFrom stories >>= substitute substitutions
 
 chooseFromAll ∷ (Bounded α, Enum α, ChooseFrom m) ⇒ m α
 chooseFromAll = chooseFrom [minBound .. maxBound]

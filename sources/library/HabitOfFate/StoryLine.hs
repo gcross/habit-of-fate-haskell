@@ -28,6 +28,9 @@ module HabitOfFate.StoryLine where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow)
+import Data.Traversable (Traversable(traverse))
+
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Story
@@ -86,10 +89,10 @@ data Quest content = Quest
   , quest_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-substituteQuest ∷ Substitutions → Quest Story → Quest Markdown
-substituteQuest subs = fmap (substitute subs)
+substituteQuest ∷ MonadThrow m ⇒ Substitutions → Quest Story → m (Quest Markdown)
+substituteQuest subs = traverse (substitute subs)
 
-substituteQuestWithStandardSubstitutions ∷ Quest Story → Quest Markdown
+substituteQuestWithStandardSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
 substituteQuestWithStandardSubstitutions quest@Quest{..} = substituteQuest quest_standard_substitutions quest
 
 initialQuestPath ∷ Quest content → Text
