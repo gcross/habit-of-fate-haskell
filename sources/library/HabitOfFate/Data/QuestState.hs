@@ -30,6 +30,8 @@ module HabitOfFate.Data.QuestState where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow(throwM))
+import Control.Monad.Logic (LogicT, observeAllT)
 import Control.Monad.Random.Class (MonadRandom, uniform)
 import Data.Aeson
   ( FromJSON(..)
@@ -79,12 +81,12 @@ data QuestState content = QuestState
   , quest_state_fames ∷ [content]
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-generateQuestState ∷ ∀ m content. Monad m ⇒ (∀ α. [α] → m α) → (∀ α. [α] → m [α]) → Quest content → m (Text, QuestState content)
+generateQuestState ∷ ∀ m content. MonadThrow m ⇒ (∀ α. [α] → m α) → (∀ α. [α] → m [α]) → Quest content → m (Text, QuestState content)
 generateQuestState select shuffle Quest{..} = do
   (name, remaining_content, fames) ← foldlM folder (quest_name, mempty, mempty) [quest_entry]
   pure (name, QuestState quest_name (toList remaining_content) fames)
  where
-  folder ∷ Monad m ⇒ (Text, Seq (Content content), [content]) → Entry content → m (Text, Seq (Content content), [content])
+  folder ∷ (Text, Seq (Content content), [content]) → Entry content → m (Text, Seq (Content content), [content])
   folder (parent_name, remaining_content, fames) entry = case entry of
     EventEntry{..} → pure
       ( parent_name ⊕ "/" ⊕ event_name
@@ -112,8 +114,11 @@ generateQuestState select shuffle Quest{..} = do
       Branch{..} ← select split_branches
       folder (parent_name, remaining_content, fames ⊕ branch_fames) branch_entry
 
-allQuestStates ∷ Quest content → [(Text, QuestState content)]
-allQuestStates = generateQuestState identity pure
+instance MonadThrow m ⇒ MonadThrow (LogicT m) where
+  throwM = throwM >>> lift
 
-randomQuestState ∷ MonadRandom m ⇒ Quest content → m (QuestState content)
+allQuestStates ∷ MonadThrow m ⇒ Quest content → m [(Text, QuestState content)]
+allQuestStates = generateQuestState (map pure >>> asum) pure >>> observeAllT
+
+randomQuestState ∷ (MonadRandom m, MonadThrow m) ⇒ Quest content → m (QuestState content)
 randomQuestState quest = generateQuestState uniform shuffleM quest <&> snd

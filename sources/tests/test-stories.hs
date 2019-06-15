@@ -54,7 +54,7 @@ testSubstititutions quest@Quest{..} =
 testFames ∷ Quest Story → TestTree
 testFames quest@Quest{..} =
   testCase (unpack quest_name) $ do
-    let all_states = allQuestStates quest
+    all_states ← allQuestStates quest
     all_states
       |> mapMaybe (\(name, QuestState{..}) → if onull quest_state_fames then Just name else Nothing)
       |> (\paths_without_fames →

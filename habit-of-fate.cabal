@@ -64,6 +64,7 @@ library
                      , http-conduit
                      , http-types
                      , lens
+                     , logict
                      , markov-chain
                      , MonadRandom
                      , mono-traversable
