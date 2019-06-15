@@ -112,8 +112,7 @@ generateQuestState select shuffle Quest{..} = do
           NoShuffle → pure
           Shuffle → shuffle
         $
-        (line_contents ∷ [Entry content])
-        ∷ m [Entry content]
+        line_contents
       )
       >>=
       foldlM folder (folder_state & name_ ⊕~ ("/" ⊕ line_name))
