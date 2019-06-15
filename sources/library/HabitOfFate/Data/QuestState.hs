@@ -24,6 +24,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Data.QuestState where
@@ -81,23 +82,30 @@ data QuestState content = QuestState
   , quest_state_fames ∷ [content]
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
+data FolderState content = FolderState
+  { _name_ ∷ Text
+  , _remaining_content_ ∷ Seq (Content content)
+  , _fames_ ∷ [content]
+  }
+makeLenses ''FolderState
+
 generateQuestState ∷ ∀ m content. MonadThrow m ⇒ (∀ α. [α] → m α) → (∀ α. [α] → m [α]) → Quest content → m (Text, QuestState content)
 generateQuestState select shuffle Quest{..} = do
-  (name, remaining_content, fames) ← foldlM folder (quest_name, mempty, mempty) [quest_entry]
-  pure (name, QuestState quest_name (toList remaining_content) fames)
+  let initial_folder_state = FolderState
+        { _name_ = quest_name
+        , _remaining_content_ = mempty
+        , _fames_ = quest_fames
+        }
+  FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
+  pure (_name_, QuestState quest_name (toList _remaining_content_) _fames_)
  where
-  folder ∷ (Text, Seq (Content content), [content]) → Entry content → m (Text, Seq (Content content), [content])
-  folder (parent_name, remaining_content, fames) entry = case entry of
-    EventEntry{..} → pure
-      ( parent_name ⊕ "/" ⊕ event_name
-      , remaining_content `snoc` EventContent event_outcomes event_random_stories
-      , fames
-      )
-    NarrativeEntry{..} → pure
-      ( parent_name ⊕ "/" ⊕ narrative_name
-      , remaining_content `snoc` NarrativeContent (narrative_content & narrative_story)
-      , fames
-      )
+  folder folder_state entry = case entry of
+    EventEntry{..} → pure ( folder_state
+      & name_ ⊕~ ("/" ⊕ event_name)
+      & remaining_content_ %~ (`snoc` EventContent event_outcomes event_random_stories))
+    NarrativeEntry{..} → pure ( folder_state
+      & name_ ⊕~ ("/" ⊕ narrative_name)
+      & remaining_content_ %~ (`snoc` NarrativeContent (narrative_content & narrative_story)))
     LineEntry{..} →
       (
         case line_shuffle_mode of
@@ -108,11 +116,10 @@ generateQuestState select shuffle Quest{..} = do
         ∷ m [Entry content]
       )
       >>=
-      (foldlM folder (parent_name ⊕ "/" ⊕ line_name, remaining_content, fames)
-        ∷ [Entry content] → m (Text, Seq (Content content), [content]))
+      foldlM folder (folder_state & name_ ⊕~ ("/" ⊕ line_name))
     SplitEntry{..} → do
       Branch{..} ← select split_branches
-      folder (parent_name, remaining_content, fames ⊕ branch_fames) branch_entry
+      folder (folder_state & fames_ ⊕~ branch_fames) branch_entry
 
 instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift
