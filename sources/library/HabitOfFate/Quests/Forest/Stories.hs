@@ -578,7 +578,6 @@ quest ∷ Quest Story
 quest = Quest
   "forest"
   "A prayer from someone searching for an herb in the Wicked Forest."
-  []
   [("Searcher",Gendered "Andrea" Female),("",Gendered "Andrea" Female)
   ,("Child",Gendered "Tommy" Male)
   ,("Plant",Gendered "Illsbane" Neuter)
@@ -590,9 +589,9 @@ quest = Quest
     "Who shall we follow into the Wicked Forest?"
     [ Branch
         "The village healer."
-        fames_healer
         (LineEntry NoShuffle "healer" $
-          [ NarrativeEntry
+          [ FamesEntry fames_healer
+          , NarrativeEntry
               "intro"
               intro_healer
           , LineEntry Shuffle "events" shared_story_entries
@@ -603,9 +602,9 @@ quest = Quest
           ])
     , Branch
         "The parent of the sick child."
-        fames_parent
         (LineEntry NoShuffle "parent" $
-          [ NarrativeEntry
+          [ FamesEntry fames_parent
+          , NarrativeEntry
               "intro"
               intro_parent
           , LineEntry Shuffle "events" shared_story_entries
@@ -629,14 +628,12 @@ shared_story_entries =
       "Who is this?"
       [ Branch
           "A cat."
-          []
           (EventEntry
             "cat"
             found_by_cat
             wander_stories)
       , Branch
           "A fairy."
-          []
           (EventEntry
             "fairy"
             found_by_fairy

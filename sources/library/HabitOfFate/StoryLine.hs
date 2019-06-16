@@ -59,6 +59,9 @@ data Entry content =
       , split_question ∷ Markdown
       , split_branches ∷ [Branch content]
       }
+  | FamesEntry
+      { fames_content ∷ [content]
+      }
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 data DeadEnd = DeadEnd deriving (Eq,Show)
@@ -67,21 +70,22 @@ instance Exception DeadEnd where
 nextPathOf ∷ MonadThrow m ⇒ Entry content → m Text
 nextPathOf EventEntry{..} = pure $ event_name ⊕ "/common"
 nextPathOf NarrativeEntry{..} = pure $ narrative_name
-nextPathOf LineEntry{..} = case line_contents of
-  [] → throwM DeadEnd
-  entry:_ → ((line_name ⊕ "/") ⊕) <$> nextPathOf entry
+nextPathOf LineEntry{..} = go line_contents
+ where
+  go (FamesEntry{..}:rest) = go rest
+  go [] = throwM DeadEnd
+  go (entry:_) = ((line_name ⊕ "/") ⊕) <$> nextPathOf entry
 nextPathOf SplitEntry{..} = pure $ split_name ⊕ "/common"
+nextPathOf FamesEntry{..} = throwM DeadEnd
 
 data Branch content = Branch
   { branch_choice ∷ Markdown
-  , branch_fames ∷ [content]
   , branch_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 data Quest content = Quest
   { quest_name ∷ Text
   , quest_choice ∷ Markdown
-  , quest_fames ∷ [content]
   , quest_standard_substitutions ∷ Substitutions
   , quest_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)

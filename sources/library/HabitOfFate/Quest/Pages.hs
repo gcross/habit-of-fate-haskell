@@ -212,5 +212,6 @@ buildPagesFromQuest quest@Quest{..} = do
             , page_choices = Choices split_question page_choices
             }
             :) <$> (traverse ((& branch_entry) >>> process maybe_next_choice name) split_branches <&> concat)
+        FamesEntry{..} → pure []
 
   process Nothing quest_name quest_entry

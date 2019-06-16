@@ -31,7 +31,7 @@ module HabitOfFate.Data.QuestState where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Catch (MonadThrow(throwM))
+import Control.Monad.Catch (MonadThrow(throwM), Exception)
 import Control.Monad.Logic (LogicT, observeAllT)
 import Control.Monad.Random.Class (MonadRandom, uniform)
 import Data.Aeson
@@ -85,19 +85,25 @@ data QuestState content = QuestState
 data FolderState content = FolderState
   { _name_ ∷ Text
   , _remaining_content_ ∷ Seq (Content content)
-  , _fames_ ∷ [content]
+  , _maybe_fames_ ∷ Maybe [content]
   }
 makeLenses ''FolderState
+
+data FamesError = DuplicateFames Text | NoFames deriving (Eq,Show)
+instance Exception FamesError where
 
 generateQuestState ∷ ∀ m content. MonadThrow m ⇒ (∀ α. [α] → m α) → (∀ α. [α] → m [α]) → Quest content → m (Text, QuestState content)
 generateQuestState select shuffle Quest{..} = do
   let initial_folder_state = FolderState
         { _name_ = quest_name
         , _remaining_content_ = mempty
-        , _fames_ = quest_fames
+        , _maybe_fames_ = Nothing
         }
   FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
-  pure (_name_, QuestState quest_name (toList _remaining_content_) _fames_)
+  maybe
+    (throwM NoFames)
+    (\fames → pure (_name_, QuestState quest_name (toList _remaining_content_) fames))
+    _maybe_fames_
  where
   folder folder_state entry = case entry of
     EventEntry{..} → pure ( folder_state
@@ -116,9 +122,10 @@ generateQuestState select shuffle Quest{..} = do
       )
       >>=
       foldlM folder (folder_state & name_ ⊕~ ("/" ⊕ line_name))
-    SplitEntry{..} → do
-      Branch{..} ← select split_branches
-      folder (folder_state & fames_ ⊕~ branch_fames) branch_entry
+    SplitEntry{..} → select split_branches >>= \Branch{..} → folder folder_state branch_entry
+    FamesEntry{..} → case folder_state ^. maybe_fames_ of
+      Nothing → pure $ (folder_state & maybe_fames_ .~ Just fames_content)
+      Just _ → throwM $ DuplicateFames (folder_state ^. name_)
 
 instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift
