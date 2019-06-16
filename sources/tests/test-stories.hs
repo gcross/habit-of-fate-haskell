@@ -71,8 +71,8 @@ main = doMain $
   , testCase "Pages" $ do
       pages ←
         mapM substituteQuestWithStandardSubstitutions quests
-        <&>
-        (concatMap buildPagesFromQuest >>> (Page "index" "" "" (Choices "" []):))
+        >>=
+        (traverse buildPagesFromQuest >>> (<&> (concat >>> (Page "index" "" "" (Choices "" []):))))
       let paths = map page_path pages
           path_counts ∷ HashMap Text Int
           path_counts =
@@ -91,9 +91,10 @@ main = doMain $
                 )
           missing_links = filter (\(source, target) → target `notElem` paths) links
       missing_links @?= []
-      forM_ quests $ \quest@Quest{..} →
+      forM_ quests $ \quest@Quest{..} → do
+        initial_path ← initialQuestPath quest
         assertBool
-          [i|"initial quest {quest_name} path {initialQuestPath quest} does not exist"|]
-          (initialQuestPath quest ∈ paths)
+          [i|"initial quest {quest_name} path {initial_path} does not exist"|]
+          (initial_path ∈ paths)
   , testGroup "Fames" $ map testFames quests
   ]

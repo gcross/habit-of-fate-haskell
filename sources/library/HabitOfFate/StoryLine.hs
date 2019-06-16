@@ -28,7 +28,7 @@ module HabitOfFate.StoryLine where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Catch (MonadThrow)
+import Control.Monad.Catch (MonadThrow(throwM),Exception)
 import Data.Traversable (Traversable(traverse))
 
 import HabitOfFate.Data.Markdown
@@ -61,19 +61,16 @@ data Entry content =
       }
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-nameOf ∷ Entry content → Text
-nameOf EventEntry{..} = event_name
-nameOf NarrativeEntry{..} = narrative_name
-nameOf LineEntry{..} = line_name
-nameOf SplitEntry{..} = split_name
+data DeadEnd = DeadEnd deriving (Eq,Show)
+instance Exception DeadEnd where
 
-nextPathOf ∷ Entry content → Text
-nextPathOf EventEntry{..} = event_name ⊕ "/common"
-nextPathOf NarrativeEntry{..} = narrative_name
+nextPathOf ∷ MonadThrow m ⇒ Entry content → m Text
+nextPathOf EventEntry{..} = pure $ event_name ⊕ "/common"
+nextPathOf NarrativeEntry{..} = pure $ narrative_name
 nextPathOf LineEntry{..} = case line_contents of
-  [] → error "Empty line has no next name."
-  entry:_ → line_name ⊕ "/" ⊕ nextPathOf entry
-nextPathOf SplitEntry{..} = split_name ⊕ "/common"
+  [] → throwM DeadEnd
+  entry:_ → ((line_name ⊕ "/") ⊕) <$> nextPathOf entry
+nextPathOf SplitEntry{..} = pure $ split_name ⊕ "/common"
 
 data Branch content = Branch
   { branch_choice ∷ Markdown
@@ -95,5 +92,5 @@ substituteQuest subs = traverse (substitute subs)
 substituteQuestWithStandardSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
 substituteQuestWithStandardSubstitutions quest@Quest{..} = substituteQuest quest_standard_substitutions quest
 
-initialQuestPath ∷ Quest content → Text
-initialQuestPath Quest{..} = quest_name ⊕ "/" ⊕ nextPathOf quest_entry
+initialQuestPath ∷ MonadThrow m ⇒ Quest content → m Text
+initialQuestPath Quest{..} = ((quest_name ⊕ "/") ⊕) <$> nextPathOf quest_entry

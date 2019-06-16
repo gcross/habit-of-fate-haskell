@@ -18,18 +18,21 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Quest.Pages.Index where
 
 import HabitOfFate.Prelude
 
+import Control.Monad.Catch (MonadThrow)
+
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Quest.Pages
 import HabitOfFate.StoryLine
 import HabitOfFate.StoryLine.Quests
 
-index_page ∷ Page
+index_page ∷ MonadThrow m ⇒ m Page
 index_page = Page
   "index"
   "The Adventure Begins"
@@ -42,5 +45,9 @@ index_page = Page
     ]
     |> (unlines ∷ [Text] → Text)
     |> Markdown)
-  (Choices "The choice is yours.  Where would you like to start?" $
-    [ (embolden quest_choice, initialQuestPath quest) | quest@Quest{..} ← quests])
+  <$>
+  (
+    Choices "The choice is yours.  Where would you like to start?"
+    <$>
+    traverse (\quest@Quest{..} → (embolden quest_choice,) <$> initialQuestPath quest) quests
+  )
