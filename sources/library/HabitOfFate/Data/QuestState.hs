@@ -130,7 +130,7 @@ generateQuestState select shuffle Quest{..} = do
       foldlM folder (folder_state & name_ ⊕~ ("/" ⊕ line_name))
     SplitEntry{..} → select split_branches >>= \Branch{..} → folder folder_state branch_entry
     FamesEntry{..} → case folder_state ^. maybe_fames_ of
-      Nothing → pure $ (folder_state & maybe_fames_ .~ Just fames_content)
+      Nothing → pure (folder_state & maybe_fames_ .~ Just fames_content)
       Just _ → throwM $ DuplicateFames (folder_state ^. name_)
     RandomStoriesEntry{..} → pure ( folder_state
       & remaining_content_ %~ (`snoc` RandomStoriesContent random_stories_content))
