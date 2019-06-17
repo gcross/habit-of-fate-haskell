@@ -583,6 +583,7 @@ quest = Quest
   ,("Plant",Gendered "Illsbane" Neuter)
   ,("WrongPlant",Gendered "Tigerlamp" Neuter)
   ]
+  wander_stories
   (SplitEntry
     "who"
     intro
@@ -598,7 +599,6 @@ quest = Quest
           , EventEntry
               "conclusion"
               conclusion_healer
-              wander_stories
           ])
     , Branch
         "The parent of the sick child."
@@ -611,7 +611,6 @@ quest = Quest
           , EventEntry
               "conclusion"
               conclusion_parent
-              wander_stories
           ])
     ]
   )
@@ -621,7 +620,6 @@ shared_story_entries =
   [ EventEntry
       "gingerbread"
       gingerbread_house
-      wander_stories
   , SplitEntry
       "found"
       found
@@ -630,17 +628,14 @@ shared_story_entries =
           "A cat."
           (EventEntry
             "cat"
-            found_by_cat
-            wander_stories)
+            found_by_cat)
       , Branch
           "A fairy."
           (EventEntry
             "fairy"
-            found_by_fairy
-            wander_stories)
+            found_by_fairy)
       ]
   , EventEntry
       "fairy-circle"
       fairy_circle
-      wander_stories
   ]
