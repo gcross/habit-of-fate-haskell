@@ -108,7 +108,7 @@ generateQuestState select shuffle Quest{..} = do
   FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
   maybe
     (throwM NoFames)
-    (\fames → pure (_name_, QuestState quest_name (toList _remaining_content_) quest_initial_random_stories fames))
+    (\fames → pure (_name_, QuestState quest_name (toList _remaining_content_) fames quest_initial_random_stories))
     _maybe_fames_
  where
   folder folder_state entry = case entry of
