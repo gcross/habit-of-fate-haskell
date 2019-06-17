@@ -64,6 +64,9 @@ data Entry content =
   | RandomStoriesEntry
       { random_stories_content ∷ [content]
       }
+  | StatusEntry
+      { status_content ∷ content
+      }
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 data DeadEnd = DeadEnd deriving (Eq,Show)
@@ -76,11 +79,13 @@ nextPathOf LineEntry{..} = go line_contents
  where
   go (FamesEntry{..}:rest) = go rest
   go (RandomStoriesEntry{..}:rest) = go rest
+  go (StatusEntry{..}:rest) = go rest
   go [] = throwM DeadEnd
   go (entry:_) = ((line_name ⊕ "/") ⊕) <$> nextPathOf entry
 nextPathOf SplitEntry{..} = pure $ split_name ⊕ "/common"
 nextPathOf FamesEntry{..} = throwM DeadEnd
 nextPathOf RandomStoriesEntry{..} = throwM DeadEnd
+nextPathOf StatusEntry{..} = throwM DeadEnd
 
 data Branch content = Branch
   { branch_choice ∷ Markdown
@@ -92,6 +97,7 @@ data Quest content = Quest
   , quest_choice ∷ Markdown
   , quest_standard_substitutions ∷ Substitutions
   , quest_initial_random_stories ∷ [content]
+  , quest_initial_status ∷ content
   , quest_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 

@@ -584,6 +584,7 @@ quest = Quest
   ,("WrongPlant",Gendered "Tigerlamp" Neuter)
   ]
   wander_stories
+  looking_for_herb_story
   (SplitEntry
     "who"
     intro
@@ -620,20 +621,23 @@ shared_story_entries =
   [ EventEntry
       "gingerbread"
       gingerbread_house
-  , SplitEntry
+  , LineEntry NoShuffle
       "found"
-      found
-      "Who is this?"
-      [ Branch
-          "A cat."
-          (EventEntry
-            "cat"
-            found_by_cat)
-      , Branch
-          "A fairy."
-          (EventEntry
-            "fairy"
-            found_by_fairy)
+      [ SplitEntry
+          "by"
+          found
+          "Who is this?"
+          [ Branch
+              "A cat."
+              (EventEntry
+                "cat"
+                found_by_cat)
+          , Branch
+              "A fairy."
+              (EventEntry
+                "fairy"
+                found_by_fairy)
+          ]
       ]
   , EventEntry
       "fairy-circle"

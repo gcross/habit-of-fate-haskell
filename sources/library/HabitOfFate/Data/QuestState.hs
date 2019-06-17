@@ -57,6 +57,9 @@ data Content content =
   | RandomStoriesContent
       { random_stories_content ∷ [content]
       }
+  | StatusContent
+      { status_content ∷ content
+      }
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 instance ToJSON content ⇒ ToJSON (Content content) where
@@ -71,6 +74,9 @@ instance ToJSON content ⇒ ToJSON (Content content) where
       RandomStoriesContent{..} → do
         writeField "kind" ("random stories" ∷ Text)
         writeField "content" random_stories_content
+      StatusContent{..} → do
+        writeField "kind" ("status" ∷ Text)
+        writeField "content" status_content
 
 instance FromJSON content ⇒ FromJSON (Content content) where
   parseJSON = withObject "account must be object-shaped" $ \o → do
@@ -79,6 +85,7 @@ instance FromJSON content ⇒ FromJSON (Content content) where
       "event" → EventContent <$> (o .: "outcomes")
       "narrative" → NarrativeContent <$> (o .: "content")
       "random stories" → RandomStoriesContent <$> (o .: "content")
+      "status" → NarrativeContent <$> (o .: "content")
       _ → fail [i|Content kind must be event, narrative, or ransoms, not #{kind}|]
 
 data QuestState content = QuestState
@@ -86,6 +93,7 @@ data QuestState content = QuestState
   , quest_state_remaining_content ∷ [Content content]
   , quest_state_fames ∷ [content]
   , quest_state_initial_random_stories ∷ [content]
+  , quest_state_status ∷ content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 data FolderState content = FolderState
@@ -108,7 +116,7 @@ generateQuestState select shuffle Quest{..} = do
   FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
   maybe
     (throwM NoFames)
-    (\fames → pure (_name_, QuestState quest_name (toList _remaining_content_) fames quest_initial_random_stories))
+    (\fames → pure (_name_, QuestState quest_name (toList _remaining_content_) fames quest_initial_random_stories quest_initial_status))
     _maybe_fames_
  where
   folder folder_state entry = case entry of
@@ -134,6 +142,8 @@ generateQuestState select shuffle Quest{..} = do
       Just _ → throwM $ DuplicateFames (folder_state ^. name_)
     RandomStoriesEntry{..} → pure ( folder_state
       & remaining_content_ %~ (`snoc` RandomStoriesContent random_stories_content))
+    StatusEntry{..} → pure ( folder_state
+      & remaining_content_ %~ (`snoc` StatusContent status_content))
 
 instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift
