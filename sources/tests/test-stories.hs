@@ -62,6 +62,23 @@ testFames quest@Quest{..} =
             ("No fames in: " ⊕ (unpack $ T.intercalate ", " paths_without_fames))
             (onull paths_without_fames)
          )
+    all_states
+      |> mapMaybe (
+          \(name, QuestState{..}) →
+            quest_state_remaining_content
+            |> find
+                (\case
+                  EventContent{..} → True
+                  _ → False
+                )
+            |> isJust
+            |> bool (Just name) Nothing
+         )
+      |> (\paths_without_events →
+          assertBool
+            ("No events in: " ⊕ (unpack $ T.intercalate ", " paths_without_events))
+            (onull paths_without_events)
+         )
     let all_names = map fst all_states
     nub all_names @?= all_names
 
