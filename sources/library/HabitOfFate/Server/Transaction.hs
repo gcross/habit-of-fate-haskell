@@ -34,7 +34,7 @@ import HabitOfFate.Prelude
 
 import Control.Concurrent (tryPutMVar)
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TVar (readTVar, writeTVar)
+import Control.Concurrent.STM.TVar (modifyTVar, readTVar, writeTVar)
 import Control.DeepSeq (NFData)
 import Control.Monad.Catch (Exception(..), MonadThrow(..), SomeException)
 import qualified Control.Monad.Operational as Operational
@@ -318,11 +318,13 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction p
       Left exc → do
         let redirect_or_content = Right Nothing
             account_changed = False
-            logs = logs_without_last `snoc` [i|EXCEPTION: #{displayException exc}|]
+            logs = logs_without_last `snoc` [i|EXCEPTION: #{displayException exc}|] `snoc` "(Resetting the quest.)"
             status =
               case fromException exc of
                 Just (StatusError status) → status
                 _ → internalServerError500
+        -- Reset the quest to reduce the risk that the error will just repeat.
+        modifyTVar account_tvar $ maybe_current_quest_state_ .~ Nothing
         pure $ TransactionResults{..}
       Right ((result, (new_account, account_changed)), new_rng) → do
         let logs = logs_without_last
