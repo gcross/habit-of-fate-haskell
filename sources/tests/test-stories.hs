@@ -79,6 +79,22 @@ testFames quest@Quest{..} =
             ("No events in: " ⊕ (unpack $ T.intercalate ", " paths_without_events))
             (onull paths_without_events)
          )
+    all_states
+      |> mapMaybe (
+          \(name, QuestState{..}) →
+            quest_state_remaining_content
+            |> (^? _last)
+            |> (\case
+                  Just EventContent{..} → Nothing
+                  Just NarrativeContent{..} → Nothing
+                  _ → Just name
+               )
+         )
+      |> (\paths_with_bad_ending →
+          assertBool
+            ("Events have bad ending: " ⊕ (unpack $ T.intercalate ", " paths_with_bad_ending))
+            (onull paths_with_bad_ending)
+         )
     let all_names = map fst all_states
     nub all_names @?= all_names
 
