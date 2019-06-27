@@ -92,7 +92,7 @@ testFames quest@Quest{..} =
          )
       |> (\paths_with_bad_ending →
           assertBool
-            ("Events have bad ending: " ⊕ (unpack $ T.intercalate ", " paths_with_bad_ending))
+            ("Paths have bad ending: " ⊕ (unpack $ T.intercalate ", " paths_with_bad_ending))
             (onull paths_with_bad_ending)
          )
     let all_names = map fst all_states
