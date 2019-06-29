@@ -39,9 +39,9 @@ import Data.CallStack (HasCallStack)
 import qualified Data.Text as T
 
 import HabitOfFate.Data.QuestState
+import HabitOfFate.Quest
 import HabitOfFate.Quest.Pages
-import HabitOfFate.StoryLine
-import HabitOfFate.StoryLine.Quests
+import HabitOfFate.Quests
 import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
@@ -56,7 +56,7 @@ testFames quest@Quest{..} =
   testCase (unpack quest_name) $ do
     all_states ← allQuestStates quest
     all_states
-      |> mapMaybe (\(name, QuestState{..}) → if onull quest_state_fames then Just name else Nothing)
+      |> mapMaybe (\(name, qs) → if onull (qs ^. quest_state_fames_) then Just name else Nothing)
       |> (\paths_without_fames →
           assertBool
             ("No fames in: " ⊕ (unpack $ T.intercalate ", " paths_without_fames))
@@ -64,11 +64,11 @@ testFames quest@Quest{..} =
          )
     all_states
       |> mapMaybe (
-          \(name, QuestState{..}) →
-            quest_state_remaining_content
+          \(name, qs) → qs
+            |> (^. quest_state_remaining_content_)
             |> find
                 (\case
-                  EventContent{..} → True
+                  EventContent _ → True
                   _ → False
                 )
             |> isJust
@@ -81,12 +81,12 @@ testFames quest@Quest{..} =
          )
     all_states
       |> mapMaybe (
-          \(name, QuestState{..}) →
-            quest_state_remaining_content
+          \(name, qs) → qs
+            |> (^. quest_state_remaining_content_)
             |> (^? _last)
             |> (\case
-                  Just EventContent{..} → Nothing
-                  Just NarrativeContent{..} → Nothing
+                  Just (EventContent _) → Nothing
+                  Just (NarrativeContent _) → Nothing
                   _ → Just name
                )
          )

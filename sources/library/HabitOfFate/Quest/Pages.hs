@@ -33,8 +33,8 @@ import Control.Monad.Catch (MonadThrow)
 
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
+import HabitOfFate.Quest
 import HabitOfFate.Story
-import HabitOfFate.StoryLine
 
 data PageChoices content =
     NoChoice Text
@@ -189,6 +189,9 @@ buildPagesFromQuest quest@Quest{..} = do
           let base = parent ⊕ "/" ⊕ line_name
               go ∷ Entry Markdown → [Entry Markdown] → m [[Page]]
               go x [] = process maybe_next_choice base x <&> (:[])
+              go x (FamesEntry{..}:rest) = go x rest
+              go x (RandomStoriesEntry{..}:rest) = go x rest
+              go x (StatusEntry{..}:rest) = go x rest
               go x (y:rest) = do
                 next_path ← nextPathOf y
                 (:) <$> process (Just $ base ⊕ "/" ⊕ next_path) base x <*> go y rest

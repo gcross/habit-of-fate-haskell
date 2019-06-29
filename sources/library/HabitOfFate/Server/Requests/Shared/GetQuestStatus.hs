@@ -27,17 +27,8 @@ import HabitOfFate.Prelude
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Markdown
-import HabitOfFate.Quest.Runners.GetStatus.Transaction
-import HabitOfFate.Quests
+import HabitOfFate.Data.QuestState
 import HabitOfFate.Server.Transaction
 
 getQuestStatus ∷ Transaction Markdown
-getQuestStatus =
-  use maybe_current_quest_state_
-  >>=
-  maybe
-    (pure $ Markdown "You are between quests.")
-    (runCurrentQuest $ flip runGetQuestStatus)
-
-runGetQuestStatus ∷ s → Quest s → Transaction Markdown
-runGetQuestStatus quest_state = questGetStatus >>> runInTransaction quest_state
+getQuestStatus = use (quest_state_ . quest_state_status_)

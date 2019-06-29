@@ -37,16 +37,13 @@ import Crypto.PasswordStore
 import Data.Aeson
   ( FromJSON(..)
   , FromJSONKey(..)
-  , FromJSONKeyFunction(..)
   , ToJSON(..)
   , ToJSONKey(..)
-  , Value(..)
   , (.:)
   , (.:?)
   , withObject
   , withText
   )
-import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime, parseTimeM)
 import Web.Scotty (Parsable)
@@ -56,12 +53,12 @@ import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Markdown
+import HabitOfFate.Data.QuestState
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.JSON
 import HabitOfFate.Quests
-import HabitOfFate.Substitution
-import HabitOfFate.TH
 
 instance ToJSON StdGen where
   toJSON = show >>> toJSON
@@ -71,11 +68,13 @@ instance FromJSON StdGen where
 
 type Groups = ItemsSequence Group
 
+type Marks = Tagged (Seq Scale)
+
 data Account = Account
   {   _password_ ∷ Text
   ,   _habits_ ∷ ItemsSequence Habit
-  ,   _marks_ ∷ Tagged (Seq Scale)
-  ,   _maybe_current_quest_state_ ∷ Maybe CurrentQuestState
+  ,   _marks_ ∷ Marks
+  ,   _quest_state_ ∷ QuestState Markdown
   ,   _rng_ ∷ StdGen
   ,   _configuration_ ∷ Configuration
   ,   _last_seen_ ∷ UTCTime
@@ -89,7 +88,7 @@ instance ToJSON Account where
     writeField "password" _password_
     writeField "habits" _habits_
     writeField "marks" _marks_
-    writeMaybeField "quest" _maybe_current_quest_state_
+    writeField "quest" _quest_state_
     writeField "rng" _rng_
     writeField "configuration" _configuration_
     writeTextField "last_seen" $ pack $ formatTime defaultTimeLocale "%FT%T" _last_seen_
@@ -103,7 +102,7 @@ instance FromJSON Account where
       <$> (o .: "password")
       <*> (o .: "habits")
       <*> (o .: "marks")
-      <*> (o .:? "quest")
+      <*> (o .: "quest")
       <*> (o .: "rng")
       <*> (o .: "configuration")
       <*> (o .: "last_seen" >>= withText "UTCTime must be a string" (
@@ -122,8 +121,8 @@ habits_ f a = (\nx → a {_habits_ = nx}) <$> f (_habits_ a)
 marks_ ∷ Lens' Account (Tagged (Seq Scale))
 marks_ f a = (\nx → a {_marks_ = nx}) <$> f (_marks_ a)
 
-maybe_current_quest_state_ ∷ Lens' Account (Maybe CurrentQuestState)
-maybe_current_quest_state_ f a = (\nx → a {_maybe_current_quest_state_ = nx}) <$> f (_maybe_current_quest_state_ a)
+quest_state_ ∷ Lens' Account (QuestState Markdown)
+quest_state_ f a = (\nx → a {_quest_state_ = nx}) <$> f (_quest_state_ a)
 
 configuration_ ∷ Lens' Account Configuration
 configuration_ f a = (\nx → a {_configuration_ = nx}) <$> f (_configuration_ a)
@@ -150,7 +149,7 @@ newAccount password =
         )
     <*> pure def
     <*> pure (Tagged (Success def) (Failure def))
-    <*> pure Nothing
+    <*> randomQuestState
     <*> newStdGen
     <*> pure def
     <*> getCurrentTime

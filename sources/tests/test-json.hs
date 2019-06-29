@@ -35,10 +35,9 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
+import HabitOfFate.Data.QuestState
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
-import HabitOfFate.Quests
-import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
@@ -53,9 +52,9 @@ main = doMain
   , QC.testProperty "Tagged" $ \(x ∷ Tagged Int) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
   , SC.testProperty "Gender" $ \(x ∷ Gender) → (encode >>> eitherDecode) x == Right x
   , SC.testProperty "Gendered" $ \(x ∷ Gendered) → (encode >>> eitherDecode) x == Right x
-  , QC.testProperty "Forest.State" $ \(x ∷ Forest.State) → (encode >>> eitherDecode) x == Right x
-  , SC.testProperty "CurrentQuestState" $ \(x ∷ CurrentQuestState) → (encode >>> eitherDecode) x == Right x
+  , QC.testProperty "Outcomes" $ \(x ∷ Outcomes Markdown) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+  , QC.testProperty "Content" $ \(x ∷ Content Markdown) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
+  , QC.testProperty "QuestState" $ \(x ∷ QuestState Markdown) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
   , QC.testProperty "Configuration" $ \(x ∷ Configuration) → (encode >>> eitherDecode) x == Right x
   , QC.testProperty "Account" $ \(x ∷ Account) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
-  , QC.testProperty "Outcomes" $ \(x ∷ Outcomes Markdown) → ioProperty $ (encode >>> eitherDecode) x @?= Right x
   ]

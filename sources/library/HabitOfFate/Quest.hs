@@ -1,6 +1,6 @@
 {-
     Habit of Fate, a game to incentivize habit formation.
-    Copyright (C) 2017 Gregory Crosswhite
+    Copyright (C) 2019 Gregory Crosswhite
 
     This program is free software: you can redistribute it and/or modify
     it under version 3 of the terms of the GNU Affero General Public License.
@@ -14,89 +14,98 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Quest
-  ( AllocateName(..)
-  , ChooseFrom(..)
-  , ShuffleFrom(..)
-
-  , InitializeQuestResult(..)
-  , RunQuestResult(..)
-  , QuestStatus(..)
-  , TryQuestResult(..)
-
-  , InitializeQuestRunner
-  , GetStatusQuestRunner
-  , TrialQuestRunner
-
-  , allocateAny
-  , chooseFromAndSubstitute
-  , chooseFromAll
-  , tryAverted
-  , tryProgress
-  , uniformAction
-  , weightedAction
-  ) where
+module HabitOfFate.Quest where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Catch (MonadThrow)
-import Control.Monad.Random
+import Control.Monad.Catch (MonadThrow(throwM),Exception)
+import Data.Traversable (Traversable(traverse))
 
 import HabitOfFate.Data.Markdown
-import HabitOfFate.Data.SuccessOrFailureResult
-import HabitOfFate.Quest.Classes
-import qualified HabitOfFate.Quest.Runners.GetStatus as GetStatus
-import qualified HabitOfFate.Quest.Runners.Initialize as Initialize
-import qualified HabitOfFate.Quest.Runners.Trial as Trial
-import HabitOfFate.Quest.Runners.Trial (tryAverted, tryProgress)
+import HabitOfFate.Data.Outcomes
+import HabitOfFate.Story
 import HabitOfFate.Substitution
 
-allocateAny ∷ (AllocateName m, ChooseFrom m) ⇒ m Gendered
-allocateAny =
-  chooseFromAll
-  >>=
-  bool (allocateName Male) (allocateName Female)
+data ShuffleMode = Shuffle | NoShuffle deriving (Enum,Eq,Ord,Read,Show)
 
-chooseFromAndSubstitute ∷ (ChooseFrom m, MonadThrow m) ⇒ [Story] → Substitutions → m Markdown
-chooseFromAndSubstitute stories substitutions =
-  chooseFrom stories >>= substitute substitutions
+data Entry content =
+    EventEntry
+      { event_name ∷ Text
+      , event_outcomes ∷ Outcomes content
+      }
+  | NarrativeEntry
+      { narrative_name ∷ Text
+      , narrative_content ∷ Narrative content
+      }
+  | LineEntry
+      { line_shuffle_mode ∷ ShuffleMode
+      , line_name ∷ Text
+      , line_contents ∷ [Entry content]
+      }
+  | SplitEntry
+      { split_name ∷ Text
+      , split_story ∷ Narrative content
+      , split_question ∷ Markdown
+      , split_branches ∷ [Branch content]
+      }
+  | FamesEntry
+      { fames_content ∷ [content]
+      }
+  | RandomStoriesEntry
+      { random_stories_content ∷ [content]
+      }
+  | StatusEntry
+      { status_content ∷ content
+      }
+ deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-chooseFromAll ∷ (Bounded α, Enum α, ChooseFrom m) ⇒ m α
-chooseFromAll = chooseFrom [minBound .. maxBound]
+data DeadEnd = DeadEnd Text deriving (Eq,Show)
+instance Exception DeadEnd where
 
-uniformAction ∷ MonadRandom m ⇒ [m α] → m α
-uniformAction = uniform >>> join
+nextPathOf ∷ MonadThrow m ⇒ Entry content → m Text
+nextPathOf EventEntry{..} = pure $ event_name ⊕ "/common"
+nextPathOf NarrativeEntry{..} = pure $ narrative_name
+nextPathOf LineEntry{..} = go line_contents
+ where
+  go (FamesEntry{..}:rest) = go rest
+  go (RandomStoriesEntry{..}:rest) = go rest
+  go (StatusEntry{..}:rest) = go rest
+  go [] = throwM $ DeadEnd "empty"
+  go (entry:_) = ((line_name ⊕ "/") ⊕) <$> nextPathOf entry
+nextPathOf SplitEntry{..} = pure $ split_name ⊕ "/common"
+nextPathOf FamesEntry{..} = throwM $ DeadEnd "fames"
+nextPathOf RandomStoriesEntry{..} = throwM $ DeadEnd "random stories"
+nextPathOf StatusEntry{..} = throwM $ DeadEnd "status"
 
-weightedAction ∷ MonadRandom m ⇒ [(m α, Rational)] → m α
-weightedAction = weighted >>> join
+data Branch content = Branch
+  { branch_choice ∷ Markdown
+  , branch_entry ∷ Entry content
+  } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-data InitializeQuestResult α = InitializeQuestResult
-  { initialQuestState ∷ α
-  , initialQuestEvent ∷ Markdown
-  }
-makeLenses ''InitializeQuestResult
+data Quest content = Quest
+  { quest_name ∷ Text
+  , quest_choice ∷ Markdown
+  , quest_standard_substitutions ∷ Substitutions
+  , quest_initial_random_stories ∷ [content]
+  , quest_initial_status ∷ content
+  , quest_entry ∷ Entry content
+  } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-data RunQuestResult s = RunQuestResult
-  { maybeRunQuestState ∷ Maybe s
-  , runQuestEvent ∷ Markdown
-  } deriving (Functor)
-makeLenses ''RunQuestResult
+substituteQuest ∷ MonadThrow m ⇒ Substitutions → Quest Story → m (Quest Markdown)
+substituteQuest subs = traverse (substitute subs)
 
-data QuestStatus = QuestInProgress | QuestHasEnded SuccessOrFailureResult Markdown
+substituteQuestWithStandardSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
+substituteQuestWithStandardSubstitutions quest@Quest{..} = substituteQuest quest_standard_substitutions quest
 
-data TryQuestResult = TryQuestResult
-  { tryQuestStatus ∷ QuestStatus
-  , tryQuestEvent ∷ Markdown
-  }
-
-type InitializeQuestRunner s = Initialize.Program (InitializeQuestResult s)
-type GetStatusQuestRunner s = GetStatus.Program s Markdown
-type TrialQuestRunner s = SuccessOrFailureResult → Trial.Program s TryQuestResult
+initialQuestPath ∷ MonadThrow m ⇒ Quest content → m Text
+initialQuestPath Quest{..} = ((quest_name ⊕ "/") ⊕) <$> nextPathOf quest_entry

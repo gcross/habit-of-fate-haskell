@@ -44,57 +44,66 @@ import System.Random.Shuffle (shuffleM)
 
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.JSON
-import HabitOfFate.StoryLine
+import HabitOfFate.Quest
 import HabitOfFate.Story
 
 data Content content =
-    EventContent
-      { event_content_outcomes ∷ Outcomes content
-      }
-  | NarrativeContent
-      { narrative_content ∷ content
-      }
-  | RandomStoriesContent
-      { random_stories_content ∷ [content]
-      }
-  | StatusContent
-      { status_content ∷ content
-      }
+    EventContent (Outcomes content)
+  | NarrativeContent content
+  | RandomStoriesContent [content]
+  | StatusContent content
+  | FamesContent [content]
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
 instance ToJSON content ⇒ ToJSON (Content content) where
-  toJSON content = runJSONBuilder $ do
-    case content of
-      EventContent{..} → do
-        writeField "kind" ("event" ∷ Text)
-        writeField "outcomes" event_content_outcomes
-      NarrativeContent{..} → do
-        writeField "kind" ("narrative" ∷ Text)
-        writeField "content" narrative_content
-      RandomStoriesContent{..} → do
-        writeField "kind" ("random stories" ∷ Text)
-        writeField "content" random_stories_content
-      StatusContent{..} → do
-        writeField "kind" ("status" ∷ Text)
-        writeField "content" status_content
+  toJSON content = runJSONBuilder $ case content of
+    EventContent c → writeContent "event" c
+    NarrativeContent c → writeContent "narrative" c
+    RandomStoriesContent c → writeContent "random stories" c
+    StatusContent c → writeContent "status" c
+    FamesContent c → writeContent "fames" c
+   where
+    writeContent ∷ ToJSON c ⇒ Text → c → JSONBuilder ()
+    writeContent name c = do
+      writeField "kind" name
+      writeField "content" c
 
 instance FromJSON content ⇒ FromJSON (Content content) where
   parseJSON = withObject "account must be object-shaped" $ \o → do
     kind ∷ Text ← o .: "kind"
     case kind of
-      "event" → EventContent <$> (o .: "outcomes")
+      "event" → EventContent <$> (o .: "content")
       "narrative" → NarrativeContent <$> (o .: "content")
       "random stories" → RandomStoriesContent <$> (o .: "content")
-      "status" → NarrativeContent <$> (o .: "content")
-      _ → fail [i|Content kind must be event, narrative, or ransoms, not #{kind}|]
+      "status" → StatusContent <$> (o .: "content")
+      "fames" → FamesContent <$> (o .: "content")
+      _ → fail [i|Content kind must be event, narrative, ransoms, or fames, not #{kind}|]
 
 data QuestState content = QuestState
-  { quest_state_name ∷ Text
-  , quest_state_remaining_content ∷ [Content content]
-  , quest_state_fames ∷ [content]
-  , quest_state_initial_random_stories ∷ [content]
-  , quest_state_status ∷ content
+  { _quest_state_name_ ∷ Text
+  , _quest_state_fames_ ∷ [content]
+  , _quest_state_remaining_content_ ∷ [Content content]
+  , _quest_state_random_stories_ ∷ [content]
+  , _quest_state_status_ ∷ content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
+makeLenses ''QuestState
+
+instance ToJSON content ⇒ ToJSON (QuestState content) where
+  toJSON QuestState{..} = runJSONBuilder $ do
+    writeField "name" _quest_state_name_
+    writeField "fames" _quest_state_fames_
+    writeField "content" _quest_state_remaining_content_
+    writeField "stories" _quest_state_random_stories_
+    writeField "status" _quest_state_status_
+
+instance FromJSON content ⇒ FromJSON (QuestState content) where
+  parseJSON = withObject "quest state must be object-shaped" $ \o →
+    QuestState
+      <$> (o .: "name")
+      <*> (o .: "fames")
+      <*> (o .: "content")
+      <*> (o .: "stories")
+      <*> (o .: "status")
 
 data FolderState content = FolderState
   { _name_ ∷ Text
@@ -116,7 +125,7 @@ generateQuestState select shuffle Quest{..} = do
   FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
   maybe
     (throwM NoFames)
-    (\fames → pure (_name_, QuestState quest_name (toList _remaining_content_) fames quest_initial_random_stories quest_initial_status))
+    (\fames → pure (_name_, QuestState quest_name fames (toList _remaining_content_) quest_initial_random_stories quest_initial_status))
     _maybe_fames_
  where
   folder folder_state entry = case entry of
@@ -151,5 +160,5 @@ instance MonadThrow m ⇒ MonadThrow (LogicT m) where
 allQuestStates ∷ MonadThrow m ⇒ Quest content → m [(Text, QuestState content)]
 allQuestStates = generateQuestState (map pure >>> asum) pure >>> observeAllT
 
-randomQuestState ∷ (MonadRandom m, MonadThrow m) ⇒ Quest content → m (QuestState content)
-randomQuestState quest = generateQuestState uniform shuffleM quest <&> snd
+randomQuestStateFor ∷ (MonadRandom m, MonadThrow m) ⇒ Quest content → m (QuestState content)
+randomQuestStateFor quest = generateQuestState uniform shuffleM quest <&> snd

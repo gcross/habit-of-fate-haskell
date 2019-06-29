@@ -33,7 +33,7 @@ import Data.UUID (UUID)
 import System.Random (StdGen)
 import Test.QuickCheck (Arbitrary(..), Gen, Positive(..), choose, elements, oneof, suchThat)
 import Test.QuickCheck.Gen (chooseAny)
-import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons1, cons2, cons3)
+import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons1, cons2, cons3, decDepth)
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
@@ -42,13 +42,11 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
+import HabitOfFate.Data.QuestState
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
-import qualified HabitOfFate.Quest.StateMachine as StateMachine
-import HabitOfFate.Quests
-import qualified HabitOfFate.Quests.Forest as Forest
 import HabitOfFate.Substitution
 
 newtype LocalToSecond = LocalToSecond LocalTime deriving (Eq, Ord, Show)
@@ -108,14 +106,6 @@ instance Arbitrary Habit where
       <*> (arbitrary <&> setFromList)
       <*> arbitrary
 
-instance Monad m ⇒ Serial m Forest.Label where
-  series =
-      cons0 Forest.GingerbreadHouse
-   \/ cons0 Forest.FoundByCat
-   \/ cons0 Forest.FoundByFairy
-   \/ cons0 Forest.FairyCircle
-   \/ cons0 Forest.Home
-
 instance Monad m ⇒ Serial m Gender where
   series = cons0 Male \/ cons0 Female \/ cons0 Neuter
 
@@ -127,24 +117,6 @@ instance Monad m ⇒ Serial m Gendered where
 
 instance Monad m ⇒ Serial m (HashMap Text Gendered) where
   series = series <&> mapFromList
-
-instance Monad m ⇒ Serial m (Forest.SearcherType) where
-  series = cons0 Forest.Parent \/ cons0 Forest.Healer
-
-instance Monad m ⇒ Serial m (Forest.Event) where
-  series = cons0 Forest.GingerbreadHouseEvent
-        \/ cons0 Forest.FoundEvent
-        \/ cons0 Forest.FairyCircleEvent
-        \/ cons0 Forest.HomeEvent
-
-instance Monad m ⇒ Serial m (Forest.Internal) where
-  series = cons3 Forest.Internal
-
-instance (Serial m label, Serial m s, Monad m) ⇒ Serial m (StateMachine.State label s) where
-  series = cons3 StateMachine.State
-
-instance Monad m ⇒ Serial m CurrentQuestState where
-  series = cons1 Forest
 
 instance Monad m ⇒ Serial m Scale where
   series =
@@ -167,37 +139,16 @@ instance Arbitrary Gendered where
 instance Arbitrary (HashMap Text Gendered) where
   arbitrary = arbitrary <&> mapFromList
 
-instance Arbitrary Forest.Label where
-  arbitrary = elements
-    [ Forest.GingerbreadHouse
-    , Forest.FoundByCat
-    , Forest.FoundByFairy
-    , Forest.FairyCircle
-    , Forest.Home
+instance Arbitrary content ⇒ Arbitrary (Content content) where
+  arbitrary = oneof
+    [ EventContent <$> arbitrary
+    , NarrativeContent <$> arbitrary
+    , RandomStoriesContent <$> arbitrary
+    , StatusContent <$> arbitrary
     ]
 
-instance Arbitrary Forest.SearcherType where
-  arbitrary = elements [Forest.Parent, Forest.Healer]
-
-instance Arbitrary Forest.Event where
-  arbitrary = elements
-    [ Forest.GingerbreadHouseEvent
-    , Forest.FoundEvent
-    , Forest.FairyCircleEvent
-    ]
-
-instance Arbitrary Forest.Internal where
-  arbitrary = Forest.Internal <$> arbitrary <*> arbitrary <*> arbitrary
-
-instance (Arbitrary label, Arbitrary s) ⇒ Arbitrary (StateMachine.State label s) where
-  arbitrary =
-    StateMachine.State
-      <$> arbitrary
-      <*> arbitrary
-      <*> arbitrary
-
-instance Arbitrary CurrentQuestState where
-  arbitrary = oneof [Forest <$> arbitrary]
+instance Arbitrary content ⇒ Arbitrary (QuestState content) where
+  arbitrary = QuestState <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
 
 instance Arbitrary Configuration where
   arbitrary = Configuration <$> elements [minBound..]

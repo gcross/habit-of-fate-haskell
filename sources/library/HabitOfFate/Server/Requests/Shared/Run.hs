@@ -14,18 +14,23 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Requests.Shared.Run (handler) where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Random (uniform)
+import Control.Monad.Catch (Exception(displayException), throwM)
+import Control.Monad.Random (uniform, weighted)
 import qualified Data.Text.Lazy as Lazy
+import Data.Time.LocalTime (LocalTime)
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))
 import qualified Text.Blaze.Html5 as H
@@ -36,61 +41,142 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Data.Outcomes
+import HabitOfFate.Data.QuestState
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quest
-import qualified HabitOfFate.Quest.Runners.GetStatus.Transaction as GetStatus
-import qualified HabitOfFate.Quest.Runners.Initialize.Transaction as Initialize
-import qualified HabitOfFate.Quest.Runners.Trial.Transaction as Trial
 import HabitOfFate.Quests
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.GetQuestStatus
 import HabitOfFate.Server.Transaction
+import HabitOfFate.Story
 import HabitOfFate.Substitution
+import HabitOfFate.Trial
 
-runGame ∷ Transaction Markdown
+data InconsistentQuestState = UnexpectedEndOfContent Text deriving (Eq,Show)
+instance Exception InconsistentQuestState where
+  displayException (UnexpectedEndOfContent name) =
+    [i|"Reached the end of content before seeing an event or narrative in "#{name}"."|]
+
+data QuestResult = Stuck | Advancing Marks | Failed Marks Markdown
+
+data NextIs = NextIsStuck | NextIsNarrative | NextIsEvent
+
+type QuestStateT = StateT (QuestState Markdown) Transaction
+
+runGame ∷ Transaction (Markdown, Bool)
 runGame = do
-  maybe_current_quest_state ← use maybe_current_quest_state_
-  case maybe_current_quest_state of
-    Nothing → do
-      WrappedQuest quest ← uniform quests
-      InitializeQuestResult quest_state intro_event ← Initialize.runInTransaction $ questInitialize quest
-      maybe_current_quest_state_ .= Just (questPrism quest # quest_state)
-      pure intro_event
-    Just current_quest_state → do
-      let run ∷ ∀ s. Quest s → s → Transaction Markdown
-          run quest quest_state = do
-            marks ← use marks_
-            let mark_properties =
-                  case (uncons (marks ^. success_), uncons (marks ^. failure_)) of
-                    (Just (scale, rest), _) → Just (scale, success_, rest, SuccessResult)
-                    (_, Just (scale, rest)) → Just (scale, failure_, rest, FailureResult)
-                    _                       → Nothing
-            case mark_properties of
+  marks ← use marks_
+  let resetQuestState ∷ QuestStateT ()
+      resetQuestState = randomQuestState >>= put
+
+      walkFirst ∷ QuestStateT (Markdown, Marks, (NextIs, Maybe (LocalTime → Deed)))
+      walkFirst =
+        use quest_state_remaining_content_ >>= \case
+        [] → use quest_state_name_ >>= (UnexpectedEndOfContent >>> throwM)
+        (RandomStoriesContent c:rest_content) → do
+          quest_state_remaining_content_ .= rest_content
+          quest_state_random_stories_ .= c
+          walkFirst
+        (StatusContent c:rest_content) → do
+          quest_state_remaining_content_ .= rest_content
+          quest_state_status_ .= c
+          walkFirst
+        (FamesContent c:rest_content) → do
+          quest_state_remaining_content_ .= rest_content
+          quest_state_fames_ .= c
+          walkFirst
+        (NarrativeContent c:rest_content) → do
+          quest_state_remaining_content_ .= rest_content
+          (c, marks, ) <$> walkSecond Nothing
+        this_content@(EventContent outcomes:rest_content) → do
+          let randomStory = (use quest_state_random_stories_ >>= uniform) <&> (, Stuck)
+          (c, result) ←
+            case (uncons (marks ^. success_), uncons (marks ^. failure_)) of
+              (Just (scale, rest), _) → Just (scale, success_, rest, SuccessResult)
+              (_, Just (scale, rest)) → Just (scale, failure_, rest, FailureResult)
+              _                       → Nothing
+            &
+            \case
+              Nothing → randomStory
               Just (scale, lens_, rest, result) → do
-                marks_ . lens_ .= rest
-                (TryQuestResult quest_status event, new_quest_state) ←
-                  quest
-                    |> questTrial
-                    |> ($ result)
-                    |> Trial.runInTransaction scale
-                    |> flip runStateT quest_state
-                case quest_status of
-                  QuestHasEnded result text → do
-                    maybe_current_quest_state_ .= Nothing
-                    when ← getCurrentTimeAsLocalTime
-                    deeds_ %= (Deed result text when:)
-                  QuestInProgress →
-                    maybe_current_quest_state_ .= Just (new_quest_state ^. re (questPrism quest))
-                pure event
-              Nothing →
-                GetStatus.runInTransaction quest_state $ questGetStatus quest
-      runCurrentQuest run current_quest_state
+                let new_marks = marks & lens_ .~ rest
+                tryBinomial (1/3) scale >>= bool
+                  randomStory
+                  (case result of
+                    SuccessResult → pure (storyForSuccess outcomes, Advancing new_marks)
+                    FailureResult →
+                      let failure = do
+                            shame ← uniform (outcomes & outcomes_shames)
+                            pure (storyForFailure outcomes, Failed new_marks shame)
+                          tryAverted = weighted [(SuccessResult, 1), (FailureResult, 2)] >>= \case
+                            SuccessResult → pure (storyForAverted outcomes, Advancing new_marks)
+                            FailureResult → failure
+                      in case outcomes of
+                        SuccessFailure{..} → failure
+                        SuccessAvertedFailure{..} → tryAverted
+                        SuccessDangerAvertedFailure{..} → tryAverted
+                  )
+          case result of
+            Stuck → do
+              pure (c, marks, (NextIsStuck, Nothing))
+            Advancing new_marks → do
+              (c, new_marks, ) <$> walkSecond Nothing
+            Failed new_marks shame → do
+              resetQuestState
+              (c, new_marks, ) <$> walkSecond (Just $ Deed FailureResult shame)
+
+      walkSecond ∷ Maybe (LocalTime → Deed) → QuestStateT (NextIs, Maybe (LocalTime → Deed))
+      walkSecond maybe_makeDeedFromTime =
+        use quest_state_remaining_content_ >>= \case
+        [] → do
+          if isJust maybe_makeDeedFromTime
+            then use quest_state_name_ >>= (UnexpectedEndOfContent >>> throwM)
+            else do
+              deed ← Deed SuccessResult <$> (use quest_state_fames_ >>= uniform)
+              resetQuestState
+              walkSecond (Just deed)
+        (RandomStoriesContent c:rest_content) → do
+          quest_state_remaining_content_ .= rest_content
+          quest_state_random_stories_ .= c
+          walkSecond maybe_makeDeedFromTime
+        (StatusContent c:rest_content) → do
+          quest_state_remaining_content_ .= rest_content
+          quest_state_status_ .= c
+          walkSecond maybe_makeDeedFromTime
+        (FamesContent c:rest_content) → do
+          quest_state_remaining_content_ .= rest_content
+          quest_state_fames_ .= c
+          walkSecond maybe_makeDeedFromTime
+        (NarrativeContent _:_) → pure (NextIsNarrative, maybe_makeDeedFromTime)
+        (EventContent _:_) → pure (NextIsEvent, maybe_makeDeedFromTime)
+
+  ((content, new_marks, (next_is, maybe_makeDeedFromTime)), new_quest_state) ←
+    use quest_state_
+    >>=
+    runStateT walkFirst
+
+  marks_ .= new_marks
+
+  display_next_button ←
+    case next_is of
+      NextIsStuck → pure False
+      NextIsNarrative → pure True
+      NextIsEvent → marksArePresent
+
+  case maybe_makeDeedFromTime of
+    Nothing → pure ()
+    Just makeDeedFromTime → do
+      when ← getCurrentTimeAsLocalTime
+      deeds_ %= (makeDeedFromTime when:)
+
+  pure (content, display_next_button)
 
 handleApi ∷ Environment → ScottyM ()
 handleApi environment =
   Scotty.post "/api/run" <<< apiTransaction environment $
-    runGame <&> markdownResult ok200
+    runGame <&> (fst >>> markdownResult ok200)
 
 handleWeb ∷ Environment → ScottyM ()
 handleWeb environment = do
@@ -99,23 +185,22 @@ handleWeb environment = do
  where
   action =
     runGame
-    >>=
-    \event → do
-      marks_are_present ← marksArePresent
-      renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 >>> pure $ do
-        H.div ! A.class_ "story" $ renderMarkdownToHtml event
-        if marks_are_present
-          then
-            H.form
-              ! A.action "/run"
-              ! A.method "post"
-              $ H.input
-                  ! A.type_ "submit"
-                  ! A.value "Next"
-            else
-            H.a
-              ! A.href "/"
-              $ H.toHtml ("Done" ∷ Text)
+    <&>
+    \(content, display_next_button) →
+      renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 $ do
+        H.div ! A.class_ "story" $ renderMarkdownToHtml content
+        if display_next_button
+        then
+          H.form
+            ! A.action "/run"
+            ! A.method "post"
+            $ H.input
+              ! A.type_ "submit"
+              ! A.value "Next"
+        else
+          H.a
+            ! A.href "/"
+            $ H.toHtml ("Done" ∷ Text)
 
 handler ∷ Environment → ScottyM ()
 handler environment = do

@@ -28,9 +28,9 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch (MonadThrow)
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Quest
 import HabitOfFate.Quest.Pages
-import HabitOfFate.StoryLine
-import HabitOfFate.StoryLine.Quests
+import HabitOfFate.Quests
 
 index_page ∷ MonadThrow m ⇒ m Page
 index_page = Page

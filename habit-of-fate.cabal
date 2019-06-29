@@ -121,19 +121,10 @@ library
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
                      , HabitOfFate.Quest
-                     , HabitOfFate.Quest.Classes
                      , HabitOfFate.Quest.Pages
                      , HabitOfFate.Quest.Pages.Index
-                     , HabitOfFate.Quest.Runners.GetStatus
-                     , HabitOfFate.Quest.Runners.GetStatus.Transaction
-                     , HabitOfFate.Quest.Runners.Initialize
-                     , HabitOfFate.Quest.Runners.Initialize.Transaction
-                     , HabitOfFate.Quest.Runners.Trial
-                     , HabitOfFate.Quest.Runners.Trial.Transaction
-                     , HabitOfFate.Quest.StateMachine
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
-                     , HabitOfFate.Quests.Forest.Stories
                      , HabitOfFate.Server
                      , HabitOfFate.Server.Actions.Queries
                      , HabitOfFate.Server.Actions.Results
@@ -172,8 +163,6 @@ library
                      , HabitOfFate.Server.Requests.Web.NewGroup
                      , HabitOfFate.Server.Requests.Web.NewHabit
                      , HabitOfFate.Story
-                     , HabitOfFate.StoryLine
-                     , HabitOfFate.StoryLine.Quests
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing
                      , HabitOfFate.Testing.Assertions

@@ -63,7 +63,7 @@ import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Logging
 import HabitOfFate.Names
-import HabitOfFate.Quest.Classes
+import HabitOfFate.Quests
 import HabitOfFate.Server.Actions.Queries (authorizeWith)
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
@@ -220,6 +220,7 @@ data OutOfCharacters = OutOfCharacters deriving (Eq,Show)
 instance Exception OutOfCharacters where
   displayException _ = "Out of names!"
 
+{-
 instance AllocateName Transaction where
   allocateName gender = do
     appeared ← use appeared_
@@ -241,6 +242,7 @@ instance AllocateName Transaction where
 
 instance (Monad m, AllocateName m) ⇒ AllocateName (StateT s m) where
   allocateName gender = lift $ allocateName gender
+-}
 
 marksArePresent ∷ Transaction Bool
 marksArePresent = use marks_ <&> any (null >>> not)
@@ -284,6 +286,9 @@ data TransactionResults = TransactionResults
   , account_changed ∷ Bool
   }
 
+instance MonadThrow m ⇒ MonadThrow (RandT r m) where
+  throwM = throwM >>> lift
+
 transactionWith ∷ (∀ α. String → ActionM α) → Environment → Transaction TransactionResult → ActionM ()
 transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction program) = do
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
@@ -324,7 +329,8 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction p
                 Just (StatusError status) → status
                 _ → internalServerError500
         -- Reset the quest to reduce the risk that the error will just repeat.
-        modifyTVar account_tvar $ maybe_current_quest_state_ .~ Nothing
+        (new_quest_state, new_rng) ← runRandT randomQuestState (old_account & _rng_)
+        writeTVar account_tvar $ old_account { _rng_ = new_rng, _quest_state_ = new_quest_state }
         pure $ TransactionResults{..}
       Right ((result, (new_account, account_changed)), new_rng) → do
         let logs = logs_without_last
