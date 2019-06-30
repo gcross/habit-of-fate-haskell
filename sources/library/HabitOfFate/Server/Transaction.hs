@@ -62,7 +62,7 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Logging
-import HabitOfFate.Names
+import HabitOfFate.NameGenerator
 import HabitOfFate.Quests
 import HabitOfFate.Server.Actions.Queries (authorizeWith)
 import HabitOfFate.Server.Actions.Results

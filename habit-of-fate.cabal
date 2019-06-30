@@ -117,7 +117,9 @@ library
                      , HabitOfFate.Data.Tagged
                      , HabitOfFate.JSON
                      , HabitOfFate.Logging
-                     , HabitOfFate.Names
+                     , HabitOfFate.NameGenerator
+                     , HabitOfFate.NameGenerator.Trigrams
+                     , HabitOfFate.NameGenerator.Trigrams.TH
                      , HabitOfFate.Prelude
                      , HabitOfFate.Proofread
                      , HabitOfFate.Quest
