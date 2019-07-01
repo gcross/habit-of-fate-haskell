@@ -36,10 +36,4 @@ quests =
   ]
 
 randomQuestState ∷ (MonadRandom m, MonadThrow m) ⇒ m (QuestState Markdown)
-randomQuestState =
-  uniform quests
-  >>=
-  \quest →
-    randomQuestStateFor quest
-    >>=
-    traverse (substitute (quest & quest_standard_substitutions))
+randomQuestState = uniform quests >>= randomQuestStateFor

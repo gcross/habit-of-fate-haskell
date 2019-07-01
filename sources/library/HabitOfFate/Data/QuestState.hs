@@ -25,6 +25,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Data.QuestState where
@@ -33,19 +34,25 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Catch (MonadThrow(throwM), Exception)
 import Control.Monad.Logic (LogicT, observeAllT)
-import Control.Monad.Random.Class (MonadRandom, uniform)
+import Control.Monad.Random.Class (MonadRandom(getRandomR), uniform)
 import Data.Aeson
   ( FromJSON(..)
   , ToJSON(..)
   , (.:)
   , withObject
   )
+import Data.List (head)
+import Data.Vector (Vector, (!))
+import qualified Data.Vector as V
 import System.Random.Shuffle (shuffleM)
 
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.JSON
+import HabitOfFate.Names
 import HabitOfFate.Quest
 import HabitOfFate.Story
+import HabitOfFate.Substitution
 
 data Content content =
     EventContent (Outcomes content)
@@ -115,18 +122,39 @@ makeLenses ''FolderState
 data FamesError = DuplicateFames Text | NoFames deriving (Eq,Show)
 instance Exception FamesError where
 
-generateQuestState ∷ ∀ m content. MonadThrow m ⇒ (∀ α. [α] → m α) → (∀ α. [α] → m [α]) → Quest content → m (Text, QuestState content)
-generateQuestState select shuffle Quest{..} = do
+generateQuestState ∷
+  ∀ m content. MonadThrow m ⇒
+  (∀ α. [α] → m α) →
+  (∀ α. Vector α → m α) →
+  (∀ α. [α] → m [α]) →
+  Quest Story →
+  m (Text, QuestState Markdown)
+generateQuestState select selectName shuffle Quest{..} = do
   let initial_folder_state = FolderState
         { _name_ = quest_name
         , _remaining_content_ = mempty
         , _maybe_fames_ = Nothing
         }
   FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
-  maybe
-    (throwM NoFames)
-    (\fames → pure (_name_, QuestState quest_name fames (toList _remaining_content_) quest_initial_random_stories quest_initial_status))
-    _maybe_fames_
+  fames ← maybe (throwM NoFames) pure _maybe_fames_
+  let pre_substitution_quest_state = QuestState
+        quest_name
+        fames
+        (toList _remaining_content_)
+        quest_initial_random_stories
+        quest_initial_status
+  substitutions ←
+    traverse
+      (\QS{..} → (quest_substitution_name,) <$> case quest_substitution_list of
+        MaleList → flip Gendered Male <$> selectName male_names
+        FemaleList → flip Gendered Female <$> selectName female_names
+        NeuterList list → flip Gendered Neuter <$> selectName list
+      )
+      quest_substitutions
+    <&>
+    mapFromList
+  quest_state ← traverse (substitute substitutions) pre_substitution_quest_state
+  pure (_name_, quest_state)
  where
   folder folder_state entry = case entry of
     EventEntry{..} → pure ( folder_state
@@ -157,8 +185,15 @@ generateQuestState select shuffle Quest{..} = do
 instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift
 
-allQuestStates ∷ MonadThrow m ⇒ Quest content → m [(Text, QuestState content)]
-allQuestStates = generateQuestState (map pure >>> asum) pure >>> observeAllT
+allQuestStates ∷ MonadThrow m ⇒ Quest Story → m [(Text, QuestState Markdown)]
+allQuestStates = generateQuestState (map pure >>> asum) (V.head >>> pure) pure >>> observeAllT
 
-randomQuestStateFor ∷ (MonadRandom m, MonadThrow m) ⇒ Quest content → m (QuestState content)
-randomQuestStateFor quest = generateQuestState uniform shuffleM quest <&> snd
+randomQuestStateFor ∷ (MonadRandom m, MonadThrow m) ⇒ Quest Story → m (QuestState Markdown)
+randomQuestStateFor quest =
+  generateQuestState
+    uniform
+    (\v → getRandomR (0, olength v-1) <&> (v !))
+    shuffleM
+    quest
+  <&>
+  snd

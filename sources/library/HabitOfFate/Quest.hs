@@ -30,6 +30,7 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Catch (MonadThrow(throwM),Exception)
 import Data.Traversable (Traversable(traverse))
+import Data.Vector (Vector)
 
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
@@ -92,10 +93,18 @@ data Branch content = Branch
   , branch_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
+data NameList = MaleList | FemaleList | NeuterList (Vector Text) deriving (Eq,Ord,Read,Show)
+
+data QuestSubstitution = QS
+  { quest_substitution_list ∷ NameList
+  , quest_substitution_name ∷ Text
+  , quest_substitution_default ∷ Text
+  } deriving (Eq,Ord,Read,Show)
+
 data Quest content = Quest
   { quest_name ∷ Text
   , quest_choice ∷ Markdown
-  , quest_standard_substitutions ∷ Substitutions
+  , quest_substitutions ∷ [QuestSubstitution]
   , quest_initial_random_stories ∷ [content]
   , quest_initial_status ∷ content
   , quest_entry ∷ Entry content
@@ -104,8 +113,21 @@ data Quest content = Quest
 substituteQuest ∷ MonadThrow m ⇒ Substitutions → Quest Story → m (Quest Markdown)
 substituteQuest subs = traverse (substitute subs)
 
-substituteQuestWithStandardSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
-substituteQuestWithStandardSubstitutions quest@Quest{..} = substituteQuest quest_standard_substitutions quest
+defaultQuestSubstitutions ∷ Quest content → Substitutions
+defaultQuestSubstitutions Quest{..} =
+  [ ( quest_substitution_name
+    , Gendered quest_substitution_default $
+        case quest_substitution_list of
+          MaleList → Male
+          FemaleList → Female
+          NeuterList _ → Neuter
+    )
+  | QS{..} ← quest_substitutions
+  ] |> mapFromList
+
+substituteQuestWithDefaultSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
+substituteQuestWithDefaultSubstitutions quest@Quest{..} =
+  substituteQuest (defaultQuestSubstitutions quest) quest
 
 initialQuestPath ∷ MonadThrow m ⇒ Quest content → m Text
 initialQuestPath Quest{..} = ((quest_name ⊕ "/") ⊕) <$> nextPathOf quest_entry

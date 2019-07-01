@@ -80,7 +80,6 @@ data Account = Account
   ,   _last_seen_ ∷ UTCTime
   ,   _groups_ ∷ Groups
   ,   _deeds_ ∷ [Deed]
-  ,   _appeared_ ∷ HashSet Text
   } deriving (Read,Show)
 
 instance ToJSON Account where
@@ -94,7 +93,6 @@ instance ToJSON Account where
     writeTextField "last_seen" $ pack $ formatTime defaultTimeLocale "%FT%T" _last_seen_
     writeField "groups" _groups_
     writeField "deeds" _deeds_
-    writeField "appeared" _appeared_
 
 instance FromJSON Account where
   parseJSON = withObject "account must be object-shaped" $ \o →
@@ -110,7 +108,6 @@ instance FromJSON Account where
           ))
       <*> (o .: "groups")
       <*> (o .: "deeds")
-      <*> (o .: "appeared")
 
 password_ ∷ Lens' Account Text
 password_ f a = (\nx → a {_password_ = nx}) <$> f (_password_ a)
@@ -136,9 +133,6 @@ groups_ f a = (\nx → a {_groups_ = nx}) <$> f (_groups_ a)
 deeds_ ∷ Lens' Account [Deed]
 deeds_ f a = (\nx → a {_deeds_ = nx}) <$> f (_deeds_ a)
 
-appeared_ ∷ Lens' Account (HashSet Text)
-appeared_ f a = (\nx → a {_appeared_ = nx}) <$> f (_appeared_ a)
-
 newAccount ∷ Text → IO Account
 newAccount password =
   Account
@@ -153,7 +147,6 @@ newAccount password =
     <*> newStdGen
     <*> pure def
     <*> getCurrentTime
-    <*> pure []
     <*> pure []
     <*> pure []
 

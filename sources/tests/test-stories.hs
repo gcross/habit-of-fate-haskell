@@ -49,7 +49,7 @@ import HabitOfFate.Testing.Assertions
 testSubstititutions ∷ Quest Story → TestTree
 testSubstititutions quest@Quest{..} =
   testCase (unpack quest_name) $
-    extractAllPlaceholders quest @?= keysSet quest_standard_substitutions
+    extractAllPlaceholders quest @?= keysSet (defaultQuestSubstitutions quest)
 
 testFames ∷ Quest Story → TestTree
 testFames quest@Quest{..} =
@@ -103,7 +103,7 @@ main = doMain $
   [ testGroup "Substitutions" $ map testSubstititutions quests
   , testCase "Pages" $ do
       pages ←
-        mapM substituteQuestWithStandardSubstitutions quests
+        mapM substituteQuestWithDefaultSubstitutions quests
         >>=
         (traverse buildPagesFromQuest >>> (<&> (concat >>> (Page "index" "" "" (Choices "" []):))))
       let paths = map page_path pages

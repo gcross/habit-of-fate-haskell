@@ -187,7 +187,6 @@ instance Arbitrary Account where
       <*> arbitrary
       <*> arbitrary
       <*> arbitrary
-      <*> ((setToList >>> setFromList) <$> (arbitrary ∷ Gen (Set Text)))
 
 instance Arbitrary Day where
   arbitrary = ModifiedJulianDay <$> arbitrary `suchThat` (> 0)

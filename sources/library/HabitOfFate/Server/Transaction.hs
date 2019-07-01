@@ -220,30 +220,6 @@ data OutOfCharacters = OutOfCharacters deriving (Eq,Show)
 instance Exception OutOfCharacters where
   displayException _ = "Out of names!"
 
-{-
-instance AllocateName Transaction where
-  allocateName gender = do
-    appeared ← use appeared_
-    let go n
-          | n > olength characters =
-              throwM OutOfCharacters -- might not actually be true but close enough
-          | otherwise = do
-              i ← getRandomR (0, olength characters-1)
-              let c = characters ^?! ix i
-              if notMember c appeared
-                then (appeared_ %= insertSet c) >> pure (Gendered c gender)
-                else go (n+1)
-    go 0
-   where
-    characters = case gender of
-      Male → male_names
-      Female → female_names
-      Neuter → error "Neuter names not supported yet."
-
-instance (Monad m, AllocateName m) ⇒ AllocateName (StateT s m) where
-  allocateName gender = lift $ allocateName gender
--}
-
 marksArePresent ∷ Transaction Bool
 marksArePresent = use marks_ <&> any (null >>> not)
 

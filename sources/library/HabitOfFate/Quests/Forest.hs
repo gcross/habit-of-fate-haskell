@@ -24,6 +24,8 @@ module HabitOfFate.Quests.Forest where
 
 import HabitOfFate.Prelude
 
+import Data.Vector (Vector)
+
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
@@ -574,14 +576,18 @@ final herb she needed to save |Child.
 ------------------------------------- Quest ------------------------------------
 --------------------------------------------------------------------------------
 
+right_plants, wrong_plants ∷ Vector Text
+right_plants = ["Illsbane"]
+wrong_plants = ["Tigerlamp"]
+
 quest ∷ Quest Story
 quest = Quest
   "forest"
   "A prayer from someone searching for an herb in the Wicked Forest."
-  [("Searcher",Gendered "Andrea" Female),("",Gendered "Andrea" Female)
-  ,("Child",Gendered "Tommy" Male)
-  ,("Plant",Gendered "Illsbane" Neuter)
-  ,("WrongPlant",Gendered "Tigerlamp" Neuter)
+  [ QS FemaleList "Searcher" "Andrea", QS FemaleList "" "Andrea"
+  , QS MaleList "Child" "Tommy"
+  , QS (NeuterList right_plants) "Plant" "Illsbane"
+  , QS (NeuterList wrong_plants) "WrongPlant" "Tigerlamp"
   ]
   wander_stories
   looking_for_herb_story
