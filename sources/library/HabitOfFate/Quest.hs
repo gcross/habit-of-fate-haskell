@@ -106,7 +106,6 @@ data Quest content = Quest
   , quest_choice ∷ Markdown
   , quest_substitutions ∷ [QuestSubstitution]
   , quest_initial_random_stories ∷ [content]
-  , quest_initial_status ∷ content
   , quest_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 

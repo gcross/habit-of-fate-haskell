@@ -142,7 +142,7 @@ generateQuestState select selectName shuffle Quest{..} = do
         fames
         (toList _remaining_content_)
         quest_initial_random_stories
-        quest_initial_status
+        "You are between quests."
   substitutions ←
     traverse
       (\QS{..} → (quest_substitution_name,) <$> case quest_substitution_list of

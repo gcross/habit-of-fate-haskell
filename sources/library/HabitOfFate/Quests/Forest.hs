@@ -590,7 +590,6 @@ quest = Quest
   , QS (NeuterList wrong_plants) "WrongPlant" "Tigerlamp"
   ]
   wander_stories
-  looking_for_herb_story
   (SplitEntry
     "who"
     intro
@@ -599,6 +598,7 @@ quest = Quest
         "The village healer."
         (LineEntry NoShuffle "healer" $
           [ FamesEntry fames_healer
+          , StatusEntry looking_for_herb_story
           , NarrativeEntry
               "intro"
               intro_healer
@@ -611,6 +611,7 @@ quest = Quest
         "The parent of the sick child."
         (LineEntry NoShuffle "parent" $
           [ FamesEntry fames_parent
+          , StatusEntry looking_for_herb_story
           , NarrativeEntry
               "intro"
               intro_parent
