@@ -32,11 +32,11 @@ import System.FilePath
 import Text.RawString.QQ (r)
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Quest
 import HabitOfFate.Quest.Pages
 import HabitOfFate.Quest.Pages.Index
+import HabitOfFate.Quests
 import HabitOfFate.Story
-import HabitOfFate.StoryLine
-import HabitOfFate.StoryLine.Quests
 
 import Paths_habit_of_fate
 
@@ -93,10 +93,7 @@ main = do
       (configuration_parser <**> helper)
       (fullDesc <> header "generate-latex -- generate story latex file"
       )
-  pages ←
-    (mapM substituteQuestWithStandardSubstitutions quests ∷ IO [Quest Markdown])
-    <&>
-    (concatMap buildPagesFromQuest >>> (index_page:))
+  pages ← generateAllPages
   createDirectoryIfMissing True $ takeDirectory output_path
   toLazyText >>> writeFile output_path $
     standard_prelude

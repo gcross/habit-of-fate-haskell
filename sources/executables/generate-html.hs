@@ -37,10 +37,10 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
 import HabitOfFate.Data.Markdown
+import HabitOfFate.Quest
 import HabitOfFate.Quest.Pages
 import HabitOfFate.Quest.Pages.Index
-import HabitOfFate.StoryLine
-import HabitOfFate.StoryLine.Quests
+import HabitOfFate.Quests
 
 import Paths_habit_of_fate
 
@@ -65,10 +65,7 @@ main = do
       (configuration_parser <**> helper)
       (fullDesc <> header "generate-html -- generate story html files"
       )
-  pages ←
-    (mapM substituteQuestWithStandardSubstitutions quests ∷ IO [Quest Markdown])
-    <&>
-    (concatMap buildPagesFromQuest >>> (index_page:))
+  pages ← generateAllPages
   forM_ pages $ \Page{..} → do
     let path_to_root =
           unpack

@@ -51,3 +51,8 @@ index_page = Page
     <$>
     traverse (\quest@Quest{..} → (embolden quest_choice,) <$> initialQuestPath quest) quests
   )
+
+generateAllPages ∷ MonadThrow m ⇒ m [Page]
+generateAllPages =
+  (:) <$> index_page
+      <*> ((traverse (substituteQuestWithDefaultSubstitutions >=> buildPagesFromQuest) quests) <&> concat)
