@@ -214,6 +214,7 @@ import Data.Sequences
   , decodeUtf8
   , delete
   , drop
+  , dropEnd
   , dropWhile
   , encodeUtf8
   , filter
@@ -236,6 +237,8 @@ import Data.Sequences
   , unwords
   , words
   )
+
+import Data.Sequences (dropEnd)
 
 import Data.Set (Set)
 

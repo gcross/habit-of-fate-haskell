@@ -44,8 +44,20 @@ instance FromJSON Markdown where
 embolden ∷ Markdown → Markdown
 embolden x = Markdown $ "**" ⊕ unwrapMarkdown x ⊕ "**"
 
-renderMarkdownToHtml ∷ Markdown → Html
+renderMarkdownToHtml, renderMarkdownToHtmlWithoutParagraphTags  ∷ Markdown → Html
 renderMarkdownToHtml = unwrapMarkdown >>> commonmarkToHtml [] >>> H.preEscapedToHtml
+
+-- This is brittle but I can't think of a better way at the moment.
+renderMarkdownToHtmlWithoutParagraphTags =
+  unwrapMarkdown
+  >>>
+  commonmarkToHtml []
+  >>>
+  dropEnd 5 -- Drops </p> plus the trailing newline from the end.
+  >>>
+  drop 3 -- Drops <p> from the beginning.
+  >>>
+  H.preEscapedToHtml
 
 renderMarkdownToLaTeX ∷ Markdown → Text
 renderMarkdownToLaTeX = unwrapMarkdown >>> commonmarkToLaTeX [] Nothing

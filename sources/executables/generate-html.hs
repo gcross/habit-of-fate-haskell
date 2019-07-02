@@ -106,7 +106,7 @@ main = do
               H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html") $ H.strong $ H.toHtml ("Continue." ∷ Text)
             Choices question choices → do
               H.h2 $ renderMarkdownToHtml question
-              H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html") $ renderMarkdownToHtml c
+              H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html") $ renderMarkdownToHtmlWithoutParagraphTags c
   forM_
     [ ("css", "style.css")
     , ("images", "grave.svg")
