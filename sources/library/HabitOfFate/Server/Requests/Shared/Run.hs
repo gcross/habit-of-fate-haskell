@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -59,7 +60,7 @@ instance Exception InconsistentQuestState where
   displayException (UnexpectedEndOfContent name) =
     [i|"Reached the end of content before seeing an event or narrative in "#{name}"."|]
 
-data QuestResult = Stuck | Advancing Marks | Failed Marks Markdown
+data QuestResult = Stuck | Advancing | Failed Markdown
 
 data NextIs = NextIsStuck | NextIsNarrative | NextIsEvent
 
@@ -68,6 +69,7 @@ type QuestStateT = StateT (QuestState Markdown) Transaction
 runGame ∷ Transaction (Markdown, Bool)
 runGame = do
   marks ← use marks_
+
   let resetQuestState ∷ QuestStateT ()
       resetQuestState = randomQuestState >>= put
 
@@ -90,28 +92,32 @@ runGame = do
         (NarrativeContent c:rest_content) → do
           quest_state_remaining_content_ .= rest_content
           (c, marks, ) <$> walkSecond Nothing
-        this_content@(EventContent outcomes:rest_content) → do
-          let randomStory = (use quest_state_random_stories_ >>= uniform) <&> (, Stuck)
-          (c, result) ←
+        (EventContent outcomes:rest_content) → do
+          let randomStory ∷ Marks → QuestStateT (Markdown, QuestResult, Marks)
+              randomStory new_marks =
+                (use quest_state_random_stories_ >>= uniform)
+                <&>
+                (, Stuck, new_marks)
+          (c, result, new_marks) ←
             case (uncons (marks ^. success_), uncons (marks ^. failure_)) of
               (Just (scale, rest), _) → Just (scale, success_, rest, SuccessResult)
               (_, Just (scale, rest)) → Just (scale, failure_, rest, FailureResult)
               _                       → Nothing
             &
             \case
-              Nothing → randomStory
+              Nothing → randomStory marks
               Just (scale, lens_, rest, result) → do
                 let new_marks = marks & lens_ .~ rest
                 tryBinomial (1/3) scale >>= bool
-                  randomStory
+                  (randomStory new_marks)
                   (case result of
-                    SuccessResult → pure (storyForSuccess outcomes, Advancing new_marks)
+                    SuccessResult → pure (storyForSuccess outcomes, Advancing, new_marks)
                     FailureResult →
                       let failure = do
                             shame ← uniform (outcomes & outcomes_shames)
-                            pure (storyForFailure outcomes, Failed new_marks shame)
+                            pure (storyForFailure outcomes, Failed shame, new_marks)
                           tryAverted = weighted [(SuccessResult, 1), (FailureResult, 2)] >>= \case
-                            SuccessResult → pure (storyForAverted outcomes, Advancing new_marks)
+                            SuccessResult → pure (storyForAverted outcomes, Advancing, new_marks)
                             FailureResult → failure
                       in case outcomes of
                         SuccessFailure{..} → failure
@@ -120,10 +126,11 @@ runGame = do
                   )
           case result of
             Stuck → do
-              pure (c, marks, (NextIsStuck, Nothing))
-            Advancing new_marks → do
+              pure (c, new_marks, (NextIsStuck, Nothing))
+            Advancing → do
+              quest_state_remaining_content_ .= rest_content
               (c, new_marks, ) <$> walkSecond Nothing
-            Failed new_marks shame → do
+            Failed shame → do
               resetQuestState
               (c, new_marks, ) <$> walkSecond (Just $ Deed FailureResult shame)
 
@@ -156,6 +163,8 @@ runGame = do
     use quest_state_
     >>=
     runStateT walkFirst
+
+  quest_state_ .= new_quest_state
 
   marks_ .= new_marks
 
