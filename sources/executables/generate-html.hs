@@ -107,7 +107,7 @@ main = do
               H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html") $ H.strong $ H.toHtml ("Continue." ∷ Text)
             Choices question choices → do
               H.h2 $ renderMarkdownToHtml question
-              let non_escape_choices = takeWhile (\(c, _) → unwrapMarkdown c ^?! _head /= '(') choices
+              let non_escape_choices = takeWhile (\(c, _) → unwrapMarkdown c ^?! _head /= ' ') choices
                   escape_choices = drop (length non_escape_choices) choices
                   outputChoices choices =
                     H.ul
