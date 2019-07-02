@@ -11,6 +11,39 @@
     grid-template-columns: 100px 80px 2em auto 40px 80px 80px 90px 90px 6em 3.5em;
 }
 
+@media (max-width : 900px) {
+    .list {
+        display: grid;
+        font-size: 22;
+        grid-template-columns: 100px 80px 2em auto 40px 80px 80px 0px 0px 6em 3.5em;
+    }
+    .difficulty, .importance {
+        visibility: hidden;
+    }
+}
+
+@media (max-width : 800px) {
+    .list {
+        display: grid;
+        font-size: 22;
+        grid-template-columns: 100px 80px 2em auto 40px 0px 80px 0px 0px 6em 3.5em;
+    }
+    .last {
+        visibility: hidden;
+    }
+}
+
+@media (max-width : 700px) {
+    .list {
+        display: grid;
+        font-size: 22;
+        grid-template-columns: 100px 80px 2em auto 40px 0px 0px 0px 0px 6em 3.5em;
+    }
+    .deadline {
+        visibility: hidden;
+    }
+}
+
 .mark_button {
     margin: auto;
 }

@@ -37,3 +37,20 @@ select {
 .submit * {
     margin: 10px;
 }
+
+#name_input {
+    margin: auto auto auto 0;
+    width: 25em;
+}
+
+@media (max-width : 800px) {
+    #name_input {
+        width: 22.5em;
+    }
+}
+
+@media (max-width : 700px) {
+    #name_input {
+        width: 20em;
+    }
+}

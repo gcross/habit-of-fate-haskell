@@ -2,7 +2,7 @@
     display: grid;
     grid-template-columns: 130px auto;
     grid-template-rows: auto auto auto auto auto auto;
-    row-gap: 5px;
+    row-gap: 10px;
 }
 
 .label {
@@ -122,4 +122,16 @@ select {
 #name_input {
     margin: auto auto auto 0;
     width: 25em;
+}
+
+@media (max-width : 800px) {
+    #name_input {
+        width: 22.5em;
+    }
+}
+
+@media (max-width : 700px) {
+    #name_input {
+        width: 20em;
+    }
 }

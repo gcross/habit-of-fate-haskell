@@ -163,10 +163,10 @@ handler environment = do
           , ("position", "#")
           , ("name", "Habit Name")
           , ("", ""∷Text)
-          , ("centered", "Last")
-          , ("centered", "Deadline")
-          , ("centered", "Difficulty")
-          , ("centered", "Importance")
+          , ("centered last", "Last")
+          , ("centered deadline", "Deadline")
+          , ("centered difficulty", "Difficulty")
+          , ("centered importance", "Importance")
           , ("", ""∷Text)
           , ("", ""∷Text)
           ]
@@ -217,18 +217,18 @@ handler environment = do
                         ! A.value (H.toValue n)
                         ! A.name "new_index"
                         ! A.class_ "move_input"
-            in map (\contents → H.div ! A.class_ evenodd $ contents)
-            [ markButtonFor "success" "good" difficulty_
-            , markButtonFor "failure" "bad"  importance_
-            , position
-            , name
-            , edit_button
-            , timeFor "Never" (^. maybe_last_marked_)
-            , timeFor "None" getHabitDeadline
-            , scaleFor difficulty_
-            , scaleFor importance_
-            , move_button
-            , move_input
+            in map (\(class_, contents) → H.div ! A.class_ (H.toValue [i|list_entry #{evenodd} #{class_}|]) $ contents)
+            [ ("", markButtonFor "success" "good" difficulty_)
+            , ("", markButtonFor "failure" "bad"  importance_)
+            , ("", position)
+            , ("", name)
+            , ("", edit_button)
+            , ("last", timeFor "Never" (^. maybe_last_marked_))
+            , ("deadline", timeFor "None" getHabitDeadline)
+            , ("difficulty", scaleFor difficulty_)
+            , ("importance", scaleFor importance_)
+            , ("", move_button)
+            , ("", move_input)
             ]
           | n ← [1∷Int ..]
           | (uuid, habit) ← habit_list
