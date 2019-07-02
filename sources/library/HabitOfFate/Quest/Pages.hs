@@ -52,8 +52,8 @@ buildPagesFromQuest ∷ ∀ m. MonadThrow m ⇒ Quest Markdown → m [Page]
 buildPagesFromQuest quest@Quest{..} = do
   initial_quest_path ← initialQuestPath quest
   let quest_choices =
-        [("[Return to the beginning of this quest.]", initial_quest_path)
-        ,("[Return to the choice of quests.]", "index")
+        [("(Return to the beginning of this quest.)", initial_quest_path)
+        ,("(Return to the choice of quests.)", "index")
         ]
       quest_choices_without_brackets =
         [(embolden "Return to the beginning of this quest.", initial_quest_path)
@@ -71,7 +71,7 @@ buildPagesFromQuest quest@Quest{..} = do
       process maybe_next_choice parent node = case node of
         EventEntry{..} → pure $
           let base = parent ⊕ "/" ⊕ event_name ⊕ "/"
-              quest_choices_with_undo = (("[Return to the beginning of this event.]", base ⊕ "common"):quest_choices)
+              quest_choices_with_undo = (("(Return to the beginning of this event.)", base ⊕ "common"):quest_choices)
               failure_dead_end =
                 Choices
                   "You have guided your chosen protagonist to failure.  What next?"
