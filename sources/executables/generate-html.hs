@@ -19,6 +19,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Main where
@@ -106,7 +107,21 @@ main = do
               H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html") $ H.strong $ H.toHtml ("Continue." ∷ Text)
             Choices question choices → do
               H.h2 $ renderMarkdownToHtml question
-              H.ul $ forM_ choices $ \(c, c_ref) → H.li $ H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html") $ renderMarkdownToHtmlWithoutParagraphTags c
+              let non_escape_choices = takeWhile (\(c, _) → unwrapMarkdown c ^?! _head /= '[') choices
+                  escape_choices = drop (length non_escape_choices) choices
+                  outputChoices choices =
+                    H.ul
+                    $
+                    forM_ choices
+                    $
+                    \(c, c_ref) →
+                      H.li
+                      $
+                      H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html")
+                      $
+                      renderMarkdownToHtmlWithoutParagraphTags c
+              outputChoices non_escape_choices
+              outputChoices escape_choices
   forM_
     [ ("css", "style.css")
     , ("images", "grave.svg")
