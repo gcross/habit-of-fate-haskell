@@ -71,7 +71,10 @@ runGame = do
   marks ← use marks_
 
   let resetQuestState ∷ QuestStateT ()
-      resetQuestState = randomQuestState >>= put
+      resetQuestState = do
+        quest_state ← randomQuestState
+        interlude ← uniform interludes
+        put (quest_state & quest_state_remaining_content_ %~ (NarrativeContent interlude:))
 
       walkFirst ∷ QuestStateT (Markdown, Marks, (NextIs, Maybe (LocalTime → Deed)))
       walkFirst =

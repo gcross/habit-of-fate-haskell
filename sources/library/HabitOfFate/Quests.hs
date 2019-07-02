@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Quests where
@@ -23,11 +24,13 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Random (MonadRandom, uniform)
+import Data.Coerce
 
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.QuestState
 import HabitOfFate.Quest
 import HabitOfFate.Substitution
+import HabitOfFate.Story
 import qualified HabitOfFate.Quests.Forest as Forest
 
 quests ∷ [Quest Story]
@@ -37,3 +40,10 @@ quests =
 
 randomQuestState ∷ (MonadRandom m, MonadThrow m) ⇒ m (QuestState Markdown)
 randomQuestState = uniform quests >>= randomQuestStateFor
+
+interludes ∷ [Markdown]
+interludes = coerce $ [dashed_sections|
+You stare at the world from above and consider who to follow next.
+
+Ah, that mortal could be interesting.
+|]

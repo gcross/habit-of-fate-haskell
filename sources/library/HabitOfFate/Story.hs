@@ -406,3 +406,10 @@ narrative = QuasiQuoter
   (error "Cannot use narrative as a pattern")
   (error "Cannot use narrative as a type")
   (error "Cannot use narrative as a dec")
+
+dashed_sections ∷ QuasiQuoter
+dashed_sections = QuasiQuoter
+  (splitStoriesOn '-' >>> (map pack ∷ [String] → [Text]) >>> Lift.lift)
+  (error "Cannot use dashed_sections as a pattern")
+  (error "Cannot use dashed_sections as a type")
+  (error "Cannot use dashed_sections as a dec")
