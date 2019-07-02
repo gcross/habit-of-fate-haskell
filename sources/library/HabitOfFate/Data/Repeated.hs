@@ -27,7 +27,6 @@ module HabitOfFate.Data.Repeated where
 
 import HabitOfFate.Prelude
 
-import Data.Bits
 import Control.DeepSeq (NFData(..))
 import Data.List (iterate)
 import qualified Data.Text.Lazy as Lazy

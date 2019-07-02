@@ -26,7 +26,6 @@ import Data.Text.IO (hPutStrLn)
 import Data.Time.Clock
 import Data.Time.Format
 import System.IO (stderr)
-import qualified Data.Vector.Unboxed as UV
 
 ologIO ∷ (MonoFoldable α, Element α ~ Char, MonadIO m) ⇒ α → m ()
 ologIO message = liftIO $ do

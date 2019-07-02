@@ -41,7 +41,6 @@ import Data.Aeson
   , (.:)
   , withObject
   )
-import Data.List (head)
 import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
 import System.Random.Shuffle (shuffleM)

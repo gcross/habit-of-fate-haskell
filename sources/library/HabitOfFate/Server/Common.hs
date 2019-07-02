@@ -41,7 +41,6 @@ import Web.Scotty (ActionM, Parsable(..))
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
-import HabitOfFate.Substitution
 
 instance Parsable UUID where
   parseParam = view strict >>> fromText >>> maybe (Left "badly formed UUID") Right

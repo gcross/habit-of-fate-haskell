@@ -46,13 +46,10 @@ import HabitOfFate.Data.Outcomes
 import HabitOfFate.Data.QuestState
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
-import HabitOfFate.Quest
 import HabitOfFate.Quests
 import HabitOfFate.Server.Common
-import HabitOfFate.Server.Requests.Shared.GetQuestStatus
 import HabitOfFate.Server.Transaction
 import HabitOfFate.Story
-import HabitOfFate.Substitution
 import HabitOfFate.Trial
 
 data InconsistentQuestState = UnexpectedEndOfContent Text deriving (Eq,Show)

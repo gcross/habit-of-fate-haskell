@@ -40,7 +40,6 @@ import Data.Aeson
   , ToJSON(..)
   , ToJSONKey(..)
   , (.:)
-  , (.:?)
   , withObject
   , withText
   )
