@@ -174,7 +174,7 @@ handleCreateAccountWeb environment@Environment{..} = do
                 _ | otherwise → "The passwords did not agree."
 
     device ← getDevice
-    renderTopOnlyPage "Habit of Fate - Account Creation" ["enter"] [] Nothing
+    renderTopOnlyPage "Habit of Fate - Account Creation" (\_ → ["enter"]) [] Nothing
       >>> ($ device)
       >>> renderHtml
       >>> Scotty.html $ \_ →
@@ -229,7 +229,7 @@ handleLoginWeb environment@Environment{..} = do
                   pure "No account has that username."
 
     device ← getDevice
-    renderTopOnlyPage "Habit of Fate - Login" ["enter"] [] Nothing
+    renderTopOnlyPage "Habit of Fate - Login" (\_ → ["enter"]) [] Nothing
       >>> ($ device)
       >>> renderHtml
       >>> Scotty.html $ \_ →

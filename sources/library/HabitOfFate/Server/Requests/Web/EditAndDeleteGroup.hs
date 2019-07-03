@@ -47,7 +47,13 @@ data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 
 groupPage ∷ Monad m ⇒ UUID → Lazy.Text → DeletionMode → Group → m TransactionResult
 groupPage group_id error_message deletion_mode group =
-  renderTopOnlyPageResult "Group of Fate - Editing a Group" ["edit_group"] [] Nothing ok200 >>> pure $ \_ →
+  renderTopOnlyPageResult
+   "Group of Fate - Editing a Group"
+   (\_ → ["edit_group"])
+   []
+   Nothing
+   ok200
+  >>> pure $ \_ →
     H.form ! A.method "post" $ do
       H.div ! A.class_ "fields" $ do
         -- Name

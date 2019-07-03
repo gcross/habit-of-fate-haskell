@@ -196,7 +196,7 @@ handleWeb environment = do
     runGame
     <&>
     \(content, display_next_button) →
-      renderTopOnlyPageResult "Habit of Fate - Event" ["story"] [] Nothing ok200 $ \_ → do
+      renderTopOnlyPageResult "Habit of Fate - Event" (\_ → ["story"]) [] Nothing ok200 $ \_ → do
         H.div ! A.class_ "story" $ renderMarkdownToHtml content
         if display_next_button
         then

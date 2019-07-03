@@ -14,12 +14,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Server.Requests.Web.GetAllHabits (handler) where
@@ -79,7 +81,13 @@ handler environment = do
     quest_status ← getQuestStatus
     current_time_as_local_time ← getCurrentTimeAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
-    renderPageResult "Habit of Fate - List of Habits" ["list"] [] Nothing ok200 >>> pure $ \device → do
+    renderPageResult
+      "Habit of Fate - List of Habits"
+      (\case { Desktop → ["list_desktop"]; Mobile → ["list_mobile"] })
+      []
+      Nothing
+      ok200
+     >>> pure $ \device → do
       generateTopHTML device $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "groups" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
@@ -158,18 +166,22 @@ handler environment = do
 
       H.div ! A.class_ "list" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
-          [ ("mark_button", "Success!")
-          , ("mark_button", "Failure.")
-          , ("position", "#")
-          , ("name", "Habit Name")
-          , ("", ""∷Text)
-          , ("centered", "Last")
-          , ("centered", "Deadline")
-          , ("centered", "Difficulty")
-          , ("centered", "Importance")
-          , ("", ""∷Text)
-          , ("", ""∷Text)
-          ]
+          (
+            [ ("mark_button", "Success!")
+            , ("mark_button", "Failure.")
+            , ("position", "#")
+            , ("name", "Habit Name")
+            , ("", ""∷Text)
+            ]
+            ⊕
+            case device of
+              Desktop → map ("centered",) ["Last", "Deadline", "Difficulty", "Importance"]
+              Mobile → []
+            ⊕
+            [ ("", ""∷Text)
+            , ("", ""∷Text)
+            ]
+          )
         ⊕
         concat
           [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
@@ -218,18 +230,27 @@ handler environment = do
                         ! A.name "new_index"
                         ! A.class_ "move_input"
             in map (\contents → H.div ! A.class_ evenodd $ contents)
-            [ markButtonFor "success" "good" difficulty_
-            , markButtonFor "failure" "bad"  importance_
-            , position
-            , name
-            , edit_button
-            , timeFor "Never" (^. maybe_last_marked_)
-            , timeFor "None" getHabitDeadline
-            , scaleFor difficulty_
-            , scaleFor importance_
-            , move_button
-            , move_input
-            ]
+            (
+              [ markButtonFor "success" "good" difficulty_
+              , markButtonFor "failure" "bad"  importance_
+              , position
+              , name
+              , edit_button
+              ]
+              ⊕
+              case device of
+                Desktop →
+                  [ timeFor "Never" (^. maybe_last_marked_)
+                  , timeFor "None" getHabitDeadline
+                  , scaleFor difficulty_
+                  , scaleFor importance_
+                  ]
+                Mobile → []
+              ⊕
+              [ move_button
+              , move_input
+              ]
+          )
           | n ← [1∷Int ..]
           | (uuid, habit) ← habit_list
           ]

@@ -240,19 +240,19 @@ jsonResult s = JSONContent >>> TransactionResult s
 redirectsToResult ∷ Status → Lazy.Text → TransactionResult
 redirectsToResult status_ url = RedirectsTo status_ url
 
-renderPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → (Device → Html) → TransactionResult
-renderPageResult title stylesheets scripts maybe_onload status =
-  renderPage title stylesheets scripts maybe_onload
+renderPageResult ∷ Text → (Device → [Text]) → [Text] → Maybe Text → Status → (Device → Html) → TransactionResult
+renderPageResult title stylesheetsFor scripts maybe_onload status =
+  renderPage title stylesheetsFor scripts maybe_onload
   >>>
   HtmlContent
   >>>
   TransactionResult status
 
-renderTopOnlyPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → (Device → Html) → TransactionResult
-renderTopOnlyPageResult title stylesheets scripts maybe_onload status contentFor =
+renderTopOnlyPageResult ∷ Text → (Device → [Text]) → [Text] → Maybe Text → Status → (Device → Html) → TransactionResult
+renderTopOnlyPageResult title stylesheetsFor scripts maybe_onload status contentFor =
   TransactionResult
     status
-    (HtmlContent $ renderTopOnlyPage title stylesheets scripts maybe_onload contentFor)
+    (HtmlContent $ renderTopOnlyPage title stylesheetsFor scripts maybe_onload contentFor)
 
 data TransactionResults = TransactionResults
   { redirect_or_content ∷ Either Lazy.Text (Maybe Content)

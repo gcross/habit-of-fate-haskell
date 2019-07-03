@@ -56,7 +56,7 @@ deadlinesPage = do
       \(habit_id, habit, deadlines) → map (habit_id, habit ^. name_,) deadlines
     )
   quest_status ← getQuestStatus
-  renderPageResult "Passed Deadlines" ["deadlines"] [] Nothing ok200 >>> pure $ \device → do
+  renderPageResult "Passed Deadlines" (\_ → ["deadlines"]) [] Nothing ok200 >>> pure $ \device → do
     H.form ! A.method "post" $ do
       generateTopHTML device $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "deadlines" $ mconcat $

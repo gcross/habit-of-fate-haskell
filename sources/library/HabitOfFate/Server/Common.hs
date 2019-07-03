@@ -91,13 +91,16 @@ getDevice =
       | any (`Lazy.isInfixOf` user_agent) ["Android", "iPhone", "Opera Mini"] → Mobile
       | otherwise → Desktop
 
-renderPage ∷ Text → [Text] → [Text] → Maybe Text → (Device → Html) → Device → Html
-renderPage title stylesheets scripts maybe_onload contentFor device =
+renderPage ∷ Text → (Device → [Text]) → [Text] → Maybe Text → (Device → Html) → Device → Html
+renderPage title stylesheetsFor scripts maybe_onload contentFor device =
   H.docTypeHtml $ do
     H.head $ do
       H.title $ toHtml title
       H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
-      forM_ ("normalize":"common":stylesheets) $ \stylesheet →
+      let common_stylesheet = case device of
+            Desktop → "common_desktop"
+            Mobile → "common_mobile"
+      forM_ ("normalize":common_stylesheet:stylesheetsFor device) $ \stylesheet →
         H.link
           ! A.rel "stylesheet"
           ! A.type_ "text/css"
@@ -120,6 +123,7 @@ generateTopHTML device content = H.div ! A.class_ "top" $ do
     Mobile → pure ()
   H.div ! A.class_ "content" $ content
 
-renderTopOnlyPage ∷ Text → [Text] → [Text] → Maybe Text → (Device → Html) → Device → Html
-renderTopOnlyPage title stylesheets scripts maybe_onload contentFor =
-  renderPage title stylesheets scripts maybe_onload $ \device → generateTopHTML device (contentFor device)
+renderTopOnlyPage ∷ Text → (Device → [Text]) → [Text] → Maybe Text → (Device → Html) → Device → Html
+renderTopOnlyPage title stylesheetsFor scripts maybe_onload contentFor =
+  renderPage title stylesheetsFor scripts maybe_onload $
+    \device → generateTopHTML device (contentFor device)

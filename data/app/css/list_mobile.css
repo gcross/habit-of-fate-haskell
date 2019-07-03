@@ -1,0 +1,102 @@
+.groups {
+    display: grid;
+    font-size: 24;
+    grid-template-columns: 3em auto 25px 6em 3.5em;
+    padding: 10px;
+}
+
+.list {
+    display: grid;
+    font-size: 22;
+    grid-template-columns: 100px 80px 2em auto 40px 6em 3.5em;
+}
+
+.mark_button {
+    margin: auto;
+}
+
+.position {
+    margin-bottom: auto;
+    margin-left: auto;
+    margin-right: 10px;
+    margin-top: auto;
+}
+
+.selected_name {
+    font-family: serif;
+    font-weight: bold;
+}
+
+.header {
+    font-weight: bold;
+}
+
+.move_button {
+    margin: auto 0 auto auto;
+}
+
+.move_form {
+    margin: auto auto auto 0;
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+}
+
+.move_input {
+    text-align: right;
+    width: 2em;
+}
+
+.new_link {
+    align-content: center;
+    display: flex;
+    height: 50px;
+}
+
+.new_group {
+    grid-column: 2;
+}
+
+.new_habit {
+    grid-column: 4;
+}
+
+.new_link a {
+    margin-bottom: auto;
+    margin-top: auto;
+}
+
+.logout_link {
+    display: block;
+    margin-left: auto;
+    width: 3.5em;
+}
+
+.smiley {
+    background-repeat: no-repeat;
+    background-size: 50px;
+    height: 50px;
+    padding: 25px;
+    margin-bottom: 5px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 5px;
+    width: 50px;
+}
+
+.good {
+    background-image: url("/images/good.svgz");
+}
+
+.bad {
+    background-image: url("/images/bad.svgz");
+}
+
+.edit {
+    margin: auto;
+}
+
+.deeds_link {
+    margin: auto;
+    width: 200px;
+}

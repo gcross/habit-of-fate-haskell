@@ -42,5 +42,5 @@ handler environment =
       >>>
       const
       >>>
-      renderTopOnlyPageResult "Habit of Fate - Quest Status" [] [] Nothing ok200
+      renderTopOnlyPageResult "Habit of Fate - Quest Status" (\_ → []) [] Nothing ok200
     )

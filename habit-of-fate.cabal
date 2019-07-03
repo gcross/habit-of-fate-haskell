@@ -8,12 +8,14 @@ maintainer:          gcrosswhite@gmail.com
 copyright:           2016 Gregory Crosswhite
 build-type:          Simple
 cabal-version:       >=1.10
-data-files:          data/app/css/common.css
+data-files:          data/app/css/common_desktop.css
+                     data/app/css/common_mobile.css
                      data/app/css/deadlines.css
                      data/app/css/deeds.css
                      data/app/css/edit.css
                      data/app/css/enter.css
-                     data/app/css/list.css
+                     data/app/css/list_desktop.css
+                     data/app/css/list_mobile.css
                      data/app/css/normalize.css
                      data/app/css/story.css
                      data/app/fonts/GloriaHallelujah.woff2
