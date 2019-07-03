@@ -15,6 +15,7 @@
 -}
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -80,8 +81,18 @@ paramGuardingAgainstMissing name =
     Scotty.finish
    )
 
-renderPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Html
-renderPage title stylesheets scripts maybe_onload content =
+data Device = Desktop | Mobile
+
+getDevice ∷ ActionM Device
+getDevice =
+  Scotty.header "User-Agent" <&> \case
+    Nothing → Desktop
+    Just user_agent
+      | any (`Lazy.isInfixOf` user_agent) ["Android", "iPhone", "Opera Mini"] → Mobile
+      | otherwise → Desktop
+
+renderPage ∷ Text → [Text] → [Text] → Maybe Text → (Device → Html) → Device → Html
+renderPage title stylesheets scripts maybe_onload contentFor device =
   H.docTypeHtml $ do
     H.head $ do
       H.title $ toHtml title
@@ -97,15 +108,18 @@ renderPage title stylesheets scripts maybe_onload content =
           ! A.type_ "text/javascript"
           ! A.src (H.toValue $ mconcat ["/js/", script, ".js"])
           $ mempty
-    ((H.body & maybe identity (\onload → (!A.onload (H.toValue onload))) maybe_onload) $ content)
+    ((H.body & maybe identity (\onload → (!A.onload (H.toValue onload))) maybe_onload) $ contentFor device)
 
-generateTopHTML ∷ Html → Html
-generateTopHTML content = H.div ! A.class_ "top" $ do
+generateTopHTML ∷ Device → Html → Html
+generateTopHTML device content = H.div ! A.class_ "top" $ do
   H.div ! A.class_ "logo" $ H.img ! A.src "/images/logo.svgz" ! A.width "100%"
-  H.div ! A.class_ "left" $ H.img ! A.src "/images/treasure-chest.svgz" ! A.width "100%"
-  H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
+  case device of
+    Desktop → do
+      H.div ! A.class_ "left" $ H.img ! A.src "/images/treasure-chest.svgz" ! A.width "100%"
+      H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
+    Mobile → pure ()
   H.div ! A.class_ "content" $ content
 
-renderTopOnlyPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Html
-renderTopOnlyPage title stylesheets scripts maybe_onload =
-  generateTopHTML >>> renderPage title stylesheets scripts maybe_onload
+renderTopOnlyPage ∷ Text → [Text] → [Text] → Maybe Text → (Device → Html) → Device → Html
+renderTopOnlyPage title stylesheets scripts maybe_onload contentFor =
+  renderPage title stylesheets scripts maybe_onload $ \device → generateTopHTML device (contentFor device)

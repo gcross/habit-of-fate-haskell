@@ -79,8 +79,8 @@ handler environment = do
     quest_status ← getQuestStatus
     current_time_as_local_time ← getCurrentTimeAsLocalTime
     last_seen_as_local_time ← getLastSeenAsLocalTime
-    renderPageResult "Habit of Fate - List of Habits" ["list"] [] Nothing ok200 >>> pure $ do
-      generateTopHTML $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
+    renderPageResult "Habit of Fate - List of Habits" ["list"] [] Nothing ok200 >>> pure $ \device → do
+      generateTopHTML device $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "groups" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
           [ ("position", "#")

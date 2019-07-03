@@ -37,6 +37,7 @@ import Web.Scotty (ActionM, finish, redirect, status)
 import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Logging (logIO)
+import HabitOfFate.Server.Common
 
 finishWithStatus ∷ Status → ActionM α
 finishWithStatus s = do
@@ -50,16 +51,14 @@ finishWithStatusMessage code = pack >>> encodeUtf8 >>> Status code >>> finishWit
 data Content =
     NoContent
   | TextContent Lazy.Text
-  | TextContentAsHTML Lazy.Text
-  | HtmlContent Html
+  | HtmlContent (Device → Html)
   | ∀ α. (NFData α, ToJSON α) ⇒ JSONContent α
 
-setContent ∷ Content → ActionM ()
-setContent c = case c of
+setContent ∷ Device → Content → ActionM ()
+setContent device = \case
   NoContent → pure ()
   TextContent t → check t >>= Scotty.text
-  TextContentAsHTML t → check t >>= Scotty.html
-  HtmlContent h → check (h |> toHtml |> renderHtml) >>= Scotty.html
+  HtmlContent h → check (h device |> toHtml |> renderHtml) >>= Scotty.html
   JSONContent j → check j >>= Scotty.json
  where
   check ∷ NFData α ⇒ α → ActionM α

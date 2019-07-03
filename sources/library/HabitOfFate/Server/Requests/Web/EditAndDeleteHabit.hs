@@ -62,7 +62,7 @@ data DeletionMode = NoDeletion | DeletionAvailable | ConfirmDeletion
 renderHabitPage ∷ UUID → Seq Text → DeletionMode → InputHabit → Transaction TransactionResult
 renderHabitPage habit_id error_messages deletion_mode input_habit = do
   groups ← use groups_
-  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit", "flatpickr"] ["edit", "flatpickr"] (Just "onload();") ok200 >>> pure $ do
+  renderTopOnlyPageResult "Habit of Fate - Editing a Habit" ["edit", "flatpickr"] ["edit", "flatpickr"] (Just "onload();") ok200 >>> pure $ \_ → do
     let checkedIf ∷ Bool → H.Html → H.Html
         checkedIf = bool identity (! A.checked "checked")
 

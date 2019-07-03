@@ -40,5 +40,7 @@ handler environment =
     (
       renderMarkdownToHtml
       >>>
+      const
+      >>>
       renderTopOnlyPageResult "Habit of Fate - Quest Status" [] [] Nothing ok200
     )

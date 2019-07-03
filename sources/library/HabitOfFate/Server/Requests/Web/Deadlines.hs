@@ -56,9 +56,9 @@ deadlinesPage = do
       \(habit_id, habit, deadlines) → map (habit_id, habit ^. name_,) deadlines
     )
   quest_status ← getQuestStatus
-  renderPageResult "Passed Deadlines" ["deadlines"] [] Nothing ok200 >>> pure $ do
+  renderPageResult "Passed Deadlines" ["deadlines"] [] Nothing ok200 >>> pure $ \device → do
     H.form ! A.method "post" $ do
-      generateTopHTML $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
+      generateTopHTML device $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "deadlines" $ mconcat $
         map (\(class_ ∷ Text, column ∷ Text) → H.div ! A.class_ (H.toValue $ "header " ⊕ class_) $ H.toHtml column)
           [ ("", "Success")

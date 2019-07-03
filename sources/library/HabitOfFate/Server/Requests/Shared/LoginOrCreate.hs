@@ -173,25 +173,29 @@ handleCreateAccountWeb environment@Environment{..} = do
                 _ | password1 == password2 → ""
                 _ | otherwise → "The passwords did not agree."
 
-    renderTopOnlyPage "Habit of Fate - Account Creation" ["enter"] [] Nothing >>> renderHtml >>> Scotty.html $
-      H.div ! A.class_ "enter" $ do
-        H.div ! A.class_ "tabs" $ do
-          H.span ! A.class_ "inactive" $ H.a ! A.href "/login" $ H.toHtml ("Login" ∷ Text)
-          H.span ! A.class_ "active" $ H.toHtml ("Create" ∷ Text)
-        H.form ! A.method "post" $ do
-          basicTextForm >>> H.div $
-            [ basicTextInput "text" "username" "Username" >>> (! A.value (H.toValue username_))
-            , basicTextInput "password" "password1" "Password"
-            , basicTextInput "password" "password2" "Password (again)"
-            ]
-          when ((not <<< onull) error_message) $
-            H.div ! A.id "error-message" $ H.toHtml error_message
-          H.div $
-            H.input
-              ! A.class_ "submit"
-              ! A.type_ "submit"
-              ! A.formmethod "post"
-              ! A.value "Create Account"
+    device ← getDevice
+    renderTopOnlyPage "Habit of Fate - Account Creation" ["enter"] [] Nothing
+      >>> ($ device)
+      >>> renderHtml
+      >>> Scotty.html $ \_ →
+        H.div ! A.class_ "enter" $ do
+          H.div ! A.class_ "tabs" $ do
+            H.span ! A.class_ "inactive" $ H.a ! A.href "/login" $ H.toHtml ("Login" ∷ Text)
+            H.span ! A.class_ "active" $ H.toHtml ("Create" ∷ Text)
+          H.form ! A.method "post" $ do
+            basicTextForm >>> H.div $
+              [ basicTextInput "text" "username" "Username" >>> (! A.value (H.toValue username_))
+              , basicTextInput "password" "password1" "Password"
+              , basicTextInput "password" "password2" "Password (again)"
+              ]
+            when ((not <<< onull) error_message) $
+              H.div ! A.id "error-message" $ H.toHtml error_message
+            H.div $
+              H.input
+                ! A.class_ "submit"
+                ! A.type_ "submit"
+                ! A.formmethod "post"
+                ! A.value "Create Account"
 
 handleLoginWeb ∷ Environment → ScottyM ()
 handleLoginWeb environment@Environment{..} = do
@@ -224,24 +228,28 @@ handleLoginWeb environment@Environment{..} = do
                   logIO [i|Incorrect password for #{username_}.|]
                   pure "No account has that username."
 
-    renderTopOnlyPage "Habit of Fate - Login" ["enter"] [] Nothing >>> renderHtml >>> Scotty.html $
-      H.div ! A.class_ "enter" $ do
-        H.div ! A.class_ "tabs" $ do
-          H.span ! A.class_ "active" $ H.toHtml ("Login" ∷ Text)
-          H.span ! A.class_ "inactive" $ H.a ! A.href "/create" $ H.toHtml ("Create" ∷ Text)
-        H.form ! A.method "post" $ do
-          basicTextForm >>> H.div $
-            [ basicTextInput "text" "username" "Username" >>> (! A.value (H.toValue username_))
-            , basicTextInput "password" "password" "Password"
-            ]
-          when ((not <<< onull) error_message) $
-            H.div ! A.id "error-message" $ H.toHtml error_message
-          H.div $
-            H.input
-              ! A.class_ "submit"
-              ! A.type_ "submit"
-              ! A.formmethod "post"
-              ! A.value "Login"
+    device ← getDevice
+    renderTopOnlyPage "Habit of Fate - Login" ["enter"] [] Nothing
+      >>> ($ device)
+      >>> renderHtml
+      >>> Scotty.html $ \_ →
+        H.div ! A.class_ "enter" $ do
+          H.div ! A.class_ "tabs" $ do
+            H.span ! A.class_ "active" $ H.toHtml ("Login" ∷ Text)
+            H.span ! A.class_ "inactive" $ H.a ! A.href "/create" $ H.toHtml ("Create" ∷ Text)
+          H.form ! A.method "post" $ do
+            basicTextForm >>> H.div $
+              [ basicTextInput "text" "username" "Username" >>> (! A.value (H.toValue username_))
+              , basicTextInput "password" "password" "Password"
+              ]
+            when ((not <<< onull) error_message) $
+              H.div ! A.id "error-message" $ H.toHtml error_message
+            H.div $
+              H.input
+                ! A.class_ "submit"
+                ! A.type_ "submit"
+                ! A.formmethod "post"
+                ! A.value "Login"
 
 handler ∷ Environment → ScottyM ()
 handler environment = do

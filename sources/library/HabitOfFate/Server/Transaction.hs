@@ -240,7 +240,7 @@ jsonResult s = JSONContent >>> TransactionResult s
 redirectsToResult ∷ Status → Lazy.Text → TransactionResult
 redirectsToResult status_ url = RedirectsTo status_ url
 
-renderPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → Html → TransactionResult
+renderPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → (Device → Html) → TransactionResult
 renderPageResult title stylesheets scripts maybe_onload status =
   renderPage title stylesheets scripts maybe_onload
   >>>
@@ -248,13 +248,11 @@ renderPageResult title stylesheets scripts maybe_onload status =
   >>>
   TransactionResult status
 
-renderTopOnlyPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → Html → TransactionResult
-renderTopOnlyPageResult title stylesheets scripts maybe_onload status =
-  renderTopOnlyPage title stylesheets scripts maybe_onload
-  >>>
-  HtmlContent
-  >>>
-  TransactionResult status
+renderTopOnlyPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → (Device → Html) → TransactionResult
+renderTopOnlyPageResult title stylesheets scripts maybe_onload status contentFor =
+  TransactionResult
+    status
+    (HtmlContent $ renderTopOnlyPage title stylesheets scripts maybe_onload contentFor)
 
 data TransactionResults = TransactionResults
   { redirect_or_content ∷ Either Lazy.Text (Maybe Content)
@@ -327,7 +325,7 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction p
       setStatusAndLog status
       case maybe_content of
         Nothing → pure ()
-        Just content → setContent content
+        Just content → getDevice >>= flip setContent content
 
 apiTransaction ∷ Environment → Transaction TransactionResult → ActionM ()
 apiTransaction = transactionWith (finishWithStatusMessage 403)
