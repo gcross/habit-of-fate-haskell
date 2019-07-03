@@ -41,7 +41,7 @@ handler ∷ Environment → ScottyM ()
 handler environment = do
   Scotty.get "/deeds" $ webTransaction environment $ do
     deeds ← use deeds_
-    pure $ lazyTextAsHTMLResult ok200 $ renderPage "Deeds" ["deeds"] [] Nothing $ do
+    pure $ renderPageResult "Deeds" ["deeds"] [] Nothing ok200 $ do
       H.div ! A.class_ "logo" $ H.img ! A.src "/images/logo.svgz" ! A.width "100%"
       H.hr
       H.div ! A.class_ "return" $ H.a ! A.href "/habits" $ H.toHtml ("Return to Habits" ∷ Text)

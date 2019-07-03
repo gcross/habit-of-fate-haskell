@@ -80,25 +80,24 @@ paramGuardingAgainstMissing name =
     Scotty.finish
    )
 
-renderPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Lazy.Text
+renderPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Html
 renderPage title stylesheets scripts maybe_onload content =
-  renderHtml $
-    H.docTypeHtml $ do
-      H.head $ do
-        H.title $ toHtml title
-        H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
-        forM_ ("normalize":"common":stylesheets) $ \stylesheet →
-          H.link
-            ! A.rel "stylesheet"
-            ! A.type_ "text/css"
-            ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
-        forM_ scripts $ \script →
-          H.script
-            ! A.rel "script"
-            ! A.type_ "text/javascript"
-            ! A.src (H.toValue $ mconcat ["/js/", script, ".js"])
-            $ mempty
-      ((H.body & maybe identity (\onload → (!A.onload (H.toValue onload))) maybe_onload) $ content)
+  H.docTypeHtml $ do
+    H.head $ do
+      H.title $ toHtml title
+      H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
+      forM_ ("normalize":"common":stylesheets) $ \stylesheet →
+        H.link
+          ! A.rel "stylesheet"
+          ! A.type_ "text/css"
+          ! A.href (H.toValue $ mconcat ["/css/", stylesheet, ".css"])
+      forM_ scripts $ \script →
+        H.script
+          ! A.rel "script"
+          ! A.type_ "text/javascript"
+          ! A.src (H.toValue $ mconcat ["/js/", script, ".js"])
+          $ mempty
+    ((H.body & maybe identity (\onload → (!A.onload (H.toValue onload))) maybe_onload) $ content)
 
 generateTopHTML ∷ Html → Html
 generateTopHTML content = H.div ! A.class_ "top" $ do
@@ -107,6 +106,6 @@ generateTopHTML content = H.div ! A.class_ "top" $ do
   H.div ! A.class_ "right" $ H.img ! A.src "/images/grave.svgz" ! A.width "100%"
   H.div ! A.class_ "content" $ content
 
-renderTopOnlyPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Lazy.Text
+renderTopOnlyPage ∷ Text → [Text] → [Text] → Maybe Text → Html → Html
 renderTopOnlyPage title stylesheets scripts maybe_onload =
   generateTopHTML >>> renderPage title stylesheets scripts maybe_onload

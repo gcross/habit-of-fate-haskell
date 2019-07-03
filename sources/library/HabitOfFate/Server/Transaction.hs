@@ -231,9 +231,6 @@ noContentResult = flip TransactionResult NoContent
 lazyTextResult ∷ Status → Lazy.Text → TransactionResult
 lazyTextResult s = TextContent >>> TransactionResult s
 
-lazyTextAsHTMLResult ∷ Status → Lazy.Text → TransactionResult
-lazyTextAsHTMLResult s = TextContentAsHTML >>> TransactionResult s
-
 markdownResult ∷ Status → Markdown → TransactionResult
 markdownResult s = unwrapMarkdown >>> Lazy.fromStrict >>> TextContent >>> TransactionResult s
 
@@ -247,13 +244,17 @@ renderPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → Ht
 renderPageResult title stylesheets scripts maybe_onload status =
   renderPage title stylesheets scripts maybe_onload
   >>>
-  lazyTextAsHTMLResult status
+  HtmlContent
+  >>>
+  TransactionResult status
 
 renderTopOnlyPageResult ∷ Text → [Text] → [Text] → Maybe Text → Status → Html → TransactionResult
 renderTopOnlyPageResult title stylesheets scripts maybe_onload status =
   renderTopOnlyPage title stylesheets scripts maybe_onload
   >>>
-  lazyTextAsHTMLResult status
+  HtmlContent
+  >>>
+  TransactionResult status
 
 data TransactionResults = TransactionResults
   { redirect_or_content ∷ Either Lazy.Text (Maybe Content)
