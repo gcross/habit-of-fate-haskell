@@ -12,17 +12,11 @@
 
 .value {
     grid-column: 2;
+    width: 15em;
 }
 
 .error_message {
     color: red;
-}
-
-#frequency_input {
-    display: grid;
-    grid-template-columns: auto auto;
-    grid-template-rows: auto auto;
-    margin-right: auto;
 }
 
 select {

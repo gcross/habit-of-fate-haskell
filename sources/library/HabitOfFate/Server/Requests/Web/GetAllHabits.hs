@@ -165,21 +165,28 @@ handler environment = do
         ]
 
       H.div ! A.class_ "list" $ mconcat $
-        map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
+        map (\(class_, column ∷ Text) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
           (
-            [ ("mark_button", "Success!")
-            , ("mark_button", "Failure.")
-            , ("position", "#")
-            , ("name", "Habit Name")
-            , ("", ""∷Text)
+            map ("mark_button",) (case device of
+              Desktop → ["Success!", "Failure."]
+              Mobile → ["", ""]
+            )
+            ⊕
+            [("position", "#")]
+            ⊕
+            [("name",) $ case device of
+              Desktop → "Habit Name"
+              Mobile → "Name"
             ]
+            ⊕
+            [("edit", "")]
             ⊕
             case device of
               Desktop → map ("centered",) ["Last", "Deadline", "Difficulty", "Importance"]
               Mobile → []
             ⊕
-            [ ("", ""∷Text)
-            , ("", ""∷Text)
+            [ ("", "")
+            , ("", "")
             ]
           )
         ⊕

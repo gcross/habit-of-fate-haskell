@@ -111,6 +111,7 @@ renderPage title stylesheetsFor scripts maybe_onload contentFor device =
           ! A.type_ "text/javascript"
           ! A.src (H.toValue $ mconcat ["/js/", script, ".js"])
           $ mempty
+      H.meta ! A.name "viewport" ! A.content "initial-scale=1"
     ((H.body & maybe identity (\onload → (!A.onload (H.toValue onload))) maybe_onload) $ contentFor device)
 
 generateTopHTML ∷ Device → Html → Html

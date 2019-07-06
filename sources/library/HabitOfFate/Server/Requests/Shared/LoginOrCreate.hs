@@ -229,7 +229,11 @@ handleLoginWeb environment@Environment{..} = do
                   pure "No account has that username."
 
     device ← getDevice
-    renderTopOnlyPage "Habit of Fate - Login" (\_ → ["enter"]) [] Nothing
+    let enter_device_stylesheets =
+          case device of
+            Desktop → ["enter_desktop"]
+            Mobile → []
+    renderTopOnlyPage "Habit of Fate - Login" (\_ → "enter_common":enter_device_stylesheets) [] Nothing
       >>> ($ device)
       >>> renderHtml
       >>> Scotty.html $ \_ →

@@ -10,12 +10,6 @@ body {
     grid-template-rows: auto 10px auto;
 }
 
-@media (min-width: 850px) {
-    .top {
-        grid-template-columns: auto 600px auto;
-    }
-}
-
 .logo {
     grid-column: 2;
     grid-row: 1;

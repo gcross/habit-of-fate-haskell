@@ -64,7 +64,12 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
   groups ← use groups_
   renderTopOnlyPageResult
     "Habit of Fate - Editing a Habit"
-    (\_ → ["edit", "flatpickr"])
+    (\case
+        Desktop → "edit_desktop"
+        Mobile → "edit_mobile"
+     >>>
+     (:["flatpickr"])
+    )
     ["edit", "flatpickr"]
     (Just "onload();")
     ok200
@@ -125,6 +130,8 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
         generateScaleEntry "importance" "Importance:" input_importance_
 
         H.div ! A.class_ "top_aligned_label" $ H.toHtml ("Frequency:" ∷ Text)
+
+        H.div $ H.toHtml ("" ∷ Text)
 
         let input_frequency = input_habit |> (^. input_frequency_) |> fromMaybe InputIndefinite
 
