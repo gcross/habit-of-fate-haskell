@@ -67,7 +67,7 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
         Desktop → "edit_desktop"
         Mobile → "edit_mobile"
      >>>
-     (:["flatpickr"])
+     (:["edit_common","flatpickr"])
     )
     ["edit", "flatpickr"]
     (Just "onload();")

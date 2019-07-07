@@ -13,6 +13,7 @@ data-files:          data/app/css/common.css
                      data/app/css/common_mobile.css
                      data/app/css/deadlines.css
                      data/app/css/deeds.css
+                     data/app/css/edit_common.css
                      data/app/css/edit_desktop.css
                      data/app/css/edit_mobile.css
                      data/app/css/enter_common.css
