@@ -73,7 +73,7 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
     ["edit", "flatpickr"]
     (Just "onload();")
     ok200
-   >>> pure $ \_ → do
+   >>> pure $ \device → do
     let checkedIf ∷ Bool → H.Html → H.Html
         checkedIf = bool identity (! A.checked "checked")
 
@@ -131,7 +131,9 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
 
         H.div ! A.class_ "top_aligned_label" $ H.toHtml ("Frequency:" ∷ Text)
 
-        H.div $ H.toHtml ("" ∷ Text)
+        case device of
+          Desktop → pure ()
+          Mobile → H.div $ H.toHtml ("" ∷ Text)
 
         let input_frequency = input_habit |> (^. input_frequency_) |> fromMaybe InputIndefinite
 
