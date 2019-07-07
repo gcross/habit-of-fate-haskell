@@ -25,7 +25,6 @@ module HabitOfFate.Data.Deed where
 import HabitOfFate.Prelude
 
 import Data.Aeson (FromJSON(..), ToJSON(..), (.:), object, withObject)
-import qualified Data.Text.Lazy as Lazy
 import Data.Time.LocalTime
 
 import HabitOfFate.Data.Markdown

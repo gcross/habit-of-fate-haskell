@@ -238,8 +238,6 @@ import Data.Sequences
   , words
   )
 
-import Data.Sequences (dropEnd)
-
 import Data.Set (Set)
 
 import Data.String.Interpolate

@@ -33,7 +33,7 @@ import Data.UUID (UUID)
 import System.Random (StdGen)
 import Test.QuickCheck (Arbitrary(..), Gen, Positive(..), choose, elements, oneof, suchThat)
 import Test.QuickCheck.Gen (chooseAny)
-import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons1, cons2, cons3, decDepth)
+import Test.SmallCheck.Series (Serial(..), (\/), cons0, cons2)
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration

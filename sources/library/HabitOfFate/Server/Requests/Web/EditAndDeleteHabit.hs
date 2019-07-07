@@ -36,7 +36,6 @@ import HabitOfFate.Prelude
 
 import Data.Maybe (catMaybes)
 import qualified Data.Text.Lazy as Lazy
-import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import Data.Time.LocalTime (LocalTime)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID

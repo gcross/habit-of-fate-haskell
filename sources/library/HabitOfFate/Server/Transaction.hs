@@ -34,14 +34,13 @@ import HabitOfFate.Prelude
 
 import Control.Concurrent (tryPutMVar)
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TVar (modifyTVar, readTVar, writeTVar)
+import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import Control.DeepSeq (NFData)
 import Control.Monad.Catch (Exception(..), MonadThrow(..), SomeException)
 import qualified Control.Monad.Operational as Operational
 import Control.Monad.Random (MonadRandom(..), MonadSplit(..), RandT, StdGen, runRandT)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
 import qualified Data.ByteString.Lazy as LazyBS
-import Data.List (head, splitAt, tail)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Clock (UTCTime)
 import qualified Data.Time.Clock as Clock
@@ -62,12 +61,10 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Logging
-import HabitOfFate.Names
 import HabitOfFate.Quests
 import HabitOfFate.Server.Actions.Queries (authorizeWith)
 import HabitOfFate.Server.Actions.Results
 import HabitOfFate.Server.Common
-import HabitOfFate.Substitution
 
 data BadJSONError = BadJSONError String deriving (Eq, Show)
 instance Exception BadJSONError where

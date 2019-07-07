@@ -54,14 +54,12 @@ import HabitOfFate.Prelude
 
 import Control.Exception (Exception)
 import Control.Monad.Catch (MonadThrow(throwM))
-import Data.Aeson hiding (Object, (.=))
 import Data.Char
 import Data.MonoTraversable (Element)
 import Data.String (IsString(..))
 import Instances.TH.Lift ()
 import Language.Haskell.TH.Lift (Lift)
 import qualified Data.Text as Text
-import qualified Data.Text.Lazy as Lazy
 import Data.Typeable (Typeable)
 import Text.Parsec hiding ((<|>), optional, uncons)
 

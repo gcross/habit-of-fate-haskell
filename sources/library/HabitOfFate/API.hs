@@ -48,13 +48,11 @@ import Network.HTTP.Simple
 import Network.HTTP.Types
 import Web.Cookie
 
-import HabitOfFate.Data.Account
 import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Scale
-import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 
 data SecureMode = Testing | Secure

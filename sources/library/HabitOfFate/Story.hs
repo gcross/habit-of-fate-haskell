@@ -38,19 +38,12 @@ import HabitOfFate.Prelude
 import Control.Monad.Catch (Exception, MonadThrow(throwM))
 import Data.List (dropWhileEnd, tail)
 import Data.List.Split
-import Data.Typeable (Typeable)
-import Language.Haskell.TH (Exp, Q)
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
-import System.FilePath ((</>))
 
-import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
-import HabitOfFate.JSON
 import HabitOfFate.Substitution
-
-import Paths_habit_of_fate (getDataFileName)
 
 story ∷ QuasiQuoter
 story = QuasiQuoter

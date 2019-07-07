@@ -28,7 +28,6 @@ module HabitOfFate.Server.Requests.Web.Deadlines (handler) where
 import HabitOfFate.Prelude
 
 import qualified Data.Text.Lazy as Lazy
-import Data.Time.Format (defaultTimeLocale, formatTime)
 import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
 import Text.Blaze.Html5 ((!))
