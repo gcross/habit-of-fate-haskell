@@ -68,6 +68,8 @@ renderHabitPage habit_id error_messages deletion_mode input_habit = do
         Mobile → "edit_mobile"
      >>>
      (:["edit_common","flatpickr"])
+     >>>
+     reverse
     )
     ["edit", "flatpickr"]
     (Just "onload();")
