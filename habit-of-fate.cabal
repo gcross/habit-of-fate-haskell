@@ -8,7 +8,8 @@ maintainer:          gcrosswhite@gmail.com
 copyright:           2016 Gregory Crosswhite
 build-type:          Simple
 cabal-version:       >=1.10
-data-files:          data/app/css/common_desktop.css
+data-files:          data/app/css/common.css
+                     data/app/css/common_desktop.css
                      data/app/css/common_mobile.css
                      data/app/css/deadlines.css
                      data/app/css/deeds.css

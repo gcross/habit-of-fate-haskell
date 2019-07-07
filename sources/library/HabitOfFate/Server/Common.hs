@@ -96,11 +96,10 @@ renderPage title stylesheetsFor scripts maybe_onload contentFor device =
   H.docTypeHtml $ do
     H.head $ do
       H.title $ toHtml title
-      H.link ! A.href "https://fonts.googleapis.com/css?family=Gloria+Hallelujah" ! A.rel "stylesheet"
       let common_stylesheet = case device of
             Desktop → "common_desktop"
             Mobile → "common_mobile"
-      forM_ ("normalize":common_stylesheet:stylesheetsFor device) $ \stylesheet →
+      forM_ ("normalize":"common":common_stylesheet:stylesheetsFor device) $ \stylesheet →
         H.link
           ! A.rel "stylesheet"
           ! A.type_ "text/css"

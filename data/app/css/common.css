@@ -1,0 +1,55 @@
+@font-face {
+    font-family: 'Gaegu';
+    src: url(/fonts/Gaegu.ttf);
+}
+
+body {
+    background: #dde4ff;
+    font-family: Arial;
+}
+
+.story {
+    display: inline;
+    font-family: 'Gaegu', cursive;
+    font-size: 24px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 60px;
+    width: 600px;
+}
+
+#error_message {
+    color: red;
+}
+
+.row {
+    display: flex;
+}
+
+.even {
+    background-color: #d6dfff;
+}
+
+.odd {
+    background-color: #c2cfff;
+}
+
+.even, .odd {
+    align-content: center;
+    display: flex;
+}
+
+.name_area {
+    display: flex;
+    flex-direction: down;
+}
+
+.name {
+    margin-bottom: auto;
+    margin-top: auto;
+}
+
+.centered {
+    margin: auto;
+    text-align: center;
+}
