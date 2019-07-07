@@ -100,7 +100,7 @@ handler environment = do
           moveButtonFor kind uuid n =
             H.div ! A.class_ "move" $ move_button ⊕ move_form
            where
-            move_form_id = H.toValue $ [i|move-#{kind}-#{show uuid}|]
+            move_form_id = H.toValue $ [i|move-#{kind}-#{UUID.toText uuid}|]
             move_button =
               H.input
                 ! A.class_ "move_button"
@@ -112,7 +112,7 @@ handler environment = do
                 ! A.class_ "move_form"
                 ! A.id move_form_id
                 ! A.method "post"
-                ! A.action (H.toValue $ [i|/#{kind}s/#{show uuid}/move|])
+                ! A.action (H.toValue $ [i|/#{kind}s/#{UUID.toText uuid}/move|])
                 $ do
                   H.input
                     ! A.type_ "text"
