@@ -95,7 +95,6 @@ handler environment = do
           , ("name", "Group Name")
           , ("", ""∷Text)
           , ("", ""∷Text)
-          , ("", ""∷Text)
           ]
         ⊕
         [ H.div ! A.class_ "position" $ H.toHtml ("0." ∷ Text)
@@ -106,7 +105,6 @@ handler environment = do
               else
                 H.a ! A.class_ "name" ! (A.href $ "/habits")
             ) $ H.toHtml ("All" ∷ Text)
-        , H.div $ H.toHtml ("" ∷ Text)
         , H.div $ H.toHtml ("" ∷ Text)
         , H.div $ H.toHtml ("" ∷ Text)
         ]
@@ -136,7 +134,7 @@ handler environment = do
                     ! A.type_ "submit"
                     ! A.value "Move"
                     ! A.form move_form_id
-                move_input =
+                move_form =
                   H.form
                     ! A.class_ "move_form"
                     ! A.id move_form_id
@@ -152,8 +150,7 @@ handler environment = do
             [ position
             , name_link
             , edit_button
-            , move_button
-            , move_input
+            , H.div ! A.class_ "move" $ move_button ⊕ move_form
             ]
           | n ← [1∷Int ..]
           | (group_id, group_name) ← groups ^. items_list_
@@ -185,9 +182,7 @@ handler environment = do
               Desktop → map ("centered",) ["Last", "Deadline", "Difficulty", "Importance"]
               Mobile → []
             ⊕
-            [ ("", "")
-            , ("", "")
-            ]
+            [("", "")]
           )
         ⊕
         concat
@@ -224,7 +219,7 @@ handler environment = do
                     ! A.type_ "submit"
                     ! A.value "Move"
                     ! A.form move_form_id
-                move_input =
+                move_form =
                   H.form
                     ! A.class_ "move_form"
                     ! A.id move_form_id
@@ -254,9 +249,7 @@ handler environment = do
                   ]
                 Mobile → []
               ⊕
-              [ move_button
-              , move_input
-              ]
+              [ H.div ! A.class_ "move" $ move_button ⊕ move_form ]
           )
           | n ← [1∷Int ..]
           | (uuid, habit) ← habit_list

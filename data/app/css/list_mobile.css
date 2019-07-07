@@ -1,14 +1,14 @@
 .groups {
     display: grid;
     font-size: 24;
-    grid-template-columns: 3em auto 25px 6em 3.5em;
+    grid-template-columns: 3em auto 35px 6em;
     padding: 10px;
 }
 
 .list {
     display: grid;
     font-size: 22;
-    grid-template-columns: auto auto auto auto auto auto auto;
+    grid-template-columns: auto auto auto auto 35px 6em;
 }
 
 .mark_button {
@@ -31,15 +31,20 @@
     font-weight: bold;
 }
 
+.move {
+    display: grid;
+    grid-template-columns: 3.5em 3em;
+}
+
 .move_button {
-    margin-left: 5px;
+    margin-left: 0;
     margin-right: 0;
     margin-top: auto;
     margin-bottom: auto;
 }
 
 .move_form {
-    margin: auto 5px auto 0;
+    margin: auto 0 auto 0;
     display: flex;
     flex-direction: column;
     align-content: center;
@@ -97,7 +102,7 @@
 
 .edit {
     margin-left: 5px;
-    margin-right: auto;
+    margin-right: 5px;
     margin-top: auto;
     margin-bottom: auto;
 }
