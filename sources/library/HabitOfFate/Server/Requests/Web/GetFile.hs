@@ -35,7 +35,7 @@ import Paths_habit_of_fate (getDataFileName)
 handler ∷ ScottyM ()
 handler = do
   Scotty.get "/css/:filename" $ fetch "css" "css" "text/css" Nothing
-  Scotty.get "/fonts/:filename" $ fetch "fonts" "woff2" "application/font-woff2" Nothing
+  Scotty.get "/fonts/:filename" $ fetch "fonts" "ttf" "application/font-ttf" Nothing
   Scotty.get "/images/:filename" $ fetch "images" "svgz" "image/svg+xml" (Just "gzip")
   Scotty.get "/js/:filename" $ fetch "js" "js" "text/javascript" Nothing
  where

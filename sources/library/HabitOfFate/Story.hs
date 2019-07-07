@@ -19,10 +19,11 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -42,6 +43,7 @@ import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 
+import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Substitution
 
@@ -349,20 +351,31 @@ Typical usage:
 |]
 -}
 
-storyForSuccess ∷ Semigroup content ⇒ Outcomes content → content
-storyForSuccess SuccessFailure{..} = outcomes_common_story ⊕ outcomes_success_story
-storyForSuccess SuccessAvertedFailure{..} = outcomes_common_story ⊕ outcomes_success_story
-storyForSuccess SuccessDangerAvertedFailure{..} = outcomes_common_story ⊕ outcomes_success_story
+paragraphs ∷ [Markdown] → Markdown
+paragraphs = intersperse (Markdown "\n\n") >>> mconcat
 
-storyForAverted ∷ Semigroup content ⇒ Outcomes content → content
-storyForAverted SuccessFailure{..} = outcomes_common_story ⊕ outcomes_success_story
-storyForAverted SuccessAvertedFailure{..} = outcomes_common_story ⊕ outcomes_averted_story
-storyForAverted SuccessDangerAvertedFailure{..} = outcomes_common_story ⊕ outcomes_danger_story ⊕ outcomes_averted_story
+storyForSuccess, storyForAverted, storyForFailure ∷ Outcomes Markdown → Markdown
 
-storyForFailure ∷ Semigroup content ⇒ Outcomes content → content
-storyForFailure SuccessFailure{..} = outcomes_common_story ⊕ outcomes_failure_story
-storyForFailure SuccessAvertedFailure{..} = outcomes_common_story ⊕ outcomes_failure_story
-storyForFailure SuccessDangerAvertedFailure{..} = outcomes_common_story ⊕ outcomes_danger_story ⊕ outcomes_failure_story
+storyForSuccess SuccessFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_success_story]
+storyForSuccess SuccessAvertedFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_success_story]
+storyForSuccess SuccessDangerAvertedFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_success_story]
+
+storyForAverted SuccessFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_success_story]
+storyForAverted SuccessAvertedFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_averted_story]
+storyForAverted SuccessDangerAvertedFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_danger_story, outcomes_averted_story]
+
+storyForFailure SuccessFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_failure_story]
+storyForFailure SuccessAvertedFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_failure_story]
+storyForFailure SuccessDangerAvertedFailure{..} =
+  paragraphs [outcomes_common_story, outcomes_danger_story, outcomes_failure_story]
 
 data Narrative content = Narrative
   { narrative_title ∷ content

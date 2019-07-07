@@ -30,7 +30,7 @@ import GHC.Exts (IsString(..))
 import qualified Text.Blaze.Html5 as H
 import Text.Blaze.Html5 (Html)
 
-newtype Markdown = Markdown { unwrapMarkdown ∷ Text } deriving (Eq,Ord,Read,Semigroup,Show)
+newtype Markdown = Markdown { unwrapMarkdown ∷ Text } deriving (Eq,Monoid,Ord,Read,Semigroup,Show)
 
 instance IsString Markdown where
   fromString = pack >>> Markdown

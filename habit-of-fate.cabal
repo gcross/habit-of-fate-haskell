@@ -20,7 +20,7 @@ data-files:          data/app/css/common_desktop.css
                      data/app/css/list_mobile.css
                      data/app/css/normalize.css
                      data/app/css/story.css
-                     data/app/fonts/GloriaHallelujah.woff2
+                     data/app/fonts/Gaegu.ttf
                      data/app/images/bad.svgz
                      data/app/images/button-bad-off.svgz
                      data/app/images/button-bad-on.svgz
