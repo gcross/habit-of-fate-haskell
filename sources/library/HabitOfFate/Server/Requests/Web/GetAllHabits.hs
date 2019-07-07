@@ -31,9 +31,10 @@ import HabitOfFate.Prelude
 import Data.Time.Calendar (diffDays)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Time.LocalTime (localDay)
+import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Network.HTTP.Types.Status (ok200, temporaryRedirect307)
-import Text.Blaze.Html5 ((!))
+import Text.Blaze.Html5 ((!), Markup)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Web.Scotty (ScottyM)
@@ -88,6 +89,37 @@ handler environment = do
       Nothing
       ok200
      >>> pure $ \device → do
+      let editButtonFor ∷ Text → UUID → Markup
+          editButtonFor kind uuid =
+            H.a
+              ! A.class_ "edit"
+              ! A.href (H.toValue [i|/#{kind}s/#{UUID.toText uuid}|])
+              $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
+
+          moveButtonFor ∷ Text → UUID → Int → Markup
+          moveButtonFor kind uuid n =
+            H.div ! A.class_ "move" $ move_button ⊕ move_form
+           where
+            move_form_id = H.toValue $ [i|move-#{kind}-#{show uuid}|]
+            move_button =
+              H.input
+                ! A.class_ "move_button"
+                ! A.type_ "submit"
+                ! A.value "Move"
+                ! A.form move_form_id
+            move_form =
+              H.form
+                ! A.class_ "move_form"
+                ! A.id move_form_id
+                ! A.method "post"
+                ! A.action (H.toValue $ [i|/#{kind}s/#{show uuid}/move|])
+                $ do
+                  H.input
+                    ! A.type_ "text"
+                    ! A.value (H.toValue n)
+                    ! A.name "new_index"
+                    ! A.class_ "move_input"
+
       generateTopHTML device $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "groups" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
@@ -122,35 +154,11 @@ handler environment = do
                       else
                         H.a ! A.class_ "name" ! (A.href $ "/habits?group=" ⊕ H.toValue (UUID.toText group_id))
                   ) $ H.toHtml group_name
-                edit_button =
-                  H.a
-                    ! A.class_ "edit"
-                    ! A.href (H.toValue [i|/groups/#{UUID.toText group_id}|])
-                    $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
-                move_form_id = H.toValue $ "move-group-" ⊕ show group_id
-                move_button =
-                  H.input
-                    ! A.class_ "move_button"
-                    ! A.type_ "submit"
-                    ! A.value "Move"
-                    ! A.form move_form_id
-                move_form =
-                  H.form
-                    ! A.class_ "move_form"
-                    ! A.id move_form_id
-                    ! A.method "post"
-                    ! A.action (H.toValue $ "/groups/" ⊕ show group_id ⊕ "/move")
-                    $ do
-                      H.input
-                        ! A.type_ "text"
-                        ! A.value (H.toValue n)
-                        ! A.name "new_index"
-                        ! A.class_ "move_input"
             in map (\contents → H.div ! A.class_ evenodd $ contents)
             [ position
             , name_link
-            , edit_button
-            , H.div ! A.class_ "move" $ move_button ⊕ move_form
+            , editButtonFor "group" group_id
+            , moveButtonFor "group" group_id n
             ]
           | n ← [1∷Int ..]
           | (group_id, group_name) ← groups ^. items_list_
@@ -189,11 +197,6 @@ handler environment = do
           [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
                 position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
                 name = H.div ! A.class_ "name_area" $ H.div ! A.class_ "name" $ H.toHtml $ habit ^. name_
-                edit_button =
-                  H.a
-                    ! A.class_ "edit"
-                    ! A.href (H.toValue [i|/habits/#{UUID.toText uuid}|])
-                    $ H.img ! A.src "/images/edit.svgz" ! A.width "25px"
                 timeFor (text_if_nothing ∷ Text) =
                   ($ habit)
                   >>>
@@ -212,32 +215,13 @@ handler environment = do
                         ! A.method "post"
                         ! A.action (H.toValue [i|/habits/#{UUID.toText uuid}/mark/#{habit_name}|])
                         $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
-                move_form_id = H.toValue $ "move-habit-" ⊕ show uuid
-                move_button =
-                  H.input
-                    ! A.class_ "move_button"
-                    ! A.type_ "submit"
-                    ! A.value "Move"
-                    ! A.form move_form_id
-                move_form =
-                  H.form
-                    ! A.class_ "move_form"
-                    ! A.id move_form_id
-                    ! A.method "post"
-                    ! A.action (H.toValue $ "/habits/" ⊕ show uuid ⊕ "/move")
-                    $ do
-                      H.input
-                        ! A.type_ "text"
-                        ! A.value (H.toValue n)
-                        ! A.name "new_index"
-                        ! A.class_ "move_input"
             in map (\contents → H.div ! A.class_ evenodd $ contents)
             (
               [ markButtonFor "success" "good" difficulty_
               , markButtonFor "failure" "bad"  importance_
               , position
               , name
-              , edit_button
+              , editButtonFor "habit" uuid
               ]
               ⊕
               case device of
@@ -249,7 +233,7 @@ handler environment = do
                   ]
                 Mobile → []
               ⊕
-              [ H.div ! A.class_ "move" $ move_button ⊕ move_form ]
+              [ moveButtonFor "habit" uuid n ]
           )
           | n ← [1∷Int ..]
           | (uuid, habit) ← habit_list
