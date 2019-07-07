@@ -125,7 +125,7 @@ handler environment = do
             [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
                   position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
               in map (\contents → H.div ! A.class_ evenodd $ contents)
-                      (generateColumns uuid value n position)
+                     (generateColumns uuid value n position)
             | n ← [1∷Int ..]
             | (uuid, value) ← list
             ]
