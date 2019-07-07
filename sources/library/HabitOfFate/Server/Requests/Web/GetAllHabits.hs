@@ -120,6 +120,16 @@ handler environment = do
                     ! A.name "new_index"
                     ! A.class_ "move_input"
 
+          generateList ∷ [(UUID, α)] → (UUID → α → Int → H.Html → [H.Html]) → [H.Html]
+          generateList list generateColumns = concat
+            [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
+                  position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
+              in map (\contents → H.div ! A.class_ evenodd $ contents)
+                      (generateColumns uuid value n position)
+            | n ← [1∷Int ..]
+            | (uuid, value) ← list
+            ]
+
       generateTopHTML device $ H.div ! A.class_ "story" $ renderMarkdownToHtml quest_status
       H.div ! A.class_ "groups" $ mconcat $
         map (\(class_, column) → H.div ! A.class_ ("header " ⊕ class_) $ H.toHtml column)
@@ -141,28 +151,24 @@ handler environment = do
         , H.div $ H.toHtml ("" ∷ Text)
         ]
         ⊕
-        concat
-          [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
-                position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
-                name_link =
-                  (
-                    H.div ! A.class_ "name_area"
-                    >>>
-                    if maybe_group_id == Just group_id
-                      then
-                        H.div ! A.class_ "name selected_name"
-                      else
-                        H.a ! A.class_ "name" ! (A.href $ "/habits?group=" ⊕ H.toValue (UUID.toText group_id))
-                  ) $ H.toHtml group_name
-            in map (\contents → H.div ! A.class_ evenodd $ contents)
+        generateList (groups ^. items_list_) (\group_id group_name n position →
+          let name_link =
+                (
+                  H.div ! A.class_ "name_area"
+                  >>>
+                  if maybe_group_id == Just group_id
+                    then
+                      H.div ! A.class_ "name selected_name"
+                    else
+                      H.a ! A.class_ "name" ! (A.href $ "/habits?group=" ⊕ H.toValue (UUID.toText group_id))
+                ) $ H.toHtml group_name
+          in
             [ position
             , name_link
             , editButtonFor "group" group_id
             , moveButtonFor "group" group_id n
             ]
-          | n ← [1∷Int ..]
-          | (group_id, group_name) ← groups ^. items_list_
-          ]
+        )
         ⊕
         replicate 3 (H.div mempty)
         ⊕
@@ -193,51 +199,48 @@ handler environment = do
             [("", "")]
           )
         ⊕
-        concat
-          [ let evenodd = if n `mod` 2 == 0 then "even" else "odd"
-                position = H.div ! A.class_ "position" $ H.toHtml (show n ⊕ ".")
-                name = H.div ! A.class_ "name_area" $ H.div ! A.class_ "name" $ H.toHtml $ habit ^. name_
-                timeFor (text_if_nothing ∷ Text) =
-                  ($ habit)
-                  >>>
-                  maybe
-                    (H.toHtml text_if_nothing)
-                    renderLocalTime
-                  >>>
-                  ((H.div ! A.class_ "centered") $)
-                scaleFor scale_lens =
-                  H.div ! A.class_ "centered" $ H.toHtml $ displayScale $ habit ^. scale_lens
-                markButtonFor (habit_name ∷ Text) class_ scale_lens_
-                  | habit ^. scale_lens_ == None = mempty
-                  | otherwise =
-                      H.form
-                        ! A.class_ "mark_button"
-                        ! A.method "post"
-                        ! A.action (H.toValue [i|/habits/#{UUID.toText uuid}/mark/#{habit_name}|])
-                        $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
-            in map (\contents → H.div ! A.class_ evenodd $ contents)
-            (
-              [ markButtonFor "success" "good" difficulty_
-              , markButtonFor "failure" "bad"  importance_
-              , position
-              , name
-              , editButtonFor "habit" uuid
-              ]
-              ⊕
-              case device of
-                Desktop →
-                  [ timeFor "Never" (^. maybe_last_marked_)
-                  , timeFor "None" getHabitDeadline
-                  , scaleFor difficulty_
-                  , scaleFor importance_
-                  ]
-                Mobile → []
-              ⊕
-              [ moveButtonFor "habit" uuid n ]
-          )
-          | n ← [1∷Int ..]
-          | (uuid, habit) ← habit_list
-          ]
+        generateList habit_list (\habit_id habit n position →
+          let name_link = H.div ! A.class_ "name_area" $ H.div ! A.class_ "name" $ H.toHtml $ habit ^. name_
+
+              timeFor (text_if_nothing ∷ Text) =
+                ($ habit)
+                >>>
+                maybe
+                  (H.toHtml text_if_nothing)
+                  renderLocalTime
+                >>>
+                ((H.div ! A.class_ "centered") $)
+
+              scaleFor scale_lens =
+                H.div ! A.class_ "centered" $ H.toHtml $ displayScale $ habit ^. scale_lens
+
+              markButtonFor (habit_name ∷ Text) class_ scale_lens_
+                | habit ^. scale_lens_ == None = mempty
+                | otherwise =
+                    H.form
+                      ! A.class_ "mark_button"
+                      ! A.method "post"
+                      ! A.action (H.toValue [i|/habits/#{UUID.toText habit_id}/mark/#{habit_name}|])
+                      $ H.input ! A.type_ "submit" ! A.class_ ("smiley " ⊕ class_) ! A.value ""
+          in
+            [ markButtonFor "success" "good" difficulty_
+            , markButtonFor "failure" "bad"  importance_
+            , position
+            , name_link
+            , editButtonFor "habit" habit_id
+            ]
+            ⊕
+            case device of
+              Desktop →
+                [ timeFor "Never" (^. maybe_last_marked_)
+                , timeFor "None" getHabitDeadline
+                , scaleFor difficulty_
+                , scaleFor importance_
+                ]
+              Mobile → []
+            ⊕
+            [ moveButtonFor "habit" habit_id n ]
+        )
         ⊕
         [ H.div ! A.class_ "new_link new_habit" $ H.a ! A.href "/habits/new" $ H.toHtml ("New" ∷ Text)
         ]
