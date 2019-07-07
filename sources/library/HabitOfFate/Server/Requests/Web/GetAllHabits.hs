@@ -84,7 +84,7 @@ handler environment = do
     last_seen_as_local_time ← getLastSeenAsLocalTime
     renderPageResult
       "Habit of Fate - List of Habits"
-      (\case { Desktop → "list_desktop"; Mobile → "list_mobile" } >>> (:["list_common"]))
+      (\case { Desktop → "list_desktop"; Mobile → "list_mobile" } >>> (:["list_common"]) >>> reverse)
       []
       Nothing
       ok200
