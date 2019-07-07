@@ -123,7 +123,6 @@ library
                      , HabitOfFate.Logging
                      , HabitOfFate.Names
                      , HabitOfFate.Prelude
-                     , HabitOfFate.Proofread
                      , HabitOfFate.Quest
                      , HabitOfFate.Quest.Pages
                      , HabitOfFate.Quest.Pages.Index
