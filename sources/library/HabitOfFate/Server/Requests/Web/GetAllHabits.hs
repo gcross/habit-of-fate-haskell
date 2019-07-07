@@ -200,7 +200,7 @@ handler environment = do
           )
         ⊕
         generateList habit_list (\habit_id habit n position →
-          let name_link = H.div ! A.class_ "name_area" $ H.div ! A.class_ "name" $ H.toHtml $ habit ^. name_
+          let name = H.div ! A.class_ "name_area" $ H.div ! A.class_ "name" $ H.toHtml $ habit ^. name_
 
               timeFor (text_if_nothing ∷ Text) =
                 ($ habit)
@@ -226,7 +226,7 @@ handler environment = do
             [ markButtonFor "success" "good" difficulty_
             , markButtonFor "failure" "bad"  importance_
             , position
-            , name_link
+            , name
             , editButtonFor "habit" habit_id
             ]
             ⊕
