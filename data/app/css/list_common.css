@@ -1,0 +1,93 @@
+.groups {
+    display: grid;
+    font-size: 24;
+    grid-template-columns: 3em auto 35px 6em;
+    padding: 10px;
+}
+
+.list {
+    display: grid;
+    font-size: 22;
+}
+
+.position {
+    margin-bottom: auto;
+    margin-left: 10px;
+    margin-top: auto;
+}
+
+.selected_name {
+    font-family: serif;
+    font-weight: bold;
+}
+
+.header {
+    font-weight: bold;
+}
+
+.move {
+    display: grid;
+    grid-template-columns: 3.5em 3em;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.move_button {
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.move_form {
+    margin: auto 0 auto 0;
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+}
+
+.move_input {
+    text-align: right;
+}
+
+.new_link {
+    align-content: center;
+    display: flex;
+    height: 50px;
+}
+
+.new_group {
+    grid-column: 2;
+}
+
+.new_habit {
+    grid-column: 4;
+}
+
+.new_link a {
+    margin-bottom: auto;
+    margin-top: auto;
+}
+
+.logout_link {
+    display: block;
+    margin-left: auto;
+    width: 3.5em;
+}
+
+.good {
+    background-image: url("/images/good.svgz");
+}
+
+.bad {
+    background-image: url("/images/bad.svgz");
+}
+
+.edit {
+    margin: auto;
+}
+
+.deeds_link {
+    margin: auto;
+    width: 200px;
+}
