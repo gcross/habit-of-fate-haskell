@@ -30,7 +30,6 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Catch (Exception(displayException), throwM)
 import Control.Monad.Random (uniform, weighted)
-import qualified Data.Text.Lazy as Lazy
 import Data.Time.LocalTime (LocalTime)
 import Network.HTTP.Types.Status (ok200)
 import Text.Blaze.Html5 ((!))

@@ -23,7 +23,6 @@ module HabitOfFate.Server.Requests.Web.GetQuestStatus (handler) where
 import HabitOfFate.Prelude
 
 import Network.HTTP.Types.Status (ok200)
-import qualified Text.Blaze.Html5 as H
 import Web.Scotty (ScottyM)
 import qualified Web.Scotty as Scotty
 
