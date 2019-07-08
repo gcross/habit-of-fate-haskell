@@ -1,7 +1,7 @@
 .groups {
     display: grid;
     font-size: 24;
-    grid-template-columns: 3em auto 35px 7em;
+    grid-template-columns: 3em auto 35px 5.5em;
     padding: 10px;
 }
 
@@ -27,8 +27,8 @@
 
 .move {
     display: grid;
-    grid-template-columns: 3em 3em;
-    margin-left: 5px;
+    grid-template-columns: 2em 2.5em;
+    margin-left: auto;
     margin-right: auto;
 }
 

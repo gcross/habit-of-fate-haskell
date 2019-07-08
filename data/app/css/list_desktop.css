@@ -1,5 +1,5 @@
 .list {
-    grid-template-columns: 100px 80px 2em auto 35px 80px 80px 90px 90px 8em;
+    grid-template-columns: 100px 80px 2em auto 35px 80px 80px 90px 90px 5.5em;
 }
 
 .mark_button {
@@ -8,10 +8,6 @@
 
 .position {
     margin-right: 10px;
-}
-
-.move_input {
-    width: 2em;
 }
 
 .smiley {

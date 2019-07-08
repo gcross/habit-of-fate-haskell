@@ -136,7 +136,7 @@ handler environment = do
           [ ("position", "#")
           , ("name", "Group Name")
           , ("", ""∷Text)
-          , ("", ""∷Text)
+          , ("centered", "Move To"∷Text)
           ]
         ⊕
         [ H.div ! A.class_ "position" $ H.toHtml ("0." ∷ Text)
@@ -196,7 +196,7 @@ handler environment = do
               Desktop → map ("centered",) ["Last", "Deadline", "Difficulty", "Importance"]
               Mobile → []
             ⊕
-            [("", "")]
+            [("centered", "Move To")]
           )
         ⊕
         generateList habit_list (\habit_id habit n position →
