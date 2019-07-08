@@ -105,7 +105,7 @@ handler environment = do
               H.input
                 ! A.class_ "move_button"
                 ! A.type_ "submit"
-                ! A.value "Move"
+                ! A.value "↕"
                 ! A.form move_form_id
             move_form =
               H.form
