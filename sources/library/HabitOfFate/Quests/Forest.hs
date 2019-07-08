@@ -87,7 +87,7 @@ looking_for_herb_story = [story|
 
 returning_home_story ∷ Story
 returning_home_story = [story|
-An |Plant plant in hand, **|Searcher** continues **home**.
+An |Plant plant in hand, **|Searcher** continues towards home.
 |]
 
 --------------------------------------------------------------------------------
