@@ -29,7 +29,6 @@ import Data.Coerce
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.QuestState
 import HabitOfFate.Quest
-import HabitOfFate.Substitution
 import HabitOfFate.Story
 import qualified HabitOfFate.Quests.Forest as Forest
 

@@ -29,7 +29,6 @@ import Data.Vector (Vector)
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
-import HabitOfFate.Substitution
 
 --------------------------------------------------------------------------------
 --------------------------------- Intro Stories --------------------------------

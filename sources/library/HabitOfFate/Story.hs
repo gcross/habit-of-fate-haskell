@@ -32,7 +32,24 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Story where
+module HabitOfFate.Story
+  ( Story
+  , story
+  , stories
+  , stories_fixed
+
+  , InvalidOutcomes(..)
+  , outcomes
+
+  , storyForSuccess
+  , storyForAverted
+  , storyForFailure
+
+  , Narrative(..)
+  , narrative
+
+  , dashed_sections
+  ) where
 
 import HabitOfFate.Prelude
 
@@ -103,28 +120,6 @@ stories_fixed = QuasiQuoter
   (error "Cannot use s1 as a pattern")
   (error "Cannot use s1 as a type")
   (error "Cannot use s1 as a dec")
-
-subSplitStories ∷ String → [[String]]
-subSplitStories =
-  lines
-  >>>
-  splitRegionsOn '='
-  >>>
-  map (
-    splitRegionsOn '-'
-    >>>
-    map unlines
-  )
-
-subSplitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [[Story]]
-subSplitAndParseSubstitutions = subSplitStories >>> mapM (mapM parseSubstitutions)
-
-subStories ∷ QuasiQuoter
-subStories = QuasiQuoter
-  (subSplitAndParseSubstitutions >=> Lift.lift)
-  (error "Cannot use s as a pattern")
-  (error "Cannot use s as a type")
-  (error "Cannot use s as a dec")
 
 splitNamedRegionsOn ∷ Char → String → [(String, String)]
 splitNamedRegionsOn marker =
