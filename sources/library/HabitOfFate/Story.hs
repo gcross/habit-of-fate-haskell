@@ -88,7 +88,12 @@ splitStoriesOn c =
   map unlines
 
 splitAndParseSubstitutions ∷ MonadThrow m ⇒ String → m [Story]
-splitAndParseSubstitutions = splitStoriesOn '=' >>> mapM parseSubstitutions
+splitAndParseSubstitutions =
+  splitStoriesOn '='
+  >>>
+  filter (not <<< allSpaces)
+  >>>
+  mapM parseSubstitutions
 
 stories ∷ QuasiQuoter
 stories = QuasiQuoter
