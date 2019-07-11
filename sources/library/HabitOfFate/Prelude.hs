@@ -18,6 +18,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module HabitOfFate.Prelude
@@ -204,6 +205,7 @@ import Data.Map.Strict (Map)
 import Data.Maybe
 
 import Data.MonoTraversable hiding (Element)
+import qualified Data.MonoTraversable as MonoTraversable
 
 import Data.Semigroup
 
@@ -300,8 +302,8 @@ infixr 5 ⊢
 infixr 5 ⊣
 (⊣) = Control.Lens.cons
 
-allSpaces ∷ Text → Bool
-allSpaces = allOf text (∈ " \t\r\n")
+allSpaces ∷ (MonoFoldable α, MonoTraversable.Element α ~ Char) ⇒ α → Bool
+allSpaces = oall (∈ " \t\r\n")
 
 identity ∷ α → α
 identity = id
