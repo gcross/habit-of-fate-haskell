@@ -36,7 +36,6 @@ module HabitOfFate.Story
   ( Story
   , story
   , stories
-  , stories_fixed
 
   , InvalidOutcomes(..)
   , outcomes
@@ -101,30 +100,6 @@ stories = QuasiQuoter
   (error "Cannot use stories as a pattern")
   (error "Cannot use stories as a type")
   (error "Cannot use stories as a dec")
-
-stories_fixed ∷ QuasiQuoter
-stories_fixed = QuasiQuoter
-  (
-    splitAndParseSubstitutions
-    >=>
-    (\case
-      [] → [|()|]
-      [x1] → [|x1|]
-      [x1,x2] → [|(x1,x2)|]
-      [x1,x2,x3] → [|(x1,x2,x3)|]
-      [x1,x2,x3,x4] → [|(x1,x2,x3,x4)|]
-      [x1,x2,x3,x4,x5] → [|(x1,x2,x3,x4,x5)|]
-      [x1,x2,x3,x4,x5,x6] → [|(x1,x2,x3,x4,x5,x6)|]
-      [x1,x2,x3,x4,x5,x6,x7] → [|(x1,x2,x3,x4,x5,x6,x7)|]
-      [x1,x2,x3,x4,x5,x6,x7,x8] → [|(x1,x2,x3,x4,x5,x6,x7,x8)|]
-      [x1,x2,x3,x4,x5,x6,x7,x8,x9] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9)|]
-      [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10] → [|(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10)|]
-      xs → error [i|saw #{olength xs} events, which is too many (> 10)|]
-    )
-  )
-  (error "Cannot use s1 as a pattern")
-  (error "Cannot use s1 as a type")
-  (error "Cannot use s1 as a dec")
 
 splitNamedRegionsOn ∷ Char → String → [(String, String)]
 splitNamedRegionsOn marker =
