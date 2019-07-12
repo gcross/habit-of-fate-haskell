@@ -98,9 +98,9 @@ splitAndParseSubstitutions =
 stories ∷ QuasiQuoter
 stories = QuasiQuoter
   (splitAndParseSubstitutions >=> Lift.lift)
-  (error "Cannot use s as a pattern")
-  (error "Cannot use s as a type")
-  (error "Cannot use s as a dec")
+  (error "Cannot use stories as a pattern")
+  (error "Cannot use stories as a type")
+  (error "Cannot use stories as a dec")
 
 stories_fixed ∷ QuasiQuoter
 stories_fixed = QuasiQuoter
