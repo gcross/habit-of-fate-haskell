@@ -94,7 +94,8 @@ An |Plant plant in hand, **|Searcher** continues towards home.
 --------------------------------------------------------------------------------
 
 wander_stories ∷ [Story]
-wander_stories = [stories|
+wander_stories_with_labels ∷ [(Text, Story)]
+(wander_stories, wander_stories_with_labels) = [stories_with_labels|
 Nothing happens as |Searcher wanders through the forest.
 ================================================================================
 As |Searcher continues to search he/she| hears the howling of wolves, which makes

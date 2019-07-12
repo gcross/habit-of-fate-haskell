@@ -36,6 +36,7 @@ module HabitOfFate.Story
   ( Story
   , story
   , stories
+  , stories_with_labels
 
   , InvalidOutcomes(..)
   , outcomes
@@ -53,7 +54,7 @@ module HabitOfFate.Story
 import HabitOfFate.Prelude
 
 import Control.Monad.Catch (Exception, MonadThrow(throwM))
-import Data.List (dropWhileEnd, tail)
+import Data.List (dropWhileEnd, tail, unzip)
 import Data.List.Split
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
@@ -133,6 +134,20 @@ parseSections =
   map (second (splitStoriesOn '-' >>> map (dropWhileEnd (== '\n'))))
   >>>
   traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
+
+stories_with_labels ∷ QuasiQuoter
+stories_with_labels = QuasiQuoter
+  (\content → do
+    let (labels, bodies) =
+          content
+            |> splitNamedRegionsOn '='
+            |> unzip
+    stories ← traverse parseSubstitutions bodies
+    Lift.lift ((stories, zip (map pack labels) stories) ∷ ([Story], [(Text, Story)]))
+  )
+  (error "Cannot use stories_with_labels as a pattern")
+  (error "Cannot use stories_with_labels as a type")
+  (error "Cannot use stories_with_labels as a dec")
 
 data InvalidOutcomes =
     NoStoriesForHeading String
