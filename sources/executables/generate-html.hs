@@ -90,16 +90,16 @@ main = do
         H.link
           ! A.rel "stylesheet"
           ! A.type_ "text/css"
-          ! A.href (relativePath "style.css")
+          ! A.href (relativePath "css/style.css")
       H.body $ do
         H.div ! A.class_ "logo" $ do
-          H.div ! A.class_ "logo_entry" $
-            H.img ! A.src (relativePath "treasure-chest.png") ! A.width "100px"
-          H.div ! A.class_ "logo_entry" $
-            H.a ! A.href (relativePath "index.html") $ H.img ! A.src (relativePath "logo.svg") ! A.width "300px"
-          H.div ! A.class_ "logo_entry"
-            $ H.img ! A.src (relativePath "grave.svg") ! A.width "100px"
-        H.div $ do
+          H.div ! A.class_ "logo_side" $
+            H.img ! A.src (relativePath "images/treasure-chest.svg")
+          H.div ! A.class_ "logo_middle" $
+            H.a ! A.href (relativePath "index.html") $ H.img ! A.src (relativePath "images/logo.svg")
+          H.div ! A.class_ "logo_side" $
+            H.img ! A.src (relativePath "images/grave.svg")
+        H.div ! A.class_ "content" $ do
           H.h1 $ renderMarkdownToHtml page_title
           renderMarkdownToHtml $ page_content
           case page_choices of
@@ -126,9 +126,10 @@ main = do
     [ ("css", "style.css")
     , ("images", "grave.svg")
     , ("images", "logo.svg")
-    , ("images", "treasure-chest.png")
+    , ("images", "treasure-chest.svg")
     ] $ \(auxiliary_directory, auxiliary_filename) → do
-    putStrLn [i|Writing auxiliary file #{auxiliary_filename}|]
-    let destination_path = output_path </> auxiliary_filename
+    putStrLn [i|Writing auxiliary file #{auxiliary_directory </> auxiliary_filename}|]
     source_path ← getDataFileName $ "data" </> "static" </> auxiliary_directory </> auxiliary_filename
-    copyFile source_path destination_path
+    let destination_directory = output_path </> auxiliary_directory
+    createDirectoryIfMissing True destination_directory
+    copyFile source_path $ destination_directory </> auxiliary_filename

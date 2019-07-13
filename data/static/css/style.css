@@ -1,8 +1,58 @@
-.logo {
-    display: grid;
-    grid-template-columns: auto 300px auto;
+body {
+    margin: auto;
 }
 
-.logo_entry {
+body {
+    width: 80em;
+}
+
+@media (max-width: 90em) {
+    body {
+        width: 80%;
+    }
+}
+
+.logo {
+    display: grid;
+    grid-template-columns: auto 60% auto;
+}
+
+.logo_side {
     margin: auto;
+}
+
+.logo_side img {
+    height: 150px;
+}
+
+.logo_middle {
+    margin: auto;
+}
+
+.logo_middle img {
+    height: 300px;
+}
+
+@media (max-width: 90em) {
+    .logo_side img {
+        height: 100px;
+    }
+
+    .logo_middle img {
+        height: 200px;
+    }
+}
+
+@media (max-width: 45em) {
+    body {
+        margin-top: 20px;
+    }
+
+    .logo_side img {
+        height: 50px;
+    }
+
+    .logo_middle img {
+        height: 100px;
+    }
 }
