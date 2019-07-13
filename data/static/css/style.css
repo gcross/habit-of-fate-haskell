@@ -56,3 +56,17 @@ body {
         height: 100px;
     }
 }
+
+h1 {
+    font-size: 23px;
+}
+
+@font-face {
+    font-family: 'Gaegu';
+    src: url(../fonts/Gaegu.ttf);
+}
+
+.story, a {
+    font-family: 'Gaegu';
+    font-size: 22px;
+}

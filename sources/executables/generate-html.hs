@@ -101,12 +101,12 @@ main = do
             H.img ! A.src (relativePath "images/grave.svg")
         H.div ! A.class_ "content" $ do
           H.h1 $ renderMarkdownToHtml page_title
-          renderMarkdownToHtml $ page_content
+          H.div ! A.class_ "story" $ renderMarkdownToHtml page_content
           case page_choices of
             NoChoice c_ref → do
               H.a ! A.href (relativePath $ unpack c_ref ⊕ ".html") $ H.strong $ H.toHtml ("Continue." ∷ Text)
             Choices question choices → do
-              H.h2 $ renderMarkdownToHtml question
+              H.h1 $ renderMarkdownToHtml question
               let non_escape_choices = takeWhile (\(c, _) → unwrapMarkdown c ^?! _head /= ' ') choices
                   escape_choices = drop (length non_escape_choices) choices
                   outputChoices choices =
@@ -127,6 +127,7 @@ main = do
     , ("images", "grave.svg")
     , ("images", "logo.svg")
     , ("images", "treasure-chest.svg")
+    , ("fonts", "Gaegu.ttf")
     ] $ \(auxiliary_directory, auxiliary_filename) → do
     putStrLn [i|Writing auxiliary file #{auxiliary_directory </> auxiliary_filename}|]
     source_path ← getDataFileName $ "data" </> "static" </> auxiliary_directory </> auxiliary_filename
