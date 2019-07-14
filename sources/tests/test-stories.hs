@@ -55,6 +55,8 @@ testFames ∷ Quest → TestTree
 testFames quest@Quest{..} =
   testCase (unpack quest_name) $ do
     all_states ← allQuestStates quest
+
+    -- Check that there is at least one fames.
     all_states
       |> mapMaybe (\(name, qs) → if onull (qs ^. quest_state_fames_) then Just name else Nothing)
       |> (\paths_without_fames →
@@ -62,6 +64,8 @@ testFames quest@Quest{..} =
             ("No fames in: " ⊕ (unpack $ T.intercalate ", " paths_without_fames))
             (onull paths_without_fames)
          )
+
+    -- Check that there is at least one event.
     all_states
       |> mapMaybe (
           \(name, qs) → qs
@@ -79,6 +83,8 @@ testFames quest@Quest{..} =
             ("No events in: " ⊕ (unpack $ T.intercalate ", " paths_without_events))
             (onull paths_without_events)
          )
+
+    -- Check that the last entry is an event, a narrative, or a fames.
     all_states
       |> mapMaybe (
           \(name, qs) → qs
@@ -95,6 +101,7 @@ testFames quest@Quest{..} =
             ("Paths have bad ending: " ⊕ (unpack $ T.intercalate ", " paths_with_bad_ending))
             (onull paths_with_bad_ending)
          )
+
     let all_names = map fst all_states
     nub all_names @?= all_names
 
