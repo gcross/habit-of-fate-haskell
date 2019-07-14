@@ -96,26 +96,27 @@ An |Plant plant in hand, **|Searcher** continues towards home.
 wander_stories ∷ [Story]
 wander_stories_labels ∷ [Text]
 (wander_stories, wander_stories_labels) = [stories_and_labels|
+================================ Nothing Happens ===============================
 Nothing happens as |Searcher wanders through the forest.
-================================================================================
+================================== Wolves Howl =================================
 As |Searcher continues to search he/she| hears the howling of wolves, which makes
 him/her| shiver. Thank goodness they seem to be in the distance!
-================================================================================
+================================ Candle Goes Out ===============================
 |Searcher's candle goes out; the resulting darkness is oppressive. Fortunately,
 he/she| had prepared for this. He/she| reached into his/her| pack and drew out
 flintstone, which he/she| uses to re-light the candle.
-================================================================================
-|Searcher can feel that something is amiss, but he/she| can't figure out what. He/she|
-pauses for a moment and looks around. After a moment, he/she| realizes that
-his/her| shadow didn't stop walking when he/she| did. He/she| backs away slowly as
-his/her| shadow gets further and further away from him/her|. He/she| decides to
-start searching in a different direction.
-================================================================================
+============================== Shadow Stops Moving =============================
+|Searcher can feel that something is amiss, but he/she| can't figure out what.
+He/she| pauses for a moment and looks around. After a moment, he/she| realizes
+that his/her| shadow didn't stop walking when he/she| did. He/she| backs away
+slowly as his/her| shadow gets further and further away from him/her|. He/she|
+decides to start searching in a different direction.
+=================================== Full Moon ==================================
 |Searcher looks up at the Moon. For reasons that nobody understands, the Moon is
 always full in the Wicked Forest. The good news is that this makes it easier to
 search for |Plant, but the bad news is that he/she| has to worry about
 werewolves...
-================================================================================
+================================= Talking Tree =================================
 “Hello, human. It isn't often that I get to see one of your kind here.”
 
 |Searcher jumped and looked around for the source of the voice. He/she| heard it
