@@ -110,16 +110,16 @@ main = doMain $
               (flip $ alterMap (maybe 1 (+1) >>> Just))
               mempty
               paths
-          duplicate_paths = path_counts |> mapToList |> filter (\(_,count) → count > 1) |> sort
+          duplicate_paths = path_counts |> mapToList |> filter (snd >>> (> 1)) |> sort
       duplicate_paths @?= []
       let links =
             pages
             |> concatMap
                 (\Page{..} → case page_choices of
-                  Choices _ branches → [(page_path, target) | (_, target) ← branches]
+                  Choices _ branches → [ (page_path, target) | target ← map snd branches ]
                   _ → []
                 )
-          missing_links = filter (\(source, target) → target `notElem` paths) links
+          missing_links = filter (snd >>> (∉ paths)) links
       missing_links @?= []
       forM_ quests $ \quest@Quest{..} → do
         initial_path ← initialQuestPath quest
