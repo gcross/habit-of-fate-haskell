@@ -36,7 +36,7 @@ module HabitOfFate.Story
   ( Story
   , story
   , stories
-  , stories_with_labels
+  , stories_and_labels
 
   , InvalidOutcomes(..)
   , outcomes
@@ -135,15 +135,15 @@ parseSections =
   >>>
   traverse (\(label, region) → (label,) <$> mapM parseSubstitutions region)
 
-stories_with_labels ∷ QuasiQuoter
-stories_with_labels = QuasiQuoter
+stories_and_labels ∷ QuasiQuoter
+stories_and_labels = QuasiQuoter
   (\content → do
     let (labels, bodies) =
           content
             |> splitNamedRegionsOn '='
             |> unzip
     stories ← traverse parseSubstitutions bodies
-    Lift.lift ((stories, zip (map pack labels) stories) ∷ ([Story], [(Text, Story)]))
+    Lift.lift ((stories, map pack labels) ∷ ([Story], [Text]))
   )
   (error "Cannot use stories_with_labels as a pattern")
   (error "Cannot use stories_with_labels as a type")
