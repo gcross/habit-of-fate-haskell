@@ -105,7 +105,6 @@ data Quest = Quest
   { quest_name ∷ Text
   , quest_choice ∷ Markdown
   , quest_substitutions ∷ [QuestSubstitution]
-  , quest_initial_random_stories ∷ [Story]
   , quest_entry ∷ Entry Story
   } deriving (Eq,Ord,Read,Show)
 

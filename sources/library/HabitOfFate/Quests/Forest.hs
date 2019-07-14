@@ -589,38 +589,42 @@ quest = Quest
   , QS (NeuterList right_plants) "Plant" "Illsbane"
   , QS (NeuterList wrong_plants) "WrongPlant" "Tigerlamp"
   ]
-  wander_stories
-  (SplitEntry
-    "who"
-    intro
-    "Who shall we follow into the Wicked Forest?"
-    [ Branch
-        "The village healer."
-        (LineEntry NoShuffle "healer" $
-          [ FamesEntry fames_healer
-          , StatusEntry looking_for_herb_story
-          , NarrativeEntry
-              "intro"
-              intro_healer
-          , LineEntry Shuffle "events" shared_story_entries
-          , EventEntry
-              "conclusion"
-              conclusion_healer
-          ])
-    , Branch
-        "The parent of the sick child."
-        (LineEntry NoShuffle "parent" $
-          [ FamesEntry fames_parent
-          , StatusEntry looking_for_herb_story
-          , NarrativeEntry
-              "intro"
-              intro_parent
-          , LineEntry Shuffle "events" shared_story_entries
-          , EventEntry
-              "conclusion"
-              conclusion_parent
-          ])
-    ]
+  ( LineEntry
+      NoShuffle
+      "root"
+      [ RandomStoriesEntry wander_stories
+      , SplitEntry
+          "who"
+          intro
+          "Who shall we follow into the Wicked Forest?"
+          [ Branch
+              "The village healer."
+              (LineEntry NoShuffle "healer" $
+                [ FamesEntry fames_healer
+                , StatusEntry looking_for_herb_story
+                , NarrativeEntry
+                    "intro"
+                    intro_healer
+                , LineEntry Shuffle "events" shared_story_entries
+                , EventEntry
+                    "conclusion"
+                    conclusion_healer
+                ])
+          , Branch
+              "The parent of the sick child."
+              (LineEntry NoShuffle "parent" $
+                [ FamesEntry fames_parent
+                , StatusEntry looking_for_herb_story
+                , NarrativeEntry
+                    "intro"
+                    intro_parent
+                , LineEntry Shuffle "events" shared_story_entries
+                , EventEntry
+                    "conclusion"
+                    conclusion_parent
+                ])
+          ]
+      ]
   )
 
 shared_story_entries ∷ [Entry Story]

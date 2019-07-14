@@ -115,11 +115,15 @@ data FolderState content = FolderState
   { _name_ ∷ Text
   , _remaining_content_ ∷ Seq (Content content)
   , _maybe_fames_ ∷ Maybe [content]
+  , _has_random_stories_ ∷ Bool
   }
 makeLenses ''FolderState
 
-data FamesError = DuplicateFames Text | NoFames deriving (Eq,Show)
+data FamesError = DuplicateFames Text | EmptyFames Text | NoFames deriving (Eq,Show)
 instance Exception FamesError where
+
+data RandomStoriesError = EmptyRandomStories Text | NoRandomStoriesForEvent Text deriving (Eq,Show)
+instance Exception RandomStoriesError where
 
 generateQuestState ∷
   ∀ m. MonadThrow m ⇒
@@ -133,6 +137,7 @@ generateQuestState select selectName shuffle Quest{..} = do
         { _name_ = quest_name
         , _remaining_content_ = mempty
         , _maybe_fames_ = Nothing
+        , _has_random_stories_ = False
         }
   FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
   fames ← maybe (throwM NoFames) pure _maybe_fames_
@@ -140,7 +145,7 @@ generateQuestState select selectName shuffle Quest{..} = do
         quest_name
         fames
         (toList _remaining_content_)
-        quest_initial_random_stories
+        []
         "You are between quests."
   substitutions ←
     traverse
@@ -156,9 +161,11 @@ generateQuestState select selectName shuffle Quest{..} = do
   pure (_name_, quest_state)
  where
   folder folder_state entry = case entry of
-    EventEntry{..} → pure ( folder_state
-      & name_ ⊕~ ("/" ⊕ event_name)
-      & remaining_content_ %~ (`snoc` EventContent event_outcomes))
+    EventEntry{..}
+      | folder_state ^. has_random_stories_ → pure ( folder_state
+          & name_ ⊕~ ("/" ⊕ event_name)
+          & remaining_content_ %~ (`snoc` EventContent event_outcomes))
+      | otherwise → throwM $ NoRandomStoriesForEvent name
     NarrativeEntry{..} → pure ( folder_state
       & name_ ⊕~ ("/" ⊕ narrative_name)
       & remaining_content_ %~ (`snoc` NarrativeContent (narrative_content & narrative_story)))
@@ -174,12 +181,19 @@ generateQuestState select selectName shuffle Quest{..} = do
       foldlM folder (folder_state & name_ ⊕~ ("/" ⊕ line_name))
     SplitEntry{..} → select split_branches >>= \Branch{..} → folder folder_state branch_entry
     FamesEntry{..} → case folder_state ^. maybe_fames_ of
-      Nothing → pure (folder_state & maybe_fames_ .~ Just fames_content)
-      Just _ → throwM $ DuplicateFames (folder_state ^. name_)
-    RandomStoriesEntry{..} → pure ( folder_state
-      & remaining_content_ %~ (`snoc` RandomStoriesContent random_stories_content))
+      Nothing
+        | null fames_content → throwM $ EmptyFames quest_name
+        | otherwise → pure (folder_state & maybe_fames_ .~ Just fames_content)
+      Just _ → throwM $ DuplicateFames name
+    RandomStoriesEntry{..}
+      | null random_stories_content → throwM $ EmptyRandomStories name
+      | otherwise → pure ( folder_state
+          & remaining_content_ %~ (`snoc` RandomStoriesContent random_stories_content)
+          & has_random_stories_ .~ True)
     StatusEntry{..} → pure ( folder_state
       & remaining_content_ %~ (`snoc` StatusContent status_content))
+   where
+    name = folder_state ^. name_
 
 instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift

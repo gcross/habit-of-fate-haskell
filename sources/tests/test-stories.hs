@@ -49,7 +49,7 @@ import HabitOfFate.Testing.Assertions
 testSubstititutions ∷ Quest → TestTree
 testSubstititutions quest@Quest{..} =
   testCase (unpack quest_name) $
-    (extractAllPlaceholders quest_entry ⊕ extractAllPlaceholders quest_initial_random_stories) @?= keysSet (defaultQuestSubstitutions quest)
+  extractAllPlaceholders quest_entry @?= keysSet (defaultQuestSubstitutions quest)
 
 testFames ∷ Quest → TestTree
 testFames quest@Quest{..} =
