@@ -55,4 +55,4 @@ index_page = Page
 generateAllPages ∷ MonadThrow m ⇒ m [Page]
 generateAllPages =
   (:) <$> index_page
-      <*> ((traverse (substituteQuestWithDefaultSubstitutions >=> buildPagesFromQuest) quests) <&> concat)
+      <*> (traverse buildPagesFromQuest quests <&> concat)

@@ -122,11 +122,11 @@ data FamesError = DuplicateFames Text | NoFames deriving (Eq,Show)
 instance Exception FamesError where
 
 generateQuestState ∷
-  ∀ m content. MonadThrow m ⇒
+  ∀ m. MonadThrow m ⇒
   (∀ α. [α] → m α) →
   (∀ α. Vector α → m α) →
   (∀ α. [α] → m [α]) →
-  Quest Story →
+  Quest →
   m (Text, QuestState Markdown)
 generateQuestState select selectName shuffle Quest{..} = do
   let initial_folder_state = FolderState
@@ -184,10 +184,10 @@ generateQuestState select selectName shuffle Quest{..} = do
 instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift
 
-allQuestStates ∷ MonadThrow m ⇒ Quest Story → m [(Text, QuestState Markdown)]
+allQuestStates ∷ MonadThrow m ⇒ Quest → m [(Text, QuestState Markdown)]
 allQuestStates = generateQuestState (map pure >>> asum) (V.head >>> pure) pure >>> observeAllT
 
-randomQuestStateFor ∷ (MonadRandom m, MonadThrow m) ⇒ Quest Story → m (QuestState Markdown)
+randomQuestStateFor ∷ (MonadRandom m, MonadThrow m) ⇒ Quest → m (QuestState Markdown)
 randomQuestStateFor quest =
   generateQuestState
     uniform

@@ -32,7 +32,7 @@ import HabitOfFate.Quest
 import HabitOfFate.Story
 import qualified HabitOfFate.Quests.Forest as Forest
 
-quests ∷ [Quest Story]
+quests ∷ [Quest]
 quests =
   [ Forest.quest
   ]

@@ -48,7 +48,7 @@ data Page = Page
   , page_choices ∷ PageChoices Markdown
   } deriving (Eq,Ord,Read,Show)
 
-buildPagesFromQuest ∷ ∀ m. MonadThrow m ⇒ Quest Markdown → m [Page]
+buildPagesFromQuest ∷ ∀ m. MonadThrow m ⇒ Quest → m [Page]
 buildPagesFromQuest quest@Quest{..} = do
   initial_quest_path ← initialQuestPath quest
   let quest_choices =
@@ -219,4 +219,4 @@ buildPagesFromQuest quest@Quest{..} = do
         RandomStoriesEntry{..} → pure []
         StatusEntry{..} → pure []
 
-  process Nothing quest_name quest_entry
+  questEntryWithDefaultSubstitutions quest >>= process Nothing quest_name

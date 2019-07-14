@@ -580,7 +580,7 @@ right_plants, wrong_plants ∷ Vector Text
 right_plants = ["Illsbane"]
 wrong_plants = ["Tigerlamp"]
 
-quest ∷ Quest Story
+quest ∷ Quest
 quest = Quest
   "forest"
   "A prayer from someone searching for an herb in the Wicked Forest."

@@ -101,18 +101,15 @@ data QuestSubstitution = QS
   , quest_substitution_default ∷ Text
   } deriving (Eq,Ord,Read,Show)
 
-data Quest content = Quest
+data Quest = Quest
   { quest_name ∷ Text
   , quest_choice ∷ Markdown
   , quest_substitutions ∷ [QuestSubstitution]
-  , quest_initial_random_stories ∷ [content]
-  , quest_entry ∷ Entry content
-  } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
+  , quest_initial_random_stories ∷ [Story]
+  , quest_entry ∷ Entry Story
+  } deriving (Eq,Ord,Read,Show)
 
-substituteQuest ∷ MonadThrow m ⇒ Substitutions → Quest Story → m (Quest Markdown)
-substituteQuest subs = traverse (substitute subs)
-
-defaultQuestSubstitutions ∷ Quest content → Substitutions
+defaultQuestSubstitutions ∷ Quest → Substitutions
 defaultQuestSubstitutions Quest{..} =
   [ ( quest_substitution_name
     , Gendered quest_substitution_default $
@@ -124,9 +121,9 @@ defaultQuestSubstitutions Quest{..} =
   | QS{..} ← quest_substitutions
   ] |> mapFromList
 
-substituteQuestWithDefaultSubstitutions ∷ MonadThrow m ⇒ Quest Story → m (Quest Markdown)
-substituteQuestWithDefaultSubstitutions quest@Quest{..} =
-  substituteQuest (defaultQuestSubstitutions quest) quest
+questEntryWithDefaultSubstitutions ∷ MonadThrow m ⇒ Quest → m (Entry Markdown)
+questEntryWithDefaultSubstitutions quest@Quest{..} =
+  traverse (substitute (defaultQuestSubstitutions quest)) quest_entry
 
-initialQuestPath ∷ MonadThrow m ⇒ Quest content → m Text
+initialQuestPath ∷ MonadThrow m ⇒ Quest → m Text
 initialQuestPath Quest{..} = ((quest_name ⊕ "/") ⊕) <$> nextPathOf quest_entry
