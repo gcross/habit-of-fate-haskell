@@ -29,7 +29,8 @@ module HabitOfFate.Data.Repeated where
 import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData(..))
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), withArray, withText)
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), (.:), withArray, withObject, withText)
+import Data.Aeson.Types (Parser)
 import Data.List (iterate)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Calendar (Day(ModifiedJulianDay,toModifiedJulianDay), addDays)
@@ -38,6 +39,7 @@ import Data.Time.LocalTime (LocalTime(..), dayFractionToTimeOfDay, timeOfDayToDa
 import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
 
+import HabitOfFate.JSON
 import HabitOfFate.TH
 
 localTimeToRational ∷ LocalTime → Rational
@@ -226,7 +228,23 @@ previousWeeklies period days_to_repeat next_deadline =
     |> concatMap ((+) >>> flip map (V.toList days_to_repeat_as_offsets))
 
 data DaysToKeep = KeepDaysInPast !Int | KeepNumberOfDays !Int deriving (Eq, Ord, Read, Show)
-deriveJSON ''DaysToKeep
+
+instance ToJSON DaysToKeep where
+  toJSON (KeepDaysInPast n) = runJSONBuilder $ do
+    writeTextField "mode" "keep days in past"
+    writeField "number" n
+  toJSON (KeepNumberOfDays n) = runJSONBuilder $ do
+    writeTextField "mode" "keep number of days"
+    writeField "number" n
+
+instance FromJSON DaysToKeep where
+  parseJSON = withObject "expecting object-shaped value for days to keep" $ \o →
+    (o .: "mode" ∷ Parser Text)
+    >>=
+    \case
+      "keep days in past" → KeepDaysInPast <$> (o .: "number")
+      "keep number of days" → KeepNumberOfDays <$> (o .: "number")
+      x → fail [i|"#{x}" is an invalid value for the mode of the days to keep|]
 
 instance NFData DaysToKeep where rnf !_ = ()
 
