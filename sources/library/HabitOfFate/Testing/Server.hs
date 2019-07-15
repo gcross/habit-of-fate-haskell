@@ -23,7 +23,6 @@ module HabitOfFate.Testing.Server where
 
 import HabitOfFate.Prelude
 
-import Control.Concurrent.MVar (newEmptyMVar)
 import Control.Concurrent.STM.TVar (newTVarIO)
 import Network.HTTP.Client (CookieJar)
 import Network.Wai.Handler.Warp (withApplication)
@@ -37,7 +36,7 @@ import HabitOfFate.API
 withApplication' action =
   (makeAppRunningInTestMode
     <$> newTVarIO mempty
-    <*> newEmptyMVar
+    <*> newTVarIO False
   )
   >>=
   flip withApplication action
@@ -46,7 +45,7 @@ withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp action =
   (makeAppRunningInTestMode
     <$> newTVarIO mempty
-    <*> newEmptyMVar
+    <*> newTVarIO False
   )
   >>=
   flip withApplication action

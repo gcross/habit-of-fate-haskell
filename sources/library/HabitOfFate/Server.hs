@@ -120,7 +120,7 @@ cleanCookies Environment{..} = forever $ do
 ------------------------------ Server Application ------------------------------
 --------------------------------------------------------------------------------
 
-makeAppWithTestMode ∷ Bool → TVar (Map Username (TVar Account)) → MVar () → IO Application
+makeAppWithTestMode ∷ Bool → TVar (Map Username (TVar Account)) → TVar Bool → IO Application
 makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
   liftIO $ hSetBuffering stderr LineBuffering
 
@@ -185,8 +185,8 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
       [Scotty.get, Scotty.post]
       (\method → method "/" $ setStatusAndRedirect movedPermanently301 "/habits")
 
-makeApp ∷ TVar (Map Username (TVar Account)) → MVar () → IO Application
+makeApp ∷ TVar (Map Username (TVar Account)) → TVar Bool → IO Application
 makeApp = makeAppWithTestMode False
 
-makeAppRunningInTestMode ∷ TVar (Map Username (TVar Account)) → MVar () → IO Application
+makeAppRunningInTestMode ∷ TVar (Map Username (TVar Account)) → TVar Bool → IO Application
 makeAppRunningInTestMode = makeAppWithTestMode True

@@ -313,7 +313,7 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction p
             let redirect_or_content = Left href in TransactionResults{..}
           TransactionResult status content →
             let redirect_or_content = Right (Just content) in TransactionResults{..}
-  when account_changed $ liftIO $ void $ tryPutMVar accounts_changed_signal ()
+  when account_changed $ liftIO $ atomically $ writeTVar accounts_changed_signal True
   traverse_ logIO logs
   case redirect_or_content of
     Left href →

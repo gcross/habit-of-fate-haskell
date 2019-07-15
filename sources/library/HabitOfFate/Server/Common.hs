@@ -50,7 +50,7 @@ newtype Cookie = Cookie Text deriving (Eq,FromJSON,Ord,Parsable,Read,Show,ToJSON
 
 data Environment = Environment
   { accounts_tvar ∷ TVar (Map Username (TVar Account))
-  , accounts_changed_signal ∷ MVar ()
+  , accounts_changed_signal ∷ TVar Bool
   , cookies_tvar ∷ TVar (Map Cookie (UTCTime, Username))
   , expirations_tvar ∷ TVar (Set (UTCTime, Cookie))
   , test_mode ∷ Bool

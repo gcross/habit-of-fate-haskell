@@ -36,7 +36,8 @@ module Main where
 import HabitOfFate.Prelude hiding (elements, text)
 
 import Control.Concurrent.MVar (newEmptyMVar, tryTakeMVar)
-import Control.Concurrent.STM.TVar (newTVarIO)
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TVar (newTVarIO, readTVar)
 import Control.Monad.Catch
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as LazyBS
@@ -472,7 +473,7 @@ main = doMain
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
-                accounts_changed_signal ← newEmptyMVar
+                accounts_changed_signal ← newTVarIO False
                 (makeAppRunningInTestMode
                   <$> newTVarIO mempty
                   <*> pure accounts_changed_signal
@@ -482,7 +483,7 @@ main = doMain
                       session_info ← fromJust <$> createAccount "bitslayer" "password" Testing "localhost" port
                       flip runSessionT session_info $ createHabit test_habit_id test_habit
                   )
-                tryTakeMVar accounts_changed_signal >>= (@?= Just ())
+                atomically (readTVar accounts_changed_signal) >>= (@?= True)
             ]
         ----------------------------------------------------------------------------
         , testGroup "markHabits"

@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -26,10 +27,10 @@ module Main where
 import HabitOfFate.Prelude
 
 import Control.Concurrent (forkFinally, forkIO, threadDelay)
-import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, tryPutMVar)
-import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TVar (newTVar, readTVar)
-import Control.Exception (throwIO)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent.STM (atomically, retry)
+import Control.Concurrent.STM.TVar (newTVar, newTVarIO, readTVar, writeTVar)
+import Control.Exception (finally, throwIO)
 import qualified Data.ByteString as BS
 import Data.Text.IO
 import Data.Yaml hiding (Parser, (.=))
@@ -48,6 +49,8 @@ data Configuration = Configuration
   , certificate_path ∷ FilePath
   , key_path ∷ FilePath
   }
+
+data WritingInstruction = DoWrite | StopWriting
 
 exitFailureWithMessage ∷ Text → IO α
 exitFailureWithMessage message = do
@@ -111,33 +114,61 @@ main = do
         >>
         logIO "Wrote data."
 
-  accounts_changed_signal ← newEmptyMVar
+  accounts_changed_signal ← newTVarIO False
+  stop_writing_signal ← newTVarIO False
+  stopped_writing_signal ← newEmptyMVar
 
-  mapM_ (forever >>> forkIO >>> void)
-    [ takeMVar accounts_changed_signal >> writeData
-    , threadDelay (60 * 1000 * 1000) >> tryPutMVar accounts_changed_signal () >> pure ()
-    ]
+  let changedThread ∷ IO ()
+      changedThread =
+        (atomically $ do
+          should_stop ← readTVar stop_writing_signal
+          should_write ← readTVar accounts_changed_signal
+          writeTVar accounts_changed_signal False
+          case (should_stop, should_write) of
+            (True, _) → pure StopWriting
+            (_, True) → pure DoWrite
+            _ → retry
+        )
+        >>=
+        \case
+          DoWrite → writeData >> changedThread
+          StopWriting → logIO "Stopped writer thread." >> putMVar stopped_writing_signal ()
+
+  void $ forkIO $ changedThread
+  void $ forkIO $ forever $
+    threadDelay (60 * 1000 * 1000) >> (atomically $ writeTVar accounts_changed_signal True)
 
   app ← makeApp accounts_tvar accounts_changed_signal
   done_mvar ← newEmptyMVar
 
-  void $
-    forkFinally
-      (Scotty.scotty 80 $
-        Scotty.matchAny (Scotty.function $ const (Just [])) $ do
-          Just host ← Scotty.header "Host"
-          Scotty.redirect $ "https://" ⊕ host
-      )
-      (either throwIO (const $ putMVar done_mvar ()))
+  finally
+    (do
+      void $
+        forkFinally
+          (Scotty.scotty 80 $
+            Scotty.matchAny (Scotty.function $ const (Just [])) $ do
+              Just host ← Scotty.header "Host"
+              Scotty.redirect $ "https://" ⊕ host
+          )
+          (either throwIO (const $ putMVar done_mvar ()))
 
-  void $
-    forkFinally
-      (runTLS
-        ((tlsSettings certificate_path key_path) {onInsecure = AllowInsecure} )
-        (setPort 443 defaultSettings)
-        app
-      )
-      (either throwIO (const $ putMVar done_mvar ()))
+      void $
+        forkFinally
+          (runTLS
+            ((tlsSettings certificate_path key_path) {onInsecure = AllowInsecure} )
+            (setPort 443 defaultSettings)
+            app
+          )
+          (either throwIO (const $ putMVar done_mvar ()))
 
-  takeMVar done_mvar
-  takeMVar done_mvar
+      takeMVar done_mvar
+      takeMVar done_mvar
+    )
+    (do
+      logIO "Getting the writer to stop cleanly..."
+      atomically $ writeTVar stop_writing_signal True
+      takeMVar stopped_writing_signal
+      logIO "Performing one final write with the most recent data..."
+      writeData
+      logIO "All done!"
+    )
