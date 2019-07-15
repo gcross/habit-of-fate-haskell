@@ -25,8 +25,8 @@ module Main where
 
 import HabitOfFate.Prelude
 
-import Control.Concurrent (forkFinally, forkIO)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent (forkFinally, forkIO, threadDelay)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar, tryPutMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (TVar, newTVar, readTVar)
 import Control.Exception (throwIO)
@@ -59,6 +59,16 @@ writeDataOnChange ∷ String → TVar (Map Username (TVar Account)) → MVar () 
 writeDataOnChange data_path accounts_tvar changed_signal = forever $
   takeMVar changed_signal
   >>
+  writeData data_path accounts_tvar
+
+writeDataPeriodically ∷ MVar () → IO α
+writeDataPeriodically changed_signal = forever $
+  threadDelay (60 * 1000 * 1000)
+  >>
+  tryPutMVar changed_signal ()
+
+writeData ∷ String → TVar (Map Username (TVar Account)) → IO ()
+writeData data_path accounts_tvar =
   (atomically $ readTVar accounts_tvar)
   >>=
   (traverse readTVar >>> atomically)
@@ -114,7 +124,8 @@ main = do
     >>=
     (\accounts → atomically $ traverse newTVar accounts >>= newTVar)
   accounts_changed_signal ← newEmptyMVar
-  forkIO $ writeDataOnChange data_path accounts_tvar accounts_changed_signal
+  void $ forkIO $ writeDataOnChange data_path accounts_tvar accounts_changed_signal
+  void $ forkIO $ writeDataPeriodically accounts_changed_signal
   app ← makeApp accounts_tvar accounts_changed_signal
   done_mvar ← newEmptyMVar
 
