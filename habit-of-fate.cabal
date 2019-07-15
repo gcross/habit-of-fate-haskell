@@ -175,8 +175,10 @@ library
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing
                      , HabitOfFate.Testing.Assertions
+                     , HabitOfFate.Testing.Data
                      , HabitOfFate.Testing.DayHour
                      , HabitOfFate.Testing.Instances
+                     , HabitOfFate.Testing.Server
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   other-modules:       Paths_habit_of_fate
@@ -312,6 +314,18 @@ test-suite test-stories
                      , base
                      , call-stack
                      , text
+  default-language:    Haskell2010
+
+test-suite test-stress-run-game
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      sources/tests
+  main-is:             test-stress-run-game.hs
+  build-depends:       habit-of-fate
+                     , base
+                     , tasty
+                     , text
+                     , uuid
+                     , warp
   default-language:    Haskell2010
 
 test-suite test-substitution

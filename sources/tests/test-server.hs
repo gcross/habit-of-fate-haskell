@@ -45,7 +45,6 @@ import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
 import qualified Data.Text.Lazy as Lazy
-import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Network.HTTP.Client hiding (httpNoBody)
 import Network.HTTP.Conduit (Response(..), responseStatus)
@@ -65,91 +64,18 @@ import HabitOfFate.Data.Habit
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
 import HabitOfFate.Data.Repeated
-import HabitOfFate.Data.Scale
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server
+
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
+import HabitOfFate.Testing.Data
 import HabitOfFate.Testing.DayHour
 import HabitOfFate.Testing.Instances ()
+import HabitOfFate.Testing.Server
 
 type LazyByteString = LazyBS.ByteString
 type Tags = [Tag Lazy.Text]
-
-withApplication' action =
-  (makeAppRunningInTestMode
-    <$> newTVarIO mempty
-    <*> newEmptyMVar
-  )
-  >>=
-  flip withApplication action
-
-withTestApp ∷ (Int → IO ()) → IO ()
-withTestApp action =
-  (makeAppRunningInTestMode
-    <$> newTVarIO mempty
-    <*> newEmptyMVar
-  )
-  >>=
-  flip withApplication action
-
-serverTestCase ∷ String → (Int → IO ()) → TestTree
-serverTestCase test_name = withTestApp >>> testCase test_name
-
-apiTestCase ∷ String → (SessionIO ()) → TestTree
-apiTestCase test_name action =
-  (
-    createAccount "bitslayer" "password" Testing "localhost"
-    >=>
-    (fromMaybe (error "Unable to create account.") >>> runSessionT action)
-  )
-  |> serverTestCase test_name
-
-test_account_id ∷ Text
-test_account_id = "test"
-
-test_account_id_1 ∷ Text
-test_account_id_1 = "test-1"
-
-test_account_id_2 ∷ Text
-test_account_id_2 = "test-2"
-
-test_group_id ∷ UUID
-test_group_id = read "f5ccdfde-1776-483c-9140-385e9e75e31d"
-
-test_group, test_group_2 ∷ Group
-test_group = "group"
-test_group_2 = "grouper"
-
-test_habit = Habit "name" (Tagged (Success Low) (Failure Medium)) Indefinite [] Nothing
-test_habit_1 = Habit "name1" (Tagged (Success VeryLow) (Failure Medium)) Indefinite [] Nothing
-test_habit_2 = Habit "test" (Tagged (Success Medium) (Failure VeryHigh)) Indefinite [] Nothing
-test_habit_once = Habit "once" (Tagged (Success Medium) (Failure Medium)) (Once $ Just $ day 0) [] Nothing
-test_habit_daily = def & name_ .~ "daily" & frequency_ .~ (Repeated (KeepNumberOfDays 2) (dayHour 2 3) (Daily 2))
-test_habit_weekly = def & name_ .~ "daily" & frequency_ .~ (Repeated (KeepDaysInPast 4) (dayHour 3 2) (Weekly 1 (def & tuesday_ .~ True & thursday_ .~ True)))
-test_habit_with_last_marked = def & name_ .~ "test" & maybe_last_marked_ .~ (Just $ dayHour 1 2)
-test_habit_group = Habit "group" (Tagged (Success High) (Failure Low)) Indefinite [test_group_id] Nothing
-
-test_habit_id = read "95bef3cf-9031-4f64-8458-884aa6781563"
-test_habit_id_2 = read "9e801a68-4288-4a23-8779-aa68f94991f9"
-test_habit_id_once = read "7dbafaf9-560a-4ac4-b6bb-b64c647e387d"
-test_habit_id_with_last_marked = read "7ada06ff-ccf5-4c68-83df-e54999cc42b3"
-test_habit_id_group = read "74d6b013-df62-4989-8ce8-b0e0af3e29d3"
-
-createGroup group_id group = putGroup group_id group >>= (@?= ResourceCreated)
-replaceGroup group_id group = putGroup group_id group >>= (@?= ResourceReplaced)
-
-createHabit habit_id habit = putHabit habit_id habit >>= (@?= ResourceCreated)
-replaceHabit habit_id habit = putHabit habit_id habit >>= (@?= ResourceReplaced)
-
-webTestCase ∷ String → ReaderT Int (StateT CookieJar IO) () → TestTree
-webTestCase test_name runTest =
-  serverTestCase test_name $ \port → do
-    runTest
-      |> flip runReaderT port
-      |> void
-      |> flip runStateT mempty
-      |> void
 
 requestDocument ∷
   ByteString →
@@ -576,27 +502,6 @@ main = doMain
                       (Success [test_habit ^. difficulty_])
                       (Failure [test_habit_2 ^. importance_])
                   )
-            ]
-        ----------------------------------------------------------------------------
-        , testGroup "runGame"
-        ----------------------------------------------------------------------------
-            [ apiTestCase "Running the game removes the first success mark" $ do
-            ------------------------------------------------------------------------
-                createHabit test_habit_id test_habit
-                createHabit test_habit_id_2 test_habit_2
-                void $ markHabits
-                  [ (test_habit_id, def & success_ .~ 1000)
-                  , (test_habit_id_2, def & failure_ .~ 1000)
-                  , (test_habit_id, def)
-                  ]
-                getMarks >>=
-                  (@?=
-                    Tagged
-                      (Success $ replicate 1000 (test_habit ^. difficulty_))
-                      (Failure $ replicate 1000 (test_habit_2 ^. importance_))
-                  )
-                replicateM_ 10000 runGame
-                getMarks >>= (@?= Tagged (Success []) (Failure []))
             ]
         ----------------------------------------------------------------------------
         , testGroup "configuration"
