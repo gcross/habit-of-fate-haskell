@@ -26,9 +26,9 @@ module Main where
 import HabitOfFate.Prelude
 
 import Control.Concurrent (forkFinally, forkIO, threadDelay)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar, tryPutMVar)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, takeMVar, tryPutMVar)
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TVar (TVar, newTVar, readTVar)
+import Control.Concurrent.STM.TVar (newTVar, readTVar)
 import Control.Exception (throwIO)
 import qualified Data.ByteString as BS
 import Data.Text.IO
@@ -40,7 +40,6 @@ import System.Directory
 import System.Exit
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Data.Account
 import HabitOfFate.Logging
 import HabitOfFate.Server
 
@@ -54,28 +53,6 @@ exitFailureWithMessage ∷ Text → IO α
 exitFailureWithMessage message = do
   putStrLn message
   exitFailure
-
-writeDataOnChange ∷ String → TVar (Map Username (TVar Account)) → MVar () → IO α
-writeDataOnChange data_path accounts_tvar changed_signal = forever $
-  takeMVar changed_signal
-  >>
-  writeData data_path accounts_tvar
-
-writeDataPeriodically ∷ MVar () → IO α
-writeDataPeriodically changed_signal = forever $
-  threadDelay (60 * 1000 * 1000)
-  >>
-  tryPutMVar changed_signal ()
-
-writeData ∷ String → TVar (Map Username (TVar Account)) → IO ()
-writeData data_path accounts_tvar =
-  (atomically $ readTVar accounts_tvar)
-  >>=
-  (traverse readTVar >>> atomically)
-  >>=
-  encodeFile data_path
-  >>
-  logIO "Wrote data."
 
 main ∷ IO ()
 main = do
@@ -123,9 +100,24 @@ main = do
       )
     >>=
     (\accounts → atomically $ traverse newTVar accounts >>= newTVar)
+
+  let writeData ∷ IO ()
+      writeData =
+        (atomically $ readTVar accounts_tvar)
+        >>=
+        (traverse readTVar >>> atomically)
+        >>=
+        encodeFile data_path
+        >>
+        logIO "Wrote data."
+
   accounts_changed_signal ← newEmptyMVar
-  void $ forkIO $ writeDataOnChange data_path accounts_tvar accounts_changed_signal
-  void $ forkIO $ writeDataPeriodically accounts_changed_signal
+
+  mapM_ (forever >>> forkIO >>> void)
+    [ takeMVar accounts_changed_signal >> writeData
+    , threadDelay (60 * 1000 * 1000) >> tryPutMVar accounts_changed_signal () >> pure ()
+    ]
+
   app ← makeApp accounts_tvar accounts_changed_signal
   done_mvar ← newEmptyMVar
 
