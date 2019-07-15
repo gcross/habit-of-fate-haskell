@@ -33,15 +33,13 @@ import HabitOfFate.Prelude
 import Control.DeepSeq (NFData(..))
 import Control.Exception
 import Control.Monad.Catch
-import Data.Aeson (FromJSON(..), ToJSON(..), Value(Array), (.:), object, withArray, withObject)
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(Array, Object), (.:), withArray, withObject)
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
 import Data.Sequence (deleteAt, elemIndexL, insertAt)
 import Data.UUID (UUID)
 import qualified Data.Vector as V
 import qualified GHC.Exts as Exts
-
-import HabitOfFate.JSON
 
 data ItemsSequence α = ItemsSequence
   { _items_map_ ∷ !(HashMap UUID α)
@@ -51,14 +49,17 @@ makeLenses ''ItemsSequence
 
 instance ToJSON α ⇒ ToJSON (ItemsSequence α) where
   toJSON ItemsSequence{..} = Array $ V.fromList $
-    [ object
-        [ "id" .== toJSON id
-        , "value" .==
-            maybe
-              (error [i|internal error when encoding item sequence: missing value for index #{id}|])
-              toJSON
-              (lookup id _items_map_)
-        ]
+    [ _items_map_
+        |> lookup id
+        |> maybe
+             (error [i|internal error when encoding item sequence: missing value for index #{id}|])
+             toJSON
+        |> (\case
+             Object fields → fields
+             v → singletonMap "value" v
+           )
+        |> insertMap "id" (toJSON id)
+        |> Object
     | id ← toList _items_seq_
     ]
 
@@ -70,7 +71,12 @@ instance FromJSON α ⇒ FromJSON (ItemsSequence α) where
     withArray "entity must have the shape of an array" $ \v →
       (forM (toList v) $
         withObject "array element must have the shape of an object" $ \o →
-          (,) <$> (o .: "id" >>= parseJSON) <*> (o .: "value" >>= parseJSON)
+          (,) <$> (o .: "id" >>= parseJSON)
+              <*> (let rest = deleteMap "id" o
+                   in if keys rest == ["value"]
+                     then rest .: "value"
+                     else parseJSON (Object rest)
+                  )
       ) <&> itemsFromList
 
 instance NFData α ⇒ NFData (ItemsSequence α) where
