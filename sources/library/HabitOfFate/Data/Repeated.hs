@@ -18,6 +18,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -28,6 +29,7 @@ module HabitOfFate.Data.Repeated where
 import HabitOfFate.Prelude
 
 import Control.DeepSeq (NFData(..))
+import Data.Aeson (FromJSON(..), ToJSON(..), Value(..), withArray, withText)
 import Data.List (iterate)
 import qualified Data.Text.Lazy as Lazy
 import Data.Time.Calendar (Day(ModifiedJulianDay,toModifiedJulianDay), addDays)
@@ -81,8 +83,30 @@ data DaysToRepeat = DaysToRepeat
   , _saturday_ ∷ !Bool
   , _sunday_ ∷ !Bool
   } deriving (Eq, Ord, Read, Show)
-deriveJSON ''DaysToRepeat
 makeLenses ''DaysToRepeat
+
+instance ToJSON DaysToRepeat where
+  toJSON x = Array $ V.fromList
+    [ String (Lazy.toStrict weekday_name)
+    | Weekday{..} ← weekdays
+    , x ^# weekday_lens_
+    ]
+
+instance FromJSON DaysToRepeat where
+  parseJSON = withArray "days to repeat must be an array" $
+    traverse
+      (withText "day name must be text" $
+        Lazy.fromStrict
+        >>>
+        (\day_name →
+          maybe
+            (fail [i|#{day_name} is not a recognized weekday name|])
+            ((& weekday_lens_) >>> pure)
+            (find ((& weekday_name) >>> (== day_name)) weekdays)
+        )
+      )
+    >>>
+    (<&> foldl' (\x lens_ → x & lens_ #~ True) def)
 
 instance Semigroup DaysToRepeat where
   (DaysToRepeat xm xt xw xth xf xs xsu) <> (DaysToRepeat ym yt yw yth yf ys ysu) =
