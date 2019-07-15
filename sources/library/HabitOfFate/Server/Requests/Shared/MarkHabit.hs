@@ -25,7 +25,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Shared.MarkHabit (handler, markHabit) where
+module HabitOfFate.Server.Requests.Shared.MarkHabit (handler, markHabits) where
 
 import HabitOfFate.Prelude
 
@@ -37,6 +37,7 @@ import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
+import HabitOfFate.Data.Mark
 import HabitOfFate.Data.Repeated
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
@@ -62,16 +63,20 @@ resetDeadline advance_deadline current_time habit =
            )
         |> Just
 
-markHabit ∷ Bool → UUID → Tagged Int → Transaction ()
-markHabit advance_deadline habit_id result_counts = do
-  habit ← lookupHabit habit_id
+markHabits ∷ Bool → [(UUID, [SuccessOrFailureResult])] → Transaction ()
+markHabits advance_deadline habits_and_results = do
   current_time ← getCurrentTimeAsLocalTime
-  habits_ . at habit_id .= resetDeadline advance_deadline current_time habit
-  forEachTaggedLens_ $ \lens_ →
-    marks_ . lens_ ⊕= replicate (result_counts ^. lens_) (habit ^. scales_ . lens_)
-
-markHabits ∷ Bool → [(UUID, Tagged Int)] → Transaction ()
-markHabits advance_deadline = mapM_ $ uncurry (markHabit advance_deadline)
+  new_marks ← forM habits_and_results $ \(habit_id, results) → do
+    habit ← lookupHabit habit_id
+    unless (null results) $
+      habits_ . at habit_id .= resetDeadline advance_deadline current_time habit
+    let results_to_consider = case habit ^. frequency_ of
+          Once _ → take 1 results
+          _ → results
+    pure
+      [ Mark result $ habit ^. scales_ . taggedLensForResult result
+      | result ← results_to_consider ]
+  marks_ %= (⊕ fromList (concat new_marks))
 
 handleApi ∷ Environment → ScottyM ()
 handleApi environment =
@@ -90,7 +95,7 @@ handleWeb environment = do
   mark result = webTransaction environment $ do
     habit_id ← getParam "habit_id"
     log [i|Marking #{habit_id} as #{result}.|]
-    markHabit True habit_id (def & taggedLensForResult result .~ 1)
+    markHabits True [(habit_id, [result])]
     marks ← use marks_
     pure $ redirectsToResult temporaryRedirect307 "/run"
 

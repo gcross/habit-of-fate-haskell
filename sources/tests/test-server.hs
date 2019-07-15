@@ -63,7 +63,9 @@ import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.InputHabit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Mark
 import HabitOfFate.Data.Repeated
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Server
 
@@ -458,17 +460,15 @@ main = doMain
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
-                markHabits
-                  [ (test_habit_id, def & failure_ .~ 1)
-                  , (test_habit_id_2, def & success_ .~ 1)
-                  , (test_habit_id_2, def)
+                void $ markHabits
+                  [ (test_habit_id, [FailureResult])
+                  , (test_habit_id_2, [SuccessResult])
+                  , (test_habit_id_2, [])
                   ]
-                getMarks >>=
-                  (@?=
-                    Tagged
-                      (Success [test_habit_2 ^. difficulty_])
-                      (Failure [test_habit ^. importance_])
-                  )
+                getMarks >>= (@?=
+                  [ Mark FailureResult $ test_habit ^. importance_
+                  , Mark SuccessResult $ test_habit_2 ^. difficulty_
+                  ])
             ------------------------------------------------------------------------
             , testCase "Putting a habit causes the accounts to be written" $ do
             ------------------------------------------------------------------------
@@ -491,17 +491,15 @@ main = doMain
             ------------------------------------------------------------------------
                 createHabit test_habit_id test_habit
                 createHabit test_habit_id_2 test_habit_2
-                markHabits
-                  [ (test_habit_id, def & success_ .~ 1)
-                  , (test_habit_id_2, def & failure_ .~ 1)
-                  , (test_habit_id, def)
+                void $ markHabits
+                  [ (test_habit_id, [SuccessResult])
+                  , (test_habit_id_2, [FailureResult])
+                  , (test_habit_id, [])
                   ]
-                getMarks >>=
-                  (@?=
-                    Tagged
-                      (Success [test_habit ^. difficulty_])
-                      (Failure [test_habit_2 ^. importance_])
-                  )
+                getMarks >>= (@?=
+                  [ Mark SuccessResult $ test_habit ^. difficulty_
+                  , Mark FailureResult $ test_habit_2 ^. importance_
+                  ])
             ]
         ----------------------------------------------------------------------------
         , testGroup "configuration"
@@ -541,21 +539,45 @@ main = doMain
                 createHabit test_habit_id (test_habit & frequency_ .~ (Once (Just (dayHour 0 0))))
                 createHabit test_habit_id_2 test_habit_2
                 getDeadlines >>= (@?= [(test_habit_id, [dayHour 0 0])])
-                markHabits [(test_habit_id, def), (test_habit_id_2, def & success_ .~ 1)]
-                  >>= (@?= (def & success_ .~ [test_habit_2 ^. scales_ . success_]))
+                markHabits [(test_habit_id, []), (test_habit_id_2, [SuccessResult])]
+                  >>= (@?= [ Mark SuccessResult $ test_habit_2 ^. difficulty_ ])
+                getMarks
+                  >>= (@?= [ Mark SuccessResult $ test_habit_2 ^. difficulty_ ])
+                getDeadlines >>= (@?= [(test_habit_id, [dayHour 0 0])])
+                markHabits [(test_habit_id, [SuccessResult, FailureResult])]
+                  >>= (@?=
+                    [ Mark SuccessResult $ test_habit_2 ^. difficulty_
+                    , Mark SuccessResult $ test_habit   ^. difficulty_
+                    ])
                 getDeadlines >>= (@?= [])
                 getHabit test_habit_id >>= (@?= Nothing)
             ------------------------------------------------------------------------
-            , apiTestCase "Two habits with both having Once deadlines" $ do
+            , apiTestCase "Three habits all having Once deadlines" $ do
             ------------------------------------------------------------------------
-                createHabit test_habit_id (test_habit & frequency_ .~ (Once (Just (dayHour 0 0))))
-                let test_habit_2_once = test_habit_2 & frequency_ .~ (Once (Just (dayHour 1 1)))
+                let test_habit_1_once = test_habit_1 & frequency_ .~ (Once (Just (dayHour 0 0)))
+                    test_habit_2_once = test_habit_2 & frequency_ .~ (Once (Just (dayHour 1 1)))
+                    test_habit_3_once = test_habit_3 & frequency_ .~ (Once (Just (dayHour 2 2)))
+                createHabit test_habit_id_1 test_habit_1_once
                 createHabit test_habit_id_2 test_habit_2_once
-                markHabits [(test_habit_id, def & failure_ .~ 1)]
-                  >>= (@?= (def & failure_ .~ [test_habit ^. scales_ . failure_]))
-                getDeadlines >>= (@?= [(test_habit_id_2, [dayHour 1 1])])
-                getHabit test_habit_id >>= (@?= Nothing)
-                getHabit test_habit_id_2 >>= (@?= Just test_habit_2_once)
+                createHabit test_habit_id_3 test_habit_3_once
+                getDeadlines >>= (@?=
+                  [ (test_habit_id_1, [dayHour 0 0])
+                  , (test_habit_id_2, [dayHour 1 1])
+                  , (test_habit_id_3, [dayHour 2 2])
+                  ])
+                markHabits
+                  [ (test_habit_id_1, [])
+                  , (test_habit_id_2, [FailureResult])
+                  , (test_habit_id_3, [SuccessResult, FailureResult])
+                  ]
+                  >>= (@?=
+                  [ Mark FailureResult $ test_habit_2 ^. importance_
+                  , Mark SuccessResult $ test_habit_3 ^. difficulty_
+                  ])
+                getDeadlines >>= (@?= [(test_habit_id_1, [dayHour 0 0])])
+                getHabit test_habit_id_1 >>= (@?= Just test_habit_1_once)
+                getHabit test_habit_id_2 >>= (@?= Nothing)
+                getHabit test_habit_id_3 >>= (@?= Nothing)
             ------------------------------------------------------------------------
             , apiTestCase "One habit repeated daily" $ do
             ------------------------------------------------------------------------
@@ -566,8 +588,8 @@ main = doMain
                   )
                 LocalTime (ModifiedJulianDay d) _ ← liftIO getCurrentTime <&> utcToLocalTime utc
                 getDeadlines >>= (@?= [(test_habit_id, [dayHour (d-i) 0 | i ← [0,1,2]])])
-                markHabits [(test_habit_id, def & success_ .~ 1)]
-                  >>= (@?= (def & success_ .~ [test_habit ^. scales_ . success_]))
+                markHabits [(test_habit_id, [SuccessResult])]
+                  >>= (@?= [ Mark SuccessResult $ test_habit ^. difficulty_ ])
                 getDeadlines >>= (@?= [])
                 new_test_habit ← getHabit test_habit_id >>= maybe (assertFailure "Habit not found.") pure
                 new_test_habit @?= (

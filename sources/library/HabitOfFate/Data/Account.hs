@@ -52,10 +52,9 @@ import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Mark
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.QuestState
-import HabitOfFate.Data.Scale
-import HabitOfFate.Data.Tagged
 import HabitOfFate.JSON
 import HabitOfFate.Quests
 
@@ -67,7 +66,7 @@ instance FromJSON StdGen where
 
 type Groups = ItemsSequence Group
 
-type Marks = Tagged (Seq Scale)
+type Marks = Seq Mark
 
 data Account = Account
   {   _password_ ∷ Text
@@ -114,7 +113,7 @@ password_ f a = (\nx → a {_password_ = nx}) <$> f (_password_ a)
 habits_ ∷ Lens' Account (ItemsSequence Habit)
 habits_ f a = (\nx → a {_habits_ = nx}) <$> f (_habits_ a)
 
-marks_ ∷ Lens' Account (Tagged (Seq Scale))
+marks_ ∷ Lens' Account Marks
 marks_ f a = (\nx → a {_marks_ = nx}) <$> f (_marks_ a)
 
 quest_state_ ∷ Lens' Account (QuestState Markdown)
@@ -141,7 +140,7 @@ newAccount password =
           (decodeUtf8 >>> evaluate)
         )
     <*> pure def
-    <*> pure (Tagged (Success def) (Failure def))
+    <*> pure def
     <*> randomQuestState
     <*> newStdGen
     <*> pure def

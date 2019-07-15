@@ -116,6 +116,7 @@ library
                      , HabitOfFate.Data.Habit
                      , HabitOfFate.Data.InputHabit
                      , HabitOfFate.Data.ItemsSequence
+                     , HabitOfFate.Data.Mark
                      , HabitOfFate.Data.Markdown
                      , HabitOfFate.Data.Outcomes
                      , HabitOfFate.Data.QuestState
@@ -322,6 +323,7 @@ test-suite test-stress-run-game
   main-is:             test-stress-run-game.hs
   build-depends:       habit-of-fate
                      , base
+                     , random
                      , tasty
                      , text
                      , uuid

@@ -218,7 +218,7 @@ instance Exception OutOfCharacters where
   displayException _ = "Out of names!"
 
 marksArePresent ∷ Transaction Bool
-marksArePresent = use marks_ <&> any (null >>> not)
+marksArePresent = use marks_ <&> (not <<< onull)
 
 data TransactionResult = RedirectsTo Status Lazy.Text | TransactionResult Status Content
 

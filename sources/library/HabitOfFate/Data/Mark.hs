@@ -15,34 +15,36 @@
 -}
 
 {-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module Main where
+module HabitOfFate.Data.Mark where
 
 import HabitOfFate.Prelude
 
-import Test.Tasty (defaultMain)
-import System.Random (randomIO)
+import Control.DeepSeq (NFData(..))
+import Data.Aeson (FromJSON(..), ToJSON(..), (.:), withObject)
 
-import HabitOfFate.API
-import HabitOfFate.Data.Habit
-import HabitOfFate.Data.Mark
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
-import HabitOfFate.Data.Tagged
+import HabitOfFate.JSON
 
-import HabitOfFate.Testing.Assertions
-import HabitOfFate.Testing.Data
-import HabitOfFate.Testing.Server
+data Mark = Mark
+  { mark_result ∷ !SuccessOrFailureResult
+  , mark_scale ∷ !Scale
+  } deriving (Read,Show,Eq,Ord)
 
-main ∷ IO ()
-main = defaultMain $ apiTestCase "Run the game a large number of times" $ do
-  createHabit test_habit_id $ Habit "name" (Tagged (Success VeryHigh) (Failure VeryHigh)) Indefinite [] Nothing
-  marks ← lift $ replicateM 20000 randomIO <&> map (bool FailureResult SuccessResult)
-  void $ markHabits [(test_habit_id, marks)]
-  getMarks >>= (@?=[ Mark mark VeryHigh | mark ← marks ])
-  replicateM_ 100000 runGame
-  getMarks >>= (@?= [])
+instance ToJSON Mark where
+  toJSON Mark{..} = runJSONBuilder $ do
+    writeField "result" mark_result
+    writeField "scale" mark_scale
+
+instance FromJSON Mark where
+  parseJSON = withObject "mark must have object shape" $ \o →
+    Mark <$> (o .: "result") <*> (o .: "scale")
+
+instance NFData Mark where
+  rnf !_ = ()

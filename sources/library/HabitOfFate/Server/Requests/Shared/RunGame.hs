@@ -28,12 +28,12 @@ import Control.Monad.Random (uniform, weighted)
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Deed
+import HabitOfFate.Data.Mark
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Data.QuestState
 import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
-import HabitOfFate.Data.Tagged
 import HabitOfFate.Quests
 import HabitOfFate.Server.Transaction
 import HabitOfFate.Story
@@ -106,13 +106,10 @@ runGame = do
                   (story, ) <$> walkSecond
 
           marks ← lift $ use marks_
-          case (uncons (marks ^. success_), uncons (marks ^. failure_)) of
-            (Just (scale, rest), _) → do
-              lift $ marks_ . success_ .= rest
-              randomOutcome SuccessResult scale
-            (_, Just (scale, rest)) → do
-              lift $ marks_ . failure_ .= rest
-              randomOutcome FailureResult scale
+          case uncons marks of
+            Just (Mark{..}, rest) → do
+              lift $ marks_ .= rest
+              randomOutcome mark_result mark_scale
             _ → randomStory
 
       walkSecond ∷ QuestStateT NextIs

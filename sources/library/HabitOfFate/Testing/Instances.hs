@@ -40,6 +40,7 @@ import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Deed
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
+import HabitOfFate.Data.Mark
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Data.QuestState
@@ -174,6 +175,9 @@ instance Arbitrary Markdown where
 
 instance Arbitrary Deed where
   arbitrary = Deed <$> arbitrary <*> arbitrary <*> arbitrary
+
+instance Arbitrary Mark where
+  arbitrary = Mark <$> arbitrary <*> arbitrary
 
 instance Arbitrary Account where
   arbitrary =

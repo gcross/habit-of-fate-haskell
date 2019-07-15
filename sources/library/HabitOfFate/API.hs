@@ -52,7 +52,8 @@ import HabitOfFate.Data.Configuration
 import HabitOfFate.Data.Group
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.ItemsSequence
-import HabitOfFate.Data.Scale
+import HabitOfFate.Data.Mark
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 
 data SecureMode = Testing | Secure
@@ -282,7 +283,7 @@ getHabits = getResources "habits"
 getGroups ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (ItemsSequence Group)
 getGroups = getResources "groups"
 
-getMarks ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m (Tagged [Scale])
+getMarks ∷ (MonadIO m, MonadThrow m) ⇒ SessionT m [Mark]
 getMarks = do
   response ← requestForJSON GET "marks"
   case responseStatusCode response of
@@ -320,7 +321,7 @@ resetConfiguration = do
     204 → pure ()
     code → throwM $ UnexpectedStatus [204] code
 
-markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [(UUID, Tagged Int)] → SessionT m (Tagged [Scale])
+markHabits ∷ (MonadIO m, MonadThrow m) ⇒ [(UUID, [SuccessOrFailureResult])] → SessionT m [Mark]
 markHabits marks = do
   response ←
     requestWithJSONForJSON

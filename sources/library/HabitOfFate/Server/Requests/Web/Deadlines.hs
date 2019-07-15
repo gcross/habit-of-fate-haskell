@@ -39,7 +39,7 @@ import qualified Web.Scotty as Scotty
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Habit
 import HabitOfFate.Data.Markdown
-import HabitOfFate.Data.Tagged
+import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Server.Common
 import HabitOfFate.Server.Requests.Shared.Deadlines
 import HabitOfFate.Server.Requests.Shared.MarkHabit hiding (handler)
@@ -109,20 +109,13 @@ handlePostDeadlines environment =
       in case UUID.fromText possible_habit_id of
            Nothing → log [i|Unable to parse habit id: #{possible_habit_id}|]
            Just habit_id → case value of
-             " 0" → markHabit False habit_id $ Tagged (Success 0) (Failure 0)
-             "+1" → markHabit False habit_id $ Tagged (Success 1) (Failure 0)
-             "-1" → markHabit False habit_id $ Tagged (Success 0) (Failure 1)
+             " 0" → markHabits False [(habit_id, [])]
+             "+1" → markHabits False [(habit_id, [SuccessResult])]
+             "-1" → markHabits False [(habit_id, [FailureResult])]
              other → log [i|Invalid habit deadline status value: #{other}|]
      ))
     habits_ %= fmap (flip updateHabitDeadline current_time)
-    use marks_
-      <&>
-      (\case
-        Tagged (Success s) (Failure f) | onull s && onull f → "/"
-        _ → "/run"
-       >>>
-       redirectsToResult temporaryRedirect307
-      )
+    use marks_ <&> (onull >>> bool "/" "/run" >>> redirectsToResult temporaryRedirect307)
 
 handler ∷ Environment → ScottyM ()
 handler environment = do
