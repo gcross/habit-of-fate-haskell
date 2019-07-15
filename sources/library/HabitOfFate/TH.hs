@@ -28,6 +28,7 @@ import Instances.TH.Lift ()
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote
 
+textChar8 ∷ QuasiQuoter
 textChar8 = QuasiQuoter
   (BS8.pack >>> Lift.lift)
   (error "Cannot use textChar8 as a pattern")
