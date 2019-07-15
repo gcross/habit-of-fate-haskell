@@ -249,7 +249,24 @@ instance FromJSON DaysToKeep where
 instance NFData DaysToKeep where rnf !_ = ()
 
 data Repeated = Daily !Int | Weekly !Int !DaysToRepeat deriving (Eq, Ord, Read, Show)
-deriveJSON ''Repeated
+
+instance ToJSON Repeated where
+  toJSON (Daily n) = runJSONBuilder $ do
+    writeTextField "mode" "daily"
+    writeField "every" n
+  toJSON (Weekly n days) = runJSONBuilder $ do
+    writeTextField "mode" "weekly"
+    writeField "every" n
+    writeField "days" days
+
+instance FromJSON Repeated where
+  parseJSON = withObject "expecting object-shaped value for repeated" $ \o →
+    (o .: "mode" ∷ Parser Text)
+    >>=
+    \case
+      "daily" → Daily <$> (o .: "every")
+      "weekly" → Weekly <$> (o .: "every") <*> (o .: "days")
+      x → fail [i|"#{x}" is an invalid value for the mode of repeated|]
 
 instance NFData Repeated where rnf !_ = ()
 
