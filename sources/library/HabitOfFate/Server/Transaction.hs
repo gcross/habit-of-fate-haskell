@@ -313,7 +313,17 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction p
             let redirect_or_content = Left href in TransactionResults{..}
           TransactionResult status content →
             let redirect_or_content = Right (Just content) in TransactionResults{..}
-  when account_changed $ liftIO $ atomically $ writeTVar accounts_changed_signal True
+
+  -- We check whether the signal has been raised before raising it ourselves
+  -- because this is a popular variable and so we don't want a bunch of threads
+  -- tripping over themselves in order to set it to True when it is already True
+  -- (assuming, as I suspect, that the STM runtime is not smart enough to ignore
+  -- idempotent writes).
+  when account_changed $ liftIO $ atomically $
+    readTVar accounts_changed_signal
+    >>=
+    flip unless (writeTVar accounts_changed_signal True)
+
   traverse_ logIO logs
   case redirect_or_content of
     Left href →
