@@ -578,6 +578,27 @@ main = doMain
                   )
             ]
         ----------------------------------------------------------------------------
+        , testGroup "runGame"
+        ----------------------------------------------------------------------------
+            [ apiTestCase "Running the game removes the first success mark" $ do
+            ------------------------------------------------------------------------
+                createHabit test_habit_id test_habit
+                createHabit test_habit_id_2 test_habit_2
+                void $ markHabits
+                  [ (test_habit_id, def & success_ .~ 1000)
+                  , (test_habit_id_2, def & failure_ .~ 1000)
+                  , (test_habit_id, def)
+                  ]
+                getMarks >>=
+                  (@?=
+                    Tagged
+                      (Success $ replicate 1000 (test_habit ^. difficulty_))
+                      (Failure $ replicate 1000 (test_habit_2 ^. importance_))
+                  )
+                replicateM_ 10000 runGame
+                getMarks >>= (@?= Tagged (Success []) (Failure []))
+            ]
+        ----------------------------------------------------------------------------
         , testGroup "configuration"
         ----------------------------------------------------------------------------
             [ apiTestCase "Put then get" $ do

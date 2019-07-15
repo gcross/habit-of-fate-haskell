@@ -72,11 +72,11 @@ import qualified HabitOfFate.Server.Requests.Api.GetQuestStatus as Api.GetQuestS
 import qualified HabitOfFate.Server.Requests.Api.PutConfiguration as Api.PutConfiguration
 import qualified HabitOfFate.Server.Requests.Api.PutGroup as Api.PutGroup
 import qualified HabitOfFate.Server.Requests.Api.PutHabit as Api.PutHabit
+import qualified HabitOfFate.Server.Requests.Api.RunGame as Api.RunGame
 
 import qualified HabitOfFate.Server.Requests.Shared.LoginOrCreate as Shared.LoginOrCreate
 import qualified HabitOfFate.Server.Requests.Shared.Logout as Shared.Logout
 import qualified HabitOfFate.Server.Requests.Shared.MarkHabit as Shared.MarkHabit
-import qualified HabitOfFate.Server.Requests.Shared.Run as Shared.Run
 
 import qualified HabitOfFate.Server.Requests.Web.ChangeTimeZone as Web.ChangeTimeZone
 import qualified HabitOfFate.Server.Requests.Web.Deadlines as Web.Deadlines
@@ -90,6 +90,7 @@ import qualified HabitOfFate.Server.Requests.Web.MoveGroup as Web.MoveGroup
 import qualified HabitOfFate.Server.Requests.Web.MoveHabit as Web.MoveHabit
 import qualified HabitOfFate.Server.Requests.Web.NewGroup as Web.NewGroup
 import qualified HabitOfFate.Server.Requests.Web.NewHabit as Web.NewHabit
+import qualified HabitOfFate.Server.Requests.Web.RunGame as Web.RunGame
 
 --------------------------------------------------------------------------------
 ------------------------------ Background Threads ------------------------------
@@ -160,11 +161,11 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
       , Api.PutConfiguration.handler
       , Api.PutGroup.handler
       , Api.PutHabit.handler
+      , Api.RunGame.handler
 
       , Shared.LoginOrCreate.handler
       , Shared.Logout.handler
       , Shared.MarkHabit.handler
-      , Shared.Run.handler
 
       , Web.ChangeTimeZone.handler
       , Web.NewGroup.handler
@@ -177,6 +178,7 @@ makeAppWithTestMode test_mode accounts_tvar accounts_changed_signal = do
       , Web.GetQuestStatus.handler
       , Web.MoveGroup.handler
       , Web.MoveHabit.handler
+      , Web.RunGame.handler
       ]
 
     forM_

@@ -151,12 +151,13 @@ library
                      , HabitOfFate.Server.Requests.Api.PutConfiguration
                      , HabitOfFate.Server.Requests.Api.PutGroup
                      , HabitOfFate.Server.Requests.Api.PutHabit
+                     , HabitOfFate.Server.Requests.Api.RunGame
                      , HabitOfFate.Server.Requests.Shared.Deadlines
                      , HabitOfFate.Server.Requests.Shared.GetQuestStatus
                      , HabitOfFate.Server.Requests.Shared.LoginOrCreate
                      , HabitOfFate.Server.Requests.Shared.Logout
                      , HabitOfFate.Server.Requests.Shared.MarkHabit
-                     , HabitOfFate.Server.Requests.Shared.Run
+                     , HabitOfFate.Server.Requests.Shared.RunGame
                      , HabitOfFate.Server.Requests.Web.ChangeTimeZone
                      , HabitOfFate.Server.Requests.Web.Deadlines
                      , HabitOfFate.Server.Requests.Web.Deeds
@@ -169,6 +170,7 @@ library
                      , HabitOfFate.Server.Requests.Web.MoveHabit
                      , HabitOfFate.Server.Requests.Web.NewGroup
                      , HabitOfFate.Server.Requests.Web.NewHabit
+                     , HabitOfFate.Server.Requests.Web.RunGame
                      , HabitOfFate.Story
                      , HabitOfFate.Substitution
                      , HabitOfFate.Testing

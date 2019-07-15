@@ -14,27 +14,17 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Server.Requests.Shared.Run (handler) where
+module HabitOfFate.Server.Requests.Shared.RunGame (runGame) where
 
 import HabitOfFate.Prelude
 
 import Control.Monad.Random (uniform, weighted)
-import Network.HTTP.Types.Status (ok200)
-import Text.Blaze.Html5 ((!))
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
-import Web.Scotty (ScottyM)
-import qualified Web.Scotty as Scotty
 
 import HabitOfFate.Data.Account
 import HabitOfFate.Data.Deed
@@ -45,7 +35,6 @@ import HabitOfFate.Data.Scale
 import HabitOfFate.Data.SuccessOrFailureResult
 import HabitOfFate.Data.Tagged
 import HabitOfFate.Quests
-import HabitOfFate.Server.Common
 import HabitOfFate.Server.Transaction
 import HabitOfFate.Story
 import HabitOfFate.Trial
@@ -156,37 +145,3 @@ runGame = do
       _ → marksArePresent
 
   pure (content, display_next_button)
-
-handleApi ∷ Environment → ScottyM ()
-handleApi environment =
-  Scotty.post "/api/run" <<< apiTransaction environment $
-    runGame <&> (fst >>> markdownResult ok200)
-
-handleWeb ∷ Environment → ScottyM ()
-handleWeb environment = do
-  Scotty.get "/run" <<< webTransaction environment $ action
-  Scotty.post "/run" <<< webTransaction environment $ action
- where
-  action =
-    runGame
-    <&>
-    \(content, display_next_button) →
-      renderTopOnlyPageResult "Habit of Fate - Event" (\_ → ["story"]) [] Nothing ok200 $ \_ → do
-        H.div ! A.class_ "story" $ renderMarkdownToHtml content
-        if display_next_button
-        then
-          H.form
-            ! A.action "/run"
-            ! A.method "post"
-            $ H.input
-              ! A.type_ "submit"
-              ! A.value "Next"
-        else
-          H.a
-            ! A.href "/"
-            $ H.toHtml ("Done" ∷ Text)
-
-handler ∷ Environment → ScottyM ()
-handler environment = do
-  handleApi environment
-  handleWeb environment
