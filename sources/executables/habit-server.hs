@@ -32,16 +32,15 @@ import Control.Concurrent.STM (atomically, retry)
 import Control.Concurrent.STM.TVar (newTVar, newTVarIO, readTVar, writeTVar)
 import Control.Exception (finally, throwIO)
 import qualified Data.ByteString as BS
-import Data.Text.IO
 import Data.Yaml hiding (Parser, (.=))
 import Network.Wai.Handler.Warp
 import Network.Wai.Handler.WarpTLS
 import Options.Applicative
 import System.Directory
-import System.Exit
+import System.IO (hPutStrLn, stderr)
 import qualified Web.Scotty as Scotty
 
-import HabitOfFate.Logging
+import HabitOfFate.Logging (loggerThread, logIO)
 import HabitOfFate.Server
 
 data Configuration = Configuration
@@ -52,13 +51,12 @@ data Configuration = Configuration
 
 data WritingInstruction = DoWrite | StopWriting
 
-exitFailureWithMessage ∷ Text → IO α
-exitFailureWithMessage message = do
-  putStrLn message
-  exitFailure
-
 main ∷ IO ()
 main = do
+  stop_logging_signal ← newTVarIO False
+  stopped_logging_signal ← newEmptyMVar
+  void $ forkIO $ loggerThread stop_logging_signal stopped_logging_signal
+
   let configuration_parser ∷ Parser Configuration
       configuration_parser = Configuration
         <$> (strOption $ mconcat
@@ -119,19 +117,19 @@ main = do
   stopped_writing_signal ← newEmptyMVar
 
   let changedThread ∷ IO ()
-      changedThread =
-        (atomically $ do
-          should_stop ← readTVar stop_writing_signal
-          should_write ← readTVar accounts_changed_signal
-          writeTVar accounts_changed_signal False
-          case (should_stop, should_write) of
-            (True, _) → pure StopWriting
-            (_, True) → pure DoWrite
-            _ → retry
-        )
-        >>=
-        \case
-          DoWrite → writeData >> changedThread
+      changedThread = do
+        next ←
+          atomically $ do
+            should_stop ← readTVar stop_writing_signal
+            should_write ← readTVar accounts_changed_signal
+            writeTVar accounts_changed_signal False
+            case (should_stop, should_write) of
+              (True, _) → pure StopWriting
+              (_, True) → pure DoWrite
+              _ → retry
+        writeData
+        case next of
+          DoWrite → changedThread
           StopWriting → logIO "Stopped writer thread." >> putMVar stopped_writing_signal ()
 
   void $ forkIO $ changedThread
@@ -165,10 +163,11 @@ main = do
       takeMVar done_mvar
     )
     (do
-      logIO "Getting the writer to stop cleanly..."
-      atomically $ writeTVar stop_writing_signal True
+      logIO "Getting the writer and the logger to stop cleanly..."
+      atomically $ do
+        writeTVar stop_writing_signal True
+        writeTVar stop_logging_signal True
       takeMVar stopped_writing_signal
-      logIO "Performing one final write with the most recent data..."
-      writeData
-      logIO "All done!"
+      takeMVar stopped_logging_signal
+      hPutStrLn stderr "All done!"
     )

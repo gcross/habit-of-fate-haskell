@@ -23,11 +23,14 @@ module HabitOfFate.Testing.Server where
 
 import HabitOfFate.Prelude
 
+import Control.Concurrent (forkIO)
+import Control.Concurrent.MVar (newEmptyMVar)
 import Control.Concurrent.STM.TVar (newTVarIO)
 import Network.HTTP.Client (CookieJar)
 import Network.Wai.Handler.Warp (withApplication)
 import Test.Tasty (TestTree)
 
+import HabitOfFate.Logging (loggerThread)
 import HabitOfFate.Server (makeAppRunningInTestMode)
 import HabitOfFate.Testing.Assertions ((@?=), testCase)
 
@@ -43,6 +46,8 @@ withApplication' action =
 
 withTestApp ∷ (Int → IO ()) → IO ()
 withTestApp action =
+  ((loggerThread <$> newTVarIO False <*> newEmptyMVar) >>= forkIO)
+  >>
   (makeAppRunningInTestMode
     <$> newTVarIO mempty
     <*> newTVarIO False
