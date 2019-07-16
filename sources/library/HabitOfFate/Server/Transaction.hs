@@ -32,7 +32,6 @@ module HabitOfFate.Server.Transaction where
 
 import HabitOfFate.Prelude
 
-import Control.Concurrent (tryPutMVar)
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import Control.DeepSeq (NFData)
