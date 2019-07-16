@@ -36,8 +36,7 @@ import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (readTVar, writeTVar)
 import Control.DeepSeq (NFData)
 import Control.Monad.Catch (Exception(..), MonadThrow(..), SomeException)
-import qualified Control.Monad.Operational as Operational
-import Control.Monad.Random (MonadRandom(..), MonadSplit(..), RandT, StdGen, runRandT)
+import Control.Monad.Random (MonadRandom(..), RandT, StdGen, runRandT)
 import Data.Aeson (ToJSON, FromJSON, eitherDecode')
 import qualified Data.ByteString.Lazy as LazyBS
 import qualified Data.Text.Lazy as Lazy
@@ -48,7 +47,6 @@ import Data.Time.Zones (utcToLocalTimeTZ)
 import Data.Time.Zones.All (tzByLabel)
 import Data.UUID (UUID)
 import Network.HTTP.Types.Status (Status(..), internalServerError500, temporaryRedirect307)
-import System.Random (Random)
 import Text.Blaze.Html5 (Html)
 import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
@@ -103,49 +101,40 @@ instance Exception StatusError where
             Status 400 $ encodeUtf8 $ pack $ "BAD PARAMETER " ⊕ unpack param_name ⊕ ": " ⊕ unpack message
       ]
 
-data TransactionInstruction α where
-  GetAccountInstruction ∷ TransactionInstruction Account
-  PutAccountInstruction ∷ Account → TransactionInstruction ()
-  GetBodyInstruction ∷ TransactionInstruction LazyBS.ByteString
-  GetParamsInstruction ∷ TransactionInstruction [Param]
-  LogInstruction ∷ String → TransactionInstruction ()
-  GetCurrentTimeInstruction ∷ TransactionInstruction UTCTime
-  ThrowInstruction ∷ Exception e ⇒ e → TransactionInstruction α
-  GetRandomInstruction ∷ Random α ⇒ TransactionInstruction α
-  GetRandomsInstruction ∷ Random α ⇒ TransactionInstruction [α]
-  GetRandomRInstruction ∷ Random α ⇒ (α, α) → TransactionInstruction α
-  GetRandomRsInstruction ∷ Random α ⇒ (α, α) → TransactionInstruction [α]
-  GetSplitInstruction ∷ TransactionInstruction StdGen
+data TransactionEnvironment = TransactionEnvironment
+  { transaction_username ∷ Username
+  , transaction_params ∷ [Param]
+  , transaction_body ∷ LazyBS.ByteString
+  , transaction_current_time ∷ UTCTime
+  }
 
 newtype Transaction α = Transaction
-  { unwrapTransaction ∷ Operational.Program TransactionInstruction α }
-  deriving
+  { unwrapTransaction ∷
+      ReaderT
+        TransactionEnvironment
+        (StateT
+          (Account, Bool)
+          (RandT StdGen
+            (ExceptT SomeException
+            (Writer (Seq String)))))
+        α
+  } deriving
   ( Applicative
   , Functor
   , Monad
+  , MonadRandom
+  , MonadWriter (Seq String)
   )
 
-instance MonadThrow Transaction where
-  throwM = ThrowInstruction >>> wrapTransactionInstruction
-
-wrapTransactionInstruction ∷ TransactionInstruction α → Transaction α
-wrapTransactionInstruction = Operational.singleton >>> Transaction
-
 instance MonadState Account Transaction where
-  get = wrapTransactionInstruction GetAccountInstruction
-  put = PutAccountInstruction >>> wrapTransactionInstruction
+  get = Transaction (get <&> (^. _1))
+  put account = Transaction (put (account, True))
 
-instance MonadRandom Transaction where
-  getRandom = wrapTransactionInstruction GetRandomInstruction
-  getRandoms = wrapTransactionInstruction GetRandomsInstruction
-  getRandomR = GetRandomRInstruction >>> wrapTransactionInstruction
-  getRandomRs = GetRandomRsInstruction >>> wrapTransactionInstruction
-
-instance MonadSplit StdGen Transaction where
-  getSplit = wrapTransactionInstruction GetSplitInstruction
+instance MonadThrow Transaction where
+  throwM = toException >>> throwError >>> Transaction
 
 getBody ∷ Transaction LazyBS.ByteString
-getBody = wrapTransactionInstruction GetBodyInstruction
+getBody = Transaction (ask <&> (& transaction_body))
 
 getBodyJSON ∷ FromJSON α ⇒ Transaction α
 getBodyJSON = do
@@ -157,7 +146,7 @@ getBodyJSON = do
     Right json → pure json
 
 getParams ∷ Transaction [Param]
-getParams = wrapTransactionInstruction GetParamsInstruction
+getParams = Transaction (ask <&> (& transaction_params))
 
 convertUTCToLocalTime ∷ UTCTime → Transaction LocalTime
 convertUTCToLocalTime utc_time =
@@ -166,7 +155,7 @@ convertUTCToLocalTime utc_time =
     <*> pure utc_time
 
 getCurrentTime ∷ Transaction UTCTime
-getCurrentTime = wrapTransactionInstruction GetCurrentTimeInstruction
+getCurrentTime = Transaction (ask <&> (& transaction_current_time))
 
 getCurrentTimeAsLocalTime ∷ Transaction LocalTime
 getCurrentTimeAsLocalTime = getCurrentTime >>= convertUTCToLocalTime
@@ -190,7 +179,9 @@ getParamDefault ∷ Parsable α ⇒ Lazy.Text → α → Transaction α
 getParamDefault param_name d = getParamMaybe param_name <&> fromMaybe d
 
 log ∷ String → Transaction ()
-log = LogInstruction >>> wrapTransactionInstruction
+log message = Transaction $ do
+  TransactionEnvironment{..} ← ask
+  void ([i|[#{unwrapUsername transaction_username}]: #{message}|] |> singleton |> tell)
 
 getLastSeenAsLocalTime ∷ Transaction LocalTime
 getLastSeenAsLocalTime = use last_seen_ >>= convertUTCToLocalTime
@@ -261,31 +252,21 @@ instance MonadThrow m ⇒ MonadThrow (RandT r m) where
   throwM = throwM >>> lift
 
 transactionWith ∷ (∀ α. String → ActionM α) → Environment → Transaction TransactionResult → ActionM ()
-transactionWith actionWhenAuthFails (environment@Environment{..}) (Transaction program) = do
+transactionWith actionWhenAuthFails (environment@Environment{..}) transaction = do
   (username, account_tvar) ← authorizeWith actionWhenAuthFails environment
-  params_ ← Scotty.params
-  body_ ← Scotty.body
   current_time ← liftIO Clock.getCurrentTime
-  let interpret ∷
-        TransactionInstruction α →
-        StateT (Account, Bool) (RandT StdGen (ExceptT SomeException (Writer (Seq String)))) α
-      interpret (GetBodyInstruction) = pure body_
-      interpret (GetParamsInstruction) = pure params_
-      interpret (GetCurrentTimeInstruction) = pure current_time
-      interpret (LogInstruction message) =
-        void ([i|[#{unwrapUsername username}]: #{message}|] |> singleton |> tell)
-      interpret GetAccountInstruction = get <&> fst
-      interpret (PutAccountInstruction new_account) = put (new_account, True)
-      interpret (ThrowInstruction exc) = throwError $ toException exc
-      interpret GetRandomInstruction = getRandom
-      interpret GetRandomsInstruction = getRandoms
-      interpret (GetRandomRInstruction range) = getRandomR range
-      interpret (GetRandomRsInstruction range) = getRandomRs range
-      interpret GetSplitInstruction = getSplit
+  transaction_environment ←
+    TransactionEnvironment
+      <$> pure username
+      <*> Scotty.params
+      <*> Scotty.body
+      <*> pure current_time
   TransactionResults{..} ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
     let (error_or_result, logs_without_last) =
-          Operational.interpretWithMonad interpret program
+          transaction
+            |> unwrapTransaction
+            |> flip runReaderT transaction_environment
             |> flip runStateT (old_account, False)
             |> flip runRandT (_rng_ old_account)
             |> runExceptT
