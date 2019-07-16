@@ -40,7 +40,6 @@ import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
 
 import HabitOfFate.JSON
-import HabitOfFate.TH
 
 localTimeToRational ∷ LocalTime → Rational
 localTimeToRational (LocalTime (ModifiedJulianDay day) time_of_day) =
