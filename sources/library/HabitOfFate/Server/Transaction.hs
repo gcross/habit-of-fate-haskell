@@ -104,17 +104,17 @@ instance Exception StatusError where
 
 data TransactionState =
   TransactionState
-    { transaction_account ∷ Account
-    , transaction_account_changed ∷ Bool
-    , transaction_rng ∷ StdGen
-    , transaction_log ∷ Seq String
+    { transaction_account ∷ !Account
+    , transaction_account_changed ∷ !Bool
+    , transaction_rng ∷ !StdGen
+    , transaction_log ∷ !(Seq String)
     }
 
 data TransactionEnvironment = TransactionEnvironment
-  { transaction_username ∷ Username
-  , transaction_params ∷ [Param]
-  , transaction_body ∷ LazyBS.ByteString
-  , transaction_current_time ∷ UTCTime
+  { transaction_username ∷ !Username
+  , transaction_params ∷ ![Param]
+  , transaction_body ∷ !LazyBS.ByteString
+  , transaction_current_time ∷ !UTCTime
   }
 
 newtype Transaction α = Transaction
