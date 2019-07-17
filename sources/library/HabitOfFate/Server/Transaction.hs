@@ -47,6 +47,7 @@ import Data.Time.Zones (utcToLocalTimeTZ)
 import Data.Time.Zones.All (tzByLabel)
 import Data.UUID (UUID)
 import Network.HTTP.Types.Status (Status(..), internalServerError500, temporaryRedirect307)
+import System.Random (Random(randomR, random, randomRs, randoms))
 import Text.Blaze.Html5 (Html)
 import Web.Scotty (ActionM, Param, Parsable(parseParam))
 import qualified Web.Scotty as Scotty
@@ -101,6 +102,14 @@ instance Exception StatusError where
             Status 400 $ encodeUtf8 $ pack $ "BAD PARAMETER " ⊕ unpack param_name ⊕ ": " ⊕ unpack message
       ]
 
+data TransactionState =
+  TransactionState
+    { transaction_account ∷ Account
+    , transaction_account_changed ∷ Bool
+    , transaction_rng ∷ StdGen
+    , transaction_log ∷ Seq String
+    }
+
 data TransactionEnvironment = TransactionEnvironment
   { transaction_username ∷ Username
   , transaction_params ∷ [Param]
@@ -109,32 +118,80 @@ data TransactionEnvironment = TransactionEnvironment
   }
 
 newtype Transaction α = Transaction
-  { unwrapTransaction ∷
-      ReaderT
-        TransactionEnvironment
-        (StateT
-          (Account, Bool)
-          (RandT StdGen
-            (ExceptT SomeException
-            (Writer (Seq String)))))
-        α
-  } deriving
-  ( Applicative
-  , Functor
-  , Monad
-  , MonadRandom
-  , MonadWriter (Seq String)
-  )
+  { runTransaction ∷
+      TransactionEnvironment →
+      TransactionState →
+      (Either (SomeException, Seq String) (α, TransactionState))
+  }
+
+instance Functor Transaction where
+  fmap f x = Transaction $ \e s → fmap (first f) (runTransaction x e s)
+
+instance Applicative Transaction where
+  pure v = Transaction $ \_ s → pure (v, s)
+
+  xf <*> xv = Transaction $ \e s0 → do
+    (f, s1) ← runTransaction xf e s0
+    (v, s2) ← runTransaction xv e s1
+    pure (f v, s2)
+
+  liftA2 f x0 x1 = Transaction $ \e s0 → do
+    (v0, s1) ← runTransaction x0 e s0
+    (v1, s2) ← runTransaction x1 e s1
+    pure (f v0 v1, s2)
+
+  xv0 *> xv1 = Transaction $ \e s0 → do
+    (_, s1) ← runTransaction xv0 e s0
+    runTransaction xv1 e s1
+
+  xv0 <* xv1 = Transaction $ \e s0 → do
+    (v, s1) ← runTransaction xv0 e s0
+    (_, s2) ← runTransaction xv1 e s1
+    pure (v, s2)
+
+instance Monad Transaction where
+  x >>= f = Transaction $ \e s0 → do
+    (v, s1) ← runTransaction x e s0
+    runTransaction (f v) e s1
+
+  x >> y = Transaction $ \e s0 → do
+    (_, s1) ← runTransaction x e s0
+    runTransaction y e s1
 
 instance MonadState Account Transaction where
-  get = Transaction (get <&> (^. _1))
-  put account = Transaction (put (account, True))
+  get = Transaction $ \_ s → pure (s & transaction_account, s)
+
+  put new_account = Transaction $ \_ s →
+    pure ((), s { transaction_account = new_account, transaction_account_changed = True })
+
+  state f = Transaction $ \_ s →
+    let (v, new_account) = f (s & transaction_account)
+    in pure (v, s { transaction_account = new_account, transaction_account_changed = True })
+
+instance MonadRandom Transaction where
+  getRandomR range = Transaction $ \_ s →
+    let g = s & transaction_rng
+        (v, g') = randomR range g
+    in pure (v, s { transaction_rng = g' })
+
+  getRandom = Transaction $ \_ s →
+    let g = s & transaction_rng
+        (v, g') = random g
+    in pure (v, s { transaction_rng = g' })
+
+  getRandomRs range = Transaction $ \_ s →
+    let g = s & transaction_rng
+    in pure (randomRs range g, s)
+
+  getRandoms = Transaction $ \_ s →
+    let g = s & transaction_rng
+    in pure (randoms g, s)
 
 instance MonadThrow Transaction where
-  throwM = toException >>> throwError >>> Transaction
+  throwM exc = Transaction $ \_ s → Left (toException exc, s & transaction_log)
 
 getBody ∷ Transaction LazyBS.ByteString
-getBody = Transaction (ask <&> (& transaction_body))
+getBody = Transaction $ \e s → pure (e & transaction_body, s)
 
 getBodyJSON ∷ FromJSON α ⇒ Transaction α
 getBodyJSON = do
@@ -146,7 +203,7 @@ getBodyJSON = do
     Right json → pure json
 
 getParams ∷ Transaction [Param]
-getParams = Transaction (ask <&> (& transaction_params))
+getParams = Transaction $ \e s → pure (e & transaction_params, s)
 
 convertUTCToLocalTime ∷ UTCTime → Transaction LocalTime
 convertUTCToLocalTime utc_time =
@@ -155,7 +212,7 @@ convertUTCToLocalTime utc_time =
     <*> pure utc_time
 
 getCurrentTime ∷ Transaction UTCTime
-getCurrentTime = Transaction (ask <&> (& transaction_current_time))
+getCurrentTime = Transaction $ \e s → pure (e & transaction_current_time, s)
 
 getCurrentTimeAsLocalTime ∷ Transaction LocalTime
 getCurrentTimeAsLocalTime = getCurrentTime >>= convertUTCToLocalTime
@@ -179,9 +236,9 @@ getParamDefault ∷ Parsable α ⇒ Lazy.Text → α → Transaction α
 getParamDefault param_name d = getParamMaybe param_name <&> fromMaybe d
 
 log ∷ String → Transaction ()
-log message = Transaction $ do
-  TransactionEnvironment{..} ← ask
-  void ([i|[#{unwrapUsername transaction_username}]: #{message}|] |> singleton |> tell)
+log message = Transaction $ \e s →
+  let formatted_message = [i|[#{unwrapUsername $ e & transaction_username}]: #{message}|]
+  in pure ((), s { transaction_log = (s & transaction_log) `snoc` formatted_message })
 
 getLastSeenAsLocalTime ∷ Transaction LocalTime
 getLastSeenAsLocalTime = use last_seen_ >>= convertUTCToLocalTime
@@ -263,31 +320,34 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) transaction = 
       <*> pure current_time
   TransactionResults{..} ← atomically >>> liftIO $ do
     old_account ← readTVar account_tvar
-    let (error_or_result, logs_without_last) =
-          transaction
-            |> unwrapTransaction
-            |> flip runReaderT transaction_environment
-            |> flip runStateT (old_account, False)
-            |> flip runRandT (_rng_ old_account)
-            |> runExceptT
-            |> runWriter
-    case error_or_result of
-      Left exc → do
-        let redirect_or_content = Right Nothing
-            account_changed = False
-            logs = logs_without_last `snoc` [i|EXCEPTION: #{displayException exc}|] `snoc` "(Resetting the quest.)"
-            status =
-              case fromException exc of
-                Just (StatusError status) → status
-                _ → internalServerError500
+    let initial_transaction_state = TransactionState
+          { transaction_account = old_account
+          , transaction_account_changed = False
+          , transaction_rng = old_account & _rng_
+          , transaction_log = mempty
+          }
+    case runTransaction transaction transaction_environment initial_transaction_state of
+      Left (exc, logs) → do
         -- Reset the quest to reduce the risk that the error will just repeat.
         (new_quest_state, new_rng) ← runRandT randomQuestState (old_account & _rng_)
         writeTVar account_tvar $ old_account { _rng_ = new_rng, _quest_state_ = new_quest_state }
-        pure $ TransactionResults{..}
-      Right ((result, (new_account, account_changed)), new_rng) → do
-        let logs = logs_without_last
+        pure $ TransactionResults
+          { redirect_or_content = Right Nothing
+          , status =
+              case fromException exc of
+                Just (StatusError status) → status
+                _ → internalServerError500
+          , logs = logs `snoc` [i|EXCEPTION: #{displayException exc}|] `snoc` "(Resetting the quest.)"
+          , account_changed = True -- because the RNG state was updated
+          }
+      Right (result, final_transaction_state) → do
+        let account_changed = final_transaction_state & transaction_account_changed
+            logs = final_transaction_state & transaction_log
         when account_changed $
-          writeTVar account_tvar $ new_account { _last_seen_ = current_time, _rng_ = new_rng }
+          writeTVar account_tvar $ (final_transaction_state & transaction_account)
+            { _last_seen_ = current_time
+            , _rng_ = final_transaction_state & transaction_rng
+            }
         pure $ case result of
           RedirectsTo status href →
             let redirect_or_content = Left href in TransactionResults{..}
@@ -304,7 +364,7 @@ transactionWith actionWhenAuthFails (environment@Environment{..}) transaction = 
     >>=
     flip unless (writeTVar accounts_changed_signal True)
 
-  traverse_ logIO logs
+  logIO (logs |> toList |> intercalate "\n")
   case redirect_or_content of
     Left href →
       setStatusAndRedirect status href
