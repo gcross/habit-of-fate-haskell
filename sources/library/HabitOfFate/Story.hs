@@ -104,14 +104,16 @@ stories = QuasiQuoter
 
 splitNamedRegionsOn ∷ Char → String → [(String, String)]
 splitNamedRegionsOn marker =
+  -- Strip any initial whitespace
+      dropWhile (/= marker)
+
   -- Break the string into lines to make it easier to see the deliminators.
-      lines
+  >>> lines
 
   -- Split into regions deliminated by lines starting with the given marker
   >>> split (keepDelimsL $ whenElt (\line → line ^? _head == Just marker))
 
-  -- Drop the first region; in theory it could be absent but in practice there
-  -- will always be whitespace.
+  -- Drop the first empty region.
   >>> tail
 
   -- Extract the label from each region; note that an invariant of the split is
