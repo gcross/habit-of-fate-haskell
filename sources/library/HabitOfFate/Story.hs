@@ -54,8 +54,9 @@ module HabitOfFate.Story
 import HabitOfFate.Prelude
 
 import Control.Monad.Catch (Exception, MonadThrow(throwM))
-import Data.List (dropWhileEnd, tail, unzip)
+import Data.List (dropWhileEnd, sortBy, tail, unzip)
 import Data.List.Split
+import Data.Ord (comparing)
 import Language.Haskell.TH.Lift (Lift)
 import qualified Language.Haskell.TH.Lift as Lift
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
@@ -129,9 +130,32 @@ splitNamedRegionsOn marker =
         )
       )
 
+data InvalidNamedRegions =
+  NamedRegionHadNoName
+  
+
+splitMultiNamedRegions ∷ MonadThrow m ⇒ [(String, String)] → m [(String, String)]
+splitMultiNamedRegions = concatMap (words >>> \case
+  [] → throwM NamedRegionHadNoName
+
+
+mergeNamedRegions ∷ [(String, String)] → [(String, String)]
+mergeNamedRegions =
+  sortBy (comparing fst)
+  >>>
+  groupBy ((==) `on` fst)
+  >>>
+  map (\case
+    [] → error "empty group encountered in mergeRegions"
+    (heading, first_region):rest_named_regions →
+      (heading, first_region:map snd rest_named_regions)
+  )
+  >>>
+  map (second (intercalate "\n\n"))
+
 parseSections ∷ MonadThrow m ⇒ String → m [(String, [Story])]
 parseSections =
-  splitNamedRegionsOn '='
+  splitIntoNamedRegionsOn '='
   >>>
   map (second (splitStoriesOn '-' >>> map (dropWhileEnd (== '\n'))))
   >>>
@@ -142,7 +166,7 @@ stories_and_labels = QuasiQuoter
   (\content → do
     let (labels, bodies) =
           content
-            |> splitNamedRegionsOn '='
+            |> splitIntoNamedRegionsOn '='
             |> unzip
     stories ← traverse parseSubstitutions bodies
     Lift.lift ((stories, map pack labels) ∷ ([Story], [Text]))
