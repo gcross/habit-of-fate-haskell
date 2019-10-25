@@ -181,8 +181,22 @@ data InvalidOutcomes =
   | TooManyStoriesForHeading OutcomeHeading Int
   | InvalidHeading String
   | UnrecognizedOutcomePattern [OutcomeHeading]
+  | EmptyHeading
   deriving (Show)
 instance Exception InvalidOutcomes
+
+splitCombinedHeadings ∷ MonadThrow m ⇒ [(String, α)] → m [(String, α)]
+splitCombinedHeadings = traverse f >>> fmap concat
+ where
+  f (combined_headings,body) =
+    case words combined_headings of
+      [] → throwM EmptyHeading
+      first_word:rest_words →
+        first_word
+          |> splitOn "/"
+          |> map ((:rest_words) >>> unwords)
+          |> map (,body)
+          |> pure
 
 parseOutcomeHeading ∷ MonadThrow m ⇒ String → m OutcomeHeading
 parseOutcomeHeading = \case
@@ -350,6 +364,8 @@ outcomes ∷ QuasiQuoter
 outcomes = QuasiQuoter
   (
     parseSections
+    >=>
+    splitCombinedHeadings
     >=>
     traverse (\(heading,stories) → parseOutcomeHeading heading <&> (,stories))
     >=>
