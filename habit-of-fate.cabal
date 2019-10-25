@@ -205,16 +205,6 @@ executable habit-server
                      , yaml
   default-language:    Haskell2010
 
-executable habit-test-server
-  hs-source-dirs:      sources/executables
-  main-is:             habit-test-server.hs
-  build-depends:       habit-of-fate
-                     , base
-                     , stm
-                     , warp
-                     , warp-tls
-  default-language:    Haskell2010
-
 executable generate-html
   hs-source-dirs:      sources/executables
   main-is:             generate-html.hs
