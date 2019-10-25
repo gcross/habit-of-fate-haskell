@@ -23,6 +23,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -63,6 +64,9 @@ import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Substitution
+
+applyToFirst ∷ Applicative t ⇒ (α → t β) → (α,δ) → t (β,δ)
+applyToFirst f (x,y) = f x <&> (,y)
 
 story ∷ QuasiQuoter
 story = QuasiQuoter
@@ -151,151 +155,210 @@ stories_and_labels = QuasiQuoter
   (error "Cannot use stories_with_labels as a type")
   (error "Cannot use stories_with_labels as a dec")
 
+data OutcomeHeading =
+    CommonTitle
+  | CommonStory
+  | CommonQuestion
+  | SuccessChoice
+  | SuccessTitle
+  | SuccessStory
+  | DangerChoice
+  | DangerTitle
+  | DangerStory
+  | DangerQuestion
+  | AvertedChoice
+  | AvertedTitle
+  | AvertedStory
+  | FailureChoice
+  | FailureTitle
+  | FailureStory
+  | Shame
+  deriving (Eq,Ord,Show)
+
 data InvalidOutcomes =
-    NoStoriesForHeading String
-  | TooManyStoriesForHeading String Int
+    NoStoriesForHeading OutcomeHeading
+  | EmptyStoryForHeading OutcomeHeading
+  | TooManyStoriesForHeading OutcomeHeading Int
   | InvalidHeading String
-  | DuplicateHeading String
-  | UnrecognizedOutcomePattern [String]
+  | UnrecognizedOutcomePattern [OutcomeHeading]
   deriving (Show)
 instance Exception InvalidOutcomes
 
-separateOutcomes ∷ MonadThrow m ⇒ [(String, [Story])] → m ([(String, Story)], [Story])
-separateOutcomes =
+parseOutcomeHeading ∷ MonadThrow m ⇒ String → m OutcomeHeading
+parseOutcomeHeading = \case
+  "Common Title" → pure CommonTitle
+  "Common Story" → pure CommonStory
+  "Common Question" → pure CommonQuestion
+  "Success Choice" → pure SuccessChoice
+  "Success Title" → pure SuccessTitle
+  "Success Story" → pure SuccessStory
+  "Danger Choice" → pure DangerChoice
+  "Danger Title" → pure DangerTitle
+  "Danger Story" → pure DangerStory
+  "Danger Question" → pure DangerQuestion
+  "Averted Choice" → pure AvertedChoice
+  "Averted Title" → pure AvertedTitle
+  "Averted Story" → pure AvertedStory
+  "Failure Choice" → pure FailureChoice
+  "Failure Title" → pure FailureTitle
+  "Failure Story" → pure FailureStory
+  "Shame" → pure Shame
+  invalid_heading → throwM $ InvalidHeading invalid_heading
+
+gatherOutcomeStories ∷ MonadThrow m ⇒ [(OutcomeHeading, [Story])] → m (Map OutcomeHeading Story, [Story])
+gatherOutcomeStories =
   foldM
-    (\(outcomes, maybe_shames) (heading, stories) → if
-      | heading ∈
-          [ "Common Question"
-          , "Common Story"
-          , "Common Title"
-          , "Success Choice"
-          , "Success Story"
-          , "Success Title"
-          , "Danger Choice"
-          , "Danger Question"
-          , "Danger Story"
-          , "Danger Title"
-          , "Averted Choice"
-          , "Averted Story"
-          , "Averted Title"
-          , "Failure Choice"
-          , "Failure Story"
-          , "Failure Title"
-          ] →
-            case stories of
-              [story] → pure (((heading,story):outcomes), maybe_shames)
-              _ → throwM $ TooManyStoriesForHeading heading (length stories)
-      | heading == "Shame" → case maybe_shames of
-          Nothing → pure (outcomes, (Just stories))
-          Just _ → throwM $ DuplicateHeading "Shame"
-      | otherwise → throwM $ InvalidHeading heading
+    (\(outcome_map, shames) (heading, stories) →
+      if heading == Shame
+        then pure (outcome_map, shames ⊕ stories)
+        else case stories of
+          [] → throwM $ NoStoriesForHeading heading
+          [more_story]
+            | onull more_story → throwM $ EmptyStoryForHeading heading
+            | otherwise → pure
+                ( alterMap
+                    ( maybe
+                        more_story
+                        (\story → if onull story
+                          then more_story
+                          else story ⊕ "\n\n" ⊕ more_story
+                        )
+                      >>>
+                      Just
+                    )
+                    heading
+                    outcome_map
+                , shames
+                )
+          _ → throwM $ TooManyStoriesForHeading heading (length stories)
     )
-    ([], Nothing)
+    (mempty, mempty)
   >=>
-  (\case
-    (outcomes, Just shames) → pure (outcomes, shames)
-    (_, Nothing) → throwM $ NoStoriesForHeading "Shame"
+  (\x@(outcome_map, shames) →
+    if onull shames
+      then throwM $ NoStoriesForHeading Shame
+      else pure x
   )
 
-extractOutcomeFrom ∷ [(String, Story)] → String → Story
-extractOutcomeFrom outcomes heading =
-  fromMaybe
-    (error $ "invariant violated: no such heading " ⊕ heading)
-    (lookup heading outcomes)
+commonFailureSuccess, commonAvertedFailureSuccess, commonDangerAvertedFailureSuccess ∷ Set OutcomeHeading
 
-constructOutcomes ∷ MonadThrow m ⇒ ([(String, Story)], [Story]) → m (Outcomes Story)
-constructOutcomes (outcomes, outcomes_shames) =
-  case sort (keys outcomes) of
-    ( [ "Common Question"
-      , "Common Story"
-      , "Common Title"
-      , "Failure Choice"
-      , "Failure Story"
-      , "Failure Title"
-      , "Success Choice"
-      , "Success Story"
-      , "Success Title"
-      ] ) → pure $ SuccessFailure
-        { outcomes_common_title = extractOutcome "Common Title"
-        , outcomes_common_story = extractOutcome "Common Story"
-        , outcomes_common_question = extractOutcome "Common Question"
-        , outcomes_success_choice = extractOutcome "Success Choice"
-        , outcomes_success_title = extractOutcome "Success Title"
-        , outcomes_success_story = extractOutcome "Success Story"
-        , outcomes_failure_choice = extractOutcome "Failure Choice"
-        , outcomes_failure_title = extractOutcome "Failure Title"
-        , outcomes_failure_story = extractOutcome "Failure Story"
-        , outcomes_shames = outcomes_shames
-        }
-    ( [ "Averted Choice"
-      , "Averted Story"
-      , "Averted Title"
-      , "Common Question"
-      , "Common Story"
-      , "Common Title"
-      , "Failure Choice"
-      , "Failure Story"
-      , "Failure Title"
-      , "Success Choice"
-      , "Success Story"
-      , "Success Title"
-      ] ) → pure $ SuccessAvertedFailure
-        { outcomes_common_title = extractOutcome "Common Title"
-        , outcomes_common_story = extractOutcome "Common Story"
-        , outcomes_common_question = extractOutcome "Common Question"
-        , outcomes_success_choice = extractOutcome "Success Choice"
-        , outcomes_success_title = extractOutcome "Success Title"
-        , outcomes_success_story = extractOutcome "Success Story"
-        , outcomes_averted_choice = extractOutcome "Averted Choice"
-        , outcomes_averted_title = extractOutcome "Averted Title"
-        , outcomes_averted_story = extractOutcome "Averted Story"
-        , outcomes_failure_choice = extractOutcome "Failure Choice"
-        , outcomes_failure_title = extractOutcome "Failure Title"
-        , outcomes_failure_story = extractOutcome "Failure Story"
-        , outcomes_shames = outcomes_shames
-        }
-    ( [ "Averted Choice"
-      , "Averted Story"
-      , "Averted Title"
-      , "Common Question"
-      , "Common Story"
-      , "Common Title"
-      , "Danger Choice"
-      , "Danger Question"
-      , "Danger Story"
-      , "Danger Title"
-      , "Failure Choice"
-      , "Failure Story"
-      , "Failure Title"
-      , "Success Choice"
-      , "Success Story"
-      , "Success Title"
-      ] ) → pure $ SuccessDangerAvertedFailure
-        { outcomes_common_title = extractOutcome "Common Title"
-        , outcomes_common_story = extractOutcome "Common Story"
-        , outcomes_common_question = extractOutcome "Common Question"
-        , outcomes_success_choice = extractOutcome "Success Choice"
-        , outcomes_success_title = extractOutcome "Success Title"
-        , outcomes_success_story = extractOutcome "Success Story"
-        , outcomes_danger_choice = extractOutcome "Danger Choice"
-        , outcomes_danger_title = extractOutcome "Danger Title"
-        , outcomes_danger_story = extractOutcome "Danger Story"
-        , outcomes_danger_question = extractOutcome "Danger Question"
-        , outcomes_averted_choice = extractOutcome "Averted Choice"
-        , outcomes_averted_title = extractOutcome "Averted Title"
-        , outcomes_averted_story = extractOutcome "Averted Story"
-        , outcomes_failure_choice = extractOutcome "Failure Choice"
-        , outcomes_failure_title = extractOutcome "Failure Title"
-        , outcomes_failure_story = extractOutcome "Failure Story"
-        , outcomes_shames = outcomes_shames
-        }
-    x → throwM $ UnrecognizedOutcomePattern x
+commonFailureSuccess =
+  [ CommonQuestion
+  , CommonStory
+  , CommonTitle
+  , FailureChoice
+  , FailureStory
+  , FailureTitle
+  , SuccessChoice
+  , SuccessStory
+  , SuccessTitle
+  ]
+
+commonAvertedFailureSuccess =
+  [ AvertedChoice
+  , AvertedStory
+  , AvertedTitle
+  , CommonQuestion
+  , CommonStory
+  , CommonTitle
+  , FailureChoice
+  , FailureStory
+  , FailureTitle
+  , SuccessChoice
+  , SuccessStory
+  , SuccessTitle
+  ]
+
+commonDangerAvertedFailureSuccess =
+  [ AvertedChoice
+  , AvertedStory
+  , AvertedTitle
+  , CommonQuestion
+  , CommonStory
+  , CommonTitle
+  , DangerChoice
+  , DangerQuestion
+  , DangerStory
+  , DangerTitle
+  , FailureChoice
+  , FailureStory
+  , FailureTitle
+  , SuccessChoice
+  , SuccessStory
+  , SuccessTitle
+  ]
+
+constructOutcomes ∷ MonadThrow m ⇒ (Map OutcomeHeading Story, [Story]) → m (Outcomes Story)
+constructOutcomes (outcomes, outcomes_shames)
+  | headings_set == commonFailureSuccess = pure $ SuccessFailure
+      { outcomes_common_title = extractOutcome CommonTitle
+      , outcomes_common_story = extractOutcome CommonStory
+      , outcomes_common_question = extractOutcome CommonQuestion
+      , outcomes_success_choice = extractOutcome SuccessChoice
+      , outcomes_success_title = extractOutcome SuccessTitle
+      , outcomes_success_story = extractOutcome SuccessStory
+      , outcomes_failure_choice = extractOutcome FailureChoice
+      , outcomes_failure_title = extractOutcome FailureTitle
+      , outcomes_failure_story = extractOutcome FailureStory
+      , outcomes_shames = outcomes_shames
+      }
+  | headings_set == commonAvertedFailureSuccess = pure $ SuccessAvertedFailure
+      { outcomes_common_title = extractOutcome CommonTitle
+      , outcomes_common_story = extractOutcome CommonStory
+      , outcomes_common_question = extractOutcome CommonQuestion
+      , outcomes_success_choice = extractOutcome SuccessChoice
+      , outcomes_success_title = extractOutcome SuccessTitle
+      , outcomes_success_story = extractOutcome SuccessStory
+      , outcomes_averted_choice = extractOutcome AvertedChoice
+      , outcomes_averted_title = extractOutcome AvertedTitle
+      , outcomes_averted_story = extractOutcome AvertedStory
+      , outcomes_failure_choice = extractOutcome FailureChoice
+      , outcomes_failure_title = extractOutcome FailureTitle
+      , outcomes_failure_story = extractOutcome FailureStory
+      , outcomes_shames = outcomes_shames
+      }
+  | headings_set == commonDangerAvertedFailureSuccess = pure SuccessDangerAvertedFailure
+      { outcomes_common_title = extractOutcome CommonTitle
+      , outcomes_common_story = extractOutcome CommonStory
+      , outcomes_common_question = extractOutcome CommonQuestion
+      , outcomes_success_choice = extractOutcome SuccessChoice
+      , outcomes_success_title = extractOutcome SuccessTitle
+      , outcomes_success_story = extractOutcome SuccessStory
+      , outcomes_danger_choice = extractOutcome DangerChoice
+      , outcomes_danger_title = extractOutcome DangerTitle
+      , outcomes_danger_story = extractOutcome DangerStory
+      , outcomes_danger_question = extractOutcome DangerQuestion
+      , outcomes_averted_choice = extractOutcome AvertedChoice
+      , outcomes_averted_title = extractOutcome AvertedTitle
+      , outcomes_averted_story = extractOutcome AvertedStory
+      , outcomes_failure_choice = extractOutcome FailureChoice
+      , outcomes_failure_title = extractOutcome FailureTitle
+      , outcomes_failure_story = extractOutcome FailureStory
+      , outcomes_shames = outcomes_shames
+      }
+    | otherwise = throwM $ UnrecognizedOutcomePattern $ toList $ headings_set
  where
-  extractOutcome = extractOutcomeFrom outcomes
+  headings_set = keysSet outcomes
+
+  extractOutcome ∷ OutcomeHeading → Story
+  extractOutcome heading =
+    fromMaybe
+      (error [i|invariant violated: no such heading ${heading}|])
+      (lookup heading outcomes)
 
 outcomes ∷ QuasiQuoter
 outcomes = QuasiQuoter
-  (parseSections >=> separateOutcomes >=> constructOutcomes >=> Lift.lift)
+  (
+    parseSections
+    >=>
+    traverse (\(heading,stories) → parseOutcomeHeading heading <&> (,stories))
+    >=>
+    gatherOutcomeStories
+    >=>
+    constructOutcomes
+    >=>
+    Lift.lift
+  )
   (error "Cannot use outcomes as a pattern")
   (error "Cannot use outcomes as a type")
   (error "Cannot use outcomes as a dec")
@@ -374,7 +437,23 @@ data Narrative content = Narrative
   , narrative_story ∷ content
   } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
-separateNarrative ∷ ∀ m. MonadThrow m ⇒ [(String, [Story])] → m (Narrative Story)
+data NarrativeHeading = Title | Story deriving (Eq,Ord,Show)
+
+data InvalidNarrative =
+    InvalidNarrativeHeading String
+  | TooManyStoriesForNarrativeHeading NarrativeHeading Int
+  | NoStoriesForNarrativeHeading NarrativeHeading
+  | DuplicateHeading NarrativeHeading
+  deriving (Eq,Show)
+instance Exception InvalidNarrative where
+
+parseNarrativeHeading ∷ ∀ m. MonadThrow m ⇒ String → m NarrativeHeading
+parseNarrativeHeading = \case
+  "Title" → pure Title
+  "Story" → pure Story
+  other → throwM $ InvalidNarrativeHeading other
+
+separateNarrative ∷ ∀ m. MonadThrow m ⇒ [(NarrativeHeading, [Story])] → m (Narrative Story)
 separateNarrative =
   foldM
     (\found (heading, stories) → case stories of
@@ -385,22 +464,29 @@ separateNarrative =
                 Nothing → pure $ (found & lens_ .~ Just story)
                 _ → throwM $ DuplicateHeading heading
         in case heading of
-          "Title" → doFound _1
-          "Story" → doFound _2
-          _ → throwM $ InvalidHeading heading
-      _ → throwM $ TooManyStoriesForHeading heading (length stories)
+          Title → doFound _1
+          Story → doFound _2
+      _ → throwM $ TooManyStoriesForNarrativeHeading heading (length stories)
     )
     (Nothing, Nothing)
   >=>
   (\case
     (Just narrative_title, Just narrative_story) → pure $ Narrative{..}
-    (Nothing, _) → throwM $ NoStoriesForHeading "Title"
-    (_, _) → throwM $ NoStoriesForHeading "Story"
+    (Nothing, _) → throwM $ NoStoriesForNarrativeHeading Title
+    (_, _) → throwM $ NoStoriesForNarrativeHeading Story
   )
 
 narrative ∷ QuasiQuoter
 narrative = QuasiQuoter
-  (parseSections >=> separateNarrative >=> Lift.lift)
+  (
+    parseSections
+    >=>
+    traverse (applyToFirst parseNarrativeHeading)
+    >=>
+    separateNarrative
+    >=>
+    Lift.lift
+  )
   (error "Cannot use narrative as a pattern")
   (error "Cannot use narrative as a type")
   (error "Cannot use narrative as a dec")
