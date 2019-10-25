@@ -116,6 +116,7 @@ data FolderState content = FolderState
   , _remaining_content_ ∷ Seq (Content content)
   , _maybe_fames_ ∷ Maybe [content]
   , _has_random_stories_ ∷ Bool
+  , _substitutions_ ∷ Substitutions
   }
 makeLenses ''FolderState
 
@@ -133,21 +134,7 @@ generateQuestState ∷
   Quest →
   m (Text, QuestState Markdown)
 generateQuestState select selectName shuffle Quest{..} = do
-  let initial_folder_state = FolderState
-        { _name_ = quest_name
-        , _remaining_content_ = mempty
-        , _maybe_fames_ = Nothing
-        , _has_random_stories_ = False
-        }
-  FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
-  fames ← maybe (throwM NoFames) pure _maybe_fames_
-  let pre_substitution_quest_state = QuestState
-        quest_name
-        fames
-        (toList _remaining_content_)
-        []
-        "You are between quests."
-  substitutions ←
+  initial_substitutions ←
     traverse
       (\QS{..} → (quest_substitution_name,) <$> case quest_substitution_list of
         MaleList → flip Gendered Male <$> selectName male_names
@@ -157,7 +144,22 @@ generateQuestState select selectName shuffle Quest{..} = do
       quest_substitutions
     <&>
     mapFromList
-  quest_state ← traverse (substitute substitutions) pre_substitution_quest_state
+  let initial_folder_state = FolderState
+        { _name_ = quest_name
+        , _remaining_content_ = mempty
+        , _maybe_fames_ = Nothing
+        , _has_random_stories_ = False
+        , _substitutions_ = initial_substitutions
+        }
+  FolderState{..} ← foldlM folder initial_folder_state [quest_entry]
+  fames ← maybe (throwM NoFames) pure _maybe_fames_
+  let pre_substitution_quest_state = QuestState
+        quest_name
+        fames
+        (toList _remaining_content_)
+        []
+        "You are between quests."
+  quest_state ← traverse (substitute _substitutions_) pre_substitution_quest_state
   pure (_name_, quest_state)
  where
   folder folder_state entry = case entry of
@@ -179,7 +181,10 @@ generateQuestState select selectName shuffle Quest{..} = do
       )
       >>=
       foldlM folder (folder_state & name_ ⊕~ ("/" ⊕ line_name))
-    SplitEntry{..} → select split_branches >>= \Branch{..} → folder folder_state branch_entry
+    SplitEntry{..} →
+      select split_branches
+      >>=
+      \Branch{..} → folder (folder_state & substitutions_ %~ (⊕ branch_substitutions)) branch_entry
     FamesEntry{..} → case folder_state ^. maybe_fames_ of
       Nothing
         | null fames_content → throwM $ EmptyFames quest_name

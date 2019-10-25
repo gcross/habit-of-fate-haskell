@@ -600,6 +600,7 @@ quest = Quest
           "Who shall we follow into the Wicked Forest?"
           [ Branch
               "The village healer."
+              mempty
               (LineEntry NoShuffle "healer" $
                 [ FamesEntry fames_healer
                 , StatusEntry looking_for_herb_story
@@ -613,6 +614,7 @@ quest = Quest
                 ])
           , Branch
               "The parent of the sick child."
+              mempty
               (LineEntry NoShuffle "parent" $
                 [ FamesEntry fames_parent
                 , StatusEntry looking_for_herb_story
@@ -641,11 +643,13 @@ shared_story_entries =
           "Who is this?"
           [ Branch
               "A cat."
+              mempty
               (EventEntry
                 "cat"
                 found_by_cat)
           , Branch
               "A fairy."
+              mempty
               (EventEntry
                 "fairy"
                 found_by_fairy)

@@ -42,14 +42,8 @@ import HabitOfFate.Data.QuestState
 import HabitOfFate.Quest
 import HabitOfFate.Quest.Pages
 import HabitOfFate.Quests
-import HabitOfFate.Substitution
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
-
-testSubstititutions ∷ Quest → TestTree
-testSubstititutions quest@Quest{..} =
-  testCase (unpack quest_name) $
-  extractAllPlaceholders quest_entry @?= keysSet (defaultQuestSubstitutions quest)
 
 testFames ∷ Quest → TestTree
 testFames quest@Quest{..} =
@@ -107,8 +101,7 @@ testFames quest@Quest{..} =
 
 main ∷ HasCallStack ⇒ IO ()
 main = doMain $
-  [ testGroup "Substitutions" $ map testSubstititutions quests
-  , testCase "Pages" $ do
+  [ testCase "Pages" $ do
       pages ← traverse buildPagesFromQuest quests <&> (concat >>> (Page "index" "" "" (Choices "" []):))
       let paths = map page_path pages
           path_counts ∷ HashMap Text Int

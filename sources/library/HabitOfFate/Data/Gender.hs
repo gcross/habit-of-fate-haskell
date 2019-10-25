@@ -62,3 +62,8 @@ instance FromJSON Gendered where
     Gendered
       <$> (o .: "name" >>= parseJSON)
       <*> (o .: "gender" >>= parseJSON)
+
+male, female, neuter ∷ Text → Gendered
+male = flip Gendered Male
+female = flip Gendered Female
+neuter = flip Gendered Neuter

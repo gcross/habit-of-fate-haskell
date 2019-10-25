@@ -18,6 +18,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -70,6 +71,27 @@ data Entry content =
       }
  deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
+event_outcomes_ ∷ Lens (Entry c1) (Entry c2) (Outcomes c1) (Outcomes c2)
+event_outcomes_ = lens event_outcomes (\x y → x{event_outcomes = y})
+
+narrative_content_ ∷ Lens (Entry c1) (Entry c2) (Narrative c1) (Narrative c2)
+narrative_content_ = lens narrative_content (\x y → x{narrative_content = y})
+
+line_contents_ ∷ Lens (Entry c1) (Entry c2) [Entry c1] [Entry c2]
+line_contents_ = lens line_contents (\x y → x{line_contents = y})
+
+branch_entry_ ∷ Lens (Branch c1) (Branch c2) (Entry c1) (Entry c2)
+branch_entry_ = lens branch_entry (\x y → x{branch_entry = y})
+
+fames_content_ ∷ Lens (Entry c1) (Entry c2) [c1] [c2]
+fames_content_ = lens fames_content (\x y → x{fames_content = y})
+
+random_stories_content_ ∷ Lens (Entry c1) (Entry c2) [c1] [c2]
+random_stories_content_ = lens random_stories_content (\x y → x{random_stories_content = y})
+
+status_content_ ∷ Lens (Entry c1) (Entry c2) c1 c2
+status_content_ = lens status_content (\x y → x{status_content = y})
+
 data DeadEnd = DeadEnd Text deriving (Eq,Show)
 instance Exception DeadEnd where
 
@@ -90,6 +112,7 @@ nextPathOf StatusEntry{..} = throwM $ DeadEnd "status"
 
 data Branch content = Branch
   { branch_choice ∷ Markdown
+  , branch_substitutions ∷ Substitutions
   , branch_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
@@ -108,6 +131,32 @@ data Quest = Quest
   , quest_entry ∷ Entry Story
   } deriving (Eq,Ord,Read,Show)
 
+substituteEntry ∷ MonadThrow m ⇒ Substitutions → Entry Story → m (Entry Markdown)
+substituteEntry subs = \case
+  x@EventEntry{} →
+    traverseOf (event_outcomes_ . traversed) subst x
+  x@NarrativeEntry{} →
+    traverseOf (narrative_content_ . traversed) subst x
+  x@LineEntry{} →
+    traverseOf (line_contents_ . traversed) (substituteEntry subs) x
+  x@SplitEntry{..} → do
+    new_story ← traverse subst split_story
+    new_branches ←
+      traverse
+        (\y@Branch{..} →
+          traverseOf branch_entry_ (substituteEntry $ subs ⊕ branch_substitutions) y
+        )
+        split_branches
+    pure x{split_story=new_story,split_branches=new_branches}
+  x@FamesEntry{} →
+    traverseOf (fames_content_ . traversed) subst x
+  x@RandomStoriesEntry{} →
+    traverseOf (random_stories_content_ . traversed) subst x
+  x@StatusEntry{} →
+    traverseOf status_content_ subst x
+  where
+  subst = substitute subs
+
 defaultQuestSubstitutions ∷ Quest → Substitutions
 defaultQuestSubstitutions Quest{..} =
   [ ( quest_substitution_name
@@ -119,10 +168,6 @@ defaultQuestSubstitutions Quest{..} =
     )
   | QS{..} ← quest_substitutions
   ] |> mapFromList
-
-questEntryWithDefaultSubstitutions ∷ MonadThrow m ⇒ Quest → m (Entry Markdown)
-questEntryWithDefaultSubstitutions quest@Quest{..} =
-  traverse (substitute (defaultQuestSubstitutions quest)) quest_entry
 
 initialQuestPath ∷ MonadThrow m ⇒ Quest → m Text
 initialQuestPath Quest{..} = ((quest_name ⊕ "/") ⊕) <$> nextPathOf quest_entry
