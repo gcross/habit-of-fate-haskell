@@ -84,6 +84,8 @@ data Referrent =
   | CategoryPlural
   | Offspring
   | OffspringPlural
+  | Marital
+  | MaritalPlural
   deriving (Bounded, Enum, Eq, Lift, Ord, Read, Show)
 
 data Kind =
@@ -109,6 +111,8 @@ referrents =
     , ("men", "women", CategoryPlural)
     , ("son", "daughter", Offspring)
     , ("sons", "daughters", OffspringPlural)
+    , ("husband", "wife", Marital)
+    , ("husbands", "wives", MaritalPlural)
     ]
 
 data HasArticle = HasArticle | HasNoArticle
@@ -304,3 +308,11 @@ applyReferrent Offspring Neuter = "offspring"
 applyReferrent OffspringPlural Male = "sons"
 applyReferrent OffspringPlural Female = "daughters"
 applyReferrent OffspringPlural Neuter = "offspring"
+
+applyReferrent Marital Male = "husband"
+applyReferrent Marital Female = "wife"
+applyReferrent Marital Neuter = "spouse"
+
+applyReferrent MaritalPlural Male = "husbands"
+applyReferrent MaritalPlural Female = "wives"
+applyReferrent MaritalPlural Neuter = "spouses"

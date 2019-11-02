@@ -31,10 +31,12 @@ import HabitOfFate.Data.QuestState
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import qualified HabitOfFate.Quests.Forest as Forest
+import qualified HabitOfFate.Quests.TheLongVoyageHome as TheLongVoyageHome
 
 quests ∷ [Quest]
 quests =
   [ Forest.quest
+  , TheLongVoyageHome.quest
   ]
 
 randomQuestState ∷ (MonadRandom m, MonadThrow m) ⇒ m (QuestState Markdown)

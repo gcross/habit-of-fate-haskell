@@ -132,6 +132,7 @@ library
                      , HabitOfFate.Quest.Pages.Index
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.Forest
+                     , HabitOfFate.Quests.TheLongVoyageHome
                      , HabitOfFate.Server
                      , HabitOfFate.Server.Actions.Queries
                      , HabitOfFate.Server.Actions.Results
