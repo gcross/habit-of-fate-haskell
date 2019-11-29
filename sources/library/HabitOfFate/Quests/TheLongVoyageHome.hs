@@ -7,6 +7,7 @@ module HabitOfFate.Quests.TheLongVoyageHome where
 
 import HabitOfFate.Prelude
 
+import HabitOfFate.Data.Gender
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
@@ -744,8 +745,8 @@ quest ∷ Quest
 quest = Quest
   "the-long-voyage-home"
   "A prayer to help a war-weary captain return home."
-  [ QS FemaleList "Captain" "Penny", QS FemaleList "" "Penny"
-  , QS MaleList "Spouse" "Odius"
+  [ SP "Captain" [("Penny",Female)]
+  , S "Spouse" [("Odius",Male)]
   ]
   $
   LineEntry NoShuffle "root"

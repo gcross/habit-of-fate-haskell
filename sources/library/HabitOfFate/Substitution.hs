@@ -182,7 +182,7 @@ parseSubstitutionChunk article maybe_case = do
       ((lookAhead letter <&> getCase) <|> pure Upper)
       pure
       maybe_case
-  key ← many letter <&> pack
+  key ← many alphaNum <&> pack
   pure $ Substitution $
     SubstitutionData
       (article == HasArticle)

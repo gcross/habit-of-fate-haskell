@@ -1,0 +1,309 @@
+{-
+    Habit of Fate, a game to incentivize habit formation.
+    Copyright (C) 2019 Gregory Crosswhite
+
+    This program is free software: you can redistribute it and/or modify
+    it under version 3 of the terms of the GNU Affero General Public License.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-}
+
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE UnicodeSyntax #-}
+
+module HabitOfFate.Quests.DarkLord.Part1.Paladin where
+
+import HabitOfFate.Prelude
+
+import HabitOfFate.Data.Outcomes
+import HabitOfFate.Quest
+import HabitOfFate.Story
+
+intro ∷ Narrative Story
+intro = [narrative|
+= Title =
+The Dark Castle
+= Story=
+For years the Dark Lord has ruled the land with a cruel fist, riding out on his black horse at night to burn villagers’ huts and steal their women---in addition to the ordinary oppression of sending out tax men to collect their grain, animals, and coin, of course.  The paladins were unable to do anything about this because they were tied up in the war, but now the war is over and it is time to bring justice to the land.
+
+The paladin **|Paladin** approaches the Dark Lord’s castle, built on the top of the hill with a single treacherous path leading up to it.  Two guards stand at the door.  As the paladin gets off his horse, they note the his large size, full-body plate armor, and huge sword, and start to get nervous.  “Who goes there?” one asks with a trembling voice.  “Call me Paladin|,” says the paladin.  “Now, I have a question for you, which like yours also has a correct answer: would you please open the door?  No rush, I’ll just wait here and sharpen my sword until you answer.”  The paladin unsheathes his sword and starts to get out his sharpening stone from one of his pouches when the guard who had spoken to him said, “Of course!  Let me just out this key and…” “What are you doing!” says the other guard.  He turned to the paladin and said, “We will never abandon our duty to our Master!  We will ugh---”; he collapses to the ground after being hit hard in the head by the first guard.  “As I was saying,” continued the first guard, “Here is the key; now let me open the door.”  He inserts the key, turns it, and opens the door.  “Thank you,” said the paladin; “You may run now.”  The guard darts down the path.
+
+The paladin enters the castle.  Now he just has to find the Dark Lord.
+|]
+
+wandering ∷ [Story]
+wandering = [stories|
+= Ran Into a Dead End =
+The paladin takes a bend to the left, just to run into a dead end.  He/she| turns around and starts towards another direction.
+= Minion =
+A soldier, one of the Dark Lord’s minions, emerges from the shadows, wielding a morningstar.  “I would advise you to either show me to your Master or to run,” said the paladin dryly.  The minion responded by raising his weapon and shouting, “Before you can get to the Dark Lord, you must pass through m---arrgh!”.  There were two thumps: one when the paladin hit the guards head, the other when the guards body hit the ground.
+
+The paladin continues on.
+= Oily Floor =
+The paladin is caught off guard when he/she| slips and bangs onto the ground (which is not something that you want to do in heavy armor).  He/she| curses, and then on hands and knees he/she| humiliatingly drags himself/herself| to the other side of the floor.  He/she| really hopes that the Dark Lord is in this direction so that he/she| does not have to backtrack.
+= Gold! =
+The paladin walked past a vault which looked like it had gold in it.  There were a couple of unarmed people standing beside it, one putting gold into it from a bag and the other making accounting notes.  The paladin decided that some subtlety would be useful right now.  He walked as stealily has he could up to them -- thank god he regularly oils his armor to keep it from squeaking -- and when he was just next to them, he whispered, “Boo!”  The two people jumped, looked at the paladin, screamed, and ran down the hallway.  The paladin smirked; he/she| loved using subtility.
+
+He/she| looked at the vault.  So much gold… He/she| could just take a little of it and probably no one would even notice, or if they did they wouldn’t tie it back to him/her|.  But no, that is not his/her| mission, and besides which this money belongs to the peasants it was taken from.  So be it; he continues on.
+|]
+
+pit_of_stakes ∷ Outcomes Story
+pit_of_stakes = [outcomes|
+= Common Title =
+Stakes!
+= Common Story =
+The paladin spends so much time looking around him for other guards that he/she| almost doesn’t notice the shifting below his/her| feet.
+= Common Question =
+Did the paladin shell out for the extra spike proofing for his/her| armor?
+= Success Choice =
+Yes.
+= Success Title =
+Well Worth the Price
+= Success Story =
+Unfortunately there is not enough time to react and the paladin falls into the pit, his/her| body hurtling towards the spikes at the bottom.  He/she| can hear the Dark Lord laughing in the distance…
+
+...until he/she| gets up, brushes herself off, and climbs up the ladder.  Spike-proofing may cost a fortune, but pays for itself in this line of work.  He/she| could hear the cheering turn into jeering in the distance.
+
+Now on the other side of the pit, he/she| continues onward.
+= Danger Choice =
+No, so perhaps he/she| should jump.
+= Danger Title =
+Jump!
+= Danger Story =
+Unfortunately, by the time he/she| realizes it, it is too late to step backward.  He/she| quickly bends into a crouch and leaps with as much energy as he/she| can.  He/she| watches as the doors open below him/her| and takes a mighty leap.
+= Danger Question =
+Where does he/she| land?
+= Averted Choice =
+Just outside the pit.
+= Averted Title =
+Just made it!
+= Averted Story =
+His/her| leap gave him/her| just enough momentum to carry himself/herself| across the gap.  His/her| hands were just barely enough to grab the other side of the pit.  He/she| said a quick prayer of thanks to you as he/she| pulled herself up and continued on her way.
+= Failure Choice =
+Just inside the pit.
+= Failure Title =
+Didn’t make it.
+= Failure Story =
+There is not enough momentum to carry him/her| over, though, and unfortunately, by the time he/she| realizes it, it is too late to escape.  The trap door opens beneath him/her| and he/she| is skewered in a pit of stakes.  His/her| last thought, as he/she| can hear the Dark Lord laughing in the distance, is that he/she| really should have spent the little extra money it would have taken to get spike-proofing for his/her| armor…
+= Shame =
+The paladin has been skewered; his/her| quest ends in failure.
+|]
+
+pit_of_snakes ∷ Outcomes Story
+pit_of_snakes = [outcomes|
+= Common Title =
+Uh oh!
+= Common Story =
+The paladin takes a step forward and is surprised to feel the floor give way out from under him.
+= Common Question =
+Where does the Paladin end up?
+= Success Choice =
+Outside of the pit.
+= Success Title =
+Whew.
+= Success Story =
+Happily, there is just enough time for the paladin to reach and use his/her| other foot to push himself/herself| away from the pit.  He/she| breathes a sigh of relief, and continues on.
+= Danger Choice =
+Inside the pit.
+= Danger Title =
+Oh, no!
+= Danger Story =
+He fights as hard as he can, and the snakes have trouble because of his full-body plate armor, but they eventually manage to plie it off (largely by accident; snakes are stupid) and gets some bites in.
+= Danger Question =
+What is the Paladin impervious to?
+= Averted Choice =
+Snake venom.
+= Averted Title =
+Only a flesh wound.
+= Averted Story =
+Fortunately, the Paladin had purchased a potion that granted him/her| snake venom immunity so the bites were only a flesh wound, albeit painful ones.  He/she| pulled himself/herself| up and saw that there was a ladder climbing out of it.  It’s existence made no sense as this pit was supposed to be a trap, so he/she| concluded that it must be a gift from You and took a moment to praise Your generosity as soon as he/she| was out.
+= Failure Choice =
+Fire.
+= Failure Title =
+Deadly venom.
+= Failure Story =
+As the venom entered the Paladon’s veins and sapped away at his vitality, his/her| last thought was, “If only I had spent a little extra to purchase snake venom immunity for myself in addition to fire immunity...”
+
+The snakes eat the paladin, but he/she| at least got some revenge because several snakes choked to death on the armor.  Needless to say, his/her| quest ends in failure.
+= Shame =
+The paladin has been eaten; his quest ends in failure.
+|]
+spider ∷ Outcomes Story
+spider = [outcomes|
+= Common Title =
+Something strange is ahead
+= Common Story =
+Something strange is ahead, but the hallway is dark and it is difficulty to see.
+= Common Question =
+Does the Paladin notice?
+= Success Choice =
+Yes.
+= Success Title =
+A timid spider,
+= Success Story =
+A gigantic spider web blocks the corridor. The Paladin takes his/her| sword and
+chops away at it. “Do you know how long I had to work to make that?” he/she|
+hears; he/she| looks around and sees a gigantic spider. “Sorry,” said the
+Paladin, “Do you want me to put it back?”. The spider looks at the Paladin and
+in particular his/her| very sharp looking sword, ponders for a moment, and then
+backs away. “Well, let’s face it, I really could have chosen a better spot for
+my web. I’ll just be on my way now…”
+
+The Paladin finishes slicing through the web and steps through.
+= Danger Choice =
+No.
+= Danger Title =
+Stuck!
+= Danger Story =
+In the darkness of the hallways the Paladin fails to see the
+gigantic spiderweb. He/she| walks straight into it and gets tangled.
+= Danger Question =
+When does the Paladin free himself/herself?
+= Averted Choice =
+Just in time.
+= Averted Title =
+Freedom.
+= Averted Story =
+Moving quickly, the Paladin was able to cut away at the web and free
+himself/herself|. As he/she| runs away he/she| could year a sonorous voice, "Oh,
+why do you run so fast, human? We could have had such a good time."
+= Failure Choice =
+Not in time.
+= Failure Title =
+Dinner Time.
+= Failure Story =
+He/she| starts to chop away at the bed, but his/her| sword is knocked away.
+He/she looks up and sees a gigantic black spider. “Thank you for coming, human;
+I was just starting to get hungry…”
+= Shame =
+The paladin has been eaten by a spider; his quest ends in failure.
+|]
+
+found_behind_guarded_door ∷ Narrative Story
+found_behind_guarded_door = [narrative|
+==================================== Title =====================================
+The Guarded Door
+==================================== Story =====================================
+Turning a bend, the Paladin sees a door with four guards beside it. Unlike the
+guards outside, these mean business. They draw their swords and all shout a
+battle cry as they rush towards you. This probably would have more worrying to
+the Paladin if there were at least eight guards, but as it is he/she| strikes
+down each of them with minimal effort. It’s times like this when the paladin
+gets angry that people like the Dark Lord can get away with harming the
+surrounding countryside using such inferior stock. Well, in fairness this was
+the fault of the Paladins for being away so long--though it’s not really their
+fault as they had to stop the bad kind of apocalypse from happening--so that no
+one could keep these people in check. Now they have returned, however and things
+were going to change, starting with the Dark Lord.
+
+He opened the door and stepped through me. The Dark Lord was there, sitting on
+his throne, reading a book. He yawned, and said, “Do we really have to do this
+now? I had been planning on taking a night off from killing people so that I can
+enjoy killing them even more tomorrow. Do you want to use one of my rooms for
+the night?”
+
+The paladin brandished his sword and said, “Have at you!” The Dark Lord drew his
+own black sword from some hidden place in his robe. The paladin immediately
+recognized it as a vampire blade -- a blade that sucks all o f the life of its
+victim with a single cut. Also, it has the ability to break through armor if it
+hits head on. The paladin will have to be very careful, as a single hit would
+result in a fate worse than death.
+
+Observing the paladin’s eyes on his sword, he smiles, and the battle begins.
+|]
+
+found_despite_misdirection ∷ Narrative Story
+found_despite_misdirection = [narrative|
+==================================== Title =====================================
+A Cunning Trap
+==================================== Story =====================================
+As he walks down the hallway, two doors come into view.  One of them has twenty guards in front of it, the other has a sign hanging on saying “Not the Dark Lord’s chamber.”
+
+The paladin runs to the second door, opens it, goes through, closes it, and then lowers the barrier to keep it closed.  The guards protest by their voices fade away as the paladin closes the door behind him/her|.
+
+The paladin turns to face the Dark Lord.  “I am impressed that you were able to figure out my cunning trap,” said, the Dark Lord.  “But I am afraid that here is where your adventure will end.  Have at you!”
+
+As the Dark Lord drew his blade from some hidden place in his robe, the paladin gasped on the inside.  It was a vampire blade -- a blade that would eat his/her| soul if it made a single cut.  Also, it has the ability to break through armor if it hits head on.  He would have to be incredible cautious.
+
+And so the battle begins.
+|]
+
+arm_stories ∷ [Story]
+arm_stories = [stories|
+--------------------------------------------------------------------------------
+The two swords clash with a mighty clang.
+--------------------------------------------------------------------------------
+The Paladin raises his shield and blocks the incoming blow from the Dark Lord.
+--------------------------------------------------------------------------------
+The Paladin dodges the blow from the Dark Lord. He/she| hides his fright at
+feeling the blade so close.
+--------------------------------------------------------------------------------
+The Dark Lord dodges the blow from the Paladin. “Is that the best you can do?”
+he says, laughing.
+--------------------------------------------------------------------------------
+|]
+
+first_arm ∷ Outcomes Story
+first_arm = [outcomes|
+================================= Common Title =================================
+The Dark Lord Swings!
+================================= Common Story =================================
+The Dark Lord strikes the Paladin with his sword!
+================================ Common Question ===============================
+How does the sword hit?
+================================ Success Choice ================================
+At an angle.
+================================= Success Title ================================
+A Close Call
+================================= Success Story ================================
+Happily, the sword hits the Paladin's armor and is deflected.
+================================ Failure Choice ================================
+The Paladin.
+================================= Failure Title ================================
+Dead On
+================================= Failure Story ================================
+The sword hits his/her| armor straight on and smashed through it. The paladin
+screams in agony as his life energy is ripped from his body, feeding the blade.
+The last thing that he remembers is floating into a gigantic, hungry mouth, and
+the Dark Lord saying, “Good boy!” to it just before it completely devours him.
+===================================== Shame ====================================
+Paladin |Paladin's soul to be eaten by the Dark Lord's vampiric blade.
+|]
+
+first_arm_sliced_off ∷ Narrative Story
+first_arm_sliced_off = [narrative|
+= Title =
+One Down
+= Story =
+With a mighty blow, the paladin slices off the Dark Lord’s arm.  Blood starts to spray.
+
+“Give up!” shouts the paladin, “And I will find a healer for you.”
+
+The Dark Lord chuckled.  “This is only a flesh wound!”  He reached into his pouch with his remaining arm and pulled out *another vampire sword*.  “How on earth could he have two?” think the paladin.
+
+The Dark Lord brandishes the sword. “Have at you!” he says.
+|]
+
+leg_stories ∷ [Story]
+leg_stories = [stories|
+--------------------------------------------------------------------------------
+The paladin awkwardly blocks the dagger with his sword.
+--------------------------------------------------------------------------------
+The paladin uses his shield to block the kick from the Dark Lord.
+--------------------------------------------------------------------------------
+The paladin dodges the blow from the Dark Lord. He/she| hides his fright at
+feeling the blade so close.
+--------------------------------------------------------------------------------
+The Dark Lord dodges the blow from the paladin. “Is that the best you can do?”
+he says, laughing.
+--------------------------------------------------------------------------------
+|]
+

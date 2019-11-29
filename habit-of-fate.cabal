@@ -125,12 +125,14 @@ library
                      , HabitOfFate.Data.Tagged
                      , HabitOfFate.JSON
                      , HabitOfFate.Logging
-                     , HabitOfFate.Names
                      , HabitOfFate.Prelude
                      , HabitOfFate.Quest
                      , HabitOfFate.Quest.Pages
                      , HabitOfFate.Quest.Pages.Index
                      , HabitOfFate.Quests
+                     , HabitOfFate.Quests.DarkLord
+                     , HabitOfFate.Quests.DarkLord.Part1
+                     , HabitOfFate.Quests.DarkLord.Part1.Paladin
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Quests.TheLongVoyageHome
                      , HabitOfFate.Server

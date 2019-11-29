@@ -16,61 +16,32 @@
 
 {-# LANGUAGE AutoDeriveTypeable #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Names where
+module HabitOfFate.Quests.DarkLord.Part1 (branch) where
 
 import HabitOfFate.Prelude
 
-import Data.Vector (Vector)
+import HabitOfFate.Quest
+import qualified HabitOfFate.Quests.DarkLord.Part1.Paladin as Paladin
+import HabitOfFate.Story
 
-female_names, male_names ∷ Vector Text
+classes ∷ Narrative Story
+classes = [narrative|
+= Title =
+Class
+= Story =
+There are several people whe might take on the Dark Lord and end his terrible
+rule.
+|]
 
-female_names =
-  ["Alexa"
-  ,"Alora"
-  ,"Cassidy"
-  ,"Cathrine"
-  ,"Damet"
-  ,"Elena"
-  ,"Eliza"
-  ,"Ellie"
-  ,"Etheria"
-  ,"Jane"
-  ,"Jesset"
-  ,"Jezebel"
-  ,"Kat"
-  ,"Kit"
-  ,"Lessa"
-  ,"Nellie"
-  ,"Tessa"
-  ,"Topari"
-  ,"Topia"
-  ,"Zephrya"
-  ]
-
-male_names =
-  ["Ablem"
-  ,"Adam"
-  ,"Alexus"
-  ,"Angelm"
-  ,"Brothsi"
-  ,"Byron"
-  ,"Cryon"
-  ,"Cyne"
-  ,"Cynsi"
-  ,"Econus"
-  ,"Edmund"
-  ,"Ethes"
-  ,"Fableron"
-  ,"Giles"
-  ,"Gylex"
-  ,"Gyrin"
-  ,"Krato"
-  ,"Thuron"
-  ,"Tiderus"
-  ,"Willew"
-  ,"Zachary"
-  ]
+branch ∷ Branch Story
+branch = Branch
+  "Part 1: Fall of the Dark Lord (or is it?)"
+  mempty
+  ( SplitEntry "class" classes "Whom will you have make the attempt?"
+    [ Paladin.branch
+    ]
+  )

@@ -30,8 +30,8 @@ module HabitOfFate.Quest where
 import HabitOfFate.Prelude
 
 import Control.Monad.Catch (MonadThrow(throwM),Exception)
+import Data.List (head)
 import Data.Traversable (Traversable(traverse))
-import Data.Vector (Vector)
 
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
@@ -112,22 +112,59 @@ nextPathOf StatusEntry{..} = throwM $ DeadEnd "status"
 
 data Branch content = Branch
   { branch_choice ∷ Markdown
-  , branch_substitutions ∷ Substitutions
+  , branch_substitutions ∷ [Substitution]
   , branch_entry ∷ Entry content
   } deriving (Eq,Foldable,Functor,Ord,Read,Show,Traversable)
 
-data NameList = MaleList | FemaleList | NeuterList (Vector Text) deriving (Eq,Ord,Read,Show)
+data Substitution =
+    SP { substitution_placeholder ∷ Text
+       , substitution_names_and_genders ∷ [(Text,Gender)]
+       }
+  | S  { substitution_placeholder ∷ Text
+       , substitution_names_and_genders ∷ [(Text,Gender)]
+       }
+  deriving (Eq,Ord,Read,Show)
 
-data QuestSubstitution = QS
-  { quest_substitution_list ∷ NameList
-  , quest_substitution_name ∷ Text
-  , quest_substitution_default ∷ Text
-  } deriving (Eq,Ord,Read,Show)
+isPrimarySubstitution ∷ Substitution → Bool
+isPrimarySubstitution (SP{}) = True
+isPrimarySubstitution (S{}) = False
+
+defaultSubstitutionsFor ∷ [Substitution] → Substitutions
+defaultSubstitutionsFor =
+  concatMap (\s →
+    let (name,gender) = s & substitution_names_and_genders & head
+    in (s & substitution_placeholder,Gendered name gender)
+       :
+       if isPrimarySubstitution s
+       then [("", Gendered name gender)]
+       else []
+  )
+  >>>
+  mapFromList
+
+randomSubstitutionsFor ∷
+  Applicative m ⇒
+  ([(Text,Gender)] → m (Text,Gender)) →
+  [Substitution] →
+  m Substitutions
+randomSubstitutionsFor select =
+  traverse (\s →
+    select (s & substitution_names_and_genders)
+    <&>
+    \(name,gender) →
+      (s & substitution_placeholder, Gendered name gender)
+      :
+      if isPrimarySubstitution s
+      then [("", Gendered name gender)]
+      else []
+  )
+  >>>
+  fmap (concat >>> mapFromList)
 
 data Quest = Quest
   { quest_name ∷ Text
   , quest_choice ∷ Markdown
-  , quest_substitutions ∷ [QuestSubstitution]
+  , quest_substitutions ∷ [Substitution]
   , quest_entry ∷ Entry Story
   } deriving (Eq,Ord,Read,Show)
 
@@ -144,7 +181,7 @@ substituteEntry subs = \case
     new_branches ←
       traverse
         (\y@Branch{..} →
-          traverseOf branch_entry_ (substituteEntry $ subs ⊕ branch_substitutions) y
+          traverseOf branch_entry_ (substituteEntry $ subs ⊕ defaultSubstitutionsFor branch_substitutions) y
         )
         split_branches
     pure x{split_story=new_story,split_branches=new_branches}
@@ -156,18 +193,6 @@ substituteEntry subs = \case
     traverseOf status_content_ subst x
   where
   subst = substitute subs
-
-defaultQuestSubstitutions ∷ Quest → Substitutions
-defaultQuestSubstitutions Quest{..} =
-  [ ( quest_substitution_name
-    , Gendered quest_substitution_default $
-        case quest_substitution_list of
-          MaleList → Male
-          FemaleList → Female
-          NeuterList _ → Neuter
-    )
-  | QS{..} ← quest_substitutions
-  ] |> mapFromList
 
 initialQuestPath ∷ MonadThrow m ⇒ Quest → m Text
 initialQuestPath Quest{..} = ((quest_name ⊕ "/") ⊕) <$> nextPathOf quest_entry

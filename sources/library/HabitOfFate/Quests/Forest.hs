@@ -26,6 +26,7 @@ import HabitOfFate.Prelude
 
 import Data.Vector (Vector)
 
+import HabitOfFate.Data.Gender
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
@@ -585,10 +586,10 @@ quest ∷ Quest
 quest = Quest
   "forest"
   "A prayer from someone searching for an herb in the Wicked Forest."
-  [ QS FemaleList "Searcher" "Andrea", QS FemaleList "" "Andrea"
-  , QS MaleList "Child" "Tommy"
-  , QS (NeuterList right_plants) "Plant" "Illsbane"
-  , QS (NeuterList wrong_plants) "WrongPlant" "Tigerlamp"
+  [ SP "Searcher" [("Andrea",Female)]
+  , S "Child" [("Tommy",Male)]
+  , S "Plant" [("Illsbane",Neuter)]
+  , S "WrongPlant" [("Tigerlamp",Neuter)]
   ]
   ( LineEntry
       NoShuffle

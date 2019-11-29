@@ -34,21 +34,19 @@ import HabitOfFate.Prelude
 
 import Control.Monad.Catch (MonadThrow(throwM), Exception)
 import Control.Monad.Logic (LogicT, observeAllT)
-import Control.Monad.Random.Class (MonadRandom(getRandomR), uniform)
+import Control.Monad.Random.Class (MonadRandom, uniform)
 import Data.Aeson
   ( FromJSON(..)
   , ToJSON(..)
   , (.:)
   , withObject
   )
-import Data.Vector (Vector, (!))
-import qualified Data.Vector as V
+import Data.List (head)
 import System.Random.Shuffle (shuffleM)
 
 import HabitOfFate.Data.Markdown
 import HabitOfFate.Data.Outcomes
 import HabitOfFate.JSON
-import HabitOfFate.Names
 import HabitOfFate.Quest
 import HabitOfFate.Story
 import HabitOfFate.Substitution
@@ -129,21 +127,12 @@ instance Exception RandomStoriesError where
 generateQuestState ∷
   ∀ m. MonadThrow m ⇒
   (∀ α. [α] → m α) →
-  (∀ α. Vector α → m α) →
+  (∀ α. [α] → m α) →
   (∀ α. [α] → m [α]) →
   Quest →
   m (Text, QuestState Markdown)
 generateQuestState select selectName shuffle Quest{..} = do
-  initial_substitutions ←
-    traverse
-      (\QS{..} → (quest_substitution_name,) <$> case quest_substitution_list of
-        MaleList → flip Gendered Male <$> selectName male_names
-        FemaleList → flip Gendered Female <$> selectName female_names
-        NeuterList list → flip Gendered Neuter <$> selectName list
-      )
-      quest_substitutions
-    <&>
-    mapFromList
+  initial_substitutions ← randomSubstitutionsFor selectName quest_substitutions
   let initial_folder_state = FolderState
         { _name_ = quest_name
         , _remaining_content_ = mempty
@@ -184,7 +173,10 @@ generateQuestState select selectName shuffle Quest{..} = do
     SplitEntry{..} →
       select split_branches
       >>=
-      \Branch{..} → folder (folder_state & substitutions_ %~ (⊕ branch_substitutions)) branch_entry
+      (\Branch{..} → do
+        new_substitutions ← randomSubstitutionsFor selectName branch_substitutions
+        folder (folder_state & substitutions_ %~ (⊕ new_substitutions)) branch_entry
+      )
     FamesEntry{..} → case folder_state ^. maybe_fames_ of
       Nothing
         | null fames_content → throwM $ EmptyFames quest_name
@@ -204,13 +196,13 @@ instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift
 
 allQuestStates ∷ MonadThrow m ⇒ Quest → m [(Text, QuestState Markdown)]
-allQuestStates = generateQuestState (map pure >>> asum) (V.head >>> pure) pure >>> observeAllT
+allQuestStates = generateQuestState (map pure >>> asum) (head >>> pure) pure >>> observeAllT
 
 randomQuestStateFor ∷ (MonadRandom m, MonadThrow m) ⇒ Quest → m (QuestState Markdown)
 randomQuestStateFor quest =
   generateQuestState
     uniform
-    (\v → getRandomR (0, olength v-1) <&> (v !))
+    uniform
     shuffleM
     quest
   <&>

@@ -15,38 +15,33 @@
 -}
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Quests where
+module HabitOfFate.Quests.DarkLord (quest) where
 
 import HabitOfFate.Prelude
 
-import Control.Monad.Catch (MonadThrow)
-import Control.Monad.Random (MonadRandom, uniform)
-import Data.Coerce
-
-import HabitOfFate.Data.Markdown
-import HabitOfFate.Data.QuestState
 import HabitOfFate.Quest
+import qualified HabitOfFate.Quests.DarkLord.Part1 as Part1
 import HabitOfFate.Story
-import qualified HabitOfFate.Quests.Forest as Forest
-import qualified HabitOfFate.Quests.DarkLord as DarkLord
-import qualified HabitOfFate.Quests.TheLongVoyageHome as TheLongVoyageHome
 
-quests ∷ [Quest]
-quests =
-  [ Forest.quest
-  , DarkLord.quest
-  , TheLongVoyageHome.quest
-  ]
-
-randomQuestState ∷ (MonadRandom m, MonadThrow m) ⇒ m (QuestState Markdown)
-randomQuestState = uniform quests >>= randomQuestStateFor
-
-interludes ∷ [Markdown]
-interludes = coerce $ [dashed_sections|
-You stare at the world from above and consider who to follow next.
-
-Ah, that mortal could be interesting.
+part_selection ∷ Narrative Story
+part_selection = [narrative|
+= Title =
+Choose What to Follow
+= Story =
+This quest has two parts.
 |]
+
+quest ∷ Quest
+quest = Quest
+  "darklord"
+  "An entreatment from someone seeking to defeat the Dark Lord."
+  mempty
+  ( SplitEntry "part" part_selection "Which do you choose to follow first?"
+    [ Part1.branch
+    ]
+  )

@@ -219,4 +219,5 @@ buildPagesFromQuest quest@Quest{..} = do
         RandomStoriesEntry{..} → pure []
         StatusEntry{..} → pure []
 
-  substituteEntry (defaultQuestSubstitutions quest) quest_entry >>= process Nothing quest_name
+  substituteEntry (defaultSubstitutionsFor quest_substitutions) quest_entry
+    >>= process Nothing quest_name
