@@ -40,7 +40,7 @@ animals, and coin, of course. The Paladins were unable to do anything about this
 because they were tied up in the war, but now the war is over and it is time to
 bring justice to the land.
 
-The Paladin **|Paladin** approaches the Dark Lord's castle, built on the top of
+The Paladin **|** approaches the Dark Lord's castle, built on the top of
 the hill with a single treacherous path leading up to it. Two guards stand at
 the door. As the Paladin gets off his horse, they note the his large size,
 full-body plate armor, and huge sword, and start to get nervous. "Who goes
@@ -64,7 +64,7 @@ wander_stories ∷ [Story]
 wander_stories = [stories|
 = Ran Into a Dead End =
 The Paladin takes a bend to the left, just to run into a dead end.
-he/she|Paladin turns around and starts towards another direction.
+he/she| turns around and starts towards another direction.
 = Minion =
 A soldier, one of the Dark Lord's minions, emerges from the shadows, wielding a
 morningstar. "I would advise you to either show me to your Master or to run,"
@@ -75,12 +75,12 @@ guards body hit the ground.
 
 The Paladin continues on.
 = Oily Floor =
-The Paladin is caught off guard when he/she|Paladin slips and bangs onto the
+The Paladin is caught off guard when he/she| slips and bangs onto the
 ground (which is not something that you want to do in heavy armor).
-he/she|Paladin curses, and then on hands and knees he/she|Paladin
-humiliatingly drags himself/herself|Paladin to the other side of the floor.
-he/she|Paladin really hopes that the Dark Lord is in this direction so that
-he/she|Paladin does not have to backtrack.
+he/she| curses, and then on hands and knees he/she|
+humiliatingly drags himself/herself| to the other side of the floor.
+he/she| really hopes that the Dark Lord is in this direction so that
+he/she| does not have to backtrack.
 = Gold! =
 The Paladin walked past a vault which looked like it had gold in it. There were
 a couple of unarmed people standing beside it, one putting gold into it from a
@@ -89,18 +89,18 @@ subtlety would be useful right now. He walked as stealily has he could up to
 them -- thank god he regularly oils his armor to keep it from squeaking -- and
 when he was just next to them, he whispered, "Boo!" The two people jumped,
 looked at the Paladin, screamed, and ran down the hallway. The Paladin smirked;
-he/she|Paladin loved using subtility.
+he/she| loved using subtility.
 
-he/she|Paladin looked at the vault. So much gold... he/she|Paladin could just
+he/she| looked at the vault. So much gold... he/she| could just
 take a little of it and probably no one would even notice, or if they did they
-wouldn't tie it back to him/her|Paladin. But no, that is not his/her|Paladin
+wouldn't tie it back to him/her|. But no, that is not his/her|
 mission, and besides which this money belongs to the peasants it was taken from.
 So be it; he continues on.
 |]
 
 wander_story ∷ Story
 wander_story = [story|
-|Paladin continues to search for the Dark Lord.
+| continues to search for the Dark Lord.
 |]
 
 pit_of_stakes ∷ Outcomes Story
@@ -109,9 +109,9 @@ pit_of_stakes = [outcomes|
 Stakes!
 = Common Story =
 The Paladin spends so much time looking around him for other guards that
-he/she|Paladin almost doesn't notice the shifting below his/her|Paladin feet.
+he/she| almost doesn't notice the shifting below his/her| feet.
 = Common Question =
-Did the Paladin shell out for the extra spike proofing for his/her|Paladin
+Did the Paladin shell out for the extra spike proofing for his/her|
 armor?
 = Success Choice =
 Yes.
@@ -119,49 +119,49 @@ Yes.
 Well Worth the Price
 = Success Story =
 Unfortunately there is not enough time to react and the Paladin falls into the
-pit, his/her|Paladin body hurtling towards the spikes at the bottom.
-he/she|Paladin can hear the Dark Lord laughing in the distance...
+pit, his/her| body hurtling towards the spikes at the bottom.
+he/she| can hear the Dark Lord laughing in the distance...
 
-...until he/she|Paladin gets up, brushes herself off, and climbs up the ladder.
+...until he/she| gets up, brushes herself off, and climbs up the ladder.
 Spike-proofing may cost a fortune, but pays for itself in this line of work.
-he/she|Paladin could hear the cheering turn into jeering in the distance.
+he/she| could hear the cheering turn into jeering in the distance.
 
-Now on the other side of the pit, he/she|Paladin continues onward.
+Now on the other side of the pit, he/she| continues onward.
 = Danger Choice =
-No, so perhaps he/she|Paladin should jump.
+No, so perhaps he/she| should jump.
 = Danger Title =
 Jump!
 = Danger Story =
-Unfortunately, by the time he/she|Paladin realizes it, it is too late to step
-backward. he/she|Paladin quickly bends into a crouch and leaps with as much
-energy as he/she|Paladin can. he/she|Paladin watches as the doors open below
-him/her|Paladin and takes a
+Unfortunately, by the time he/she| realizes it, it is too late to step
+backward. he/she| quickly bends into a crouch and leaps with as much
+energy as he/she| can. he/she| watches as the doors open below
+him/her| and takes a
 mighty leap.
 = Danger Question =
-Where does he/she|Paladin land?
+Where does he/she| land?
 = Averted Choice =
 Just outside the pit.
 = Averted Title =
 Just made it!
 = Averted Story =
-his/her|Paladin leap gave him/her|Paladin just enough momentum to carry
-himself/herself| across the gap. his/her|Paladin hands were just barely enough
-to grab the other side of the pit. he/she|Paladin said a quick prayer of thanks
-to you as he/she|Paladin pulled herself up and continued on her way.
+his/her| leap gave him/her| just enough momentum to carry
+himself/herself| across the gap. his/her| hands were just barely enough
+to grab the other side of the pit. he/she| said a quick prayer of thanks
+to you as he/she| pulled herself up and continued on her way.
 = Failure Choice =
 Just inside the pit.
 = Failure Title =
 Didn't make it.
 = Failure Story =
-There is not enough momentum to carry him/her|Paladin over, though, and
-unfortunately, by the time he/she|Paladin realizes it, it is too late to
-escape. The trap door opens beneath him/her|Paladin and he/she|Paladin is
-skewered in a pit of stakes. his/her|Paladin last thought, as he/she|Paladin
-can hear the Dark Lord laughing in the distance, is that he/she|Paladin really
+There is not enough momentum to carry him/her| over, though, and
+unfortunately, by the time he/she| realizes it, it is too late to
+escape. The trap door opens beneath him/her| and he/she| is
+skewered in a pit of stakes. his/her| last thought, as he/she|
+can hear the Dark Lord laughing in the distance, is that he/she| really
 should have spent the little extra money it would have taken to get
-spike-proofing for his/her|Paladin armor...
+spike-proofing for his/her| armor...
 = Shame =
-The Paladin has been skewered; his/her|Paladin quest ends in failure.
+The Paladin has been skewered; his/her| quest ends in failure.
 |]
 
 pit_of_snakes ∷ Outcomes Story
@@ -179,8 +179,8 @@ Outside of the pit.
 Whew.
 = Success Story =
 Happily, there is just enough time for the Paladin to reach and use
-his/her|Paladin other foot to push himself/herself|Paladin away from the pit.
-he/she|Paladin breathes a sigh of relief, and continues on.
+his/her| other foot to push himself/herself| away from the pit.
+he/she| breathes a sigh of relief, and continues on.
 = Danger Choice =
 Inside the pit.
 = Danger Title =
@@ -196,23 +196,23 @@ Snake venom.
 = Averted Title =
 Only a flesh wound.
 = Averted Story =
-Fortunately, the Paladin had purchased a potion that granted him/her|Paladin
+Fortunately, the Paladin had purchased a potion that granted him/her|
 snake venom immunity so the bites were only a flesh wound, albeit painful ones.
-he/she|Paladin pulled himself/herself|Paladin up and saw that there was a
+he/she| pulled himself/herself| up and saw that there was a
 ladder climbing out of it. It's existence made no sense as this pit was supposed
-to be a trap, so he/she|Paladin concluded that it must be a gift from You and
-took a moment to praise Your generosity as soon as he/she|Paladin was out.
+to be a trap, so he/she| concluded that it must be a gift from You and
+took a moment to praise Your generosity as soon as he/she| was out.
 = Failure Choice =
 Fire.
 = Failure Title =
 Deadly venom.
 = Failure Story =
 As the venom entered the Paladon's veins and sapped away at his vitality,
-his/her|Paladin last thought was, "If only I had spent a little extra to purchase
+his/her| last thought was, "If only I had spent a little extra to purchase
 snake venom immunity for myself in addition to fire immunity..."
 
-The snakes eat the Paladin, but he/she|Paladin at least got some revenge because
-several snakes choked to death on the armor.  Needless to say, his/her|Paladin quest
+The snakes eat the Paladin, but he/she| at least got some revenge because
+several snakes choked to death on the armor.  Needless to say, his/her| quest
 ends in failure.
 = Shame =
 The Paladin has been eaten; his quest ends in failure.
@@ -231,11 +231,11 @@ Yes.
 = Success Title =
 A timid spider,
 = Success Story =
-A gigantic spider web blocks the corridor. The Paladin takes his/her|Paladin
+A gigantic spider web blocks the corridor. The Paladin takes his/her|
 sword and chops away at it. "Do you know how long I had to work to make that?"
-he/she|Paladin hears; he/she|Paladin looks around and sees a gigantic spider.
+he/she| hears; he/she| looks around and sees a gigantic spider.
 "Sorry," said the Paladin, "Do you want me to put it back?". The spider looks at
-the Paladin and in particular his/her|Paladin very sharp looking sword, ponders
+the Paladin and in particular his/her| very sharp looking sword, ponders
 for a moment, and then backs away. "Well, let's face it, I really could have
 chosen a better spot for my web. I'll just be on my way now..."
 
@@ -246,7 +246,7 @@ No.
 Stuck!
 = Danger Story =
 In the darkness of the hallways the Paladin fails to see the gigantic spiderweb.
-he/she|Paladin walks straight into it and gets tangled.
+he/she| walks straight into it and gets tangled.
 = Danger Question =
 When does the Paladin free himself/herself?
 = Averted Choice =
@@ -255,7 +255,7 @@ Just in time.
 Freedom.
 = Averted Story =
 Moving quickly, the Paladin was able to cut away at the web and free
-himself/herself|. As he/she|Paladin runs away he/she|Paladin could year a
+himself/herself|. As he/she| runs away he/she| could year a
 sonorous voice, "Oh, why do you run so fast, human? We could have had such a
 good time."
 = Failure Choice =
@@ -263,7 +263,7 @@ Not in time.
 = Failure Title =
 Dinner Time.
 = Failure Story =
-he/she|Paladin starts to chop away at the bed, but his/her|Paladin sword is
+he/she| starts to chop away at the bed, but his/her| sword is
 knocked away. He/she looks up and sees a gigantic black spider. "Thank you for
 coming, human; I was just starting to get hungry..."
 = Shame =
@@ -278,7 +278,7 @@ The Guarded Door
 Turning a bend, the Paladin sees a door with four guards beside it. Unlike the
 guards outside, these mean business. They draw their swords and all shout a
 battle cry as they rush towards you. This probably would have more worrying to
-the Paladin if there were at least eight guards, but as it is he/she|Paladin
+the Paladin if there were at least eight guards, but as it is he/she|
 strikes down each of them with minimal effort. It's times like this when the
 Paladin gets angry that people like the Dark Lord can get away with harming the
 surrounding countryside using such inferior stock. Well, in fairness this was
@@ -322,7 +322,7 @@ Lord's chamber."
 
 The Paladin runs to the second door, opens it, goes through, closes it, and then
 lowers the barrier to keep it closed. The guards protest by their voices fade
-away as the Paladin closes the door behind him/her|Paladin.
+away as the Paladin closes the door behind him/her|.
 
 The Paladin turns to face the Dark Lord. "I am impressed that you were able to
 figure out my cunning trap," said, the Dark Lord. "But I am afraid that here is
@@ -330,7 +330,7 @@ where your adventure will end. Have at you!"
 
 As the Dark Lord drew his blade from some hidden place in his robe, the Paladin
 gasped on the inside. It was a vampire blade -- a blade that would eat
-his/her|Paladin soul if it made a single cut. Also, it has the ability to break
+his/her| soul if it made a single cut. Also, it has the ability to break
 through armor if it hits head on. He would have to be incredible cautious.
 
 And so the battle begins.
@@ -343,7 +343,7 @@ The two swords clash with a mighty clang.
 --------------------------------------------------------------------------------
 The Paladin raises his shield and blocks the incoming blow from the Dark Lord.
 --------------------------------------------------------------------------------
-The Paladin dodges the blow from the Dark Lord. he/she|Paladin hides his fright
+The Paladin dodges the blow from the Dark Lord. he/she| hides his fright
 at feeling the blade so close.
 --------------------------------------------------------------------------------
 The Dark Lord dodges the blow from the Paladin. "Is that the best you can do?"
@@ -370,13 +370,13 @@ Dead on.
 ================================= Failure Title ================================
 Straight On
 ================================= Failure Story ================================
-The sword hits his/her|Paladin armor straight on and smashes through the breast
+The sword hits his/her| armor straight on and smashes through the breast
 plate. The Paladin screams in agony as his life energy is ripped from his body,
 feeding the blade. The last thing that he remembers is floating into a gigantic,
 hungry mouth, and the Dark Lord saying, "Good boy!" to it just before it
 completely devours him.
 ===================================== Shame ====================================
-Paladin |Paladin's soul was eaten by the Dark Lord's vampiric blade.
+Paladin |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
 first_arm_sliced_off ∷ Narrative Story
@@ -409,24 +409,24 @@ In the air.
 ================================= Success Title ================================
 Woosh!
 ================================= Success Story ================================
-The Paladin ducks out of the way as the hungry blade flies past his/her|Paladin
+The Paladin ducks out of the way as the hungry blade flies past his/her|
 neck.
 ================================ Failure Choice ================================
 On the Paladin's neck.
 ================================= Failure Title ================================
 Chop Chop
 ================================= Failure Story ================================
-The vampire sword hits his/her|Paladin neck straight on and makes it half way
+The vampire sword hits his/her| neck straight on and makes it half way
 through before stopping; this is not because there is not enough force but
 because the blade refuses to leave the flesh so that it can eat the Paladin's
 soul.
 
 The Paladin screams in agony as his life energy is ripped from his body, feeding
-the blade. The last thing that he/she|Paladin remembers is floating into a
+the blade. The last thing that he/she| remembers is floating into a
 gigantic, hungry mouth, and the Dark Lord saying, "Good boy!" just before it
-completely devours him/her|Paladin.
+completely devours him/her|.
 ===================================== Shame ====================================
-|Paladin was defeated by a Dark Lord with only one arm.
+| was defeated by a Dark Lord with only one arm.
 |]
 
 second_arm_sliced_off ∷ Narrative Story
@@ -454,7 +454,7 @@ The Paladin awkwardly blocks the dagger with his sword.
 --------------------------------------------------------------------------------
 The Paladin uses his shield to block the kick from the Dark Lord.
 --------------------------------------------------------------------------------
-The Paladin dodges the blow from the Dark Lord. he/she|Paladin hides his fright at
+The Paladin dodges the blow from the Dark Lord. he/she| hides his fright at
 feeling the blade so close.
 --------------------------------------------------------------------------------
 The Dark Lord dodges the blow from the Paladin. "Is that the best you can do?"
@@ -481,13 +481,13 @@ Dead on.
 ================================= Failure Title ================================
 A Deadly Hit
 ================================= Failure Story ================================
-The dagger hits his/her|Paladin armor straight on and smashes through the chest
+The dagger hits his/her| armor straight on and smashes through the chest
 plate. The Paladin screams in agony as his life energy is ripped from his body,
 feeding the blade. The last thing that he remembers is floating into a gigantic,
 hungry mouth, and the Dark Lord saying, "Good boy!" to it just before it
 completely devours him.
 ===================================== Shame ====================================
-Paladin |Paladin's soul was eaten by the Dark Lord's vampiric blade.
+Paladin |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
 first_leg_sliced_off ∷ Narrative Story
@@ -517,7 +517,7 @@ In the air.
 ================================= Success Title ================================
 Woosh!
 ================================= Success Story ================================
-The Paladin ducks out of the way as the hungry blade flies past his/her|Paladin
+The Paladin ducks out of the way as the hungry blade flies past his/her|
 body.
 ================================ Failure Choice ================================
 On the Paladin's leg.
@@ -530,11 +530,11 @@ because the blade refuses to leave the flesh so that it can eat the Paladin's
 soul.
 
 The Paladin screams in agony as his life energy is ripped from his body, feeding
-the blade. The last thing that he/she|Paladin remembers is floating into a
+the blade. The last thing that he/she| remembers is floating into a
 gigantic, hungry mouth, and the Dark Lord saying, "Good boy!" just before it
-completely devours him/her|Paladin.
+completely devours him/her|.
 ===================================== Shame ====================================
-|Paladin was defeated by a Dark Lord with ony one leg.
+| was defeated by a Dark Lord with ony one leg.
 |]
 
 conclusion ∷ Narrative Story
@@ -546,31 +546,31 @@ With a roar and a mighty blow the Paladin chops off the remaining leg and the
 Dark Lord falls to the ground. The Paladin walks over to the Dark Lord and says,
 "You can no longer harm me. Yield!" "Never!" says the Dark Lord. He twists his
 head and a vampiric dagger jumps into its mouth. Reflexively the Paladin jumps
-backwards as it swings towards him/her|Paladin. "You have got to be kidding
+backwards as it swings towards him/her|. "You have got to be kidding
 me," the Paladin says. He up to the Dark Lord, carefully kicks the blade out of
 his mouth, and then walks away. "Coward!" says the Dark Lord. "Come back here;
-we aren't done yet!" The Paladin sheaths his/her|Paladin sword and said, "No,
+we aren't done yet!" The Paladin sheaths his/her| sword and said, "No,
 you are no threat to anyone now, and you have paid for your crimes by losing all
 of your limbs. There is no need for me to kill you."
 
 The Paladin walks around collecting the vampiric weapons, wrapping them up very,
 very carefully; hopefully someone at the guild will know what to do with them.
 The Paladin walks to the door, lifts the bar blocking it, and opens it. Just
-outside twenty guards are staring at him/her|Paladin. he/she|Paladin takes a
-few steps towards them, and they take a few steps back. He/She|Paladin leans
+outside twenty guards are staring at him/her|. he/she| takes a
+few steps towards them, and they take a few steps back. He/She| leans
 towards them and whispers, "Boo!" They all turn around and took off.
 
 The Paladin chuckles; some things never get old.
 
-he/she|Paladin starts his/her|Paladin way to the Paladin's Guild in order to
+he/she| starts his/her| way to the Paladin's Guild in order to
 get another mission. As he does so, he is stopped at every village on the way to
-hold a feast in his/her|Paladin honor, and everywhere he goes he sings of the
+hold a feast in his/her| honor, and everywhere he goes he sings of the
 greatness of you, the God of Fate.
 |]
 
 fames ∷ [Story]
 fames = [stories|
-The Dark Lord has been defeated by |Paladin, who has brough great glory to the
+The Dark Lord has been defeated by |, who has brough great glory to the
 Paladin's guild.
 |]
 
