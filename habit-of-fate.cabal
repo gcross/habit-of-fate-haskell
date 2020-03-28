@@ -132,6 +132,7 @@ library
                      , HabitOfFate.Quests
                      , HabitOfFate.Quests.DarkLord
                      , HabitOfFate.Quests.DarkLord.Part1
+                     , HabitOfFate.Quests.DarkLord.Part1.Mercenary
                      , HabitOfFate.Quests.DarkLord.Part1.Paladin
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Quests.TheLongVoyageHome

@@ -579,7 +579,7 @@ branch = Branch
   "A Paladin, just returning from the War."
   [ SP "Paladin" [("Cecilia",Female)]
   ]
-  ( LineEntry Shuffle "class"
+  ( LineEntry Shuffle "paladin"
       [ RandomStoriesEntry wander_stories
       , StatusEntry wander_story
       , NarrativeEntry "intro" intro

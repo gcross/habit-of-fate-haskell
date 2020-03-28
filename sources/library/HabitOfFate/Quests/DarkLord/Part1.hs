@@ -26,6 +26,7 @@ import HabitOfFate.Prelude
 
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quests.DarkLord.Part1.Paladin as Paladin
+import qualified HabitOfFate.Quests.DarkLord.Part1.Mercenary as Mercenary
 import HabitOfFate.Story
 
 classes ∷ Narrative Story
@@ -43,5 +44,6 @@ branch = Branch
   mempty
   ( SplitEntry "class" classes "Whom will you have make the attempt?"
     [ Paladin.branch
+    , Mercenary.branch
     ]
   )
