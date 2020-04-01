@@ -579,13 +579,15 @@ branch = Branch
   "A Paladin, just returning from the War."
   [ SP "Paladin" [("Cecilia",Female)]
   ]
-  ( LineEntry Shuffle "paladin"
+  ( LineEntry NoShuffle "paladin"
       [ RandomStoriesEntry wander_stories
       , StatusEntry wander_story
       , NarrativeEntry "intro" intro
-      , EventEntry "pit_of_stakes" pit_of_stakes
-      , EventEntry "spider" spider
-      , EventEntry "pit_of_snakes" pit_of_snakes
+      , LineEntry Shuffle "searching"
+          [ EventEntry "pit_of_stakes" pit_of_stakes
+          , EventEntry "spider" spider
+          , EventEntry "pit_of_snakes" pit_of_snakes
+          ]
       , SplitEntry "found" found "What does the Paladin find next?"
           [Branch "A highly guarded door." mempty $
             NarrativeEntry "guarded" found_behind_guarded_door

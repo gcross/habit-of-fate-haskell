@@ -41,7 +41,7 @@ import Data.Aeson
   , (.:)
   , withObject
   )
-import Data.List (head)
+import Data.List (head,permutations)
 import System.Random.Shuffle (shuffleM)
 
 import HabitOfFate.Data.Markdown
@@ -196,7 +196,13 @@ instance MonadThrow m ⇒ MonadThrow (LogicT m) where
   throwM = throwM >>> lift
 
 allQuestStates ∷ MonadThrow m ⇒ Quest → m [(Text, QuestState Markdown)]
-allQuestStates = generateQuestState (map pure >>> asum) (head >>> pure) pure >>> observeAllT
+allQuestStates =
+  generateQuestState
+    (map pure >>> asum)
+    (head >>> pure)
+    (permutations >>> map pure >>> asum)
+  >>>
+  observeAllT
 
 randomQuestStateFor ∷ (MonadRandom m, MonadThrow m) ⇒ Quest → m (QuestState Markdown)
 randomQuestStateFor quest =

@@ -621,14 +621,16 @@ branch = Branch
   "A mercenary, just returning from the War."
   [ SP "mercenary" [("Julie",Female)]
   ]
-  ( LineEntry Shuffle "mercenary"
+  ( LineEntry NoShuffle "mercenary"
       [ RandomStoriesEntry wander_stories
       , StatusEntry wander_story
       , NarrativeEntry "intro" intro
-      , EventEntry "pit_of_stakes" pit_of_stakes
-      , EventEntry "spider" spider
-      , EventEntry "pit_of_snakes" pit_of_snakes
-      , EventEntry "gold" gold
+      , LineEntry Shuffle "searching"
+          [ EventEntry "pit_of_stakes" pit_of_stakes
+          , EventEntry "spider" spider
+          , EventEntry "pit_of_snakes" pit_of_snakes
+          , EventEntry "gold" gold
+          ]
       , SplitEntry "found" found "What does the mercenary find next?"
           [Branch "A highly guarded door." mempty $
             NarrativeEntry "guarded" found_behind_guarded_door
