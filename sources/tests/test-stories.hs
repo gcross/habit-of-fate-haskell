@@ -45,8 +45,10 @@ import HabitOfFate.Quests
 import HabitOfFate.Testing
 import HabitOfFate.Testing.Assertions
 
-testFames ∷ Quest → TestTree
-testFames quest@Quest{..} =
+import System.IO (putStrLn)
+
+testValid ∷ Quest → TestTree
+testValid quest@Quest{..} =
   testCase (unpack quest_name) $ do
     all_states ← allQuestStates quest
 
@@ -126,5 +128,5 @@ main = doMain $
         assertBool
           [i|"initial quest {quest_name} path {initial_path} does not exist"|]
           (initial_path ∈ paths)
-  , testGroup "Fames" $ map testFames quests
+  , testGroup "Valid" $ map testValid quests
   ]
