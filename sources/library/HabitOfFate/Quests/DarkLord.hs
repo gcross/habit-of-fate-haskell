@@ -26,6 +26,7 @@ import HabitOfFate.Prelude
 
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quests.DarkLord.Part1 as Part1
+import qualified HabitOfFate.Quests.DarkLord.Part2 as Part2
 import HabitOfFate.Story
 
 part_selection ∷ Narrative Story
@@ -43,5 +44,6 @@ quest = Quest
   mempty
   ( SplitEntry "part" part_selection "Which do you choose to follow first?"
     [ Part1.branch
+    , Part2.branch
     ]
   )

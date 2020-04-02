@@ -134,6 +134,8 @@ library
                      , HabitOfFate.Quests.DarkLord.Part1
                      , HabitOfFate.Quests.DarkLord.Part1.Mercenary
                      , HabitOfFate.Quests.DarkLord.Part1.Paladin
+                     , HabitOfFate.Quests.DarkLord.Part2
+                     , HabitOfFate.Quests.DarkLord.Part2.Paladin
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Quests.TheLongVoyageHome
                      , HabitOfFate.Server

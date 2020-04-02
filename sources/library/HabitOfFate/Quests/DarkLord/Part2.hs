@@ -20,13 +20,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module HabitOfFate.Quests.DarkLord.Part1 (branch) where
+module HabitOfFate.Quests.DarkLord.Part2 (branch) where
 
 import HabitOfFate.Prelude
 
 import HabitOfFate.Quest
-import qualified HabitOfFate.Quests.DarkLord.Part1.Paladin as Paladin
-import qualified HabitOfFate.Quests.DarkLord.Part1.Mercenary as Mercenary
+import qualified HabitOfFate.Quests.DarkLord.Part2.Paladin as Paladin
 import HabitOfFate.Story
 
 classes ∷ Narrative Story
@@ -40,10 +39,9 @@ rule.
 
 branch ∷ Branch Story
 branch = Branch
-  "Part 1: Fall of the Dark Lord (or is it?)"
+  "Part 2: Fall of the Dark Lord Once and For All"
   mempty
-  ( SplitEntry "1" classes "Whom will you have make the attempt?"
+  ( SplitEntry "2" classes "Whom will you have make the attempt?"
     [ Paladin.branch
-    , Mercenary.branch
     ]
   )
