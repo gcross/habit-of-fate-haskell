@@ -27,6 +27,7 @@ import HabitOfFate.Prelude
 import HabitOfFate.Quest
 import qualified HabitOfFate.Quests.DarkLord.Part2.Mage as Mage
 import qualified HabitOfFate.Quests.DarkLord.Part2.Paladin as Paladin
+import qualified HabitOfFate.Quests.DarkLord.Part2.Rogue as Rogue
 import HabitOfFate.Story
 
 classes ∷ Narrative Story
@@ -45,5 +46,6 @@ branch = Branch
   ( SplitEntry "2" classes "Whom will You have make the attempt?"
     [ Mage.branch
     , Paladin.branch
+    , Rogue.branch
     ]
   )

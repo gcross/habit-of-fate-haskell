@@ -137,6 +137,7 @@ library
                      , HabitOfFate.Quests.DarkLord.Part2
                      , HabitOfFate.Quests.DarkLord.Part2.Mage
                      , HabitOfFate.Quests.DarkLord.Part2.Paladin
+                     , HabitOfFate.Quests.DarkLord.Part2.Rogue
                      , HabitOfFate.Quests.Forest
                      , HabitOfFate.Quests.TheLongVoyageHome
                      , HabitOfFate.Server
