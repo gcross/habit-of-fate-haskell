@@ -19,16 +19,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module HabitOfFate.Quests.DarkLord.Part1.Mercenary (branch) where
 
 import HabitOfFate.Prelude
 
 import HabitOfFate.Data.Gender
-import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-intro ∷ Narrative Story
 intro = [narrative|
 = Title =
 The Dark Castle
@@ -64,7 +64,6 @@ snatches the coins from the ground and runs away.
 The mercenary enters the castle. Now he/she| just has to find the Dark Lord...
 |]
 
-wander_stories ∷ [Story]
 wander_stories = [stories|
 = Ran Into a Dead End =
 The mercenary takes a bend to the left, just to run into a dead end.
@@ -86,12 +85,10 @@ floor. He/she| really hopes that the Dark Lord is in this direction so that
 he/she| does not have to backtrack.
 |]
 
-wander_story ∷ Story
 wander_story = [story|
 | continues to search for the Dark Lord.
 |]
 
-gold ∷ Outcomes Story
 gold = [outcomes|
 = Common Title =
 Gold!
@@ -123,7 +120,6 @@ the touch and all is silence and darkness.
 | has been eaten by a vault that turned out to not contain gold.
 |]
 
-pit_of_stakes ∷ Outcomes Story
 pit_of_stakes = [outcomes|
 = Common Title =
 Stakes!
@@ -181,7 +177,6 @@ spike-proofing for his/her| armor...
 | was skewered in the Dark Lord's dungeon.
 |]
 
-pit_of_snakes ∷ Outcomes Story
 pit_of_snakes = [outcomes|
 = Common Title =
 Uh oh!
@@ -235,7 +230,6 @@ ends in failure.
 The mercenary | was eaten by snakes.
 |]
 
-spider ∷ Outcomes Story
 spider = [outcomes|
 = Common Title =
 Something Strange is Ahead
@@ -288,7 +282,6 @@ I was just starting to get hungry..."
 | was eaten by a spider when on a quest to defeat the Dark Lord.
 |]
 
-found_behind_guarded_door ∷ Narrative Story
 found_behind_guarded_door = [narrative|
 ==================================== Title =====================================
 The Guarded Door
@@ -327,7 +320,6 @@ Observing the mercenary's eyes on his sword, the Dark Lord smiles, and the
 battle begins.
 |]
 
-found_despite_misdirection ∷ Narrative Story
 found_despite_misdirection = [narrative|
 ==================================== Title =====================================
 A Cunning Trap
@@ -355,7 +347,6 @@ cautious.
 And so the battle begins.
 |]
 
-found ∷ Narrative Story
 found = [narrative|
 = Title =
 The Hunt Grows to a Close
@@ -363,7 +354,6 @@ The Hunt Grows to a Close
 The mercenary has found the Dark Lord and is currently in battle.
 |]
 
-arm_stories ∷ [Story]
 arm_stories = [stories|
 --------------------------------------------------------------------------------
 The two swords clash with a mighty clang.
@@ -379,7 +369,6 @@ he says, laughing.
 --------------------------------------------------------------------------------
 |]
 
-first_arm ∷ Outcomes Story
 first_arm = [outcomes|
 ================================= Common Title =================================
 The Dark Lord Swings!
@@ -407,7 +396,6 @@ completely devours him/her|.
 |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_arm_sliced_off ∷ Narrative Story
 first_arm_sliced_off = [narrative|
 = Title =
 One Down
@@ -425,7 +413,6 @@ earth could he have two?" thinks the mercenary.
 The Dark Lord brandishes the sword. "Have at you!" he says.
 |]
 
-second_arm ∷ Outcomes Story
 second_arm = [outcomes|
 ================================= Common Title =================================
 Failure to Block
@@ -458,7 +445,6 @@ completely devours him/her|.
 | was defeated by a Dark Lord with only one arm.
 |]
 
-second_arm_sliced_off ∷ Narrative Story
 second_arm_sliced_off = [narrative|
 = Title =
 The Dark Lord is Deprived of his Arms
@@ -476,7 +462,6 @@ blade--emerges at his foot. He rushes towards the mercenary.
 "For the love of..." the mercenary says as he/she| meets the attack.
 |]
 
-leg_stories ∷ [Story]
 leg_stories = [stories|
 --------------------------------------------------------------------------------
 The mercenary awkwardly blocks the dagger with his sword.
@@ -491,7 +476,6 @@ he says, laughing.
 --------------------------------------------------------------------------------
 |]
 
-first_leg ∷ Outcomes Story
 first_leg = [outcomes|
 ================================= Common Title =================================
 The Dark Lord Kicks!
@@ -519,7 +503,6 @@ it completely devours him/her|.
 |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_leg_sliced_off ∷ Narrative Story
 first_leg_sliced_off = [narrative|
 = Title =
 Only One Limb Left
@@ -536,7 +519,6 @@ his remaining foot. He hops and kicks his way towards the mercenary.
 The mercenary groans; this was definitely not covered in the Handbook.
 |]
 
-second_leg ∷ Outcomes Story
 second_leg = [outcomes|
 ================================= Common Title =================================
 Failure to Block
@@ -569,7 +551,6 @@ completely devours him/her|.
 | was defeated by a Dark Lord with ony one leg.
 |]
 
-conclusion ∷ Narrative Story
 conclusion = [narrative|
 = Title =
 All Limbs Gone
@@ -611,12 +592,10 @@ When he/she| finally arrives home he/she| spend the following day in worship of
 You, the God of Fate, for providing him/her| with such great luck.
 |]
 
-fames ∷ [Story]
 fames = [stories|
 The Dark Lord has been defeated by |, for great profit!
 |]
 
-branch ∷ Branch Story
 branch = Branch
   "A mercenary, just returning from the War."
   [ SP "mercenary" [("Julie",Female)]

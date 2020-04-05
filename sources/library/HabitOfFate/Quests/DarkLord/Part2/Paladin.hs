@@ -19,14 +19,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module HabitOfFate.Quests.DarkLord.Part2.Paladin (branch) where
 
 import HabitOfFate.Data.Gender
-import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-introduction ∷ Narrative Story
 introduction = [narrative|
 = Title =
 The Haunted Lands
@@ -49,7 +49,6 @@ The Paladin started the long trek up the mountain, leaving his/her| horse behind
 with a peasant as it would have been too afraid of the lightning.
 |]
 
-wander_stories ∷ [Story]
 wander_stories = [stories|
 = Ran Into a Dead End =
 The Paladin takes a bend to the left, just to run into a dead end.
@@ -72,12 +71,10 @@ he/she| really hopes that the Dark Lord is in this direction so that
 he/she| does not have to backtrack.
 |]
 
-wander_story ∷ Story
 wander_story = [story|
 | continues to search for the Dark Lord.
 |]
 
-entrance ∷ Outcomes Story
 entrance = [outcomes|
 = Common Title =
 The Entrance
@@ -117,7 +114,6 @@ have to wait for another hero to save them.
 | was struck down by lightning before even entering the Dark Lord's castle.
 |]
 
-gold ∷ Outcomes Story
 gold = [outcomes|
 = Common Title =
 A Vault of Gold
@@ -160,7 +156,6 @@ tell the Master that there will be ham for dinner tonight," he cackles.
 | succombed to greed and made a tasty meal for the Dark Lord.
 |]
 
-mouth ∷ Outcomes Story
 mouth = [outcomes|
 = Common Title =
 Good Vibrations?
@@ -205,7 +200,6 @@ It would seem that the villages need another hero to save them now.
 | was devouted by a mouth in an ordinary looking ceiling.
 |]
 
-snake ∷ Outcomes Story
 snake = [outcomes|
 = Common Title =
 Snake!
@@ -245,7 +239,6 @@ his/her| metal armor is giving the snake indigestion.
 | makes a mostly excellent snack for a snake--except for his/her| armor.
 |]
 
-guards ∷ Outcomes Story
 guards = [outcomes|
 = Common Title =
 Guards!
@@ -304,7 +297,6 @@ remember?" The Dark Lord laughs some more, and then says to his/her| guards,
 |'s head makes a great trophy in the hall of the Dark Lord.
 |]
 
-sphere_monster ∷ Outcomes Story
 sphere_monster = [outcomes|
 = Common Title =
 The Sphere of Death
@@ -351,7 +343,6 @@ gripped by the creature's many arms and is torn to pieces.
 | was torn to pieces by a spherical horror.
 |]
 
-found ∷ Narrative Story
 found = [narrative|
 = Title =
 The Dark Lord is Found
@@ -366,19 +357,16 @@ The paladin adopts a fighting stance, and starts closing the distance between
 him/her| and the Dark Lord.
 |]
 
-boss_story ∷ Story
 boss_story = [story|
 | is engaged in battle with the Dark Lord.
 |]
 
-boss_stories ∷ [Story]
 boss_stories = [stories|
 = The Ground Trembles =
 The Paladin feels the ground start to tremble but manages to leap out of the way
 before stones fall from the ceiling where he/she| was standing.
 |]
 
-lightning ∷ Outcomes Story
 lightning = [outcomes|
 = Common Title =
 Hairs Rising
@@ -405,7 +393,6 @@ by a bolt of lightning and falls to the ground dead.
 | was electrocuted while fighting the Dark Lord.
 |]
 
-fireball ∷ Outcomes Story
 fireball = [outcomes|
 = Common Title =
 The Fighting Grows Hotter
@@ -432,7 +419,6 @@ inside his/her| own armor.
 | was burn to a crisp.
 |]
 
-frost ∷ Outcomes Story
 frost = [outcomes|
 = Common Title =
 Chilly
@@ -461,7 +447,6 @@ thousand pieces.
 Rest in pieces, |.
 |]
 
-conclusion ∷ Outcomes Story
 conclusion = [outcomes|
 = Common Title =
 Finally Everything Comes to a Beheading
@@ -510,13 +495,11 @@ The Paladin might not have lost, in a way--but the peasants certainly did.
 |'s will was too weak to resist the allure of the Dark Lord's necklage.
 |]
 
-fames ∷ [Story]
 fames = [stories|
 The Dark Lord has been defeated once more by |, who has brough great glory to
 the Paladin's guild.
 |]
 
-branch ∷ Branch Story
 branch = Branch
   "A Paladin, just returning from the War."
   [ SP "Paladin" [("Cephus",Male)]

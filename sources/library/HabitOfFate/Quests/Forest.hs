@@ -20,6 +20,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module HabitOfFate.Quests.Forest where
 
 import HabitOfFate.Prelude
@@ -27,7 +29,6 @@ import HabitOfFate.Prelude
 import Data.Vector (Vector)
 
 import HabitOfFate.Data.Gender
-import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
@@ -35,7 +36,6 @@ import HabitOfFate.Story
 --------------------------------- Intro Stories --------------------------------
 --------------------------------------------------------------------------------
 
-intro ∷ Narrative Story
 intro = [narrative|
 ===================================== Title ====================================
 The Wicked Forest
@@ -45,7 +45,6 @@ by night. Unfortunately, it is also the only place where a healing *|Plant*
 plant can be obtained, so a brave man/woman| is about to enter it.
 |]
 
-intro_parent ∷ Narrative Story
 intro_parent = [narrative|
 ===================================== Title ====================================
 A Parent Enters The Woods
@@ -60,7 +59,6 @@ but he/she| has no other choice.
 He/she| entered the forest.
 |]
 
-intro_healer ∷ Narrative Story
 intro_healer = [narrative|
 ===================================== Title ====================================
 A Healer Enters The Woods
@@ -80,12 +78,10 @@ He/she| entered the forest. |]
 -------------------------------- Status Stories --------------------------------
 --------------------------------------------------------------------------------
 
-looking_for_herb_story ∷ Story
 looking_for_herb_story = [story|
 |Searcher continues to search in the dark for an |Plant plant.
 |]
 
-returning_home_story ∷ Story
 returning_home_story = [story|
 An |Plant plant in hand, **|Searcher** continues towards home.
 |]
@@ -94,7 +90,6 @@ An |Plant plant in hand, **|Searcher** continues towards home.
 ------------------------------- Wandering Stories ------------------------------
 --------------------------------------------------------------------------------
 
-wander_stories ∷ [Story]
 wander_stories_labels ∷ [Text]
 (wander_stories, wander_stories_labels) = [stories_and_labels|
 ================================ Nothing Happens ===============================
@@ -139,7 +134,6 @@ behind.
 -------------------------------- Event Stories -------------------------------
 --------------------------------------------------------------------------------
 
-gingerbread_house ∷ Outcomes Story
 gingerbread_house = [outcomes|
 ================================= Common Title =================================
 The Gingerbread House
@@ -194,7 +188,6 @@ The sweet smell of gingerbread was just too alluring for |Searcher.
 |Child was completely forgotten as |Searcher was drawn into a gingerbread house.
 |]
 
-found ∷ Narrative Story
 found = [narrative|
 ===================================== Title ====================================
 Some Help Arrives?
@@ -202,7 +195,6 @@ Some Help Arrives?
 Finally, just when all hope is lost, a creature arrives to help |Searcher.
 |]
 
-found_by_fairy ∷ Outcomes Story
 found_by_fairy = [outcomes|
 ================================= Common Title =================================
 Running After a Fairy
@@ -263,7 +255,6 @@ idea.
 |Searcher learned the hard way that not all fairies are good fairies.
 |]
 
-found_by_cat ∷ Outcomes Story
 found_by_cat = [outcomes|
 ================================= Common Title =================================
 Chance Encounter with a Cat
@@ -338,7 +329,6 @@ knowing its color.
 middle of the night is a bad plan.
 |]
 
-fairy_circle ∷ Outcomes Story
 fairy_circle = [outcomes|
 ================================= Common Title =================================
 The Mushroom Circle
@@ -399,7 +389,6 @@ Having been mysteriously teleported to a distant realm by the enigmatic magic of
 the fairies, there was no way |Searcher could make it back in time to save |Child.
 |]
 
-conclusion_parent ∷ Outcomes Story
 conclusion_parent = [outcomes|
 ================================= Common Title =================================
 He/she| has made it home!
@@ -472,13 +461,11 @@ After a hard night wandering through the Wicked Forest, |Searcher has nothing to
 show for it but a dead child.
 |]
 
-fames_parent ∷ [Story]
 fames_parent = [stories|
 Against all odds, |Searcher was able to find the correct plant that was needed
 to mix a potion to save her sick son/daughter|Child.
 |]
 
-conclusion_healer ∷ Outcomes Story
 conclusion_healer = [outcomes|
 ================================= Common Title =================================
 Finally Back Home
@@ -568,7 +555,6 @@ unable to return to the village to make the potion for |Child.
 |Searcher found herself trapped in a land of cardboard cutouts.
 |]
 
-fames_healer ∷ [Story]
 fames_healer = [stories|
 After a long and difficulty journey, |Searcher returned triumphantly with the
 final herb she needed to save |Child.
@@ -631,7 +617,6 @@ quest = Quest
       ]
   )
 
-shared_story_entries ∷ [Entry Story]
 shared_story_entries =
   [ EventEntry
       "gingerbread"

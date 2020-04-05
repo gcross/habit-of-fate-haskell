@@ -19,19 +19,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module HabitOfFate.Quests.DarkLord.Part2.Rogue (branch) where
 
 import HabitOfFate.Data.Gender
-import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-introduction ∷ Narrative Story
 introduction = [narrative|
 = Title =
 The Haunted Lands
 = Story =
-|Supposedly the Order of the Paladins had taken care of the Dark Lord of this
+Supposedly the Order of the Paladins had taken care of the Dark Lord of this
 place before, but unsurprisingly they bungled it up and now the Dark Lord was
 back. Normally this would be none of the rogue's business, but people were
 willing to pay him/her| gold to take care of this guy so now it was.
@@ -44,7 +44,6 @@ Lord's domain. Thus, he/she| walked in the only direction that made sense: up
 the path leading to the castle.
 |]
 
-wander_stories ∷ [Story]
 wander_stories = [stories|
 = Ran Into a Dead End =
 The mage takes a bend to the left, just to run into a dead end.
@@ -64,12 +63,10 @@ himself/herself| to the other side of the floor. He/she| really hopes that the
 Dark Lord is in this direction so that he/she| does not have to backtrack.
 |]
 
-wander_story ∷ Story
 wander_story = [story|
 | continues to search for the Dark Lord.
 |]
 
-entrance ∷ Outcomes Story
 entrance = [outcomes|
 = Common Title =
 The Castle Entrance
@@ -102,7 +99,6 @@ lightning from the storm and dies.
 | was struck down by lightning before even entering the Dark Lord's castle.
 |]
 
-gold ∷ Outcomes Story
 gold = [outcomes|
 = Common Title =
 A Vault of Gold
@@ -145,7 +141,6 @@ cackles.
 | succumbed to greed and made a tasty meal for the Dark Lord.
 |]
 
-mouth ∷ Outcomes Story
 mouth = [outcomes|
 = Common Title =
 Good Vibrations?
@@ -188,7 +183,6 @@ being slowly dissolved in it.
 | was devouted by a mouth in an ordinary looking ceiling.
 |]
 
-snake ∷ Outcomes Story
 snake = [outcomes|
 = Common Title =
 Snake!
@@ -228,7 +222,6 @@ suffocating while being slowly dissolved in acid.
 | makes an excellent snack for a snake.
 |]
 
-guards ∷ Outcomes Story
 guards = [outcomes|
 = Common Title =
 A Dark Room
@@ -278,7 +271,6 @@ remember?" The Dark Lord laughs some more, and then says to his/her| guards,
 |'s head makes a great trophy in the hall of the Dark Lord.
 |]
 
-sphere_monster ∷ Outcomes Story
 sphere_monster = [outcomes|
 = Common Title =
 The Spherical Horror
@@ -327,7 +319,6 @@ as the swords stab into him over and over again.
 | was torn to pieces by a spherical horror.
 |]
 
-found ∷ Narrative Story
 found = [narrative|
 = Title =
 The Dark Lord is Found
@@ -338,18 +329,15 @@ to collect my bounty, do you?" he says with a cackle. "Well, you have made it
 this far only to die at my hands." The Dark Lord raised his hands.
 |]
 
-boss_story ∷ Story
 boss_story = [story|
 | is engaged in battle with the Dark Lord.
 |]
 
-boss_stories ∷ [Story]
 boss_stories = [stories|
 = The Ceiling Collapses =
 The ceiling collapses above the mage, but the rogue is able to dodge the stones.
 |]
 
-lightning ∷ Outcomes Story
 lightning = [outcomes|
 = Common Title =
 A Shocking Test
@@ -378,7 +366,6 @@ strikes the rogue; he/she| is electrocuted and falls to the ground dead.
 | was electrocuted while fighting the Dark Lord.
 |]
 
-fireball ∷ Outcomes Story
 fireball = [outcomes|
 = Common Title =
 The Fighting Grows Hotter
@@ -407,7 +394,6 @@ fireball, and is roasted to a crisp.
 | was burn to a crisp.
 |]
 
-frost ∷ Outcomes Story
 frost = [outcomes|
 = Common Title =
 Chilly
@@ -437,7 +423,6 @@ rogue, shattering him/her into a thousand pieces.
 Rest in pieces, |.
 |]
 
-conclusion ∷ Outcomes Story
 conclusion = [outcomes|
 = Common Title =
 The Final Test
@@ -500,19 +485,18 @@ them now?
 |'s will was too weak to resist the allure of the Dark Lord's necklage.
 |]
 
-fames ∷ [Story]
 fames = [stories|
 | successfully acquired the necklace of power and succeeded in not being
 subjugated to its will, resulting in a great fortune.
 |]
 
-branch ∷ Branch Story
 branch = Branch
   "A mage on a quest to take the Dark Lord's necklace of power."
   [ SP "mage" [("Brawn",Male)]
   ]
   ( LineEntry NoShuffle "rogue"
-      [ RandomStoriesEntry wander_stories
+      [ NarrativeEntry "introduction" introduction
+      , RandomStoriesEntry wander_stories
       , StatusEntry wander_story
       , EventEntry "entrance" entrance
       , LineEntry Shuffle "searching"

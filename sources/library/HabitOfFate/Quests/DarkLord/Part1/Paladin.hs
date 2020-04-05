@@ -19,16 +19,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module HabitOfFate.Quests.DarkLord.Part1.Paladin (branch) where
 
 import HabitOfFate.Prelude
 
 import HabitOfFate.Data.Gender
-import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-intro ∷ Narrative Story
 intro = [narrative|
 = Title =
 The Dark Castle
@@ -60,7 +60,6 @@ guard darts down the path.
 The Paladin enters the castle.  Now he just has to find the Dark Lord.
 |]
 
-wander_stories ∷ [Story]
 wander_stories = [stories|
 = Ran Into a Dead End =
 The Paladin takes a bend to the left, just to run into a dead end.
@@ -98,12 +97,10 @@ mission, and besides which this money belongs to the peasants it was taken from.
 So be it; he continues on.
 |]
 
-wander_story ∷ Story
 wander_story = [story|
 | continues to search for the Dark Lord.
 |]
 
-pit_of_stakes ∷ Outcomes Story
 pit_of_stakes = [outcomes|
 = Common Title =
 Stakes!
@@ -164,7 +161,6 @@ spike-proofing for his/her| armor...
 The Paladin has been skewered; his/her| quest ends in failure.
 |]
 
-pit_of_snakes ∷ Outcomes Story
 pit_of_snakes = [outcomes|
 = Common Title =
 Uh oh!
@@ -218,7 +214,6 @@ ends in failure.
 The Paladin has been eaten; his quest ends in failure.
 |]
 
-spider ∷ Outcomes Story
 spider = [outcomes|
 = Common Title =
 Something strange is ahead
@@ -270,7 +265,6 @@ coming, human; I was just starting to get hungry..."
 The Paladin has been eaten by a spider; his quest ends in failure.
 |]
 
-found_behind_guarded_door ∷ Narrative Story
 found_behind_guarded_door = [narrative|
 ==================================== Title =====================================
 The Guarded Door
@@ -311,7 +305,6 @@ The Hunt Grows to a Close
 The Paladin grows closer to the Dark Lord.
 |]
 
-found_despite_misdirection ∷ Narrative Story
 found_despite_misdirection = [narrative|
 ==================================== Title =====================================
 A Cunning Trap
@@ -351,7 +344,6 @@ he says, laughing.
 --------------------------------------------------------------------------------
 |]
 
-first_arm ∷ Outcomes Story
 first_arm = [outcomes|
 ================================= Common Title =================================
 The Dark Lord Swings!
@@ -379,7 +371,6 @@ completely devours him.
 Paladin |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_arm_sliced_off ∷ Narrative Story
 first_arm_sliced_off = [narrative|
 = Title =
 One Down
@@ -396,7 +387,6 @@ earth could he have two?" think the Paladin.
 The Dark Lord brandishes the sword. "Have at you!" he says.
 |]
 
-second_arm ∷ Outcomes Story
 second_arm = [outcomes|
 ================================= Common Title =================================
 Failure to Block
@@ -429,7 +419,6 @@ completely devours him/her|.
 | was defeated by a Dark Lord with only one arm.
 |]
 
-second_arm_sliced_off ∷ Narrative Story
 second_arm_sliced_off = [narrative|
 = Title =
 The Dark Lord is Deprived of his Arms
@@ -447,7 +436,6 @@ vampire blade--emerges at his foot. He rushes.
 "For the love of..." the Paladin said as he met the attack.
 |]
 
-leg_stories ∷ [Story]
 leg_stories = [stories|
 --------------------------------------------------------------------------------
 The Paladin awkwardly blocks the dagger with his sword.
@@ -462,7 +450,6 @@ he says, laughing.
 --------------------------------------------------------------------------------
 |]
 
-first_leg ∷ Outcomes Story
 first_leg = [outcomes|
 ================================= Common Title =================================
 The Dark Lord Kicks!
@@ -490,7 +477,6 @@ completely devours him.
 Paladin |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_leg_sliced_off ∷ Narrative Story
 first_leg_sliced_off = [narrative|
 = Title =
 Only One Limb Left
@@ -504,7 +490,6 @@ his remaining foot. He hops and kicks his way towards the Paladin.
 The Paladin groans; this was definitely not covered in the Manual.
 |]
 
-second_leg ∷ Outcomes Story
 second_leg = [outcomes|
 ================================= Common Title =================================
 Failure to Block
@@ -537,7 +522,6 @@ completely devours him/her|.
 | was defeated by a Dark Lord with ony one leg.
 |]
 
-conclusion ∷ Narrative Story
 conclusion = [narrative|
 = Title =
 All Limbs Gone
@@ -568,13 +552,11 @@ hold a feast in his/her| honor, and everywhere he goes he sings of the
 greatness of you, the God of Fate.
 |]
 
-fames ∷ [Story]
 fames = [stories|
 The Dark Lord has been defeated by |, who has brough great glory to the
 Paladin's guild.
 |]
 
-branch ∷ Branch Story
 branch = Branch
   "A Paladin, just returning from the War."
   [ SP "Paladin" [("Cecilia",Female)]

@@ -3,16 +3,16 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module HabitOfFate.Quests.TheLongVoyageHome where
 
 import HabitOfFate.Prelude
 
 import HabitOfFate.Data.Gender
-import HabitOfFate.Data.Outcomes
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-pre_arrival_random_stories ∷ [Story]
 pre_arrival_random_stories = [stories|
 The jump drive sparks and a day is spent repairing it.
 ---
@@ -22,7 +22,6 @@ The jump drive malfunctions and, in addition to needing time to repair it, it
 takes a week for the crew to recover from the severe nausua.
 |]
 
-intro ∷ Narrative Story
 intro = [narrative|
 = Title =
 The Long Voyage Home
@@ -47,7 +46,6 @@ and where they will end up along the way. Still, it is their only option, so
 they begin their journey.
 |]
 
-spice ∷ Outcomes Story
 spice = [outcomes|
 = Common Title =
 The Land of Sand
@@ -116,7 +114,6 @@ the planet seem to mind. All thoughts of |Spouse and returning home have vanishe
  him/her| the important lesson that you always lose when you take drugs.
 |]
 
-robot_with_the_giant_antenna ∷ Outcomes Story
 robot_with_the_giant_antenna = [outcomes|
 = Common Title =
 Green Planet
@@ -185,7 +182,6 @@ You have caused |Captain to be struck down by a giant robot; he/she| will never
 see his/her| husband/wife|Spouse again…
 |]
 
-perfect_jump_machine ∷ Outcomes Story
 perfect_jump_machine = [outcomes|
 = Common Title =
 The Way Home?
@@ -256,7 +252,6 @@ his/her| shiny new jump drive in his shiny new jump drive, so in that sense you
 were downright mericful.
 |]
 
-a_bad_choice ∷ Outcomes Story
 a_bad_choice = [outcomes|
 = Common Title =
 Trapped Between a Radioactive Rock and a Hard Place
@@ -325,7 +320,6 @@ never see him/her|Spouse again…
 = Shame =
 |Captain learned the hard way from you that gamblers lose.
 |]
-sublime_nebula ∷ Outcomes Story
 sublime_nebula = [outcomes|
 = Common Title =
 The Sublime Nebula
@@ -477,7 +471,6 @@ You convinced |Captain to become one with a manipulative nebular rather than
 rejoining his/her| dear husband/wife|.
 |]
 
-arrival ∷ Outcomes Story
 arrival = [outcomes|
 = Common Title =
 Arrival
@@ -594,7 +587,6 @@ overwhelmed.  His/her| last thought was of how close he/she| had gotten…
 plans.
 |]
 
-post_arrival_random_stories ∷ [Story]
 post_arrival_random_stories = [stories|
 The captain hears a noise behind him and quickly turns and fires a shot, not
 pausing long enough to watch the suitor hit the ground--he knew when he had made
@@ -605,7 +597,6 @@ laser pistol happens just long enough before the shot that |Captain was able to
 dodge out of the way of the beam.
 |]
 
-chair ∷ Outcomes Story
 chair = [outcomes|
 = Common Title =
 A Chair is Thrown
@@ -639,7 +630,6 @@ You direct |Captain to die a slow and painful death for the crime of trying to
 reunite with his love.
 |]
 
-charge ∷ Outcomes Story
 charge = [outcomes|
 = Common Title =
 Charge!
@@ -674,7 +664,6 @@ You direct |Captain to die a slow and painful death for the crime of trying to
 reunite with his love.
 |]
 
-spouse ∷ Outcomes Story
 spouse = [outcomes|
 = Common Title =
 |Captain's Wife is in Danger!
@@ -714,7 +703,6 @@ You direct |Captain to die a slow and painful death for the crime of trying to
 reunite with his love.
 |]
 
-conclusion ∷ Narrative Story
 conclusion = [narrative|
 = Title =
 Reunited at Last!
@@ -735,7 +723,6 @@ an altar dedicated to you, the Hand of Fate.  You feel the prayers filling your
 soul with joy.
 |]
 
-fames ∷ [Story]
 fames = [stories|
 You have helped |Captain and |Spouse be reunited and are greatly praised by
 them.
