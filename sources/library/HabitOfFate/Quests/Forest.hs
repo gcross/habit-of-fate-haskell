@@ -90,8 +90,7 @@ An |Plant plant in hand, **|Searcher** continues towards home.
 ------------------------------- Wandering Stories ------------------------------
 --------------------------------------------------------------------------------
 
-wander_stories_labels ∷ [Text]
-(wander_stories, wander_stories_labels) = [stories_and_labels|
+wander_stories = [stories|
 ================================ Nothing Happens ===============================
 Nothing happens as |Searcher wanders through the forest.
 ================================== Wolves Howl =================================
