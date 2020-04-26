@@ -184,12 +184,11 @@ The sweet smell of gingerbread was just too alluring for |Searcher.
 |Child was completely forgotten as |Searcher was drawn into a gingerbread house.
 |]}
 
-found = [narrative|
-===================================== Title ====================================
-Some Help Arrives?
-===================================== Story ====================================
+found = Narrative
+  { narrative_title = "Some Help Arrives?"
+  , narrative_story = [story|
 Finally, just when all hope is lost, a creature arrives to help |Searcher.
-|]
+|]}
 
 found_by_fairy = [outcomes|
 ================================= Common Title =================================

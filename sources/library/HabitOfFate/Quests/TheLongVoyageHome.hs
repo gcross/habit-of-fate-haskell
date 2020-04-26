@@ -22,10 +22,9 @@ The jump drive malfunctions and, in addition to needing time to repair it, it
 takes a week for the crew to recover from the severe nausua.
 |]
 
-intro = [narrative|
-= Title =
-The Long Voyage Home
-= Story =
+intro = Narrative
+  { narrative_title = "The Long Voyage Home"
+  , narrative_story = [story|
 It had been a long war; nearly ten years at the Dragon system, far away from
 home, the Dzur system. So many ships had been destroyed, so many people had
 died, and all over a stupid girl. Captain |Captain could take credit for its
@@ -44,7 +43,7 @@ defeated enemy's homeworld. Because of this, the journey will require multiple
 jumps in the general direction of Dzur, but it is impossible to predict how many
 and where they will end up along the way. Still, it is their only option, so
 they begin their journey.
-|]
+|]}
 
 spice = [outcomes|
 = Common Title =
@@ -703,10 +702,9 @@ You direct |Captain to die a slow and painful death for the crime of trying to
 reunite with his love.
 |]
 
-conclusion = [narrative|
-= Title =
-Reunited at Last!
-= Story =
+conclusion = Narrative
+  { narrative_title = "Reunited at Last!"
+  , narrative_story = [story|
 In the heat of the moment it took several seconds for |Captain to realize that
 there was no one else left to shoot;  all of the suitors lay dead on the
 ground.  "My love, you did it!" |his/her husband/wife|Spouse shouted,
@@ -721,7 +719,7 @@ the feast, instructing the robots to dispose of the bodies.
 The following day, |Captain cleared out one of the rooms in the house and built
 an altar dedicated to you, the Hand of Fate.  You feel the prayers filling your
 soul with joy.
-|]
+|]}
 
 fames = [stories|
 You have helped |Captain and |Spouse be reunited and are greatly praised by

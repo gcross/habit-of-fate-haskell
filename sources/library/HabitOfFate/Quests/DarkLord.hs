@@ -29,13 +29,10 @@ import qualified HabitOfFate.Quests.DarkLord.Part1 as Part1
 import qualified HabitOfFate.Quests.DarkLord.Part2 as Part2
 import HabitOfFate.Story
 
-part_selection ∷ Narrative Story
-part_selection = [narrative|
-= Title =
-Choose What to Follow
-= Story =
-This quest has two parts.
-|]
+part_selection = Narrative
+  { narrative_title = "Choose What to Follow"
+  , narrative_story = "This quest has two parts."
+  }
 
 quest ∷ Quest
 quest = Quest

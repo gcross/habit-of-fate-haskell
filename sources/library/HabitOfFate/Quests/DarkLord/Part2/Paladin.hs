@@ -27,10 +27,9 @@ import HabitOfFate.Data.Gender
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-introduction = [narrative|
-= Title =
-The Haunted Lands
-= Story =
+introduction = Narrative
+  { narrative_title = "The Haunted Lands"
+  , narrative_story = [story|
 This is not the first time that the Order of the Paladins has had to visit this
 place, but in the intervening years something has gone terribly wrong. The Dark
 Lord was supposed to have been defeated, but not only was he back, but the
@@ -47,7 +46,7 @@ not this way the last time a Paladin had been here.
 
 The Paladin started the long trek up the mountain, leaving his/her| horse behind
 with a peasant as it would have been too afraid of the lightning.
-|]
+|]}
 
 wander_stories = [stories|
 = Ran Into a Dead End =
@@ -343,10 +342,9 @@ gripped by the creature's many arms and is torn to pieces.
 | was torn to pieces by a spherical horror.
 |]
 
-found = [narrative|
-= Title =
-The Dark Lord is Found
-= Story =
+found = Narrative
+  { narrative_title = "The Dark Lord is Found"
+  , narrative_story = [story|
 Finally, the Paladin enters a large chamber. In the middle of the chamber
 floats a quadriplegic man wearing a gleaming golden necklace on his neck. "Ah!"
 the man says. "I was wondering when another of your order would come for me, but
@@ -355,7 +353,7 @@ your death!"
 
 The paladin adopts a fighting stance, and starts closing the distance between
 him/her| and the Dark Lord.
-|]
+|]}
 
 boss_story = [story|
 | is engaged in battle with the Dark Lord.

@@ -29,10 +29,9 @@ import HabitOfFate.Data.Gender
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-intro = [narrative|
-= Title =
-The Dark Castle
-= Story =
+intro = Narrative
+  { narrative_title = "The Dark Castle"
+  , narrative_story = [story|
 For years the Dark Lord has ruled the land with a cruel fist, riding out on his
 black horse at night to burn villagers' huts and steal their women---in addition
 to the ordinary oppression of sending out tax men to collect their grain,
@@ -58,7 +57,7 @@ it, and opens the door. "Thank you," said the Paladin; "You may run now." The
 guard darts down the path.
 
 The Paladin enters the castle.  Now he just has to find the Dark Lord.
-|]
+|]}
 
 wander_stories = [stories|
 = Ran Into a Dead End =
@@ -265,10 +264,9 @@ coming, human; I was just starting to get hungry..."
 The Paladin has been eaten by a spider; his quest ends in failure.
 |]
 
-found_behind_guarded_door = [narrative|
-==================================== Title =====================================
-The Guarded Door
-==================================== Story =====================================
+found_behind_guarded_door = Narrative
+  { narrative_title = "The Guarded Door"
+  , narrative_story = [story|
 Turning a bend, the Paladin sees a door with four guards beside it. Unlike the
 guards outside, these mean business. They draw their swords and all shout a
 battle cry as they rush towards you. This probably would have more worrying to
@@ -295,20 +293,17 @@ hits head on. The Paladin will have to be very careful, as a single hit would
 result in a fate worse than death.
 
 Observing the Paladin's eyes on his sword, he smiles, and the battle begins.
-|]
+|]}
 
-found ∷ Narrative Story
-found = [narrative|
-= Title =
-The Hunt Grows to a Close
-= Story =
+found = Narrative
+  { narrative_title = "The Hunt Grows to a Close"
+  , narrative_story = [story|
 The Paladin grows closer to the Dark Lord.
-|]
+|]}
 
-found_despite_misdirection = [narrative|
-==================================== Title =====================================
-A Cunning Trap
-==================================== Story =====================================
+found_despite_misdirection = Narrative
+  { narrative_title = "A Cunning Trap"
+  , narrative_story = [story|
 As he walks down the hallway, two doors come into view. One of them has twenty
 guards in front of it, the other has a sign hanging on saying "Not the Dark
 Lord's chamber."
@@ -327,7 +322,7 @@ his/her| soul if it made a single cut. Also, it has the ability to break
 through armor if it hits head on. He would have to be incredible cautious.
 
 And so the battle begins.
-|]
+|]}
 
 arm_stories ∷ [Story]
 arm_stories = [stories|
@@ -371,10 +366,9 @@ completely devours him.
 Paladin |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_arm_sliced_off = [narrative|
-= Title =
-One Down
-= Story =
+first_arm_sliced_off = Narrative
+  { narrative_title = "One Down"
+  , narrative_story = [story|
 With a mighty blow, the Paladin slices off the Dark Lord's arm.  Blood starts
 to spray.
 
@@ -385,7 +379,7 @@ pouch with his remaining arm and pulled out *another vampire sword*.  "How on
 earth could he have two?" think the Paladin.
 
 The Dark Lord brandishes the sword. "Have at you!" he says.
-|]
+|]}
 
 second_arm = [outcomes|
 ================================= Common Title =================================
@@ -419,10 +413,9 @@ completely devours him/her|.
 | was defeated by a Dark Lord with only one arm.
 |]
 
-second_arm_sliced_off = [narrative|
-= Title =
-The Dark Lord is Deprived of his Arms
-= Story =
+second_arm_sliced_off = Narrative
+  { narrative_title = "The Dark Lord is Deprived of his Arms"
+  , narrative_story = [story|
 With another might blow the Paladin slices off the Dark Lord's other arm. Even
 more blood starts to spray.
 
@@ -434,7 +427,7 @@ to kill you, Paladin?" He kicked a leg while twisting it and a dagger--also a
 vampire blade--emerges at his foot. He rushes.
 
 "For the love of..." the Paladin said as he met the attack.
-|]
+|]}
 
 leg_stories = [stories|
 --------------------------------------------------------------------------------
@@ -477,10 +470,9 @@ completely devours him.
 Paladin |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_leg_sliced_off = [narrative|
-= Title =
-Only One Limb Left
-= Story =
+first_leg_sliced_off = Narrative
+  { narrative_title = "Only One Limb Left"
+  , narrative_story = [story|
 Although it was an awkward angle, the Paladin managed to chop off the leg with a
 dagger. The Dark Lord almost fell, but somehow managed to stay stable on his
 single leg. "Give up you idiot!" said the Paladin. "You can't win with only a
@@ -488,7 +480,7 @@ single leg." "Oh can't I?" With another twist and a kick a dagger emerged from
 his remaining foot. He hops and kicks his way towards the Paladin.
 
 The Paladin groans; this was definitely not covered in the Manual.
-|]
+|]}
 
 second_leg = [outcomes|
 ================================= Common Title =================================
@@ -522,10 +514,9 @@ completely devours him/her|.
 | was defeated by a Dark Lord with ony one leg.
 |]
 
-conclusion = [narrative|
-= Title =
-All Limbs Gone
-= Story =
+conclusion = Narrative
+  { narrative_title = "All Limbs Gone"
+  , narrative_story = [story|
 With a roar and a mighty blow the Paladin chops off the remaining leg and the
 Dark Lord falls to the ground. The Paladin walks over to the Dark Lord and says,
 "You can no longer harm me. Yield!" "Never!" says the Dark Lord. He twists his
@@ -550,7 +541,7 @@ he/she| starts his/her| way to the Paladin's Guild in order to
 get another mission. As he does so, he is stopped at every village on the way to
 hold a feast in his/her| honor, and everywhere he goes he sings of the
 greatness of you, the God of Fate.
-|]
+|]}
 
 fames = [stories|
 The Dark Lord has been defeated by |, who has brough great glory to the

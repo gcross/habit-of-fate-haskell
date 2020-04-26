@@ -27,10 +27,9 @@ import HabitOfFate.Data.Gender
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-introduction = [narrative|
-= Title =
-The Haunted Lands
-= Story =
+introduction = Narrative
+  { narrative_title = "The Haunted Lands"
+  , narrative_story = [story|
 Supposedly the Order of the Paladins had taken care of the Dark Lord of this
 place before, but unsurprisingly they bungled it up and now the Dark Lord was
 back. Normally this would be none of the rogue's business, but people were
@@ -42,7 +41,7 @@ really going to be worth it? However, he/she| knew that it was too late to turn
 back now due to the force field that prevented anyone from leaving the Dark
 Lord's domain. Thus, he/she| walked in the only direction that made sense: up
 the path leading to the castle.
-|]
+|]}
 
 wander_stories = [stories|
 = Ran Into a Dead End =
@@ -319,15 +318,14 @@ as the swords stab into him over and over again.
 | was torn to pieces by a spherical horror.
 |]
 
-found = [narrative|
-= Title =
-The Dark Lord is Found
-= Story =
+found = Narrative
+  { narrative_title = "The Dark Lord is Found"
+  , narrative_story = [story|
 Finally, the rogue entered a large chamber. In the middle of the chamber floated
 a quadriplegic man wearing a gleaming golden necklace on his neck. "So you wish
 to collect my bounty, do you?" he says with a cackle. "Well, you have made it
 this far only to die at my hands." The Dark Lord raised his hands.
-|]
+|]}
 
 boss_story = [story|
 | is engaged in battle with the Dark Lord.

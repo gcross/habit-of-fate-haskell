@@ -45,7 +45,6 @@ module HabitOfFate.Story
   , storyForFailure
 
   , Narrative(..)
-  , narrative
 
   , Outcomes(..)
   , InvalidOutcomes(..)
@@ -564,60 +563,6 @@ data Narrative content = Narrative
   { narrative_title ∷ content
   , narrative_story ∷ content
   } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
-
-data NarrativeHeading = Title | Story deriving (Eq,Ord,Show)
-
-data InvalidNarrative =
-    InvalidNarrativeHeading String
-  | TooManyStoriesForNarrativeHeading NarrativeHeading Int
-  | NoStoriesForNarrativeHeading NarrativeHeading
-  | DuplicateHeading NarrativeHeading
-  deriving (Eq,Show)
-instance Exception InvalidNarrative where
-
-parseNarrativeHeading ∷ ∀ m. MonadThrow m ⇒ String → m NarrativeHeading
-parseNarrativeHeading = \case
-  "Title" → pure Title
-  "Story" → pure Story
-  other → throwM $ InvalidNarrativeHeading other
-
-separateNarrative ∷ ∀ m. MonadThrow m ⇒ [(NarrativeHeading, [Story])] → m (Narrative Story)
-separateNarrative =
-  foldM
-    (\found (heading, stories) → case stories of
-      [story] →
-        let doFound ∷ Lens' (Maybe Story, Maybe Story) (Maybe Story) → m (Maybe Story, Maybe Story)
-            doFound lens_ =
-              case found ^. lens_ of
-                Nothing → pure $ (found & lens_ .~ Just story)
-                _ → throwM $ DuplicateHeading heading
-        in case heading of
-          Title → doFound _1
-          Story → doFound _2
-      _ → throwM $ TooManyStoriesForNarrativeHeading heading (length stories)
-    )
-    (Nothing, Nothing)
-  >=>
-  (\case
-    (Just narrative_title, Just narrative_story) → pure $ Narrative{..}
-    (Nothing, _) → throwM $ NoStoriesForNarrativeHeading Title
-    (_, _) → throwM $ NoStoriesForNarrativeHeading Story
-  )
-
-narrative ∷ QuasiQuoter
-narrative = QuasiQuoter
-  (
-    parseSections
-    >=>
-    traverse (applyToFirst parseNarrativeHeading)
-    >=>
-    separateNarrative
-    >=>
-    Lift.lift
-  )
-  (error "Cannot use narrative as a pattern")
-  (error "Cannot use narrative as a type")
-  (error "Cannot use narrative as a dec")
 
 dashed_sections ∷ QuasiQuoter
 dashed_sections = QuasiQuoter

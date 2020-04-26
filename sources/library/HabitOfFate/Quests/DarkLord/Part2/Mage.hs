@@ -27,10 +27,9 @@ import HabitOfFate.Data.Gender
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-introduction = [narrative|
-= Title =
-The Haunted Lands
-= Story =
+introduction = Narrative
+  { narrative_title = "The Haunted Lands"
+  , narrative_story = [story|
 Supposedly the Order of the Paladins had taken care of the Dark Lord of this
 place before, but unsurprisingly they bungled it up and now the Dark Lord was
 back. Normally this would be none of the mage's business, but if rumours were to
@@ -41,7 +40,7 @@ clouds that were constantly shooting lightning, he/she| hesitated. However,
 he/she| knew that it was too late to turn back now due to the magical force
 preventing anyone from leaving the land.
 castle.
-|]
+|]}
 
 wander_stories = [stories|
 = Ran Into a Dead End =
@@ -339,10 +338,9 @@ and its many arms tear him/her| to pieces.
 | was torn to pieces by a spherical horror.
 |]
 
-found = [narrative|
-= Title =
-The Dark Lord is Found
-= Story =
+found = Narrative
+ { narrative_title = "The Dark Lord is Found"
+ , narrative_story = [story|
 Finally, the mage enters a large chamber. In the middle of the chamber floats
 a quadriplegic man wearing a gleaming golden necklace on his neck. "So you wish
 to take my necklace, do you?" he says with a cackle. "Well, you have made it
@@ -350,7 +348,7 @@ this far only to die at my hands!" The Dark Lord raises his hands.
 
 The mage creates a magical shield to surround himself/herself|, and the battle
 commences.
-|]
+|]}
 
 boss_story = [story|
 | is engaged in battle with the Dark Lord.

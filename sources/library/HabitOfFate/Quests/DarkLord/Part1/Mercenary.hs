@@ -29,10 +29,9 @@ import HabitOfFate.Data.Gender
 import HabitOfFate.Quest
 import HabitOfFate.Story
 
-intro = [narrative|
-= Title =
-The Dark Castle
-= Story =
+intro = Narrative
+  { narrative_title = "The Dark Castle"
+  , narrative_story = [story|
 For years the Dark Lord has ruled the land with a cruel fist, riding out on his
 black horse at night to burn villagers huts and steal their women -- in addition
 to the ordinary oppression of sending out tax men to collect their grain,
@@ -62,7 +61,7 @@ the door." He inserts the key, turns it, and opens the door.
 snatches the coins from the ground and runs away.
 
 The mercenary enters the castle. Now he/she| just has to find the Dark Lord...
-|]
+|]}
 
 wander_stories = [stories|
 = Ran Into a Dead End =
@@ -282,10 +281,9 @@ I was just starting to get hungry..."
 | was eaten by a spider when on a quest to defeat the Dark Lord.
 |]
 
-found_behind_guarded_door = [narrative|
-==================================== Title =====================================
-The Guarded Door
-==================================== Story =====================================
+found_behind_guarded_door = Narrative
+  { narrative_title = "The Guarded Door"
+  , narrative_story = [story|
 Turning a bend, the mercenary sees a door with eight guards beside it. The
 mercenary throws some coins to the ground. "How about we make a deal," he/she|
 says. "You all leave and let me in to... talk, with the Dark Lord, and you may
@@ -318,12 +316,11 @@ than death.
 
 Observing the mercenary's eyes on his sword, the Dark Lord smiles, and the
 battle begins.
-|]
+|]}
 
-found_despite_misdirection = [narrative|
-==================================== Title =====================================
-A Cunning Trap
-==================================== Story =====================================
+found_despite_misdirection = Narrative
+  { narrative_title = "A Cunning Trap"
+  , narrative_story = [story|
 As he/she| walks down the hallway, two doors come into view. One of them has
 twenty guards in front of it, the other has a sign hanging on saying "Not the
 Dark Lord's chamber."
@@ -345,14 +342,13 @@ but it shill made him/her| nervous; he/she| would have to be incredible
 cautious.
 
 And so the battle begins.
-|]
+|]}
 
-found = [narrative|
-= Title =
-The Hunt Grows to a Close
-= Story =
+found = Narrative
+  { narrative_title = "The Hunt Grows to a Close"
+  , narrative_story = [story|
 The mercenary has found the Dark Lord and is currently in battle.
-|]
+|]}
 
 arm_stories = [stories|
 --------------------------------------------------------------------------------
@@ -396,10 +392,9 @@ completely devours him/her|.
 |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_arm_sliced_off = [narrative|
-= Title =
-One Down
-= Story =
+first_arm_sliced_off = Narrative
+  { narrative_title = "One Down"
+  , narrative_story = [story|
 With a mighty blow, the mercenary slices off the Dark Lord's sword arm. Blood
 starts to spray.
 
@@ -411,7 +406,7 @@ pouch with his remaining arm and pulles out *another vampire sword*.  "How on
 earth could he have two?" thinks the mercenary.
 
 The Dark Lord brandishes the sword. "Have at you!" he says.
-|]
+|]}
 
 second_arm = [outcomes|
 ================================= Common Title =================================
@@ -445,10 +440,9 @@ completely devours him/her|.
 | was defeated by a Dark Lord with only one arm.
 |]
 
-second_arm_sliced_off = [narrative|
-= Title =
-The Dark Lord is Deprived of his Arms
-= Story =
+second_arm_sliced_off = Narrative
+  { narrative_title = "The Dark Lord is Deprived of his Arms"
+  , narrative_story = [story|
 With another might blow the mercenary slices off the Dark Lord's other arm. Even
 more blood starts to spray.
 
@@ -460,7 +454,7 @@ kill you?" He kicks a leg while twisting it and a dagger--also a vampire
 blade--emerges at his foot. He rushes towards the mercenary.
 
 "For the love of..." the mercenary says as he/she| meets the attack.
-|]
+|]}
 
 leg_stories = [stories|
 --------------------------------------------------------------------------------
@@ -503,10 +497,9 @@ it completely devours him/her|.
 |'s soul was eaten by the Dark Lord's vampiric blade.
 |]
 
-first_leg_sliced_off = [narrative|
-= Title =
-Only One Limb Left
-= Story =
+first_leg_sliced_off = Narrative
+  { narrative_title = "Only One Limb Left"
+  , narrative_story = [story|
 Although it was an awkward angle, the mercenary succeeds in chopping off the leg
 with a dagger. The Dark Lord almost falls, but somehow manages to remain stable
 on his remaining leg. "Give up you idiot!" says the mercenary. "You can't win
@@ -517,7 +510,7 @@ only a single leg."
 his remaining foot. He hops and kicks his way towards the mercenary.
 
 The mercenary groans; this was definitely not covered in the Handbook.
-|]
+|]}
 
 second_leg = [outcomes|
 ================================= Common Title =================================
@@ -551,10 +544,9 @@ completely devours him/her|.
 | was defeated by a Dark Lord with ony one leg.
 |]
 
-conclusion = [narrative|
-= Title =
-All Limbs Gone
-= Story =
+conclusion = Narrative
+  { narrative_title = "All Limbs Gone"
+  , narrative_story = [story|
 With a roar and a mighty blow the mercenary manages to chop off the remaining
 leg, and the Dark Lord falls to the ground. The mercenary walks over to the Dark
 Lord and says, "You can no longer harm me. Yield!" "Never!" says the Dark Lord.
@@ -590,7 +582,7 @@ didn't tell them that as more money in his/her| pocket as always a good thing.
 
 When he/she| finally arrives home he/she| spend the following day in worship of
 You, the God of Fate, for providing him/her| with such great luck.
-|]
+|]}
 
 fames = [stories|
 The Dark Lord has been defeated by |, for great profit!

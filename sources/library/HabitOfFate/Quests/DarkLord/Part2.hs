@@ -20,6 +20,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module HabitOfFate.Quests.DarkLord.Part2 (branch) where
 
 import HabitOfFate.Prelude
@@ -30,16 +32,13 @@ import qualified HabitOfFate.Quests.DarkLord.Part2.Paladin as Paladin
 import qualified HabitOfFate.Quests.DarkLord.Part2.Rogue as Rogue
 import HabitOfFate.Story
 
-classes ∷ Narrative Story
-classes = [narrative|
-= Title =
-Class
-= Story =
+classes = Narrative
+  { narrative_title = "Class"
+  , narrative_story = [story|
 There are several people whe might take on the Dark Lord and end his terrible
 rule.
-|]
+|]}
 
-branch ∷ Branch Story
 branch = Branch
   "Part 2: Fall of the Dark Lord Once and For All"
   mempty
