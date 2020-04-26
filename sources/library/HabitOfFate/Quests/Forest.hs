@@ -37,16 +37,16 @@ import HabitOfFate.Story
 --------------------------------------------------------------------------------
 
 intro = Narrative
-  { narrative_title = [s|The Wicked Forest|]
-  , narrative_story = [s|
+  { narrative_title = "The Wicked Forest"
+  , narrative_story = [story|
 The Wicked Forest: frightful enough during the day, full of even greater terrors
 by night. Unfortunately, it is also the only place where a healing *|Plant*
 plant can be obtained, so a brave man/woman| is about to enter it.
 |]}
 
 intro_parent = Narrative
-  { narrative_title = [s|A Parent Enters The Woods|]
-  , narrative_story = [s|
+  { narrative_title = "A Parent Enters The Woods"
+  , narrative_story = [story|
 The last thing in the world that **|Searcher** wanted to do was to wander alone
 in the Wicked Forest at night, but his/her|Searcher son/daughter|Child, little
 **|Child**, was sick and would not live through the night unless |Searcher could
@@ -58,8 +58,8 @@ He/she| enters the forest.
 |]}
 
 intro_healer = Narrative
-  { narrative_title = [s|A Healer Enters The Woods|]
-  , narrative_story = [s|
+  { narrative_title = "A Healer Enters The Woods"
+  , narrative_story = [story|
 There were times when **|Searcher**, the village healer, cursed himself/herself|
 for deciding to become a healer, and this was one of them. Little **|Child** had
 brain fever, and the only way he/she|Child would survive the night is if he/she|
@@ -77,11 +77,11 @@ He/she| entered the forest.
 -------------------------------- Status Stories --------------------------------
 --------------------------------------------------------------------------------
 
-looking_for_herb_story = [s|
+looking_for_herb_story = [story|
 |Searcher continues to search in the dark for an |Plant plant.
 |]
 
-returning_home_story = [s|
+returning_home_story = [story|
 An |Plant plant in hand, **|Searcher** continues towards home.
 |]
 
@@ -133,22 +133,22 @@ behind.
 --------------------------------------------------------------------------------
 
 gingerbread_house = SuccessDangerAvertedFailure
-  { outcomes_common_title = [s|The Gingerbread House|]
-  , outcomes_common_story = [s|
+  { outcomes_common_title = "The Gingerbread House"
+  , outcomes_common_story = [story|
 |Searcher sees a house made out of... gingerbread? He/she| feels a strange
 compulsion to approach it.
 |]
   , outcomes_common_question = [s|Where do You guide |Searcher?|]
 
-  , outcomes_success_choice = [s|Away from the gingerbread house.|]
-  , outcomes_success_title = [s|Even Gingerbread Cannot Slow The Search|]
-  , outcomes_success_story = [s|
+  , outcomes_success_choice = "Away from the gingerbread house."
+  , outcomes_success_title = "Even Gingerbread Cannot Slow The Search"
+  , outcomes_success_story = [story|
 He/she| fights the compulsion, and continues on his/her| search.
 |]
 
-  , outcomes_danger_choice = [s|Towards the gingerbread house.|]
-  , outcomes_danger_title = [s|The Gingerbread Compulsion is Too Great|]
-  , outcomes_danger_story = [s|
+  , outcomes_danger_choice = "Towards the gingerbread house."
+  , outcomes_danger_title = "The Gingerbread Compulsion is Too Great"
+  , outcomes_danger_story = [story|
 As he/she| gets closer, the door opens and an old woman beckons him/her| in.
 “You've arrived just in time!” she says. “Dinner has just finished cooking. Come
 on in!”
@@ -156,15 +156,15 @@ on in!”
   , outcomes_danger_question = [s|How do you have |Searcher react?|]
 
   , outcomes_averted_choice = [s|He/She| runs away!|]
-  , outcomes_averted_title = [s|Escaping The Gingerbread House|]
-  , outcomes_averted_story = [s|
+  , outcomes_averted_title = "Escaping The Gingerbread House"
+  , outcomes_averted_story = [story|
 The smell from the cottage is overwhelming, and shocks |Searcher to his/her|
 senses. He/she| sprints away from the cottage as fast as he/she| can.
 |]
 
   , outcomes_failure_choice = [s|He/She| enters the house.|]
-  , outcomes_failure_title = [s|Entering The Gingerbread House|]
-  , outcomes_failure_story = [s|
+  , outcomes_failure_title = "Entering The Gingerbread House"
+  , outcomes_failure_story = [story|
 Not knowing why he/she| was doing this, |Searcher enters the... cottage? The woman
 leads her to an oven. “Here, look inside.”
 
