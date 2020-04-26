@@ -36,11 +36,9 @@
 module HabitOfFate.Story
   ( Story
   , story
+  , s
   , stories
   , stories_and_labels
-
-  , InvalidOutcomes(..)
-  , outcomes
 
   , storyForSuccess
   , storyForAverted
@@ -48,6 +46,10 @@ module HabitOfFate.Story
 
   , Narrative(..)
   , narrative
+
+  , Outcomes(..)
+  , InvalidOutcomes(..)
+  , outcomes
 
   , dashed_sections
   ) where
@@ -74,6 +76,9 @@ story = QuasiQuoter
   (error "Cannot use story as a pattern")
   (error "Cannot use story as a type")
   (error "Cannot use story as a dec")
+
+s ∷ QuasiQuoter
+s = story
 
 splitRegionsOn ∷ Char → [String] → [[String]]
 splitRegionsOn marker =

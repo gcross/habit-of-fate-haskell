@@ -36,19 +36,17 @@ import HabitOfFate.Story
 --------------------------------- Intro Stories --------------------------------
 --------------------------------------------------------------------------------
 
-intro = [narrative|
-===================================== Title ====================================
-The Wicked Forest
-===================================== Story ====================================
-The Wicked Forest, frightful enough during the day, full of even greater terrors
+intro = Narrative
+  { narrative_title = [s|The Wicked Forest|]
+  , narrative_story = [s|
+The Wicked Forest: frightful enough during the day, full of even greater terrors
 by night. Unfortunately, it is also the only place where a healing *|Plant*
 plant can be obtained, so a brave man/woman| is about to enter it.
-|]
+|]}
 
-intro_parent = [narrative|
-===================================== Title ====================================
-A Parent Enters The Woods
-===================================== Story ====================================
+intro_parent = Narrative
+  { narrative_title = [s|A Parent Enters The Woods|]
+  , narrative_story = [s|
 The last thing in the world that **|Searcher** wanted to do was to wander alone
 in the Wicked Forest at night, but his/her|Searcher son/daughter|Child, little
 **|Child**, was sick and would not live through the night unless |Searcher could
@@ -56,13 +54,12 @@ find an **|Plant** plant to give to the healer to make a potion, as the healer
 refused to enter the forest himself/herself| at night. It is a hopeless task,
 but he/she| has no other choice.
 
-He/she| entered the forest.
-|]
+He/she| enters the forest.
+|]}
 
-intro_healer = [narrative|
-===================================== Title ====================================
-A Healer Enters The Woods
-===================================== Story ====================================
+intro_healer = Narrative
+  { narrative_title = [s|A Healer Enters The Woods|]
+  , narrative_story = [s|
 There were times when **|Searcher**, the village healer, cursed himself/herself|
 for deciding to become a healer, and this was one of them. Little **|Child** had
 brain fever, and the only way he/she|Child would survive the night is if he/she|
@@ -73,16 +70,18 @@ this, but his/her| conscience told him/her| that it was his/her| duty, besides
 which they might not recognize it and pick the wrong plant. Also the gold
 helped.
 
-He/she| entered the forest. |]
+He/she| entered the forest.
+|]}
+
 --------------------------------------------------------------------------------
 -------------------------------- Status Stories --------------------------------
 --------------------------------------------------------------------------------
 
-looking_for_herb_story = [story|
+looking_for_herb_story = [s|
 |Searcher continues to search in the dark for an |Plant plant.
 |]
 
-returning_home_story = [story|
+returning_home_story = [s|
 An |Plant plant in hand, **|Searcher** continues towards home.
 |]
 
@@ -133,43 +132,39 @@ behind.
 -------------------------------- Event Stories -------------------------------
 --------------------------------------------------------------------------------
 
-gingerbread_house = [outcomes|
-================================= Common Title =================================
-The Gingerbread House
-================================= Common Story =================================
+gingerbread_house = SuccessDangerAvertedFailure
+  { outcomes_common_title = [s|The Gingerbread House|]
+  , outcomes_common_story = [s|
 |Searcher sees a house made out of... gingerbread? He/she| feels a strange
 compulsion to approach it.
-================================ Common Question ===============================
-Where do you guide |Searcher?
-================================ Success Choice ================================
-Away from the gingerbread house.
-================================= Success Title ================================
-Even Gingerbread Cannot Slow The Search
-================================= Success Story ================================
+|]
+  , outcomes_common_question = [s|Where do You guide |Searcher?|]
+
+  , outcomes_success_choice = [s|Away from the gingerbread house.|]
+  , outcomes_success_title = [s|Even Gingerbread Cannot Slow The Search|]
+  , outcomes_success_story = [s|
 He/she| fights the compulsion, and continues on his/her| search.
-================================= Danger Choice ================================
-Towards the gingerbread house.
-================================= Danger Title =================================
-The Gingerbread Compulsion is Too Great
-================================= Danger Story =================================
+|]
+
+  , outcomes_danger_choice = [s|Towards the gingerbread house.|]
+  , outcomes_danger_title = [s|The Gingerbread Compulsion is Too Great|]
+  , outcomes_danger_story = [s|
 As he/she| gets closer, the door opens and an old woman beckons him/her| in.
 “You've arrived just in time!” she says. “Dinner has just finished cooking. Come
 on in!”
-================================ Danger Question ===============================
-How do you have |Searcher react?
+|]
+  , outcomes_danger_question = [s|How do you have |Searcher react?|]
 
-================================ Averted Choice ================================
-He/She| runs away!
-================================= Averted Title ================================
-Escaping The Gingerbread House
-================================= Averted Story ================================
+  , outcomes_averted_choice = [s|He/She| runs away!|]
+  , outcomes_averted_title = [s|Escaping The Gingerbread House|]
+  , outcomes_averted_story = [s|
 The smell from the cottage is overwhelming, and shocks |Searcher to his/her|
 senses. He/she| sprints away from the cottage as fast as he/she| can.
-================================ Failure Choice ================================
-He/She| enters the house.
-================================= Failure Title ================================
-Entering The Gingerbread House
-================================= Failure Story ================================
+|]
+
+  , outcomes_failure_choice = [s|He/She| enters the house.|]
+  , outcomes_failure_title = [s|Entering The Gingerbread House|]
+  , outcomes_failure_story = [s|
 Not knowing why he/she| was doing this, |Searcher enters the... cottage? The woman
 leads her to an oven. “Here, look inside.”
 
@@ -181,11 +176,13 @@ nowhere to be found.
 
 He/she| sobs -- there is no way that he/she| will be able to make it home in
 time now.
-===================================== Shame ====================================
-The sweet smell of gingerbread was just too alluring for |Searcher.
---------------------------------------------------------------------------------
-|Child was completely forgotten as |Searcher was drawn into a gingerbread house.
 |]
+  , outcomes_shames = [stories|
+================================================================================
+The sweet smell of gingerbread was just too alluring for |Searcher.
+================================================================================
+|Child was completely forgotten as |Searcher was drawn into a gingerbread house.
+|]}
 
 found = [narrative|
 ===================================== Title ====================================
