@@ -190,6 +190,9 @@ library
                      , HabitOfFate.Trial
                      , HabitOfFate.TH
   other-modules:       Paths_habit_of_fate
+  GHC-Options:         -Werror=incomplete-patterns
+                       -Werror=missing-fields
+                       -Werror=missing-methods
   default-language:    Haskell2010
 
 executable habit-server
