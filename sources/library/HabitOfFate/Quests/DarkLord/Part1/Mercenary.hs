@@ -31,7 +31,7 @@ import HabitOfFate.Story
 
 intro = Narrative
   { title = "The Dark Castle"
-  , narrative = [story|
+  , content = [story|
 For years the Dark Lord has ruled the land with a cruel fist, riding out on his
 black horse at night to burn villagers huts and steal their women -- in addition
 to the ordinary oppression of sending out tax men to collect their grain,
@@ -283,7 +283,7 @@ I was just starting to get hungry..."
 
 found_behind_guarded_door = Narrative
   { title = "The Guarded Door"
-  , narrative = [story|
+  , content = [story|
 Turning a bend, the mercenary sees a door with eight guards beside it. The
 mercenary throws some coins to the ground. "How about we make a deal," he/she|
 says. "You all leave and let me in to... talk, with the Dark Lord, and you may
@@ -320,7 +320,7 @@ battle begins.
 
 found_despite_misdirection = Narrative
   { title = "A Cunning Trap"
-  , narrative = [story|
+  , content = [story|
 As he/she| walks down the hallway, two doors come into view. One of them has
 twenty guards in front of it, the other has a sign hanging on saying "Not the
 Dark Lord's chamber."
@@ -346,7 +346,7 @@ And so the battle begins.
 
 found = Narrative
   { title = "The Hunt Grows to a Close"
-  , narrative = [story|
+  , content = [story|
 The mercenary has found the Dark Lord and is currently in battle.
 |]}
 
@@ -394,7 +394,7 @@ completely devours him/her|.
 
 first_arm_sliced_off = Narrative
   { title = "One Down"
-  , narrative = [story|
+  , content = [story|
 With a mighty blow, the mercenary slices off the Dark Lord's sword arm. Blood
 starts to spray.
 
@@ -442,7 +442,7 @@ completely devours him/her|.
 
 second_arm_sliced_off = Narrative
   { title = "The Dark Lord is Deprived of his Arms"
-  , narrative = [story|
+  , content = [story|
 With another might blow the mercenary slices off the Dark Lord's other arm. Even
 more blood starts to spray.
 
@@ -499,7 +499,7 @@ it completely devours him/her|.
 
 first_leg_sliced_off = Narrative
   { title = "Only One Limb Left"
-  , narrative = [story|
+  , content = [story|
 Although it was an awkward angle, the mercenary succeeds in chopping off the leg
 with a dagger. The Dark Lord almost falls, but somehow manages to remain stable
 on his remaining leg. "Give up you idiot!" says the mercenary. "You can't win
@@ -546,7 +546,7 @@ completely devours him/her|.
 
 conclusion = Narrative
   { title = "All Limbs Gone"
-  , narrative = [story|
+  , content = [story|
 With a roar and a mighty blow the mercenary manages to chop off the remaining
 leg, and the Dark Lord falls to the ground. The mercenary walks over to the Dark
 Lord and says, "You can no longer harm me. Yield!" "Never!" says the Dark Lord.

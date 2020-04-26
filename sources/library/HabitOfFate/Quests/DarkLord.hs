@@ -31,7 +31,7 @@ import HabitOfFate.Story
 
 part_selection = Narrative
   { title = "Choose What to Follow"
-  , narrative = "This quest has two parts."
+  , content = "This quest has two parts."
   }
 
 quest ∷ Quest

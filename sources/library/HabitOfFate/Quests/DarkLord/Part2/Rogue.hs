@@ -29,7 +29,7 @@ import HabitOfFate.Story
 
 introduction = Narrative
   { title = "The Haunted Lands"
-  , narrative = [story|
+  , content = [story|
 Supposedly the Order of the Paladins had taken care of the Dark Lord of this
 place before, but unsurprisingly they bungled it up and now the Dark Lord was
 back. Normally this would be none of the rogue's business, but people were
@@ -320,7 +320,7 @@ as the swords stab into him over and over again.
 
 found = Narrative
   { title = "The Dark Lord is Found"
-  , narrative = [story|
+  , content = [story|
 Finally, the rogue entered a large chamber. In the middle of the chamber floated
 a quadriplegic man wearing a gleaming golden necklace on his neck. "So you wish
 to collect my bounty, do you?" he says with a cackle. "Well, you have made it

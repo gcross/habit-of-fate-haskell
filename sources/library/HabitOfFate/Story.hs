@@ -561,7 +561,7 @@ storyForFailure SuccessDangerAvertedFailure{..} =
 
 data Narrative content = Narrative
   { title ∷ content
-  , narrative ∷ content
+  , content ∷ content
   } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
 dashed_sections ∷ QuasiQuoter

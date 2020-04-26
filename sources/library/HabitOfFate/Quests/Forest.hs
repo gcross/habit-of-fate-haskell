@@ -38,7 +38,7 @@ import HabitOfFate.Story
 
 intro = Narrative
   { title = "The Wicked Forest"
-  , narrative = [story|
+  , content = [story|
 The Wicked Forest: frightful enough during the day, full of even greater terrors
 by night. Unfortunately, it is also the only place where a healing *|Plant*
 plant can be obtained, so a brave man/woman| is about to enter it.
@@ -46,7 +46,7 @@ plant can be obtained, so a brave man/woman| is about to enter it.
 
 intro_parent = Narrative
   { title = "A Parent Enters The Woods"
-  , narrative = [story|
+  , content = [story|
 The last thing in the world that **|Searcher** wanted to do was to wander alone
 in the Wicked Forest at night, but his/her|Searcher son/daughter|Child, little
 **|Child**, was sick and would not live through the night unless |Searcher could
@@ -59,7 +59,7 @@ He/she| enters the forest.
 
 intro_healer = Narrative
   { title = "A Healer Enters The Woods"
-  , narrative = [story|
+  , content = [story|
 There were times when **|Searcher**, the village healer, cursed himself/herself|
 for deciding to become a healer, and this was one of them. Little **|Child** had
 brain fever, and the only way he/she|Child would survive the night is if he/she|
@@ -186,7 +186,7 @@ The sweet smell of gingerbread was just too alluring for |Searcher.
 
 found = Narrative
   { title = "Some Help Arrives?"
-  , narrative = [story|
+  , content = [story|
 Finally, just when all hope is lost, a creature arrives to help |Searcher.
 |]}
 

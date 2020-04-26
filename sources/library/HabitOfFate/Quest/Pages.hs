@@ -181,7 +181,7 @@ buildPagesFromQuest quest@Quest{..} = do
           in Page
             { page_path = parent ⊕ "/" ⊕ narrative_name
             , page_title = title
-            , page_content = narrative
+            , page_content = content
             , page_choices = proceedChoices maybe_next_choice
             }
           ]
@@ -211,7 +211,7 @@ buildPagesFromQuest quest@Quest{..} = do
           (Page
             { page_path = base ⊕ "common"
             , page_title = title
-            , page_content = narrative
+            , page_content = content
             , page_choices = Choices split_question page_choices
             }
             :) <$> (traverse ((& branch_entry) >>> process maybe_next_choice name) split_branches <&> concat)

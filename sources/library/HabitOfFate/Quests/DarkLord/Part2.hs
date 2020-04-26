@@ -34,7 +34,7 @@ import HabitOfFate.Story
 
 classes = Narrative
   { title = "Class"
-  , narrative = [story|
+  , content = [story|
 There are several people whe might take on the Dark Lord and end his terrible
 rule.
 |]}

@@ -24,7 +24,7 @@ takes a week for the crew to recover from the severe nausua.
 
 intro = Narrative
   { title = "The Long Voyage Home"
-  , narrative = [story|
+  , content = [story|
 It had been a long war; nearly ten years at the Dragon system, far away from
 home, the Dzur system. So many ships had been destroyed, so many people had
 died, and all over a stupid girl. Captain |Captain could take credit for its
@@ -704,7 +704,7 @@ reunite with his love.
 
 conclusion = Narrative
   { title = "Reunited at Last!"
-  , narrative = [story|
+  , content = [story|
 In the heat of the moment it took several seconds for |Captain to realize that
 there was no one else left to shoot;  all of the suitors lay dead on the
 ground.  "My love, you did it!" |his/her husband/wife|Spouse shouted,
