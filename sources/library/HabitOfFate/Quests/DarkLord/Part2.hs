@@ -33,8 +33,8 @@ import qualified HabitOfFate.Quests.DarkLord.Part2.Rogue as Rogue
 import HabitOfFate.Story
 
 classes = Narrative
-  { narrative_title = "Class"
-  , narrative_story = [story|
+  { title = "Class"
+  , narrative = [story|
 There are several people whe might take on the Dark Lord and end his terrible
 rule.
 |]}

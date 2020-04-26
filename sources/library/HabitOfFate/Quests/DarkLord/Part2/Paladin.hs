@@ -28,8 +28,8 @@ import HabitOfFate.Quest
 import HabitOfFate.Story
 
 introduction = Narrative
-  { narrative_title = "The Haunted Lands"
-  , narrative_story = [story|
+  { title = "The Haunted Lands"
+  , narrative = [story|
 This is not the first time that the Order of the Paladins has had to visit this
 place, but in the intervening years something has gone terribly wrong. The Dark
 Lord was supposed to have been defeated, but not only was he back, but the
@@ -343,8 +343,8 @@ gripped by the creature's many arms and is torn to pieces.
 |]
 
 found = Narrative
-  { narrative_title = "The Dark Lord is Found"
-  , narrative_story = [story|
+  { title = "The Dark Lord is Found"
+  , narrative = [story|
 Finally, the Paladin enters a large chamber. In the middle of the chamber
 floats a quadriplegic man wearing a gleaming golden necklace on his neck. "Ah!"
 the man says. "I was wondering when another of your order would come for me, but

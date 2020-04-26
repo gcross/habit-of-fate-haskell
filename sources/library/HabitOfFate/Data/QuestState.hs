@@ -159,7 +159,7 @@ generateQuestState select selectName shuffle Quest{..} = do
       | otherwise → throwM $ NoRandomStoriesForEvent name
     NarrativeEntry{..} → pure ( folder_state
       & name_ ⊕~ ("/" ⊕ narrative_name)
-      & remaining_content_ %~ (`snoc` NarrativeContent (narrative_content & narrative_story)))
+      & remaining_content_ %~ (`snoc` NarrativeContent (narrative_content & narrative)))
     LineEntry{..} →
       (
         case line_shuffle_mode of

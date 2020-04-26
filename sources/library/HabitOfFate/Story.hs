@@ -560,8 +560,8 @@ storyForFailure SuccessDangerAvertedFailure{..} =
   paragraphs [outcomes_common_story, outcomes_danger_story, outcomes_failure_story]
 
 data Narrative content = Narrative
-  { narrative_title ∷ content
-  , narrative_story ∷ content
+  { title ∷ content
+  , narrative ∷ content
   } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
 dashed_sections ∷ QuasiQuoter
