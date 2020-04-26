@@ -90,7 +90,7 @@ runGame = do
                   SuccessResult → advance $ storyForSuccess outcomes
                   FailureResult →
                     let failure = do
-                          registerDeedAndResetQuestState FailureResult (outcomes & outcomes_shames)
+                          registerDeedAndResetQuestState FailureResult (outcomes & shames)
                           pure (storyForFailure outcomes, NextIsNarrative)
                         tryAverted = weighted [(SuccessResult, 1), (FailureResult, 2)] >>= \case
                           SuccessResult → advance $ storyForAverted outcomes

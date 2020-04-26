@@ -414,52 +414,52 @@ template = [outcomes|
 -}
 
 constructOutcomes ∷ MonadThrow m ⇒ (Map OutcomeHeading Story, [Story]) → m (Outcomes Story)
-constructOutcomes (outcomes, outcomes_shames)
+constructOutcomes (outcomes, shames)
   | headings_set == commonFailureSuccess = pure $ SuccessFailure
-      { outcomes_common_title = extractOutcome CommonTitle
-      , outcomes_common_story = extractOutcome CommonStory
-      , outcomes_common_question = extractOutcome CommonQuestion
-      , outcomes_success_choice = extractOutcome SuccessChoice
-      , outcomes_success_title = extractOutcome SuccessTitle
-      , outcomes_success_story = extractOutcome SuccessStory
-      , outcomes_failure_choice = extractOutcome FailureChoice
-      , outcomes_failure_title = extractOutcome FailureTitle
-      , outcomes_failure_story = extractOutcome FailureStory
-      , outcomes_shames = outcomes_shames
+      { common_title = extractOutcome CommonTitle
+      , common_story = extractOutcome CommonStory
+      , common_question = extractOutcome CommonQuestion
+      , success_choice = extractOutcome SuccessChoice
+      , success_title = extractOutcome SuccessTitle
+      , success_story = extractOutcome SuccessStory
+      , failure_choice = extractOutcome FailureChoice
+      , failure_title = extractOutcome FailureTitle
+      , failure_story = extractOutcome FailureStory
+      , shames = shames
       }
   | headings_set == commonAvertedFailureSuccess = pure $ SuccessAvertedFailure
-      { outcomes_common_title = extractOutcome CommonTitle
-      , outcomes_common_story = extractOutcome CommonStory
-      , outcomes_common_question = extractOutcome CommonQuestion
-      , outcomes_success_choice = extractOutcome SuccessChoice
-      , outcomes_success_title = extractOutcome SuccessTitle
-      , outcomes_success_story = extractOutcome SuccessStory
-      , outcomes_averted_choice = extractOutcome AvertedChoice
-      , outcomes_averted_title = extractOutcome AvertedTitle
-      , outcomes_averted_story = extractOutcome AvertedStory
-      , outcomes_failure_choice = extractOutcome FailureChoice
-      , outcomes_failure_title = extractOutcome FailureTitle
-      , outcomes_failure_story = extractOutcome FailureStory
-      , outcomes_shames = outcomes_shames
+      { common_title = extractOutcome CommonTitle
+      , common_story = extractOutcome CommonStory
+      , common_question = extractOutcome CommonQuestion
+      , success_choice = extractOutcome SuccessChoice
+      , success_title = extractOutcome SuccessTitle
+      , success_story = extractOutcome SuccessStory
+      , averted_choice = extractOutcome AvertedChoice
+      , averted_title = extractOutcome AvertedTitle
+      , averted_story = extractOutcome AvertedStory
+      , failure_choice = extractOutcome FailureChoice
+      , failure_title = extractOutcome FailureTitle
+      , failure_story = extractOutcome FailureStory
+      , shames = shames
       }
   | headings_set == commonDangerAvertedFailureSuccess = pure SuccessDangerAvertedFailure
-      { outcomes_common_title = extractOutcome CommonTitle
-      , outcomes_common_story = extractOutcome CommonStory
-      , outcomes_common_question = extractOutcome CommonQuestion
-      , outcomes_success_choice = extractOutcome SuccessChoice
-      , outcomes_success_title = extractOutcome SuccessTitle
-      , outcomes_success_story = extractOutcome SuccessStory
-      , outcomes_danger_choice = extractOutcome DangerChoice
-      , outcomes_danger_title = extractOutcome DangerTitle
-      , outcomes_danger_story = extractOutcome DangerStory
-      , outcomes_danger_question = extractOutcome DangerQuestion
-      , outcomes_averted_choice = extractOutcome AvertedChoice
-      , outcomes_averted_title = extractOutcome AvertedTitle
-      , outcomes_averted_story = extractOutcome AvertedStory
-      , outcomes_failure_choice = extractOutcome FailureChoice
-      , outcomes_failure_title = extractOutcome FailureTitle
-      , outcomes_failure_story = extractOutcome FailureStory
-      , outcomes_shames = outcomes_shames
+      { common_title = extractOutcome CommonTitle
+      , common_story = extractOutcome CommonStory
+      , common_question = extractOutcome CommonQuestion
+      , success_choice = extractOutcome SuccessChoice
+      , success_title = extractOutcome SuccessTitle
+      , success_story = extractOutcome SuccessStory
+      , danger_choice = extractOutcome DangerChoice
+      , danger_title = extractOutcome DangerTitle
+      , danger_story = extractOutcome DangerStory
+      , danger_question = extractOutcome DangerQuestion
+      , averted_choice = extractOutcome AvertedChoice
+      , averted_title = extractOutcome AvertedTitle
+      , averted_story = extractOutcome AvertedStory
+      , failure_choice = extractOutcome FailureChoice
+      , failure_title = extractOutcome FailureTitle
+      , failure_story = extractOutcome FailureStory
+      , shames = shames
       }
     | otherwise = throwM $ UnrecognizedOutcomePattern $ toList $ headings_set
  where
@@ -493,7 +493,7 @@ outcomes = QuasiQuoter
 {-
 Typical usage:
 
-... = [outcomes_outcomes|
+... = [outcomes|
 ================================= Common Title =================================
 
 ================================= Common Story =================================
@@ -539,25 +539,25 @@ paragraphs = intersperse (Markdown "\n\n") >>> mconcat
 storyForSuccess, storyForAverted, storyForFailure ∷ Outcomes Markdown → Markdown
 
 storyForSuccess SuccessFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_success_story]
+  paragraphs [common_story, success_story]
 storyForSuccess SuccessAvertedFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_success_story]
+  paragraphs [common_story, success_story]
 storyForSuccess SuccessDangerAvertedFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_success_story]
+  paragraphs [common_story, success_story]
 
 storyForAverted SuccessFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_success_story]
+  paragraphs [common_story, success_story]
 storyForAverted SuccessAvertedFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_averted_story]
+  paragraphs [common_story, averted_story]
 storyForAverted SuccessDangerAvertedFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_danger_story, outcomes_averted_story]
+  paragraphs [common_story, danger_story, averted_story]
 
 storyForFailure SuccessFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_failure_story]
+  paragraphs [common_story, failure_story]
 storyForFailure SuccessAvertedFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_failure_story]
+  paragraphs [common_story, failure_story]
 storyForFailure SuccessDangerAvertedFailure{..} =
-  paragraphs [outcomes_common_story, outcomes_danger_story, outcomes_failure_story]
+  paragraphs [common_story, danger_story, failure_story]
 
 data Narrative content = Narrative
   { title ∷ content

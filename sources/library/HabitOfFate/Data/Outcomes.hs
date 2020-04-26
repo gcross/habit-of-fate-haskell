@@ -42,76 +42,76 @@ import HabitOfFate.JSON
 
 data Outcomes content =
     SuccessFailure
-      { outcomes_common_title ∷ content
-      , outcomes_common_story ∷ content
-      , outcomes_common_question ∷ content
-      , outcomes_success_choice ∷ content
-      , outcomes_success_title ∷ content
-      , outcomes_success_story ∷ content
-      , outcomes_failure_choice ∷ content
-      , outcomes_failure_title ∷ content
-      , outcomes_failure_story ∷ content
-      , outcomes_shames ∷ [content]
+      { common_title ∷ content
+      , common_story ∷ content
+      , common_question ∷ content
+      , success_choice ∷ content
+      , success_title ∷ content
+      , success_story ∷ content
+      , failure_choice ∷ content
+      , failure_title ∷ content
+      , failure_story ∷ content
+      , shames ∷ [content]
       }
   | SuccessAvertedFailure
-      { outcomes_common_title ∷ content
-      , outcomes_common_story ∷ content
-      , outcomes_common_question ∷ content
-      , outcomes_success_choice ∷ content
-      , outcomes_success_title ∷ content
-      , outcomes_success_story ∷ content
-      , outcomes_averted_choice ∷ content
-      , outcomes_averted_title ∷ content
-      , outcomes_averted_story ∷ content
-      , outcomes_failure_choice ∷ content
-      , outcomes_failure_title ∷ content
-      , outcomes_failure_story ∷ content
-      , outcomes_shames ∷ [content]
+      { common_title ∷ content
+      , common_story ∷ content
+      , common_question ∷ content
+      , success_choice ∷ content
+      , success_title ∷ content
+      , success_story ∷ content
+      , averted_choice ∷ content
+      , averted_title ∷ content
+      , averted_story ∷ content
+      , failure_choice ∷ content
+      , failure_title ∷ content
+      , failure_story ∷ content
+      , shames ∷ [content]
       }
   | SuccessDangerAvertedFailure
-      { outcomes_common_title ∷ content
-      , outcomes_common_story ∷ content
-      , outcomes_common_question ∷ content
-      , outcomes_success_choice ∷ content
-      , outcomes_success_title ∷ content
-      , outcomes_success_story ∷ content
-      , outcomes_danger_choice ∷ content
-      , outcomes_danger_title ∷ content
-      , outcomes_danger_story ∷ content
-      , outcomes_danger_question ∷ content
-      , outcomes_averted_choice ∷ content
-      , outcomes_averted_title ∷ content
-      , outcomes_averted_story ∷ content
-      , outcomes_failure_choice ∷ content
-      , outcomes_failure_title ∷ content
-      , outcomes_failure_story ∷ content
-      , outcomes_shames ∷ [content]
+      { common_title ∷ content
+      , common_story ∷ content
+      , common_question ∷ content
+      , success_choice ∷ content
+      , success_title ∷ content
+      , success_story ∷ content
+      , danger_choice ∷ content
+      , danger_title ∷ content
+      , danger_story ∷ content
+      , danger_question ∷ content
+      , averted_choice ∷ content
+      , averted_title ∷ content
+      , averted_story ∷ content
+      , failure_choice ∷ content
+      , failure_title ∷ content
+      , failure_story ∷ content
+      , shames ∷ [content]
       } deriving (Eq,Foldable,Functor,Lift,Ord,Read,Show,Traversable)
 
 instance ToJSON α ⇒ ToJSON (Outcomes α) where
   toJSON outcomes = runJSONBuilder $ do
-    writeField "common title"    (outcomes & outcomes_common_title)
-    writeField "common story"    (outcomes & outcomes_common_story)
-    writeField "common question" (outcomes & outcomes_common_question)
-    writeField "success choice"  (outcomes & outcomes_success_choice)
-    writeField "success title"   (outcomes & outcomes_success_title)
-    writeField "success story"   (outcomes & outcomes_success_story)
-    writeField "failure choice"  (outcomes & outcomes_failure_choice)
-    writeField "failure title"   (outcomes & outcomes_failure_title)
-    writeField "failure story"   (outcomes & outcomes_failure_story)
-    writeField "shames"          (outcomes & outcomes_shames)
+    writeField "common title"    (outcomes & common_title)
+    writeField "common story"    (outcomes & common_story)
+    writeField "common question" (outcomes & common_question)
+    writeField "success choice"  (outcomes & success_choice)
+    writeField "success title"   (outcomes & success_title)
+    writeField "success story"   (outcomes & success_story)
+    writeField "failure choice"  (outcomes & failure_choice)
+    writeField "failure title"   (outcomes & failure_title)
+    writeField "failure story"   (outcomes & failure_story)
+    writeField "shames"          (outcomes & shames)
     case outcomes of
       SuccessFailure{..} → pure ()
       _ → do
-        writeField "averted choice" (outcomes & outcomes_averted_choice)
-        writeField "averted title"  (outcomes & outcomes_averted_title)
-        writeField "averted story"  (outcomes & outcomes_averted_story)
+        writeField "averted choice" (outcomes & averted_choice)
+        writeField "averted title"  (outcomes & averted_title)
+        writeField "averted story"  (outcomes & averted_story)
     case outcomes of
       SuccessDangerAvertedFailure{..} → do
-        writeField "danger choice"    outcomes_danger_choice
-        writeField "danger title"     outcomes_danger_title
-        writeField "danger story"     outcomes_danger_story
-        writeField "danger question"  outcomes_danger_question
+        writeField "danger choice"    danger_choice
+        writeField "danger title"     danger_title
+        writeField "danger story"     danger_story
+        writeField "danger question"  danger_question
       _ → pure ()
     writeField "kind" $ case outcomes of
       SuccessFailure{..} → "success/failure" ∷ Text
@@ -120,30 +120,30 @@ instance ToJSON α ⇒ ToJSON (Outcomes α) where
 
 instance FromJSON α ⇒ FromJSON (Outcomes α) where
   parseJSON = withObject "outcomes must be object-shaped" $ \o → do
-    outcomes_common_title    ← o .: "common title"
-    outcomes_common_story    ← o .: "common story"
-    outcomes_common_question ← o .: "common question"
-    outcomes_success_choice  ← o .: "success choice"
-    outcomes_success_title   ← o .: "success title"
-    outcomes_success_story   ← o .: "success story"
-    outcomes_failure_choice  ← o .: "failure choice"
-    outcomes_failure_title   ← o .: "failure title"
-    outcomes_failure_story   ← o .: "failure story"
-    outcomes_shames          ← o .: "shames"
+    common_title    ← o .: "common title"
+    common_story    ← o .: "common story"
+    common_question ← o .: "common question"
+    success_choice  ← o .: "success choice"
+    success_title   ← o .: "success title"
+    success_story   ← o .: "success story"
+    failure_choice  ← o .: "failure choice"
+    failure_title   ← o .: "failure title"
+    failure_story   ← o .: "failure story"
+    shames          ← o .: "shames"
     kind ∷ Text ← o .: "kind"
     unless (kind ∈ ["success/failure", "success/averted/failure", "success/danger/averted/failure"]) $
       fail [i|Invalid outcomes kind: #{kind}|]
     case kind of
       "success/failure" → pure SuccessFailure{..}
       _ → do
-        outcomes_averted_choice ← o .: "averted choice"
-        outcomes_averted_title  ← o .: "averted title"
-        outcomes_averted_story  ← o .: "averted story"
+        averted_choice ← o .: "averted choice"
+        averted_title  ← o .: "averted title"
+        averted_story  ← o .: "averted story"
         case kind of
           "success/averted/failure" → pure SuccessAvertedFailure{..}
           _ → do
-            outcomes_danger_choice    ← o .: "danger choice"
-            outcomes_danger_title     ← o .: "danger title"
-            outcomes_danger_story     ← o .: "danger story"
-            outcomes_danger_question  ← o .: "danger question"
+            danger_choice    ← o .: "danger choice"
+            danger_title     ← o .: "danger title"
+            danger_story     ← o .: "danger story"
+            danger_question  ← o .: "danger question"
             pure SuccessDangerAvertedFailure{..}

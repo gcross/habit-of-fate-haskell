@@ -80,99 +80,99 @@ buildPagesFromQuest quest@Quest{..} = do
             SuccessFailure{..} →
               [Page
                 { page_path = base ⊕ "common"
-                , page_title = outcomes_common_title
-                , page_content = outcomes_common_story
-                , page_choices = Choices outcomes_common_question $
-                    [(embolden outcomes_success_choice, base ⊕ "success")
-                    ,(embolden outcomes_failure_choice, base ⊕ "failure")
+                , page_title = common_title
+                , page_content = common_story
+                , page_choices = Choices common_question $
+                    [(embolden success_choice, base ⊕ "success")
+                    ,(embolden failure_choice, base ⊕ "failure")
                     ]
                     ⊕
                     quest_choices
                 }
               ,Page
                 { page_path = base ⊕ "success"
-                , page_title = outcomes_success_title
-                , page_content = outcomes_success_story
+                , page_title = success_title
+                , page_content = success_story
                 , page_choices = proceedChoices maybe_next_choice
                 }
               ,Page
                 { page_path = base ⊕ "failure"
-                , page_title = outcomes_failure_title
-                , page_content = outcomes_failure_story
+                , page_title = failure_title
+                , page_content = failure_story
                 , page_choices = failure_dead_end
                 }
               ]
             SuccessAvertedFailure{..} →
               [Page
                 { page_path = base ⊕ "common"
-                , page_title = outcomes_common_title
-                , page_content = outcomes_common_story
-                , page_choices = Choices outcomes_common_question $
-                    [(embolden outcomes_success_choice, base ⊕ "success")
-                    ,(embolden outcomes_averted_choice, base ⊕ "averted")
-                    ,(embolden outcomes_failure_choice, base ⊕ "failure")
+                , page_title = common_title
+                , page_content = common_story
+                , page_choices = Choices common_question $
+                    [(embolden success_choice, base ⊕ "success")
+                    ,(embolden averted_choice, base ⊕ "averted")
+                    ,(embolden failure_choice, base ⊕ "failure")
                     ]
                     ⊕
                     quest_choices
                 }
               ,Page
                 { page_path = base ⊕ "success"
-                , page_title = outcomes_success_title
-                , page_content = outcomes_success_story
+                , page_title = success_title
+                , page_content = success_story
                 , page_choices = proceedChoices maybe_next_choice
                 }
               ,Page
                 { page_path = base ⊕ "averted"
-                , page_title = outcomes_averted_title
-                , page_content = outcomes_averted_story
+                , page_title = averted_title
+                , page_content = averted_story
                 , page_choices = proceedChoices maybe_next_choice
                 }
               ,Page
                 { page_path = base ⊕ "failure"
-                , page_title = outcomes_failure_title
-                , page_content = outcomes_failure_story
+                , page_title = failure_title
+                , page_content = failure_story
                 , page_choices = failure_dead_end
                 }
               ]
             SuccessDangerAvertedFailure{..} →
               [Page
                 { page_path = base ⊕ "common"
-                , page_title = outcomes_common_title
-                , page_content = outcomes_common_story
-                , page_choices = Choices outcomes_common_question $
-                    [(embolden outcomes_success_choice, base ⊕ "success")
-                    ,(embolden outcomes_danger_choice, base ⊕ "danger")
+                , page_title = common_title
+                , page_content = common_story
+                , page_choices = Choices common_question $
+                    [(embolden success_choice, base ⊕ "success")
+                    ,(embolden danger_choice, base ⊕ "danger")
                     ]
                     ⊕
                     quest_choices
                 }
               ,Page
                 { page_path = base ⊕ "success"
-                , page_title = outcomes_success_title
-                , page_content = outcomes_success_story
+                , page_title = success_title
+                , page_content = success_story
                 , page_choices = proceedChoices maybe_next_choice
                 }
               ,Page
                 { page_path = base ⊕ "danger"
-                , page_title = outcomes_danger_title
-                , page_content = outcomes_danger_story
-                , page_choices = Choices outcomes_danger_question $
-                    [(embolden outcomes_averted_choice,base ⊕ "averted")
-                    ,(embolden outcomes_failure_choice,base ⊕ "failure")
+                , page_title = danger_title
+                , page_content = danger_story
+                , page_choices = Choices danger_question $
+                    [(embolden averted_choice,base ⊕ "averted")
+                    ,(embolden failure_choice,base ⊕ "failure")
                     ]
                     ⊕
                     quest_choices_with_undo
                 }
               ,Page
                 { page_path = base ⊕ "averted"
-                , page_title = outcomes_averted_title
-                , page_content = outcomes_averted_story
+                , page_title = averted_title
+                , page_content = averted_story
                 , page_choices = proceedChoices maybe_next_choice
                 }
               ,Page
                 { page_path = base ⊕ "failure"
-                , page_title = outcomes_failure_title
-                , page_content = outcomes_failure_story
+                , page_title = failure_title
+                , page_content = failure_story
                 , page_choices = failure_dead_end
                 }
               ]

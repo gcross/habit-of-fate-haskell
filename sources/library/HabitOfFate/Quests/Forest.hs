@@ -133,38 +133,38 @@ behind.
 --------------------------------------------------------------------------------
 
 gingerbread_house = SuccessDangerAvertedFailure
-  { outcomes_common_title = "The Gingerbread House"
-  , outcomes_common_story = [story|
+  { common_title = "The Gingerbread House"
+  , common_story = [story|
 |Searcher sees a house made out of... gingerbread? He/she| feels a strange
 compulsion to approach it.
 |]
-  , outcomes_common_question = [s|Where do You guide |Searcher?|]
+  , common_question = [s|Where do You guide |Searcher?|]
 
-  , outcomes_success_choice = "Away from the gingerbread house."
-  , outcomes_success_title = "Even Gingerbread Cannot Slow The Search"
-  , outcomes_success_story = [story|
+  , success_choice = "Away from the gingerbread house."
+  , success_title = "Even Gingerbread Cannot Slow The Search"
+  , success_story = [story|
 He/she| fights the compulsion, and continues on his/her| search.
 |]
 
-  , outcomes_danger_choice = "Towards the gingerbread house."
-  , outcomes_danger_title = "The Gingerbread Compulsion is Too Great"
-  , outcomes_danger_story = [story|
+  , danger_choice = "Towards the gingerbread house."
+  , danger_title = "The Gingerbread Compulsion is Too Great"
+  , danger_story = [story|
 As he/she| gets closer, the door opens and an old woman beckons him/her| in.
 “You've arrived just in time!” she says. “Dinner has just finished cooking. Come
 on in!”
 |]
-  , outcomes_danger_question = [s|How do you have |Searcher react?|]
+  , danger_question = [s|How do you have |Searcher react?|]
 
-  , outcomes_averted_choice = [s|He/She| runs away!|]
-  , outcomes_averted_title = "Escaping The Gingerbread House"
-  , outcomes_averted_story = [story|
+  , averted_choice = [s|He/She| runs away!|]
+  , averted_title = "Escaping The Gingerbread House"
+  , averted_story = [story|
 The smell from the cottage is overwhelming, and shocks |Searcher to his/her|
 senses. He/she| sprints away from the cottage as fast as he/she| can.
 |]
 
-  , outcomes_failure_choice = [s|He/She| enters the house.|]
-  , outcomes_failure_title = "Entering The Gingerbread House"
-  , outcomes_failure_story = [story|
+  , failure_choice = [s|He/She| enters the house.|]
+  , failure_title = "Entering The Gingerbread House"
+  , failure_story = [story|
 Not knowing why he/she| was doing this, |Searcher enters the... cottage? The woman
 leads her to an oven. “Here, look inside.”
 
@@ -177,7 +177,7 @@ nowhere to be found.
 He/she| sobs -- there is no way that he/she| will be able to make it home in
 time now.
 |]
-  , outcomes_shames = [stories|
+  , shames = [stories|
 ================================================================================
 The sweet smell of gingerbread was just too alluring for |Searcher.
 ================================================================================
